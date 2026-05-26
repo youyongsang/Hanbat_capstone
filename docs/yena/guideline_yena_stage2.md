@@ -173,14 +173,14 @@ data/
 
 ## 7. 완료 기준 체크리스트
 
-- [ ] 1단계 CSV 데이터 검증 완료 (결측값, 레이블 분포, 피처 범위)
-- [ ] 슬라이딩 윈도우 전처리 구현 완료
-- [ ] Min-Max 정규화 구현 완료
-- [ ] `scaler_params.json` 저장 완료
-- [ ] `utils/dataloader.py` 구현 완료
-- [ ] `get_dataloader()` 함수 인터페이스 확인 완료
-- [ ] X shape `(batch, 10, 4)` 출력 확인
-- [ ] y shape `(batch,)` 출력 확인
+- [x] 1단계 CSV 데이터 검증 완료 (결측값, 레이블 분포, 피처 범위)
+- [x] 슬라이딩 윈도우 전처리 구현 완료
+- [x] Min-Max 정규화 구현 완료
+- [x] `scaler_params.json` 저장 완료
+- [x] `utils/dataloader.py` 구현 완료
+- [x] `get_dataloader()` 함수 인터페이스 확인 완료
+- [x] X shape `(batch, 10, 4)` 출력 확인
+- [x] y shape `(batch,)` 출력 확인
 - [ ] 김호중·유용상에게 `data/real/` 경로 및 사용법 공유 완료
 
 ---
