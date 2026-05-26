@@ -1,0 +1,92 @@
+{
+  "shape": {
+    "timesteps": 10,
+    "features": 4
+  },
+  "feature_names": [
+    "rps",
+    "channel_occupancy",
+    "packet_loss",
+    "latency"
+  ],
+  "scaler_params": {
+    "rps": {
+      "min": 0.0,
+      "max": 1000.0
+    },
+    "channel_occupancy": {
+      "min": 0.0,
+      "max": 100.0
+    },
+    "packet_loss": {
+      "min": 0.0,
+      "max": 30.0
+    },
+    "latency": {
+      "min": 0.0,
+      "max": 500.0
+    }
+  },
+  "splits": {
+    "train": {
+      "samples": 700,
+      "window_shape": [
+        700,
+        10,
+        4
+      ],
+      "label_counts": {
+        "0": 420,
+        "1": 140,
+        "2": 105,
+        "3": 35
+      },
+      "scenario_counts": {
+        "emergency_ramp": 147,
+        "imbalanced_ap_load": 68,
+        "lunch_restart": 284,
+        "startup_surge": 201
+      }
+    },
+    "val": {
+      "samples": 150,
+      "window_shape": [
+        150,
+        10,
+        4
+      ],
+      "label_counts": {
+        "0": 90,
+        "1": 30,
+        "2": 22,
+        "3": 8
+      },
+      "scenario_counts": {
+        "emergency_ramp": 39,
+        "imbalanced_ap_load": 13,
+        "lunch_restart": 51,
+        "startup_surge": 47
+      }
+    },
+    "test": {
+      "samples": 150,
+      "window_shape": [
+        150,
+        10,
+        4
+      ],
+      "label_counts": {
+        "0": 90,
+        "1": 30,
+        "2": 23,
+        "3": 7
+      },
+      "scenario_counts": {
+        "emergency_ramp": 35,
+        "imbalanced_ap_load": 16,
+        "lunch_restart": 63,
+        "startup_surge": 36
+      }
+    }
+  }
+}

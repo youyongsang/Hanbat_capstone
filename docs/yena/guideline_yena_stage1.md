@@ -221,13 +221,13 @@ data/real/
 
 ## 9. 완료 기준 체크리스트
 
-- [ ] 시나리오 4가지 함수 구현 완료
-- [ ] 레이블 자동 부여 로직 구현 완료
-- [ ] 슬라이딩 윈도우 전처리 완료
-- [ ] Min-Max 정규화 적용 완료
-- [ ] Stratified Split으로 train/val/test 분할 완료
-- [ ] `data/real/` 경로에 CSV 3개 저장 완료
-- [ ] `scaler_params.json` 저장 완료
+- [x] 시나리오 4가지 함수 구현 완료
+- [x] 레이블 자동 부여 로직 구현 완료
+- [x] 슬라이딩 윈도우 전처리 완료
+- [x] Min-Max 정규화 적용 완료
+- [x] Stratified Split으로 train/val/test 분할 완료
+- [x] `data/real/` 경로에 CSV 3개 저장 완료
+- [x] `scaler_params.json` 저장 완료
 - [ ] 김호중·유용상에게 데이터 shape 및 레이블 확인 완료
 
 ---
