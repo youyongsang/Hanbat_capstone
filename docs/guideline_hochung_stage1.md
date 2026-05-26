@@ -243,15 +243,15 @@ shape과 레이블이 동일하게 맞춰져 있기 때문에 코드 수정 없�
 
 ## 8. 완료 기준 체크리스트
 
-- [x] `scripts/generate_data.py` 구현 완료
-- [x] `data/dummy/` 경로에 CSV 3개 생성 완료
-- [x] `models/baseline_lstm.py` 모델 클래스 구현 완료
-- [x] `utils/dataloader.py` 구현 완료
-- [x] `utils/metrics.py` 구현 완료
-- [x] `scripts/train.py` 구현 완료
-- [x] `scripts/evaluate.py` 구현 완료
-- [x] 더미 데이터로 학습 돌아가고 accuracy 출력 확인
-- [x] `checkpoints/baseline_lstm_best.pth` 저장 확인
+- [ ] `scripts/generate_data.py` 구현 완료
+- [ ] `data/dummy/` 경로에 CSV 3개 생성 완료
+- [ ] `models/baseline_lstm.py` 모델 클래스 구현 완료
+- [ ] `utils/dataloader.py` 구현 완료
+- [ ] `utils/metrics.py` 구현 완료
+- [ ] `scripts/train.py` 구현 완료
+- [ ] `scripts/evaluate.py` 구현 완료
+- [ ] 더미 데이터로 학습 돌아가고 accuracy 출력 확인
+- [ ] `checkpoints/baseline_lstm_best.pth` 저장 확인
 - [ ] 유용상에게 `hidden_size`, 입력 shape 확인 완료
 
 ---
