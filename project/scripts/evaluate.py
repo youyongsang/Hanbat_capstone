@@ -24,11 +24,11 @@ def main():
     # 1. 테스트 데이터 로더 불러오기
     test_loader = get_dataloader(args.data_dir / "test.csv", args.batch_size, shuffle=False)
 
-    # 2. 호중 님 컴퓨터 환경에 맞춰 CPU 자동 고정 및 가상의 모델 클래스 정의 복사
-    # (실제 팀 프로젝트의 Baseline LSTM 모델 아키텍처 구조 장착)
+    # 2. 실제 팀 프로젝트의 Baseline LSTM 모델 아키텍처 구조 장착
+    # [구조 싱크 복원] 호중 님 학습 가중치 골격 규격인 hidden_size=128로 완벽 수정
     import torch.nn as nn
     class BaselineLSTM(nn.Module):
-        def __init__(self, input_size=4, hidden_size=64, num_layers=3, num_classes=4):
+        def __init__(self, input_size=4, hidden_size=128, num_layers=3, num_classes=4):
             super(BaselineLSTM, self).__init__()
             self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
             self.fc = nn.Linear(hidden_size, num_classes)
@@ -41,7 +41,13 @@ def main():
     model = BaselineLSTM()
     
     if args.model_path.exists():
-        model.load_state_dict(torch.load(args.model_path, map_location=device))
+        # [유연한 가중치 로드 예외 처리] dict 팩킹 버전과 순수 state_dict 버전을 자동 판별
+        checkpoint = torch.load(args.model_path, map_location=device)
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            model.load_state_dict(checkpoint)
+            
     model.to(device)
     model.eval()
 
