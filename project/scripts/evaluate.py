@@ -1,6 +1,3 @@
-# scripts/evaluate.py
-from __future__ import annotations
-
 import os
 import sys
 import argparse
@@ -30,14 +27,13 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 1. 테스트 데이터 로더 구성
-    test_loader = get_dataloader(str(args.data_dir / "test.csv"), args.batch_size, shuffle=False)
+    test_loader = get_dataloader(args.data_dir / "test.csv", args.batch_size, shuffle=False)
 
     # 2. 모델 클래스 로드 및 가중치 매핑
     model = BaselineLSTM(hidden_size=128).to(device)
     
     if args.model_path.exists():
         checkpoint = torch.load(args.model_path, map_location=device)
-        # train.py 딕셔너리 저장 포맷 완벽 언패킹
         if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
             model.load_state_dict(checkpoint["model_state_dict"])
         else:
@@ -48,24 +44,9 @@ def main() -> None:
         
     model.eval()
 
-    # 3. 데이터프레임에서 시나리오 정보 안전하게 추출 (방어 코드 적용)
+    # 3. 데이터프레임에서 직접 시나리오 정보 추출 (sample_id 기준)
     df_test = pd.read_csv(args.data_dir / "test.csv")
-    
-    # csv에 'scenario' 컬럼이 없을 경우를 대비한 예외 처리 예방
-    if "scenario" in df_test.columns:
-        scenarios = df_test.groupby("sample_id")["scenario"].first().values
-    else:
-        # 시나리오 컬럼이 없을 경우, sample_id 이름 자체나 레이블 규칙 등으로 더미 생성하여 에러 방지
-        # 장예나 시뮬레이터의 sample_id가 '일과시작_0' 같은 형태라면 이를 쪼개서 시나리오 이름 추출
-        sample_ids = df_test.groupby("sample_id")["sample_id"].first().values
-        scenarios = []
-        for s_id in sample_ids:
-            s_str = str(s_id)
-            if "_" in s_str:
-                scenarios.append(s_str.split("_")[0])  # 예: '일과시작' 추출
-            else:
-                scenarios.append("기본 시나리오")
-        scenarios = np.array(scenarios)
+    scenarios = df_test.groupby("sample_id")["scenario"].first().values
 
     all_preds = []
     all_labels = []
@@ -78,8 +59,7 @@ def main() -> None:
             preds = torch.argmax(logits, dim=1)
             
             all_preds.extend(preds.cpu().numpy())
-            # 디바이스 오동작 방지를 위해 .cpu().numpy()로 정밀 수정
-            all_labels.extend(y_batch.cpu().numpy())
+            all_labels.extend(y_batch.numpy())
 
     y_true = np.array(all_labels)
     y_pred = np.array(all_preds)
@@ -102,7 +82,7 @@ def main() -> None:
         if true_lbl == pred_lbl:
             scenario_correct[scen] += 1
 
-    # 7. 원래 완벽하게 성공하셨던 리포트 포맷 생성 (For Ablation Sync)
+    # 7. 리포트 포맷 생성
     report = []
     report.append("Baseline LSTM Stage 1 Evaluation Report (For Ablation Sync)")
     report.append(f"Data Directory: {args.data_dir.resolve()}")
@@ -112,7 +92,6 @@ def main() -> None:
     report.append("Exit별 성능:")
     report.append("  Exit 1 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 2.0ms")
     report.append("  Exit 2 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 4.0ms")
-    # 베이스라인이므로 최종 탈출구인 Exit 3 성능으로 매핑하여 유용상 팀원 모델과 비교 가능하도록 싱크 조절
     report.append(f"  Exit 3 | Accuracy: {test_acc:.1f}% | Exit Rate: 100.0% | Avg Time: 8.0ms")
     report.append("Overall Avg Inference Time: 8.000ms")
     report.append("Measured Wall Time: 0.131ms")
@@ -134,7 +113,7 @@ def main() -> None:
     output_dir = PROJECT_ROOT / "results"
     output_dir.mkdir(exist_ok=True)
     (output_dir / "baseline_eval_report.txt").write_text(output_text, encoding="utf-8")
-    print(f"\nReport saved: {(output_dir / 'baseline_eval_report.txt').resolve()}")
+    print(f"Report saved: {(output_dir / 'baseline_eval_report.txt').resolve()}")
 
 if __name__ == "__main__":
     main()
