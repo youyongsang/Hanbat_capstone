@@ -6,11 +6,11 @@ import torch
 from sklearn.metrics import accuracy_score
 from utils.dataloader import get_dataloader
 
-# Hysteresis 상태 초기화를 위해 기존 모듈 임포트
+# 채널 최적화 및 상태 제어 연동
 import experiments.channel_optimizer as ch_opt
 
-# [정석 연동] 호중 님 파일과 용상 님 파일에서 모델 클래스를 각각 다이렉트로 임포트
-from models.baseline_lstm import Standard3LayerLSTM  # 호중 님 진짜 LSTM 클래스명에 맞게 확인 필요
+# [정밀 연동] 호중 님 파일과 용상 님 파일에서 실제 정의된 모델을 직접 임포트
+from models.baseline_lstm import Standard3LayerLSTM
 from models.early_exit_lstm import EarlyExitLSTM
 
 os.makedirs("results", exist_ok=True)
@@ -53,14 +53,14 @@ def main():
         print(f"[Error] 데이터 로더 연결 실패: {e}")
         return
 
-    # [원본 성능 복원] baseline_lstm.py에서 가져온 순수 뼈대에 호중 님 진짜 가중치 로드
+    # ① Baseline 2를 위한 호중 님 진짜 모델 로드 및 가중치 매칭
     model_lstm = Standard3LayerLSTM()
     checkpoint_path = "checkpoints/baseline_lstm_best.pth"
     if os.path.exists(checkpoint_path):
         model_lstm.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model_lstm.eval()
 
-    # CPU Latency 측정을 위한 예열 (Warm-up)
+    # CPU 런타임 측정을 위한 Warm-up (예열)
     dummy_input = torch.randn(1, 10, 4)
     for _ in range(50):
         with torch.no_grad(): _ = model_lstm(dummy_input)
@@ -77,7 +77,7 @@ def main():
         # 명세서 출력 예시 포맷 적용
         print(f"Running {m['name']}...")
         
-        # Hysteresis 상태 초기화
+        # 각 방식 실험 시작 시 Hysteresis 채널 상태 초기화
         ch_opt._rrm_state = {"last_switch_time": 0, "current_channel": None}
 
         all_preds, all_labels, inference_times = [], [], []
@@ -85,6 +85,7 @@ def main():
         current_channel = 1
         exit_counts = {1: 0, 2: 0, 3: 0} # 유용상 담당 지표용 카운터
 
+        # ③, ④ 방식을 위한 용상 님 EarlyExitLSTM 모델 할당
         model_ee = None
         if m["id"] in [3, 4]:
             model_ee = EarlyExitLSTM(input_size=4, hidden_size=128, num_classes=4)
@@ -105,6 +106,7 @@ def main():
                     pred = torch.argmax(model_lstm(features), dim=1).item()
             elif m["id"] in [3, 4]:
                 with torch.no_grad():
+                    # 용상 님 모델 내부 인터페이스(infer_batch 혹은 forward 구조) 연동
                     decisions = model_ee.infer_batch(features, dynamic=(m["id"] == 4))
                     pred = torch.argmax(decisions[0].logits, dim=-1).item()
                     exit_counts[decisions[0].exit_point] += 1
@@ -125,15 +127,15 @@ def main():
                 unnecessary_switches += 1
             current_channel = next_channel
 
-        # 평가지표 연산
+        # 평가지표 계산
         y_true, y_pred = np.array(all_labels), np.array(all_preds)
         acc = accuracy_score(y_true, y_pred) * 100
         avg_time = np.mean(inference_times)
         
-        # 김호중 담당: 레이블별 개별 정확도 추출
+        # 김호중 담당 지표: 레이블별 개별 정확도 추출
         label_accs = calculate_label_accuracies(y_true, y_pred)
         
-        # 유용상 담당: Exit별 종료율 추출
+        # 유용상 담당 지표: Exit별 종료율 추출
         total = max(len(all_preds), 1)
         e1, e2, e3 = (exit_counts[1]/total)*100, (exit_counts[2]/total)*100, (exit_counts[3]/total)*100
 
@@ -149,7 +151,7 @@ def main():
             "Inference_Time_ms": inference_times
         }).to_csv(f"results/{m['file']}", index=False)
         
-        # 통합 summary 데이터 축적
+        # 통합 요약 summary 데이터 축적
         res_dict = {
             "Method": m["name"], 
             "Accuracy(%)": round(acc, 1), 
