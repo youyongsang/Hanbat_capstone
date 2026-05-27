@@ -5,7 +5,6 @@ import torch
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 # 프로젝트 루트 경로 자동 추가
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +13,22 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from models.baseline_lstm import BaselineLSTM
 from utils.dataloader import get_dataloader
+
+
+def accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return float((y_true == y_pred).mean())
+
+
+def precision_recall(y_true: np.ndarray, y_pred: np.ndarray, labels: list[int]) -> tuple[np.ndarray, np.ndarray]:
+    precision = []
+    recall = []
+    for label in labels:
+        true_positive = int(((y_true == label) & (y_pred == label)).sum())
+        predicted_positive = int((y_pred == label).sum())
+        actual_positive = int((y_true == label).sum())
+        precision.append(true_positive / predicted_positive if predicted_positive else 0.0)
+        recall.append(true_positive / actual_positive if actual_positive else 0.0)
+    return np.array(precision), np.array(recall)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate Baseline LSTM (Baseline 2).")
@@ -66,7 +81,7 @@ def main() -> None:
 
     # 5. 지표 계산 (전체 정확도, Precision, Recall)
     test_acc = accuracy_score(y_true, y_pred) * 100
-    precision, recall, _, _ = precision_recall_fscore_support(y_true, y_pred, labels=[0, 1, 2, 3], zero_division=0)
+    precision, recall = precision_recall(y_true, y_pred, labels=[0, 1, 2, 3])
 
     # 6. 시나리오별 정확도 계산
     scenario_total = {}
@@ -110,7 +125,7 @@ def main() -> None:
     print(output_text)
 
     # 8. 텍스트 파일 결과 저장
-    output_dir = PROJECT_ROOT / "results"
+    output_dir = PROJECT_ROOT / "results" / "hojung"
     output_dir.mkdir(exist_ok=True)
     (output_dir / "baseline_eval_report.txt").write_text(output_text, encoding="utf-8")
     print(f"Report saved: {(output_dir / 'baseline_eval_report.txt').resolve()}")
