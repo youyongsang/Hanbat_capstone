@@ -9,14 +9,14 @@ def get_dataloader(path, batch_size=32, shuffle=True):
     df = pd.read_csv(path).sort_values(by=["sample_id", "timestep"]).reset_index(drop=True)
     num_samples = df["sample_id"].nunique()
     
-    # 1. 실제 CSV 파일 컬럼명으로 수정
+    # 1. 실제 CSV 파일 컬럼명 반영
     feature_cols = ["rps", "channel_occupancy", "packet_loss", "latency"]
     features = df[feature_cols].values
     
     dir_name = os.path.dirname(path)
     scaler_path = os.path.join(dir_name, "scaler_params.json")
     
-    # 2. 예나 팀원의 MinMaxScaler(min, max) 구조로 수정
+    # 2. 예나 팀원의 MinMaxScaler(min, max) 구조 반영
     if os.path.exists(scaler_path):
         with open(scaler_path, "r") as f:
             s = json.load(f)
