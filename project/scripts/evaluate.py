@@ -1,3 +1,6 @@
+# scripts/evaluate.py
+from __future__ import annotations
+
 import os
 import sys
 import argparse
@@ -27,9 +30,9 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 1. 테스트 데이터 로더 구성
-    test_loader = get_dataloader(args.data_dir / "test.csv", args.batch_size, shuffle=False)
+    test_loader = get_dataloader(str(args.data_dir / "test.csv"), args.batch_size, shuffle=False)
 
-    # 2. 호중 님이 작성하신 진짜 모델 클래스 로드 및 가중치 매핑
+    # 2. 모델 클래스 로드 및 가중치 매핑
     model = BaselineLSTM(hidden_size=128).to(device)
     
     if args.model_path.exists():
@@ -45,9 +48,24 @@ def main() -> None:
         
     model.eval()
 
-    # 3. 데이터프레임에서 직접 시나리오 정보 추출 (sample_id 기준)
+    # 3. 데이터프레임에서 시나리오 정보 안전하게 추출 (방어 코드 적용)
     df_test = pd.read_csv(args.data_dir / "test.csv")
-    scenarios = df_test.groupby("sample_id")["scenario"].first().values
+    
+    # csv에 'scenario' 컬럼이 없을 경우를 대비한 예외 처리 예방
+    if "scenario" in df_test.columns:
+        scenarios = df_test.groupby("sample_id")["scenario"].first().values
+    else:
+        # 시나리오 컬럼이 없을 경우, sample_id 이름 자체나 레이블 규칙 등으로 더미 생성하여 에러 방지
+        # 장예나 시뮬레이터의 sample_id가 '일과시작_0' 같은 형태라면 이를 쪼개서 시나리오 이름 추출
+        sample_ids = df_test.groupby("sample_id")["sample_id"].first().values
+        scenarios = []
+        for s_id in sample_ids:
+            s_str = str(s_id)
+            if "_" in s_str:
+                scenarios.append(s_str.split("_")[0])  # 예: '일과시작' 추출
+            else:
+                scenarios.append("기본 시나리오")
+        scenarios = np.array(scenarios)
 
     all_preds = []
     all_labels = []
@@ -56,12 +74,12 @@ def main() -> None:
     with torch.no_grad():
         for x_batch, y_batch in test_loader:
             x_batch = x_batch.to(device)
-            # 호중 님 모델 정의에 맞춤 (순수 logits만 뱉으므로 그대로 argmax 취함)
             logits = model(x_batch)
             preds = torch.argmax(logits, dim=1)
             
             all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(y_batch.numpy())
+            # 디바이스 오동작 방지를 위해 .cpu().numpy()로 정밀 수정
+            all_labels.extend(y_batch.cpu().numpy())
 
     y_true = np.array(all_labels)
     y_pred = np.array(all_preds)
@@ -116,7 +134,7 @@ def main() -> None:
     output_dir = PROJECT_ROOT / "results"
     output_dir.mkdir(exist_ok=True)
     (output_dir / "baseline_eval_report.txt").write_text(output_text, encoding="utf-8")
-    print(f"Report saved: {(output_dir / 'baseline_eval_report.txt').resolve()}")
+    print(f"\nReport saved: {(output_dir / 'baseline_eval_report.txt').resolve()}")
 
 if __name__ == "__main__":
     main()
