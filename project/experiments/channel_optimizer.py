@@ -1,37 +1,34 @@
 # project/experiments/channel_optimizer.py
 
-def optimize_channel(predicted_label: int, current_channel: int, available_channels: list, metrics: dict = None, current_time: float = None):
+def optimize_channel(predicted_label, current_channel, available_channels=[1, 6, 11]):
     """
-    김호중 담당: Stage 2 가이드라인 규칙 기반 채널 전환 로직 구현
     Args:
-        predicted_label: 분류 결과 (0~3)
-        current_channel: 현재 채널 번호
-        available_channels: 사용 가능한 채널 목록
+        predicted_label (int): 모델이 예측한 혼잡도 단계 (0 ~ 3)
+        current_channel (int): 현재 AP가 사용 중인 무선 채널 번호
+        available_channels (list): 사용 가능한 전체 독립 채널 리스트
     Returns:
-        next_channel: 전환할 채널 번호 (변경 없으면 current_channel 반환)
-        action: 'keep' / 'monitor' / 'switch' / 'emergency'
+        next_channel (int): 전환 제어된 다음 채널 번호
+        action (str): 수행된 제어 액션 ('keep' / 'monitor' / 'switch' / 'emergency')
     """
-    # [라벨 0: 정상] -> 채널 유지
+    # 0: 정상 -> 현재 채널 유지
     if predicted_label == 0:
         return current_channel, 'keep'
         
-    # [라벨 1: 혼잡 경고] -> 인접 채널 모니터링, 전환 준비
+    # 1: 혼잡 경고 -> 인접 채널 스캔 및 모니터링 강화 (채널은 유지)
     elif predicted_label == 1:
         return current_channel, 'monitor'
         
-    # [라벨 2: 혼잡] -> 덜 혼잡한 다른 채널로 전환
+    # 2: 혼잡 -> 회피 자율 스위칭 실행 (가장 여유 있는 다음 채널로 이동)
     elif predicted_label == 2:
         other_channels = [ch for ch in available_channels if ch != current_channel]
+        # 실무적으로는 스캔 데이터 기반 최적 채널을 고르나, 프로토타입에서는 순차 전환 모사
         next_channel = other_channels[0] if other_channels else current_channel
         return next_channel, 'switch'
         
-    # [라벨 3: 심각 혼잡] -> 즉시 5GHz 대역(예: 36번) 또는 다른 채널로 비상 전환
+    # 3: 심각 혼잡 -> 즉각적인 강제 채널 회피 및 비상 대책 실행
     elif predicted_label == 3:
-        if 36 in available_channels and current_channel != 36:
-            return 36, 'emergency'
-        else:
-            other_channels = [ch for ch in available_channels if ch != current_channel]
-            next_channel = other_channels[0] if other_channels else current_channel
-            return next_channel, 'emergency'
-            
+        other_channels = [ch for ch in available_channels if ch != current_channel]
+        next_channel = other_channels[-1] if other_channels else current_channel
+        return next_channel, 'emergency'
+        
     return current_channel, 'keep'
