@@ -1,3 +1,0 @@
-Method,Accuracy(%),F1-Score(%),Precision(%),Recall(%),Avg_Latency(ms),Latency_StdDev(ms),Unnecessary_Switches
-Baseline 1 (Threshold),60.0,45.0,36.0,60.0,0.0009,0.0008,0
-Baseline 2 (Standard LSTM),60.0,45.0,36.0,60.0,0.5801,0.0871,0
