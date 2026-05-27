@@ -10,11 +10,18 @@ from utils.metrics import accuracy, confusion_matrix
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    test_loader = get_dataloader("data/dummy/test.csv", batch_size=32, shuffle=False)
+    
+    # 데이터 경로를 dummy에서 real로 수정
+    test_loader = get_dataloader("data/real/test.csv", batch_size=32, shuffle=False)
     
     # 모델 로드
     model = BaselineLSTM().to(device)
     model_path = "checkpoints/baseline_lstm_best.pth"
+    
+    if not os.path.exists(model_path):
+        print(f"Error: {model_path} 파일이 없습니다. train.py를 먼저 실행해 주세요.")
+        return
+        
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     
@@ -31,14 +38,13 @@ def main():
     all_preds = torch.cat(all_preds)
     all_trues = torch.cat(all_trues)
     
-    # 메트릭 계산
+    # 지표 계산
     test_acc = accuracy(all_preds, all_trues)
     conf_mat = confusion_matrix(all_preds, all_trues)
     
-    # 전체 정확도 출력
+    # 가이드라인 출력 예시 양식 100% 동기화
     print(f"Test Accuracy: {test_acc * 100:.1f}%")
     
-    # 각 레이블 이름 설정 (출력 포맷 공백 맞춤)
     labels_info = [
         "Label 0 (정상):     ",
         "Label 1 (혼잡 경고):",
@@ -46,7 +52,6 @@ def main():
         "Label 3 (심각):     "
     ]
     
-    # 각 클래스별 Precision, Recall 계산 및 포맷 출력
     for i in range(4):
         tp = conf_mat[i, i].item()
         fp = conf_mat[:, i].sum().item() - tp
