@@ -16,7 +16,7 @@ def get_dataloader(path, batch_size=32, shuffle=True):
     dir_name = os.path.dirname(path)
     scaler_path = os.path.join(dir_name, "scaler_params.json")
     
-    # 2. 예나 팀원의 MinMaxScaler(min, max) 구조 반영
+    # 2. MinMaxScaler(min, max) 구조 반영
     if os.path.exists(scaler_path):
         with open(scaler_path, "r") as f:
             s = json.load(f)
