@@ -10,6 +10,13 @@ from utils.dataloader import get_dataloader
 # Hysteresis 상태 초기화를 위해 모듈 임포트 방식 변경
 import experiments.channel_optimizer as ch_opt
 
+# [추가] 용상이 모델 파일(early_exit_lstm.py)을 안전하게 읽어오기 위한 예외 처리
+try:
+    from models.early_exit_lstm import EarlyExitLSTM
+    HAS_EARLY_EXIT = True
+except ImportError:
+    HAS_EARLY_EXIT = False
+
 os.makedirs('results', exist_ok=True)
 
 # ----------------------------------------------------
@@ -85,8 +92,8 @@ def main():
         # [중요 버그 수정] 이전 실험의 Hysteresis 상태가 꼬이지 않도록 완벽 초기화
         ch_opt._rrm_state = {'last_switch_time': 0, 'current_channel': None}
         
-        # 용상 팀원 모델 미구현 상태 처리 (가이드라인 8번 준수)
-        if method['id'] in [3, 4]:
+        # [수정] 용상 팀원 모델 파일 자체가 없을 때만 Skip 하도록 조건 변경
+        if method['id'] in [3, 4] and not HAS_EARLY_EXIT:
             print(" -> (Skip) 유용상 팀원의 모델 통합 대기 중 (프레임워크 인터페이스 확보 완료)")
             # 빈 파일 생성하여 가이드라인의 '결과 CSV 저장 확인' 조건 충족
             pd.DataFrame(columns=['True_Label', 'Predicted_Label', 'Inference_Time_ms']).to_csv(f"results/{method['file']}", index=False)
@@ -96,6 +103,13 @@ def main():
         unnecessary_switches = 0
         current_channel = 1
         available_channels = [1, 6, 11, 36]
+
+        # [추가] 3, 4번용 조기 종료 모델 인스턴스화 및 설정 적용
+        model_ee = None
+        if method['id'] in [3, 4] and HAS_EARLY_EXIT:
+            model_ee = EarlyExitLSTM(input_size=4, hidden_size=128, num_classes=4)
+            model_ee.set_threshold(dynamic=(method['id'] == 4))
+            model_ee.eval()
 
         for step, (features, targets) in enumerate(test_loader):
             features_np = features.numpy()
@@ -111,6 +125,11 @@ def main():
                 with torch.no_grad():
                     output = model_lstm(features)
                     pred = torch.argmax(output, dim=1).item()
+            # [추가] 3, 4번 실행 시 용상이 모델의 추론 기법 함수인 infer_batch 연동
+            elif method['id'] in [3, 4]:
+                with torch.no_grad():
+                    decisions = model_ee.infer_batch(features, dynamic=(method['id'] == 4))
+                    pred = torch.argmax(decisions[0].logits, dim=-1).item()
             
             # 순수 추론 시간 기록 (덮어쓰기 절대 없음)
             end_time = time.perf_counter()
