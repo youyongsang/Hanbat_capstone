@@ -1,7 +1,6 @@
 import torch
 
 def accuracy(y_pred, y_true):
-    # 로짓(확률)값이면 가장 높은 클래스로 변환
     if y_pred.dim() > 1:
         preds = torch.argmax(y_pred, dim=-1)
     else:
@@ -20,3 +19,7 @@ def confusion_matrix(y_pred, y_true, num_classes=4):
         conf_matrix[t.long(), p.long()] += 1
         
     return conf_matrix
+
+def format_percent(value: float) -> str:
+    """소수점 첫째짜리 퍼센트 문자열로 변환 (예: 0.8735 -> 87.4%)"""
+    return f"{value * 100:.1f}%"
