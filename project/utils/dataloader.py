@@ -6,32 +6,27 @@ import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
 
 def get_dataloader(path, batch_size=32, shuffle=True):
-    df = pd.read_csv(path)
-    df = df.sort_values(by=["sample_id", "timestep"]).reset_index(drop=True)
+    df = pd.read_csv(path).sort_values(by=["sample_id", "timestep"]).reset_index(drop=True)
     num_samples = df["sample_id"].nunique()
     
-    feature_cols = ["rps", "occupancy", "loss_rate", "latency"]
+    # 1. 실제 CSV 파일 컬럼명으로 수정
+    feature_cols = ["rps", "channel_occupancy", "packet_loss", "latency"]
     features = df[feature_cols].values
     
     dir_name = os.path.dirname(path)
     scaler_path = os.path.join(dir_name, "scaler_params.json")
     
+    # 2. 예나 팀원의 MinMaxScaler(min, max) 구조로 수정
     if os.path.exists(scaler_path):
         with open(scaler_path, "r") as f:
-            scaler_params = json.load(f)
-        means = np.array([scaler_params[col]["mean"] for col in feature_cols])
-        scales = np.array([scaler_params[col]["scale"] for col in feature_cols])
-        features_norm = (features - means) / (scales + 1e-8)
+            s = json.load(f)
+        mins = np.array([s[col]["min"] for col in feature_cols])
+        maxs = np.array([s[col]["max"] for col in feature_cols])
+        features_norm = (features - mins) / (maxs - mins + 1e-8)
     else:
-        X_MIN = np.array([0.0, 0.0, 0.0, 0.0])
-        X_MAX = np.array([1000.0, 100.0, 30.0, 500.0])
-        features_norm = (features - X_MIN) / (X_MAX - X_MIN + 1e-8)
-    
+        features_norm = (features - np.array([0., 0., 0., 0.])) / (np.array([1000., 100., 30., 500.]) + 1e-8)
+        
     X = features_norm.reshape(num_samples, 10, 4)
     y = df.groupby("sample_id")["label"].first().values
     
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.long)
-    
-    dataset = TensorDataset(X_tensor, y_tensor)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return DataLoader(TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long)), batch_size=batch_size, shuffle=shuffle)
