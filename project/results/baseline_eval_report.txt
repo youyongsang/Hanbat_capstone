@@ -1,22 +1,22 @@
 Baseline LSTM Stage 1 Evaluation Report (For Ablation Sync)
-Data Directory: C:\Users\User\Desktop\Hanbat_capstone\project\data\real
-Checkpoint: C:\Users\User\Desktop\Hanbat_capstone\project\checkpoints\baseline_lstm_best.pth
+Data Directory: C:\Users\User\Hanbat_capstone\project\data\real
+Checkpoint: C:\Users\User\Hanbat_capstone\project\checkpoints\baseline_lstm_best.pth
 
 === Baseline 2: Standard 3-Layer LSTM ===
-Test Accuracy: 87.3%
+Test Accuracy: 86.0%
 Exit별 성능:
   Exit 1 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 2.0ms
   Exit 2 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 87.3% | Exit Rate: 100.0% | Avg Time: 8.0ms
+  Exit 3 | Accuracy: 86.0% | Exit Rate: 100.0% | Avg Time: 8.0ms
 Overall Avg Inference Time: 8.000ms
 Measured Wall Time: 0.131ms
 Label별 정확도:
-  Label 0 (정상): 100.0%
-  Label 1 (혼잡 경고): 50.0%
-  Label 2 (혼잡): 82.6%
-  Label 3 (심각): 100.0%
+  Label 0 (정상): Precision: 0.90  Recall: 1.00
+  Label 1 (혼잡 경고): Precision: 0.80  Recall: 0.40
+  Label 2 (혼잡): Precision: 0.71  Recall: 0.87
+  Label 3 (심각): Precision: 1.00  Recall: 1.00
 시나리오별 정확도:
-  emergency_ramp: 88.6%
+  emergency_ramp: 91.4%
   imbalanced_ap_load: 75.0%
-  lunch_restart: 90.5%
+  lunch_restart: 85.7%
   startup_surge: 86.1%
