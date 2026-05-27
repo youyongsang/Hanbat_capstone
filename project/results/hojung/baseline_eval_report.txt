@@ -1,0 +1,22 @@
+Baseline LSTM Stage 1 Evaluation Report (For Ablation Sync)
+Data Directory: C:\Capstone-Design\project\data\real
+Checkpoint: C:\Capstone-Design\project\checkpoints\baseline_lstm_best.pth
+
+=== Baseline 2: Standard 3-Layer LSTM ===
+Test Accuracy: 96.7%
+Exit별 성능:
+  Exit 1 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 96.7% | Exit Rate: 100.0% | Avg Time: 8.0ms
+Overall Avg Inference Time: 8.000ms
+Measured Wall Time: 0.131ms
+Label별 정확도:
+  Label 0 (정상): Precision: 0.99  Recall: 0.99
+  Label 1 (혼잡 경고): Precision: 0.88  Recall: 0.97
+  Label 2 (혼잡): Precision: 1.00  Recall: 0.87
+  Label 3 (심각): Precision: 1.00  Recall: 1.00
+시나리오별 정확도:
+  emergency_ramp: 97.1%
+  imbalanced_ap_load: 87.5%
+  lunch_restart: 98.4%
+  startup_surge: 97.2%

@@ -1,0 +1,12 @@
+Early Exit LSTM Evaluation Report
+Data Directory: C:\Capstone-Design\project\data\real
+Checkpoint: C:\Capstone-Design\project\checkpoints\early_exit_lstm_best.pth
+Test Accuracy: 96.0%
+Exit 1 Accuracy: 100.0% | Exit Rate: 50.7%
+Exit 2 Accuracy: 93.4% | Exit Rate: 40.7%
+Exit 3 Accuracy: 84.6% | Exit Rate: 8.7%
+Label 0 (정상) Accuracy: 100.0%
+Label 1 (혼잡 경고) Accuracy: 96.7%
+Label 2 (혼잡) Accuracy: 78.3%
+Label 3 (심각) Accuracy: 100.0%
+Average Inference Time: 0.087ms
