@@ -23,6 +23,13 @@ from utils.metrics import ExitStats, format_percent  # noqa: E402
 
 LABEL_NAMES = ["정상", "혼잡 경고", "혼잡", "심각"]
 SIMULATED_EXIT_TIME_MS = {1: 2.0, 2: 4.0, 3: 8.0}
+DYNAMIC_THRESHOLD_PARAMS = {
+    "high_variance": 0.15,
+    "mid_variance": 0.07,
+    "min_threshold": 0.1,
+    "recent_steps": 5,
+    "spike_threshold": 0.2,
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -132,6 +139,26 @@ def append_report(lines: list[str], title: str, metrics: dict[str, object]) -> N
         lines.append(f"  {scenario}: {format_percent(accuracy)}")
 
 
+def append_parameter_report(lines: list[str], model: EarlyExitLSTM) -> None:
+    lines.extend(
+        [
+            "",
+            "Threshold Parameters:",
+            f"  base_theta_1: {model.theta_1}",
+            f"  base_theta_2: {model.theta_2}",
+            f"  high_variance: {DYNAMIC_THRESHOLD_PARAMS['high_variance']}",
+            f"  mid_variance: {DYNAMIC_THRESHOLD_PARAMS['mid_variance']}",
+            f"  min_threshold: {DYNAMIC_THRESHOLD_PARAMS['min_threshold']}",
+            f"  recent_steps: {DYNAMIC_THRESHOLD_PARAMS['recent_steps']}",
+            f"  spike_threshold: {DYNAMIC_THRESHOLD_PARAMS['spike_threshold']}",
+            "  high_variance rule: theta_1/theta_2 * 0.6",
+            "  mid_variance rule: theta_1/theta_2 * 0.8",
+            "  stable rule: theta_1/theta_2 * 1.2",
+            "  spike rule: theta_1=min_threshold, theta_2=min_threshold*2",
+        ]
+    )
+
+
 def main() -> None:
     args = parse_args()
     checkpoint = torch.load(args.checkpoint, map_location="cpu")
@@ -154,6 +181,7 @@ def main() -> None:
         f"Data Directory: {args.data_dir}",
         f"Checkpoint: {args.checkpoint}",
     ]
+    append_parameter_report(lines, model)
     append_report(lines, "=== Baseline 3: Early Exit + fixed theta ===", fixed_metrics)
     append_report(lines, "=== Proposed Model 4: Early Exit + dynamic theta ===", dynamic_metrics)
     lines.extend(
