@@ -3,31 +3,20 @@ import time
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score
 from utils.dataloader import get_dataloader
 
 # Hysteresis 상태 초기화를 위해 기존 모듈 임포트
 import experiments.channel_optimizer as ch_opt
 
-# ----------------------------------------------------
-# [안전 연동 인터페이스] 용상이 코드 파일이 있으면 자동 연동
-# ----------------------------------------------------
-HAS_EARLY_EXIT = False
-try:
-    import builtins
-    if os.path.exists("models/early_exit_lstm.py"):
-        with open("models/early_exit_lstm.py", "r", encoding="utf-8") as f:
-            exec(f.read(), builtins.__dict__)
-        from models.early_exit_lstm import EarlyExitLSTM
-        HAS_EARLY_EXIT = True
-except Exception:
-    HAS_EARLY_EXIT = False
+# [정석 연동] 호중 님 파일과 용상 님 파일에서 모델 클래스를 각각 다이렉트로 임포트
+from models.baseline_lstm import Standard3LayerLSTM  # 호중 님 진짜 LSTM 클래스명에 맞게 확인 필요
+from models.early_exit_lstm import EarlyExitLSTM
 
 os.makedirs("results", exist_ok=True)
 
 # ----------------------------------------------------
-# 5. Baseline ① 임계값 방식 구현 (명세서 기준 규칙)
+# 5. Baseline ① 임계값 방식 구현 (명세서 규칙 100% 반영)
 # ----------------------------------------------------
 def threshold_baseline(channel_occupancy):
     """현행 임계값 기반 혼잡 감지. 시계열 패턴 없이 현재 타임스텝만 보고 판단."""
@@ -39,23 +28,6 @@ def threshold_baseline(channel_occupancy):
         return 2  # 혼잡
     else:
         return 3  # 심각
-
-# ----------------------------------------------------
-# Baseline ②: 일반 3-Layer LSTM 모델 (호중 님 가중치 일치용 hidden_size=128)
-# ----------------------------------------------------
-class Standard3LayerLSTM(nn.Module):
-    def __init__(self, input_size=4, hidden_size=128, num_classes=4):
-        super().__init__()
-        self.lstm1 = nn.LSTM(input_size, hidden_size, batch_first=True)
-        self.lstm2 = nn.LSTM(hidden_size, hidden_size, batch_first=True)
-        self.lstm3 = nn.LSTM(hidden_size, hidden_size, batch_first=True)
-        self.fc = nn.Linear(hidden_size, num_classes)
-        
-    def forward(self, x):
-        out, _ = self.lstm1(x)
-        out, _ = self.lstm2(out)
-        out, _ = self.lstm3(out)
-        return self.fc(out[:, -1, :])
 
 # ----------------------------------------------------
 # 레이블별 정확도 계산 함수 (김호중 담당 지표)
@@ -81,15 +53,11 @@ def main():
         print(f"[Error] 데이터 로더 연결 실패: {e}")
         return
 
-    # [정확도 복구 핵심] hidden_size=128 구조로 호중 님 진짜 가중치 파일 로드
-    model_lstm = Standard3LayerLSTM(input_size=4, hidden_size=128, num_classes=4)
+    # [원본 성능 복원] baseline_lstm.py에서 가져온 순수 뼈대에 호중 님 진짜 가중치 로드
+    model_lstm = Standard3LayerLSTM()
     checkpoint_path = "checkpoints/baseline_lstm_best.pth"
     if os.path.exists(checkpoint_path):
-        try:
-            model_lstm.load_state_dict(torch.load(checkpoint_path, map_location=device))
-            # 가중치가 정상 로드되면 호중 님이 뽑으셨던 진짜 정확도(87%대)가 복원됩니다.
-        except Exception as e:
-            pass
+        model_lstm.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model_lstm.eval()
 
     # CPU Latency 측정을 위한 예열 (Warm-up)
@@ -111,11 +79,6 @@ def main():
         
         # Hysteresis 상태 초기화
         ch_opt._rrm_state = {"last_switch_time": 0, "current_channel": None}
-        
-        if m["id"] in [3, 4] and not HAS_EARLY_EXIT:
-            print("  -> (Skip) 유용상 팀원의 모델 통합 대기 중 (프레임워크 인터페이스 확보 완료)")
-            pd.DataFrame(columns=["True_Label", "Predicted_Label", "Inference_Time_ms"]).to_csv(f"results/{m['file']}", index=False)
-            continue
 
         all_preds, all_labels, inference_times = [], [], []
         unnecessary_switches = 0
@@ -174,7 +137,7 @@ def main():
         total = max(len(all_preds), 1)
         e1, e2, e3 = (exit_counts[1]/total)*100, (exit_counts[2]/total)*100, (exit_counts[3]/total)*100
 
-        # 명세서 출력 서식 완전 일치
+        # 명세서 출력 서식 완전 일치 (6번 형식)
         print(f"  Accuracy: {acc:.1f}% | Avg Inference: {avg_time:.1f}ms")
         if m["id"] in [3, 4]:
             print(f"  Exit 1: {e1:.1f}% | Exit 2: {e2:.1f}% | Exit 3: {e3:.1f}%")
@@ -186,7 +149,7 @@ def main():
             "Inference_Time_ms": inference_times
         }).to_csv(f"results/{m['file']}", index=False)
         
-        # 통합 summary 딕셔너리 구성
+        # 통합 summary 데이터 축적
         res_dict = {
             "Method": m["name"], 
             "Accuracy(%)": round(acc, 1), 
