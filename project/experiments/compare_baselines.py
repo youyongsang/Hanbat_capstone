@@ -6,20 +6,23 @@ import torch
 from sklearn.metrics import accuracy_score
 from utils.dataloader import get_dataloader
 
-# 채널 최적화 및 상태 제어 연동
+# 채널 최적화 상태 제어 모듈 연동
 import experiments.channel_optimizer as ch_opt
 
-# [정밀 연동] 호중 님 파일과 용상 님 파일에서 실제 정의된 모델을 직접 임포트
+# [브런치의 실제 파일 연동] 두 팀원의 모델을 순수하게 그대로 로드
 from models.baseline_lstm import Standard3LayerLSTM
 from models.early_exit_lstm import EarlyExitLSTM
 
 os.makedirs("results", exist_ok=True)
 
 # ----------------------------------------------------
-# 5. Baseline ① 임계값 방식 구현 (명세서 규칙 100% 반영)
+# 5. Baseline ① 임계값 방식 구현 (명세서 기준 100% 일치)
 # ----------------------------------------------------
 def threshold_baseline(channel_occupancy):
-    """현행 임계값 기반 혼잡 감지. 시계열 패턴 없이 현재 타임스텝만 보고 판단."""
+    """
+    현행 임계값 기반 혼잡 감지
+    채널 점유율만 보고 레이블 결정
+    """
     if channel_occupancy < 40:
         return 0  # 정상
     elif channel_occupancy < 65:
@@ -46,21 +49,21 @@ def calculate_label_accuracies(y_true, y_pred):
 # 6. 비교 실험 실행 스크립트 메인 루프
 # ----------------------------------------------------
 def main():
-    device = torch.device("cpu") # 주의사항: 엣지 환경 기준 CPU 측정
+    device = torch.device("cpu") # 엣지 환경 기준 CPU 측정 원칙 준수
     try:
         test_loader = get_dataloader("data/real/test.csv", batch_size=1, shuffle=False)
     except Exception as e:
         print(f"[Error] 데이터 로더 연결 실패: {e}")
         return
 
-    # ① Baseline 2를 위한 호중 님 진짜 모델 로드 및 가중치 매칭
+    # 호중 님 오리지널 baseline_lstm.py 모델 생성 및 가중치 파일 결합
     model_lstm = Standard3LayerLSTM()
     checkpoint_path = "checkpoints/baseline_lstm_best.pth"
     if os.path.exists(checkpoint_path):
         model_lstm.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model_lstm.eval()
 
-    # CPU 런타임 측정을 위한 Warm-up (예열)
+    # CPU Latency 측정을 위한 50회 예열 (Warm-up)
     dummy_input = torch.randn(1, 10, 4)
     for _ in range(50):
         with torch.no_grad(): _ = model_lstm(dummy_input)
@@ -74,18 +77,18 @@ def main():
     ]
 
     for m in methods:
-        # 명세서 출력 예시 포맷 적용
+        # 명세서 서식 완전 일치 출력
         print(f"Running {m['name']}...")
         
-        # 각 방식 실험 시작 시 Hysteresis 채널 상태 초기화
+        # 방식 변경 시 Hysteresis 채널 상태 리셋
         ch_opt._rrm_state = {"last_switch_time": 0, "current_channel": None}
 
         all_preds, all_labels, inference_times = [], [], []
         unnecessary_switches = 0
         current_channel = 1
-        exit_counts = {1: 0, 2: 0, 3: 0} # 유용상 담당 지표용 카운터
+        exit_counts = {1: 0, 2: 0, 3: 0} # 유용상 담당 지표 카운터
 
-        # ③, ④ 방식을 위한 용상 님 EarlyExitLSTM 모델 할당
+        # 용상 님 early_exit_lstm.py 모델 할당
         model_ee = None
         if m["id"] in [3, 4]:
             model_ee = EarlyExitLSTM(input_size=4, hidden_size=128, num_classes=4)
@@ -97,8 +100,9 @@ def main():
             
             start_time = time.perf_counter()
             
-            # --- 4대 방식 순수 모델 추론 구간 ---
+            # --- 4대 방식 모델 추론 분기 ---
             if m["id"] == 1:
+                # 명세서 기준: 시계열 없이 현재 타임스텝의 채널 점유율 인덱스 추출 (* 100으로 % 스케일링)
                 occ_val = features.numpy()[0, -1, 1] * 100
                 pred = threshold_baseline(occ_val)
             elif m["id"] == 2:
@@ -106,13 +110,12 @@ def main():
                     pred = torch.argmax(model_lstm(features), dim=1).item()
             elif m["id"] in [3, 4]:
                 with torch.no_grad():
-                    # 용상 님 모델 내부 인터페이스(infer_batch 혹은 forward 구조) 연동
                     decisions = model_ee.infer_batch(features, dynamic=(m["id"] == 4))
                     pred = torch.argmax(decisions[0].logits, dim=-1).item()
                     exit_counts[decisions[0].exit_point] += 1
             
             end_time = time.perf_counter()
-            inference_times.append((end_time - start_time) * 1000) # ms 단위 변환
+            inference_times.append((end_time - start_time) * 1000) # ms 단위 보정
             
             all_preds.append(pred)
             all_labels.append(true_label)
@@ -127,31 +130,29 @@ def main():
                 unnecessary_switches += 1
             current_channel = next_channel
 
-        # 평가지표 계산
+        # 최종 지표 연산 및 포맷 매칭
         y_true, y_pred = np.array(all_labels), np.array(all_preds)
         acc = accuracy_score(y_true, y_pred) * 100
         avg_time = np.mean(inference_times)
         
-        # 김호중 담당 지표: 레이블별 개별 정확도 추출
         label_accs = calculate_label_accuracies(y_true, y_pred)
         
-        # 유용상 담당 지표: Exit별 종료율 추출
         total = max(len(all_preds), 1)
         e1, e2, e3 = (exit_counts[1]/total)*100, (exit_counts[2]/total)*100, (exit_counts[3]/total)*100
 
-        # 명세서 출력 서식 완전 일치 (6번 형식)
+        # 명세서 출력 예시와 공백, 형태까지 완전히 일치화
         print(f"  Accuracy: {acc:.1f}% | Avg Inference: {avg_time:.1f}ms")
         if m["id"] in [3, 4]:
             print(f"  Exit 1: {e1:.1f}% | Exit 2: {e2:.1f}% | Exit 3: {e3:.1f}%")
 
-        # 개별 파일 csv 저장 (명세서 4번 양식)
+        # 개별 결과 CSV 출력 저장
         pd.DataFrame({
             "True_Label": y_true, 
             "Predicted_Label": y_pred, 
             "Inference_Time_ms": inference_times
         }).to_csv(f"results/{m['file']}", index=False)
         
-        # 통합 요약 summary 데이터 축적
+        # 통합 요약 데이터 빌드
         res_dict = {
             "Method": m["name"], 
             "Accuracy(%)": round(acc, 1), 
@@ -163,7 +164,7 @@ def main():
         res_dict.update(label_accs)
         summary_results.append(res_dict)
 
-    # 최종 요약본 csv 저장 (명세서 4번 양식)
+    # 최종 comparison_summary.csv 파일 저장
     pd.DataFrame(summary_results).to_csv("results/comparison_summary.csv", index=False)
     print("Results saved to results/comparison_summary.csv")
 
