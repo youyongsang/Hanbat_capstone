@@ -248,17 +248,17 @@ Average Inference Time: 3.8ms
 
 ## 11. 완료 기준 체크리스트
 
-- [ ] BranchyNet 논문 정독 완료
-- [ ] ACM Survey 논문 정독 완료
-- [ ] Early Exit LSTM 구조도 손으로 그려보기 완료
-- [ ] `models/early_exit_lstm.py` 모델 클래스 구현 완료
-- [ ] Entropy 계산 모듈 구현 완료
-- [ ] Multi-exit loss 구현 완료
-- [ ] Inference 모드 (조기 종료) 구현 완료
-- [ ] 고정 threshold로 더미 데이터 학습 돌아가고 accuracy 출력 확인
-- [ ] Exit별 종료율 출력 확인
+- [x] BranchyNet 논문 정독 완료
+- [x] ACM Survey 논문 정독 완료
+- [x] Early Exit LSTM 구조도 손으로 그려보기 완료
+- [x] `models/early_exit_lstm.py` 모델 클래스 구현 완료
+- [x] Entropy 계산 모듈 구현 완료
+- [x] Multi-exit loss 구현 완료
+- [x] Inference 모드 (조기 종료) 구현 완료
+- [x] 고정 threshold로 실제 데이터 학습 돌아가고 accuracy 출력 확인
+- [x] Exit별 종료율 출력 확인
 - [ ] 김호중과 hidden_size, 입력 shape 맞추기 완료
-- [ ] `checkpoints/early_exit_lstm_best.pth` 저장 확인
+- [x] `checkpoints/early_exit_lstm_best.pth` 저장 확인
 
 ---
 
