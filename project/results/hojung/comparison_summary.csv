@@ -1,5 +1,5 @@
 Method,Accuracy(%),Avg_Inference(ms),Unnecessary_Switches,Acc_Label_0(%),Acc_Label_1(%),Acc_Label_2(%),Acc_Label_3(%),Exit1(%),Exit2(%),Exit3(%)
-Baseline 1 (Threshold),100.0,0.0121,0,100.0,100.0,100.0,100.0,,,
-Baseline 2 (LSTM Full),96.0,1.4148,0,97.8,96.7,87.0,100.0,,,
-Baseline 3 (Early Exit Fixed theta),94.0,1.8881,0,100.0,86.7,82.6,85.7,63.3,27.3,9.3
-Baseline 4 (Early Exit Dynamic theta),92.7,1.5168,0,100.0,80.0,82.6,85.7,70.0,28.7,1.3
+Baseline 1 (Threshold),42.2,0.0031,0,85.7,29.0,37.9,52.9,,,
+Baseline 2 (LSTM Full),94.9,0.4816,0,91.1,96.9,96.6,76.5,,,
+Baseline 3 (Early Exit Fixed theta),95.7,0.3903,0,98.2,97.5,91.4,100.0,20.5,71.8,7.7
+Baseline 4 (Early Exit Dynamic theta),96.3,0.4053,0,96.4,97.5,94.0,100.0,25.6,69.5,4.8

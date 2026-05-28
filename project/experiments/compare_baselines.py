@@ -187,7 +187,7 @@ def main():
                     pred = torch.argmax(model_lstm(features), dim=1).item()
             elif m["id"] in [3, 4]:
                 with torch.no_grad():
-                    decisions = model_ee.infer_batch(features, dynamic=(m["id"] == 4))
+                    decisions = model_ee.infer_batch_stepwise(features, dynamic=(m["id"] == 4))
                     pred = torch.argmax(decisions[0].logits, dim=-1).item()
                     exit_counts[decisions[0].exit_point] += 1
             

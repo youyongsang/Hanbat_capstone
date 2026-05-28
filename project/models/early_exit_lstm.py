@@ -147,6 +147,43 @@ class EarlyExitLSTM(nn.Module):
 
         return decisions
 
+    def infer_batch_stepwise(self, x: Tensor, dynamic: bool | None = None) -> List[ExitDecision]:
+        """Return early-exit decisions without computing deeper exits after a stop."""
+
+        decisions: List[ExitDecision] = []
+        use_dynamic = self.dynamic_threshold if dynamic is None else dynamic
+
+        for sample_idx in range(x.size(0)):
+            sample = x[sample_idx : sample_idx + 1]
+            theta_1, theta_2 = self.theta_1, self.theta_2
+            if use_dynamic:
+                theta_1, theta_2 = compute_dynamic_threshold(
+                    sample[0, :, 1],
+                    base_theta_1=self.theta_1,
+                    base_theta_2=self.theta_2,
+                )
+
+            out1, _ = self.lstm1(sample)
+            logits1 = self.exit_classifier1(self.dropout(out1[:, -1, :]))
+            entropy1 = entropy_from_logits(logits1)[0]
+            if entropy1.item() < theta_1:
+                decisions.append(ExitDecision(logits1[0], 1, entropy1))
+                continue
+
+            out2, _ = self.lstm2(out1)
+            logits2 = self.exit_classifier2(self.dropout(out2[:, -1, :]))
+            entropy2 = entropy_from_logits(logits2)[0]
+            if entropy2.item() < theta_2:
+                decisions.append(ExitDecision(logits2[0], 2, entropy2))
+                continue
+
+            out3, _ = self.lstm3(out2)
+            logits3 = self.exit_classifier3(self.dropout(out3[:, -1, :]))
+            entropy3 = entropy_from_logits(logits3)[0]
+            decisions.append(ExitDecision(logits3[0], 3, entropy3))
+
+        return decisions
+
     def exit_rate(self, x: Tensor, dynamic: bool | None = None) -> Dict[int, float]:
         """Measure the fraction of samples exiting at each point."""
 
@@ -222,11 +259,11 @@ def compute_dynamic_threshold(
     recent_window: Tensor,
     base_theta_1: float = 0.3,
     base_theta_2: float = 0.6,
-    high_variance: float = 0.15,
-    mid_variance: float = 0.07,
-    min_threshold: float = 0.1,
+    high_variance: float = 0.22,
+    mid_variance: float = 0.12,
+    min_threshold: float = 0.22,
     recent_steps: int = 5,
-    spike_threshold: float = 0.2,
+    spike_threshold: float = 0.25,
 ) -> tuple[float, float]:
     """Adjust thresholds from recent channel occupancy variation.
 
@@ -238,20 +275,13 @@ def compute_dynamic_threshold(
     if occupancy.numel() < 2:
         return base_theta_1, base_theta_2
 
-    spike = torch.abs(occupancy[-1] - occupancy[-2]).item() > spike_threshold
-    if spike:
-        return min_threshold, min_threshold * 2
-
-    variance = torch.std(occupancy, unbiased=False).item()
-    if variance > high_variance:
-        theta_1 = base_theta_1 * 0.6
-        theta_2 = base_theta_2 * 0.6
-    elif variance > mid_variance:
-        theta_1 = base_theta_1 * 0.8
-        theta_2 = base_theta_2 * 0.8
+    delta = torch.abs(occupancy[-1] - occupancy[-2]).item()
+    if delta > spike_threshold:
+        theta_1 = base_theta_1 * 1.0
+        theta_2 = base_theta_2 * 1.0
     else:
-        theta_1 = base_theta_1 * 1.2
-        theta_2 = base_theta_2 * 1.2
+        theta_1 = base_theta_1 * 1.25
+        theta_2 = base_theta_2 * 1.25
 
     theta_1 = max(theta_1, min_threshold)
     theta_2 = max(theta_2, min_threshold * 2)

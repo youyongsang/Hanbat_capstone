@@ -3,12 +3,12 @@ Yena Stage 2 Data Validation Report
 [train]
 Path: project\data\real\train.csv
 Columns: ['sample_id', 'timestep', 'rps', 'channel_occupancy', 'packet_loss', 'latency', 'label', 'scenario']
-Rows: 7000
-Samples: 700
-Window Shape: [700, 10, 4]
-Label Counts: {'0': 420, '1': 140, '2': 105, '3': 35}
+Rows: 16350
+Samples: 1635
+Window Shape: [1635, 10, 4]
+Label Counts: {'0': 260, '1': 754, '2': 541, '3': 80}
 Missing Values: {'sample_id': 0, 'timestep': 0, 'rps': 0, 'channel_occupancy': 0, 'packet_loss': 0, 'latency': 0, 'label': 0, 'scenario': 0}
-Feature Min: {'rps': 0.005762999877333641, 'channel_occupancy': 0.050030000507831573, 'packet_loss': 0.0, 'latency': 0.007482000160962343}
+Feature Min: {'rps': 0.0, 'channel_occupancy': 0.0, 'packet_loss': 0.0, 'latency': 0.0}
 Feature Max: {'rps': 1.0, 'channel_occupancy': 1.0, 'packet_loss': 1.0, 'latency': 1.0}
 DataLoader X Batch Shape: (32, 10, 4)
 DataLoader y Batch Shape: (32,)
@@ -16,25 +16,25 @@ DataLoader y Batch Shape: (32,)
 [val]
 Path: project\data\real\val.csv
 Columns: ['sample_id', 'timestep', 'rps', 'channel_occupancy', 'packet_loss', 'latency', 'label', 'scenario']
-Rows: 1500
-Samples: 150
-Window Shape: [150, 10, 4]
-Label Counts: {'0': 90, '1': 30, '2': 22, '3': 8}
+Rows: 3500
+Samples: 350
+Window Shape: [350, 10, 4]
+Label Counts: {'0': 55, '1': 161, '2': 116, '3': 18}
 Missing Values: {'sample_id': 0, 'timestep': 0, 'rps': 0, 'channel_occupancy': 0, 'packet_loss': 0, 'latency': 0, 'label': 0, 'scenario': 0}
-Feature Min: {'rps': 0.01011900044977665, 'channel_occupancy': 0.050126999616622925, 'packet_loss': 0.0, 'latency': 0.00468500005081296}
-Feature Max: {'rps': 1.0, 'channel_occupancy': 1.0, 'packet_loss': 1.0, 'latency': 1.0}
+Feature Min: {'rps': 0.0, 'channel_occupancy': 0.0, 'packet_loss': 8.317024185089394e-05, 'latency': 0.0}
+Feature Max: {'rps': 0.9990841150283813, 'channel_occupancy': 1.0, 'packet_loss': 1.0, 'latency': 1.0}
 DataLoader X Batch Shape: (32, 10, 4)
 DataLoader y Batch Shape: (32,)
 
 [test]
 Path: project\data\real\test.csv
 Columns: ['sample_id', 'timestep', 'rps', 'channel_occupancy', 'packet_loss', 'latency', 'label', 'scenario']
-Rows: 1500
-Samples: 150
-Window Shape: [150, 10, 4]
-Label Counts: {'0': 90, '1': 30, '2': 23, '3': 7}
+Rows: 3510
+Samples: 351
+Window Shape: [351, 10, 4]
+Label Counts: {'0': 56, '1': 162, '2': 116, '3': 17}
 Missing Values: {'sample_id': 0, 'timestep': 0, 'rps': 0, 'channel_occupancy': 0, 'packet_loss': 0, 'latency': 0, 'label': 0, 'scenario': 0}
-Feature Min: {'rps': 0.010060000233352184, 'channel_occupancy': 0.050030000507831573, 'packet_loss': 0.0, 'latency': 0.00468500005081296}
-Feature Max: {'rps': 1.0, 'channel_occupancy': 0.9956439733505249, 'packet_loss': 0.9749659895896912, 'latency': 0.9579049944877625}
+Feature Min: {'rps': 0.0, 'channel_occupancy': 0.0, 'packet_loss': 0.0, 'latency': 0.0}
+Feature Max: {'rps': 1.0, 'channel_occupancy': 1.0, 'packet_loss': 1.0, 'latency': 1.0}
 DataLoader X Batch Shape: (32, 10, 4)
 DataLoader y Batch Shape: (32,)

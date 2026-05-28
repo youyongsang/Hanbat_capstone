@@ -25,11 +25,11 @@ from utils.metrics import ExitStats, format_percent  # noqa: E402
 LABEL_NAMES = ["정상", "혼잡 경고", "혼잡", "심각"]
 SIMULATED_EXIT_TIME_MS = {1: 2.0, 2: 4.0, 3: 8.0}
 DYNAMIC_THRESHOLD_PARAMS = {
-    "high_variance": 0.15,
-    "mid_variance": 0.07,
-    "min_threshold": 0.1,
+    "high_variance": 0.22,
+    "mid_variance": 0.12,
+    "min_threshold": 0.22,
     "recent_steps": 5,
-    "spike_threshold": 0.2,
+    "spike_threshold": 0.25,
 }
 
 
@@ -88,7 +88,7 @@ def evaluate_mode(
     with torch.no_grad():
         for x_batch, y_batch in dataloader:
             start = time.perf_counter()
-            decisions = model.infer_batch(x_batch, dynamic=dynamic)
+            decisions = model.infer_batch_stepwise(x_batch, dynamic=dynamic)
             total_wall_time += time.perf_counter() - start
 
             for idx, decision in enumerate(decisions):
@@ -156,10 +156,9 @@ def append_parameter_report(lines: list[str], model: EarlyExitLSTM) -> None:
             f"  min_threshold: {DYNAMIC_THRESHOLD_PARAMS['min_threshold']}",
             f"  recent_steps: {DYNAMIC_THRESHOLD_PARAMS['recent_steps']}",
             f"  spike_threshold: {DYNAMIC_THRESHOLD_PARAMS['spike_threshold']}",
-            "  high_variance rule: theta_1/theta_2 * 0.6",
-            "  mid_variance rule: theta_1/theta_2 * 0.8",
-            "  stable rule: theta_1/theta_2 * 1.2",
-            "  spike rule: theta_1=min_threshold, theta_2=min_threshold*2",
+            "  lightweight rule: use abs(current_occupancy - previous_occupancy)",
+            "  delta > spike_threshold: theta_1/theta_2 * 1.0",
+            "  stable rule: theta_1/theta_2 * 1.25",
         ]
     )
 
