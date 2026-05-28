@@ -5,12 +5,18 @@ import torch
 import torch.nn as nn
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.baseline_lstm import BaselineLSTM
 from utils.dataloader import get_dataloader
 from utils.metrics import accuracy, format_percent
+
+
+def display_path(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT))
+
 
 def run_epoch(
     model: nn.Module,
@@ -97,7 +103,7 @@ def main() -> None:
             }
             torch.save(checkpoint, checkpoint_path)
 
-    print(f"Best model saved: {checkpoint_path}")
+    print(f"Best model saved: {display_path(checkpoint_path)}")
     print(f"Best Val Accuracy: {format_percent(best_val_acc)}")
 
 if __name__ == "__main__":

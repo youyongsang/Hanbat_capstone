@@ -8,11 +8,16 @@ from pathlib import Path
 
 # 프로젝트 루트 경로 자동 추가
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.baseline_lstm import BaselineLSTM
 from utils.dataloader import get_dataloader
+
+
+def display_path(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT))
 
 
 def accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -100,8 +105,8 @@ def main() -> None:
     # 7. 리포트 포맷 생성
     report = []
     report.append("Baseline LSTM Stage 1 Evaluation Report (For Ablation Sync)")
-    report.append(f"Data Directory: {args.data_dir.resolve()}")
-    report.append(f"Checkpoint: {args.model_path.resolve()}\n")
+    report.append(f"Data Directory: {display_path(args.data_dir)}")
+    report.append(f"Checkpoint: {display_path(args.model_path)}\n")
     report.append("=== Baseline 2: Standard 3-Layer LSTM ===")
     report.append(f"Test Accuracy: {test_acc:.1f}%")
     report.append("Exit별 성능:")
@@ -128,7 +133,7 @@ def main() -> None:
     output_dir = PROJECT_ROOT / "results" / "hojung"
     output_dir.mkdir(exist_ok=True)
     (output_dir / "baseline_eval_report.txt").write_text(output_text, encoding="utf-8")
-    print(f"Report saved: {(output_dir / 'baseline_eval_report.txt').resolve()}")
+    print(f"Report saved: {display_path(output_dir / 'baseline_eval_report.txt')}")
 
 if __name__ == "__main__":
     main()

@@ -10,12 +10,17 @@ import torch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.early_exit_lstm import EarlyExitLSTM, multi_exit_loss  # noqa: E402
 from utils.dataloader import get_dataloader  # noqa: E402
 from utils.metrics import format_percent  # noqa: E402
+
+
+def display_path(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT))
 
 
 def accuracy_from_logits(logits: torch.Tensor, targets: torch.Tensor) -> float:
@@ -108,9 +113,9 @@ def main() -> None:
             torch.save({**checkpoint, "dynamic_threshold": False}, fixed_checkpoint_path)
             torch.save({**checkpoint, "dynamic_threshold": True}, dynamic_checkpoint_path)
 
-    print(f"Best model saved: {checkpoint_path}")
-    print(f"Fixed-threshold checkpoint saved: {fixed_checkpoint_path}")
-    print(f"Dynamic-threshold checkpoint saved: {dynamic_checkpoint_path}")
+    print(f"Best model saved: {display_path(checkpoint_path)}")
+    print(f"Fixed-threshold checkpoint saved: {display_path(fixed_checkpoint_path)}")
+    print(f"Dynamic-threshold checkpoint saved: {display_path(dynamic_checkpoint_path)}")
     print(f"Best Val Accuracy: {format_percent(best_val_acc)}")
 
 

@@ -1,7 +1,7 @@
 Yena Stage 2 Data Validation Report
 
 [train]
-Path: C:\Capstone-Design\project\data\real\train.csv
+Path: project\data\real\train.csv
 Columns: ['sample_id', 'timestep', 'rps', 'channel_occupancy', 'packet_loss', 'latency', 'label', 'scenario']
 Rows: 7000
 Samples: 700
@@ -14,7 +14,7 @@ DataLoader X Batch Shape: (32, 10, 4)
 DataLoader y Batch Shape: (32,)
 
 [val]
-Path: C:\Capstone-Design\project\data\real\val.csv
+Path: project\data\real\val.csv
 Columns: ['sample_id', 'timestep', 'rps', 'channel_occupancy', 'packet_loss', 'latency', 'label', 'scenario']
 Rows: 1500
 Samples: 150
@@ -27,7 +27,7 @@ DataLoader X Batch Shape: (32, 10, 4)
 DataLoader y Batch Shape: (32,)
 
 [test]
-Path: C:\Capstone-Design\project\data\real\test.csv
+Path: project\data\real\test.csv
 Columns: ['sample_id', 'timestep', 'rps', 'channel_occupancy', 'packet_loss', 'latency', 'label', 'scenario']
 Rows: 1500
 Samples: 150

@@ -1,45 +1,58 @@
 Early Exit LSTM Stage 2 Evaluation Report
-Data Directory: C:\Capstone-Design\project\data\real
-Checkpoint: C:\Capstone-Design\project\checkpoints\early_exit_lstm_best.pth
+Data Directory: project\data\real
+Checkpoint: project\checkpoints\early_exit_lstm_best.pth
+
+Threshold Parameters:
+  base_theta_1: 0.3
+  base_theta_2: 0.6
+  high_variance: 0.15
+  mid_variance: 0.07
+  min_threshold: 0.1
+  recent_steps: 5
+  spike_threshold: 0.2
+  high_variance rule: theta_1/theta_2 * 0.6
+  mid_variance rule: theta_1/theta_2 * 0.8
+  stable rule: theta_1/theta_2 * 1.2
+  spike rule: theta_1=min_threshold, theta_2=min_threshold*2
 
 === Baseline 3: Early Exit + fixed theta ===
-Test Accuracy: 95.3%
+Test Accuracy: 94.0%
 Exit별 성능:
-  Exit 1 | Accuracy: 98.0% | Exit Rate: 68.0% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 93.9% | Exit Rate: 22.0% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 80.0% | Exit Rate: 10.0% | Avg Time: 8.0ms
-Overall Avg Inference Time: 3.040ms
-Measured Wall Time: 0.064ms
+  Exit 1 | Accuracy: 98.9% | Exit Rate: 63.3% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 92.7% | Exit Rate: 27.3% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 64.3% | Exit Rate: 9.3% | Avg Time: 8.0ms
+Overall Avg Inference Time: 3.107ms
+Measured Wall Time: 0.809ms
 Label별 정확도:
   Label 0 (정상): 100.0%
-  Label 1 (혼잡 경고): 93.3%
-  Label 2 (혼잡): 78.3%
-  Label 3 (심각): 100.0%
+  Label 1 (혼잡 경고): 86.7%
+  Label 2 (혼잡): 82.6%
+  Label 3 (심각): 85.7%
 시나리오별 정확도:
   emergency_ramp: 91.4%
-  imbalanced_ap_load: 87.5%
-  lunch_restart: 100.0%
-  startup_surge: 94.4%
+  imbalanced_ap_load: 81.2%
+  lunch_restart: 96.8%
+  startup_surge: 97.2%
 
 === Proposed Model 4: Early Exit + dynamic theta ===
-Test Accuracy: 96.0%
+Test Accuracy: 92.7%
 Exit별 성능:
-  Exit 1 | Accuracy: 98.1% | Exit Rate: 72.0% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 92.7% | Exit Rate: 27.3% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 0.0% | Exit Rate: 0.7% | Avg Time: 8.0ms
-Overall Avg Inference Time: 2.587ms
-Measured Wall Time: 0.081ms
+  Exit 1 | Accuracy: 99.0% | Exit Rate: 70.0% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 81.4% | Exit Rate: 28.7% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 0.0% | Exit Rate: 1.3% | Avg Time: 8.0ms
+Overall Avg Inference Time: 2.653ms
+Measured Wall Time: 0.414ms
 Label별 정확도:
   Label 0 (정상): 100.0%
-  Label 1 (혼잡 경고): 93.3%
+  Label 1 (혼잡 경고): 80.0%
   Label 2 (혼잡): 82.6%
-  Label 3 (심각): 100.0%
+  Label 3 (심각): 85.7%
 시나리오별 정확도:
   emergency_ramp: 91.4%
-  imbalanced_ap_load: 87.5%
-  lunch_restart: 100.0%
+  imbalanced_ap_load: 81.2%
+  lunch_restart: 93.7%
   startup_surge: 97.2%
 
 동적 theta 효과:
-  Accuracy Change: 0.7%
+  Accuracy Change: -1.3%
   Avg Inference Time Change: -0.453ms

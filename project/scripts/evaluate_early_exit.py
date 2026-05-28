@@ -13,6 +13,7 @@ import torch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -30,6 +31,10 @@ DYNAMIC_THRESHOLD_PARAMS = {
     "recent_steps": 5,
     "spike_threshold": 0.2,
 }
+
+
+def display_path(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT))
 
 
 def parse_args() -> argparse.Namespace:
@@ -178,8 +183,8 @@ def main() -> None:
 
     lines = [
         "Early Exit LSTM Stage 2 Evaluation Report",
-        f"Data Directory: {args.data_dir}",
-        f"Checkpoint: {args.checkpoint}",
+        f"Data Directory: {display_path(args.data_dir)}",
+        f"Checkpoint: {display_path(args.checkpoint)}",
     ]
     append_parameter_report(lines, model)
     append_report(lines, "=== Baseline 3: Early Exit + fixed theta ===", fixed_metrics)
@@ -203,7 +208,7 @@ def main() -> None:
     print(report)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report + "\n", encoding="utf-8")
-    print(f"Report saved: {args.output}")
+    print(f"Report saved: {display_path(args.output)}")
 
 
 if __name__ == "__main__":

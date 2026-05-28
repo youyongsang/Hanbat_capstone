@@ -8,10 +8,15 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils.dataloader import get_dataloader, validate_csv_dataset  # noqa: E402
+
+
+def display_path(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT))
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,7 +51,7 @@ def main() -> None:
             [
                 "",
                 f"[{split}]",
-                f"Path: {summary['path']}",
+                f"Path: {display_path(csv_path)}",
                 f"Columns: {summary['columns']}",
                 f"Rows: {summary['rows']}",
                 f"Samples: {summary['samples']}",
@@ -64,7 +69,7 @@ def main() -> None:
     print(report)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report + "\n", encoding="utf-8")
-    print(f"Report saved: {args.output}")
+    print(f"Report saved: {display_path(args.output)}")
 
 
 if __name__ == "__main__":

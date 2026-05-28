@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -20,6 +21,11 @@ from models.early_exit_lstm import EarlyExitLSTM
 RESULTS_DIR = PROJECT_ROOT / "results" / "hojung"
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def display_path(path: Path) -> str:
+    return str(path.resolve().relative_to(REPO_ROOT))
+
 
 # ----------------------------------------------------
 # 5. Baseline ① 임계값 방식 구현 (명세서 기준 100% 일치)
@@ -120,12 +126,12 @@ def main():
         state_dict, _ = load_checkpoint_state(checkpoint_path)
         model_lstm.load_state_dict(state_dict)
     else:
-        print(f"[Warn] Baseline checkpoint not found: {checkpoint_path}")
+        print(f"[Warn] Baseline checkpoint not found: {display_path(checkpoint_path)}")
     model_lstm.eval()
 
     early_exit_checkpoint = CHECKPOINT_DIR / "early_exit_lstm_best.pth"
     if not early_exit_checkpoint.exists():
-        print(f"[Warn] Early Exit checkpoint not found: {early_exit_checkpoint}")
+        print(f"[Warn] Early Exit checkpoint not found: {display_path(early_exit_checkpoint)}")
 
     # CPU Latency 측정을 위한 50회 예열 (Warm-up)
     dummy_input = torch.randn(1, 10, 4)
@@ -238,8 +244,8 @@ def main():
     # 최종 comparison_summary.csv 파일 저장
     pd.DataFrame(summary_results).to_csv(RESULTS_DIR / "comparison_summary.csv", index=False)
     save_text_summary(summary_results, RESULTS_DIR / "comparison_summary.txt")
-    print(f"Results saved to {RESULTS_DIR / 'comparison_summary.csv'}")
-    print(f"Text report saved to {RESULTS_DIR / 'comparison_summary.txt'}")
+    print(f"Results saved to {display_path(RESULTS_DIR / 'comparison_summary.csv')}")
+    print(f"Text report saved to {display_path(RESULTS_DIR / 'comparison_summary.txt')}")
 
 if __name__ == "__main__":
     main()
