@@ -173,15 +173,15 @@ print(f"최소: {np.min(times):.3f}ms / 최대: {np.max(times):.3f}ms")
 
 ## 6. 완료 기준 체크리스트
 
-- [ ] INT8 Quantization 적용 완료 (LSTM, Early Exit 모델)
-- [ ] 경량화 전후 모델 크기 비교 완료
-- [ ] 경량화 전후 정확도 비교 완료 (저하 2% 이내)
-- [ ] 경량화 전후 추론 시간 비교 완료
-- [ ] `quantization_comparison.csv` 저장 완료
-- [ ] ONNX 변환 완료
-- [ ] ONNX Runtime 동작 확인 완료
-- [ ] `scripts/inference_pi.py` 구현 완료
-- [ ] 장예나에게 경량화 결과 전달 완료 (시각화용)
+- [x] INT8 Quantization 적용 완료 (LSTM, Early Exit 모델)
+- [x] 경량화 전후 모델 크기 비교 완료
+- [x] 경량화 전후 정확도 비교 완료 (저하 2% 이내)
+- [x] 경량화 전후 추론 시간 비교 완료
+- [x] `quantization_comparison.csv` 저장 완료
+- [x] ONNX 변환 완료
+- [x] ONNX Runtime 동작 확인 완료
+- [x] `scripts/inference_pi.py` 구현 완료
+- [x] 장예나에게 경량화 결과 전달 완료 (시각화용)
 
 ---
 
