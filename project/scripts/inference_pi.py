@@ -12,10 +12,10 @@ def main():
     onnx_path = 'project/checkpoints/early_exit_fixed.onnx'
     
     if not os.path.exists(onnx_path):
-        print(f"❌ [에러] ONNX 파일이 없습니다: {onnx_path}")
+        print(f"[ERROR] ONNX file not found: {onnx_path}")
         return
 
-    print(f"🚀 [Multi-head Confidence Filtering] 실전 런타임 시뮬레이터 가동...")
+    print("[Multi-head Confidence Filtering] runtime simulator start")
     session = ort.InferenceSession(onnx_path, providers=['CPUExecutionProvider'])
     
     # 조기 종료 확신도 기준치 (85%)
@@ -24,7 +24,7 @@ def main():
     times = []
     exit_counts = {1: 0, 2: 0, 3: 0}
     
-    print(f"📊 총 100번의 스트리밍 데이터 추론 테스트 시작...")
+    print("Run 100 streaming inference trials...")
     
     for _ in range(100):
         dummy = np.random.randn(1, 10, 4).astype(np.float32)
@@ -55,17 +55,17 @@ def main():
         exit_counts[chosen_exit] += 1
 
     print("\n" + "="*50)
-    print(f"🎉 [검증 완료] 런타임 제어형 Early Exit 최종 레포트")
+    print("[OK] Runtime-controlled Early Exit report")
     print("="*50)
-    print(f"⏱️ 평균 추론 지연 시간 : {np.mean(times):.3f} ms")
-    print(f"⏱️ 최소: {np.min(times):.3f} ms / 최대: {np.max(times):.3f} ms")
+    print(f"Average inference latency : {np.mean(times):.3f} ms")
+    print(f"Min: {np.min(times):.3f} ms / Max: {np.max(times):.3f} ms")
     print("-"*50)
-    print(f"💡 의사 조기 종료(Pseudo Early Exit) 필터링 결과:")
-    print(f" 🔹 Exit 1 확정 탈출 : {exit_counts[1]}회")
-    print(f" 🔹 Exit 2 확정 탈출 : {exit_counts[2]}회")
-    print(f" 🔹 Exit 3 최종 통과 : {exit_counts[3]}회")
+    print("Pseudo Early Exit filtering result:")
+    print(f"  Exit 1: {exit_counts[1]}")
+    print(f"  Exit 2: {exit_counts[2]}")
+    print(f"  Exit 3: {exit_counts[3]}")
     print("-"*50)
-    print(f"📦 최종 저장된 Logits 예시 (마지막 추론): {final_logits.shape}")
+    print(f"Final logits example from last inference: {final_logits.shape}")
     print(f"   {final_logits}")
     print("="*50)
 
