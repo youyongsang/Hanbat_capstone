@@ -132,9 +132,13 @@ channel_occupancy_variance
 
 ```
 checkpoints/
-├── early_exit_fixed_final.pth      # 고정 θ 최종 모델
-└── early_exit_dynamic_final.pth    # 동적 θ 최종 모델
+├── early_exit_fixed_final.pth      # 고정 θ 모드 구분용 alias checkpoint
+└── early_exit_dynamic_final.pth    # 동적 θ 모드 구분용 alias checkpoint
 ```
+
+주의: 위 두 파일은 새로 학습된 별도 가중치가 아니라 `early_exit_lstm_best.pth`와 동일한 모델 가중치를 사용하는 전달용 alias checkpoint이다. Fixed θ와 Dynamic θ의 차이는 checkpoint 자체가 아니라 추론 시 `dynamic=False` 또는 `dynamic=True`를 적용하는 방식에서 발생한다.
+
+따라서 김호중 컴퓨터 환경에서 재실험할 경우 `early_exit_lstm_best.pth` 하나만 사용해도 된다. 이때 `model_info.json`의 threshold 파라미터와 추론 모드만 맞추면 같은 기준으로 비교할 수 있다.
 
 ### 모델 정보 기록
 
@@ -164,6 +168,8 @@ checkpoints/early_exit_fixed_final.pth
 checkpoints/early_exit_dynamic_final.pth
 checkpoints/model_info.json
 ```
+
+`early_exit_fixed_final.pth`와 `early_exit_dynamic_final.pth`는 모드 구분을 명확히 하기 위해 저장한 alias checkpoint이다. 호중 환경에서 직접 평가를 다시 수행할 때는 `early_exit_lstm_best.pth`를 기준 checkpoint로 사용해도 된다.
 
 ### 사용 방법 전달
 

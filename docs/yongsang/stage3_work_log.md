@@ -50,9 +50,25 @@ Stage 3에서는 단순 전체 정확도뿐 아니라 다음 항목을 함께 �
 | `project/results/scenario_analysis/scenario_1_analysis.csv` | 시나리오 1 분석 결과 |
 | `project/results/scenario_analysis/scenario_2_analysis.csv` | 시나리오 2 분석 결과 |
 | `project/results/scenario_analysis/scenario_3_analysis.csv` | 시나리오 3 분석 결과 |
-| `project/checkpoints/early_exit_fixed_final.pth` | 고정 θ 최종 모델 checkpoint |
-| `project/checkpoints/early_exit_dynamic_final.pth` | 동적 θ 최종 모델 checkpoint |
+| `project/checkpoints/early_exit_fixed_final.pth` | 고정 θ 모드 구분용 alias checkpoint |
+| `project/checkpoints/early_exit_dynamic_final.pth` | 동적 θ 모드 구분용 alias checkpoint |
 | `project/checkpoints/model_info.json` | 최종 파라미터 및 성능 정보 |
+
+---
+
+## Checkpoint 정리
+
+Stage 3에서 새로 저장한 `early_exit_fixed_final.pth`와 `early_exit_dynamic_final.pth`는 새로 학습한 별도 가중치가 아니다.
+
+두 파일은 기존 학습 checkpoint인 `early_exit_lstm_best.pth`와 동일한 모델 가중치를 사용한다. Fixed θ와 Dynamic θ의 차이는 학습 weight가 아니라 추론 시 threshold를 적용하는 방식에서 발생한다.
+
+| 파일 | 실제 의미 |
+|---|---|
+| `early_exit_lstm_best.pth` | 실제 학습으로 얻은 Early Exit LSTM best checkpoint |
+| `early_exit_fixed_final.pth` | 동일 가중치를 고정 θ 모드로 구분하기 위한 alias checkpoint |
+| `early_exit_dynamic_final.pth` | 동일 가중치를 동적 θ 모드로 구분하기 위한 alias checkpoint |
+
+따라서 김호중 컴퓨터 환경에서 재실험할 때는 `early_exit_lstm_best.pth` 하나만 사용해도 된다. 이 경우 Fixed θ와 Dynamic θ는 같은 checkpoint를 로드한 뒤 추론 함수에서 `dynamic=False` 또는 `dynamic=True`로 구분하면 된다.
 
 ---
 
@@ -166,13 +182,15 @@ Dynamic θ Exit 분포: 25.6% / 69.5% / 4.8%
 
 ## 전달 항목
 
-김호중에게 전달할 최종 모델 파일:
+김호중에게 전달할 최종 모델 관련 파일:
 
 ```text
 project/checkpoints/early_exit_fixed_final.pth
 project/checkpoints/early_exit_dynamic_final.pth
 project/checkpoints/model_info.json
 ```
+
+단, `early_exit_fixed_final.pth`와 `early_exit_dynamic_final.pth`는 `early_exit_lstm_best.pth`의 alias checkpoint이므로, 호중 환경에서 반드시 이 두 파일을 사용할 필요는 없다. 실제 재현에는 `early_exit_lstm_best.pth`와 `model_info.json`만 있어도 충분하다.
 
 장예나에게 전달할 시나리오별 분석 파일:
 
