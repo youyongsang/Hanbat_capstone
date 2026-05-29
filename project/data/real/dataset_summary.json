@@ -1,14 +1,34 @@
 {
-  "shape": {
-    "timesteps": 10,
-    "features": 4
+  "source": {
+    "description": "Kaggle – 6G Network Slicing QoS Dataset",
+    "url": "https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset",
+    "citation": "6G Network Slicing QoS Dataset, Kaggle (ziya07). URL: https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset",
+    "input_file": "project\\data\\external\\6G_network_slicing_qos_dataset_2345.csv",
+    "raw_rows": 2345
   },
-  "feature_names": [
+  "total_samples": 2336,
+  "window_size": 10,
+  "features": [
     "rps",
     "channel_occupancy",
     "packet_loss",
     "latency"
   ],
+  "label_thresholds": {
+    "label_0": "0% ~ 35%",
+    "label_1": "35% ~ 55%",
+    "label_2": "55% ~ 75%",
+    "label_3": "75% ~ 100%"
+  },
+  "labeling": {
+    "type": "composite_congestion_score",
+    "weights": {
+      "channel_occupancy": 0.35,
+      "latency": 0.25,
+      "packet_loss": 0.25,
+      "rps": 0.15
+    }
+  },
   "scaler_params": {
     "rps": {
       "min": 0.0,
@@ -29,63 +49,54 @@
   },
   "splits": {
     "train": {
-      "samples": 700,
-      "window_shape": [
-        700,
-        10,
-        4
-      ],
-      "label_counts": {
-        "0": 420,
-        "1": 140,
-        "2": 105,
-        "3": 35
+      "samples": 1635,
+      "rows": 16350,
+      "shape": "(1635, 10, 4)",
+      "label_distribution": {
+        "정상": 260,
+        "혼잡_경고": 754,
+        "혼잡": 541,
+        "심각_혼잡": 80
       },
-      "scenario_counts": {
-        "emergency_ramp": 147,
-        "imbalanced_ap_load": 68,
-        "lunch_restart": 284,
-        "startup_surge": 201
+      "scenario_distribution": {
+        "emergency_ramp": 419,
+        "lunch_restart": 417,
+        "startup_surge": 410,
+        "imbalanced_ap_load": 389
       }
     },
     "val": {
-      "samples": 150,
-      "window_shape": [
-        150,
-        10,
-        4
-      ],
-      "label_counts": {
-        "0": 90,
-        "1": 30,
-        "2": 22,
-        "3": 8
+      "samples": 350,
+      "rows": 3500,
+      "shape": "(350, 10, 4)",
+      "label_distribution": {
+        "정상": 55,
+        "혼잡_경고": 161,
+        "혼잡": 116,
+        "심각_혼잡": 18
       },
-      "scenario_counts": {
-        "emergency_ramp": 39,
-        "imbalanced_ap_load": 13,
-        "lunch_restart": 51,
-        "startup_surge": 47
+      "scenario_distribution": {
+        "startup_surge": 105,
+        "imbalanced_ap_load": 96,
+        "lunch_restart": 76,
+        "emergency_ramp": 73
       }
     },
     "test": {
-      "samples": 150,
-      "window_shape": [
-        150,
-        10,
-        4
-      ],
-      "label_counts": {
-        "0": 90,
-        "1": 30,
-        "2": 23,
-        "3": 7
+      "samples": 351,
+      "rows": 3510,
+      "shape": "(351, 10, 4)",
+      "label_distribution": {
+        "정상": 56,
+        "혼잡_경고": 162,
+        "혼잡": 116,
+        "심각_혼잡": 17
       },
-      "scenario_counts": {
-        "emergency_ramp": 35,
-        "imbalanced_ap_load": 16,
-        "lunch_restart": 63,
-        "startup_surge": 36
+      "scenario_distribution": {
+        "startup_surge": 104,
+        "lunch_restart": 84,
+        "emergency_ramp": 83,
+        "imbalanced_ap_load": 80
       }
     }
   }

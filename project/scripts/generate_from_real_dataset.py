@@ -57,6 +57,10 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # ══════════════════════════════════════════════════════════════════
 #  1. 데이터셋 프리셋
 # ══════════════════════════════════════════════════════════════════
@@ -117,14 +121,20 @@ DATASET_PRESETS = {
 }
 
 # ══════════════════════════════════════════════════════════════════
-#  2. 레이블 기준 (channel_occupancy 기반 – 기존 프로젝트 정의 동일)
+#  2. 레이블 기준 (복합 혼잡 점수 기반)
 # ══════════════════════════════════════════════════════════════════
 
+LABEL_WEIGHTS = {
+    "channel_occupancy": 0.35,
+    "latency": 0.25,
+    "packet_loss": 0.25,
+    "rps": 0.15,
+}
 LABEL_THRESHOLDS = [
-    (0,  0.0,  40.0),   # 정상
-    (1, 40.0,  65.0),   # 혼잡 경고
-    (2, 65.0,  85.0),   # 혼잡
-    (3, 85.0, 100.1),   # 심각 혼잡
+    (0,  0.0,  35.0),   # 정상
+    (1, 35.0,  55.0),   # 혼잡 경고
+    (2, 55.0,  75.0),   # 혼잡
+    (3, 75.0, 100.1),   # 심각 혼잡
 ]
 LABEL_NAMES = {0: "정상", 1: "혼잡_경고", 2: "혼잡", 3: "심각_혼잡"}
 
@@ -159,8 +169,8 @@ def build_feature_df(raw: pd.DataFrame, preset: dict, args) -> pd.DataFrame:
       원본 값이 0~1 정규화 상태이므로, 물리적 최댓값을 곱해 단위 복원 후
       이후 파이프라인에서 다시 Min-Max 정규화를 적용함.
       (복원 → 재정규화 = 원본 0~1 값 그대로 유지되는 항등 변환이지만,
-       레이블 생성 시 channel_occupancy 가 0~100% 스케일이어야 하므로
-       이 단계에서 ×100 복원이 반드시 필요함)
+       레이블 생성 시 각 피처가 물리적 스케일이어야 하므로 이 단계에서
+       단위 복원이 반드시 필요함)
     """
     df = pd.DataFrame()
 
@@ -201,14 +211,28 @@ def build_feature_df(raw: pd.DataFrame, preset: dict, args) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════════
-#  5. 레이블 생성 (channel_occupancy 기반)
+#  5. 레이블 생성 (복합 혼잡 점수 기반)
 # ══════════════════════════════════════════════════════════════════
 
-def assign_labels(channel_occupancy: pd.Series) -> pd.Series:
-    labels = pd.Series(0, index=channel_occupancy.index)
+def compute_congestion_score(feat_df: pd.DataFrame) -> pd.Series:
+    rps_score = (feat_df["rps"] / 1000.0 * 100.0).clip(0.0, 100.0)
+    occupancy_score = feat_df["channel_occupancy"].clip(0.0, 100.0)
+    loss_score = (feat_df["packet_loss"] / 30.0 * 100.0).clip(0.0, 100.0)
+    latency_score = (feat_df["latency"] / 500.0 * 100.0).clip(0.0, 100.0)
+    return (
+        LABEL_WEIGHTS["channel_occupancy"] * occupancy_score
+        + LABEL_WEIGHTS["latency"] * latency_score
+        + LABEL_WEIGHTS["packet_loss"] * loss_score
+        + LABEL_WEIGHTS["rps"] * rps_score
+    )
+
+
+def assign_labels(feat_df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    score = compute_congestion_score(feat_df)
+    labels = pd.Series(0, index=feat_df.index)
     for lbl, lo, hi in LABEL_THRESHOLDS:
-        labels[(channel_occupancy >= lo) & (channel_occupancy < hi)] = lbl
-    return labels
+        labels[(score >= lo) & (score < hi)] = lbl
+    return labels, score
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -334,6 +358,10 @@ def build_summary(train_df, val_df, test_df, source_info: dict) -> dict:
             f"label_{l}": f"{lo:.0f}% ~ {hi:.0f}%"
             for l, lo, hi in LABEL_THRESHOLDS
         },
+        "labeling": {
+            "type": "composite_congestion_score",
+            "weights": LABEL_WEIGHTS,
+        },
         "scaler_params": SCALER_PARAMS,
         "splits": {
             split: {
@@ -368,14 +396,17 @@ def write_report(path: Path, summary: dict, preset: dict, warnings_list: list):
         f"  분할        : Train {int(TRAIN_RATIO*100)}% / "
         f"Val {int(VAL_RATIO*100)}% / Test {int(TEST_RATIO*100)}%",
         "",
-        "  ── 레이블 기준 (channel_occupancy) ──",
+        "  ── 레이블 기준 (복합 혼잡 점수) ──",
+        "  score = 0.35*channel_occupancy + 0.25*latency +",
+        "          0.25*packet_loss + 0.15*rps",
+        "",
         "  ┌──────┬──────────────┬─────────────┐",
-        "  │ 레이블 │ 혼잡 수준    │ 채널 점유율 │",
+        "  │ 레이블 │ 혼잡 수준    │ 복합 점수   │",
         "  ├──────┼──────────────┼─────────────┤",
-        "  │   0  │ 정상         │  0 ~ 40 %   │",
-        "  │   1  │ 혼잡 경고    │ 40 ~ 65 %   │",
-        "  │   2  │ 혼잡         │ 65 ~ 85 %   │",
-        "  │   3  │ 심각 혼잡    │ 85 ~ 100 %  │",
+        "  │   0  │ 정상         │  0 ~ 35    │",
+        "  │   1  │ 혼잡 경고    │ 35 ~ 55    │",
+        "  │   2  │ 혼잡         │ 55 ~ 75    │",
+        "  │   3  │ 심각 혼잡    │ 75 ~ 100   │",
         "  └──────┴──────────────┴─────────────┘",
         "",
         f"  전체 샘플 수 : {summary['total_samples']:,}",
@@ -484,8 +515,12 @@ def main():
         print(f"      {feat:20}: [{mn:.2f} ~ {mx:.2f}]")
 
     # [3] 레이블 생성
-    print("\n[3/7] 레이블 생성 (channel_occupancy 기준) ...")
-    labels = assign_labels(feat_df["channel_occupancy"])
+    print("\n[3/7] 레이블 생성 (복합 혼잡 점수 기준) ...")
+    labels, congestion_score = assign_labels(feat_df)
+    print(
+        f"      congestion_score     : "
+        f"[{congestion_score.min():.2f} ~ {congestion_score.max():.2f}]"
+    )
     warnings_list = []
     for lbl, lo, hi in LABEL_THRESHOLDS:
         cnt = int((labels == lbl).sum())

@@ -1,0 +1,53 @@
+=================================================================
+  데이터셋 변환 리포트  –  generate_from_real_dataset.py
+=================================================================
+
+  데이터셋  : Kaggle – 6G Network Slicing QoS Dataset
+  출처 URL  : https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset
+  입력 파일 : project\data\external\6G_network_slicing_qos_dataset_2345.csv
+  원본 행수 : 2,345
+
+  ── 출처 표기 (보고서/발표 자료용) ──
+  6G Network Slicing QoS Dataset, Kaggle (ziya07). URL: https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset
+
+  윈도우 크기 : 10  (슬라이딩, 스트라이드=1)
+  정규화      : Min-Max (고정 기준값)
+  분할        : Train 70% / Val 15% / Test 15%
+
+  ── 레이블 기준 (복합 혼잡 점수) ──
+  score = 0.35*channel_occupancy + 0.25*latency +
+          0.25*packet_loss + 0.15*rps
+
+  ┌──────┬──────────────┬─────────────┐
+  │ 레이블 │ 혼잡 수준    │ 복합 점수   │
+  ├──────┼──────────────┼─────────────┤
+  │   0  │ 정상         │  0 ~ 35    │
+  │   1  │ 혼잡 경고    │ 35 ~ 55    │
+  │   2  │ 혼잡         │ 55 ~ 75    │
+  │   3  │ 심각 혼잡    │ 75 ~ 100   │
+  └──────┴──────────────┴─────────────┘
+
+  전체 샘플 수 : 2,336
+
+  [TRAIN]   1635샘플 /  16350행 / shape (1635, 10, 4)
+    정상             :   260
+    혼잡_경고          :   754
+    혼잡             :   541
+    심각_혼잡          :    80
+    시나리오 분포  : emergency_ramp:419, lunch_restart:417, startup_surge:410, imbalanced_ap_load:389
+
+  [VAL  ]    350샘플 /   3500행 / shape (350, 10, 4)
+    정상             :    55
+    혼잡_경고          :   161
+    혼잡             :   116
+    심각_혼잡          :    18
+    시나리오 분포  : startup_surge:105, imbalanced_ap_load:96, lunch_restart:76, emergency_ramp:73
+
+  [TEST ]    351샘플 /   3510행 / shape (351, 10, 4)
+    정상             :    56
+    혼잡_경고          :   162
+    혼잡             :   116
+    심각_혼잡          :    17
+    시나리오 분포  : startup_surge:104, lunch_restart:84, emergency_ramp:83, imbalanced_ap_load:80
+
+=================================================================

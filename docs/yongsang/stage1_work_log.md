@@ -26,7 +26,7 @@ Early Exit LSTM을 예나 실제 데이터 `project/data/real/` 기준으로 학
 | `project/scripts/train_early_exit.py` | Multi-exit loss 기반 학습 스크립트 |
 | `project/scripts/evaluate_early_exit.py` | Exit별 accuracy, exit rate, 평균 추론 시간 평가 스크립트 |
 | `project/checkpoints/early_exit_lstm_best.pth` | 학습된 best checkpoint |
-| `project/results/early_exit_eval_report.txt` | 평가 결과 텍스트 리포트 |
+| `project/results/yongsang/early_exit_eval_report.txt` | 평가 결과 텍스트 리포트 |
 
 ## 모델 구조
 
@@ -67,7 +67,7 @@ python project/scripts/evaluate_early_exit.py
 평가 스크립트는 콘솔 출력과 함께 기본적으로 아래 txt 파일에 결과를 저장한다.
 
 ```text
-project/results/early_exit_eval_report.txt
+project/results/yongsang/early_exit_eval_report.txt
 ```
 
 ## 학습 결과

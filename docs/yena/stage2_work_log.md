@@ -22,7 +22,7 @@ Stage 1 CSV는 이미 `sample_id`, `timestep` 기준으로 window가 구성되�
 |---|---|
 | `project/utils/dataloader.py` | CSV 로딩, 슬라이딩 윈도우, Min-Max 정규화, DataLoader 생성, 데이터 검증 |
 | `project/scripts/validate_real_data.py` | train/val/test CSV와 DataLoader 출력 shape 검증 |
-| `project/results/yena_stage2_validation_report.txt` | Stage 2 검증 결과 txt 리포트 |
+| `project/results/yena/yena_stage2_validation_report.txt` | Stage 2 검증 결과 txt 리포트 |
 
 ## DataLoader 인터페이스
 
@@ -75,7 +75,7 @@ python project/scripts/validate_real_data.py
 실행하면 콘솔 출력과 함께 아래 파일에 검증 결과가 저장된다.
 
 ```text
-project/results/yena_stage2_validation_report.txt
+project/results/yena/yena_stage2_validation_report.txt
 ```
 
 ## 검증 결과 요약

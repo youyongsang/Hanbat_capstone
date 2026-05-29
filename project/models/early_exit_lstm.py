@@ -74,6 +74,7 @@ class EarlyExitLSTM(nn.Module):
         self.num_classes = num_classes
         self.theta_1 = theta_1
         self.theta_2 = theta_2
+        self.dynamic_threshold = False
 
         self.lstm1 = nn.LSTM(input_size, hidden_size, num_layers=1, batch_first=True)
         self.lstm2 = nn.LSTM(hidden_size, hidden_size, num_layers=1, batch_first=True)
@@ -97,17 +98,41 @@ class EarlyExitLSTM(nn.Module):
             return exit_logits
         return self._infer_batch_consensus(exit_logits)
 
-    def infer_batch(self, x: Tensor) -> List[ExitDecision]:
+    def set_threshold(
+        self,
+        theta_1: float | None = None,
+        theta_2: float | None = None,
+        dynamic: bool | None = None,
+    ) -> None:
+        """Update fixed thresholds and dynamic-threshold mode."""
+
+        if theta_1 is not None:
+            self.theta_1 = theta_1
+        if theta_2 is not None:
+            self.theta_2 = theta_2
+        if dynamic is not None:
+            self.dynamic_threshold = dynamic
+
+    def infer_batch(self, x: Tensor, dynamic: bool | None = None) -> List[ExitDecision]:
         """Return an independent early-exit decision for each sample in a batch."""
 
         exit_logits = self._all_exit_logits(x)
         entropies = [entropy_from_logits(logits) for logits in exit_logits]
         decisions: List[ExitDecision] = []
+        use_dynamic = self.dynamic_threshold if dynamic is None else dynamic
 
         for sample_idx in range(x.size(0)):
-            if entropies[0][sample_idx].item() < self.theta_1:
+            theta_1, theta_2 = self.theta_1, self.theta_2
+            if use_dynamic:
+                theta_1, theta_2 = compute_dynamic_threshold(
+                    x[sample_idx, :, 1],
+                    base_theta_1=self.theta_1,
+                    base_theta_2=self.theta_2,
+                )
+
+            if entropies[0][sample_idx].item() < theta_1:
                 exit_idx = 0
-            elif entropies[1][sample_idx].item() < self.theta_2:
+            elif entropies[1][sample_idx].item() < theta_2:
                 exit_idx = 1
             else:
                 exit_idx = 2
@@ -122,10 +147,47 @@ class EarlyExitLSTM(nn.Module):
 
         return decisions
 
-    def exit_rate(self, x: Tensor) -> Dict[int, float]:
+    def infer_batch_stepwise(self, x: Tensor, dynamic: bool | None = None) -> List[ExitDecision]:
+        """Return early-exit decisions without computing deeper exits after a stop."""
+
+        decisions: List[ExitDecision] = []
+        use_dynamic = self.dynamic_threshold if dynamic is None else dynamic
+
+        for sample_idx in range(x.size(0)):
+            sample = x[sample_idx : sample_idx + 1]
+            theta_1, theta_2 = self.theta_1, self.theta_2
+            if use_dynamic:
+                theta_1, theta_2 = compute_dynamic_threshold(
+                    sample[0, :, 1],
+                    base_theta_1=self.theta_1,
+                    base_theta_2=self.theta_2,
+                )
+
+            out1, _ = self.lstm1(sample)
+            logits1 = self.exit_classifier1(self.dropout(out1[:, -1, :]))
+            entropy1 = entropy_from_logits(logits1)[0]
+            if entropy1.item() < theta_1:
+                decisions.append(ExitDecision(logits1[0], 1, entropy1))
+                continue
+
+            out2, _ = self.lstm2(out1)
+            logits2 = self.exit_classifier2(self.dropout(out2[:, -1, :]))
+            entropy2 = entropy_from_logits(logits2)[0]
+            if entropy2.item() < theta_2:
+                decisions.append(ExitDecision(logits2[0], 2, entropy2))
+                continue
+
+            out3, _ = self.lstm3(out2)
+            logits3 = self.exit_classifier3(self.dropout(out3[:, -1, :]))
+            entropy3 = entropy_from_logits(logits3)[0]
+            decisions.append(ExitDecision(logits3[0], 3, entropy3))
+
+        return decisions
+
+    def exit_rate(self, x: Tensor, dynamic: bool | None = None) -> Dict[int, float]:
         """Measure the fraction of samples exiting at each point."""
 
-        decisions = self.infer_batch(x)
+        decisions = self.infer_batch(x, dynamic=dynamic)
         total = max(len(decisions), 1)
         return {
             exit_point: sum(d.exit_point == exit_point for d in decisions) / total
@@ -191,3 +253,36 @@ def exit_accuracy_by_point(
         )
         for exit_point in (1, 2, 3)
     }
+
+
+def compute_dynamic_threshold(
+    recent_window: Tensor,
+    base_theta_1: float = 0.3,
+    base_theta_2: float = 0.6,
+    high_variance: float = 0.22,
+    mid_variance: float = 0.12,
+    min_threshold: float = 0.22,
+    recent_steps: int = 5,
+    spike_threshold: float = 0.25,
+) -> tuple[float, float]:
+    """Adjust thresholds from recent channel occupancy variation.
+
+    The dataset uses normalized channel occupancy, so variance and spike
+    thresholds are represented on a 0~1 scale.
+    """
+
+    occupancy = recent_window[-recent_steps:].detach().float()
+    if occupancy.numel() < 2:
+        return base_theta_1, base_theta_2
+
+    delta = torch.abs(occupancy[-1] - occupancy[-2]).item()
+    if delta > spike_threshold:
+        theta_1 = base_theta_1 * 1.0
+        theta_2 = base_theta_2 * 1.0
+    else:
+        theta_1 = base_theta_1 * 1.25
+        theta_2 = base_theta_2 * 1.25
+
+    theta_1 = max(theta_1, min_threshold)
+    theta_2 = max(theta_2, min_threshold * 2)
+    return theta_1, theta_2

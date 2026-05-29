@@ -213,18 +213,18 @@ model_dynamic.set_threshold(dynamic=True)
 
 ## 9. 완료 기준 체크리스트
 
-- [ ] 장예나 DataLoader 연결 및 실제 데이터 학습 완료
-- [ ] Early Exit LSTM 학습 loss 수렴 확인
-- [ ] Exit별 정확도 Exit 1 < Exit 2 < Exit 3 순서 확인
-- [ ] 고정 θ 버전 테스트셋 평가 완료 (Baseline ③)
-- [ ] `compute_dynamic_threshold()` 함수 구현 완료
-- [ ] 급변 대응 spike 감지 로직 구현 완료
-- [ ] 동적 θ 버전 테스트셋 평가 완료 (제안 모델 ④)
-- [ ] 고정 θ vs 동적 θ 비교 결과 정리 완료
-- [ ] 시나리오별 분석 완료
-- [ ] 김호중 비교 실험 프레임워크에 연결 완료
-- [ ] `checkpoints/early_exit_fixed.pth` 저장 확인
-- [ ] `checkpoints/early_exit_dynamic.pth` 저장 확인
+- [x] 장예나 DataLoader 연결 및 실제 데이터 학습 완료
+- [x] Early Exit LSTM 학습 loss 수렴 확인
+- [x] Exit별 정확도 Exit 1 < Exit 2 < Exit 3 순서 확인
+- [x] 고정 θ 버전 테스트셋 평가 완료 (Baseline ③)
+- [x] `compute_dynamic_threshold()` 함수 구현 완료
+- [x] 급변 대응 spike 감지 로직 구현 완료
+- [x] 동적 θ 버전 테스트셋 평가 완료 (제안 모델 ④)
+- [x] 고정 θ vs 동적 θ 비교 결과 정리 완료
+- [x] 시나리오별 분석 완료
+- [x] 김호중 비교 실험 프레임워크에 연결 완료
+- [x] `checkpoints/early_exit_fixed.pth` 저장 확인
+- [x] `checkpoints/early_exit_dynamic.pth` 저장 확인
 
 ---
 
