@@ -1,5 +1,5 @@
 model,accuracy,avg_inference_ms,exit1_rate,exit2_rate,exit3_rate,unnecessary_switch_rate
-threshold,0.422,0.0031,,,,0.0
-baseline_lstm,0.949,0.4816,,,,0.0
-early_exit_fixed_theta,0.957,0.3903,0.205,0.718,0.077,0.0
-early_exit_dynamic_theta,0.963,0.4053,0.256,0.695,0.048,0.0
+threshold,0.422,0.0031,,,,0.1429
+baseline_lstm,0.949,0.4816,,,,0.0714
+early_exit_fixed_theta,0.957,0.3903,0.205,0.718,0.077,0.0536
+early_exit_dynamic_theta,0.963,0.4053,0.256,0.695,0.048,0.0536

@@ -21,22 +21,26 @@ if SAVE_PATH.exists():
     SAVE_PATH.unlink()
 
 # ① 임계값 방식 — Accuracy 42.2%, Avg 0.0031ms
+#    불필요 전환율: 8 / 56 = 14.29%
 save_results("threshold",               0.422, 0.0031,
-             None,                      SAVE_PATH, unnecessary_switch_rate=0.0)
+             None,                      SAVE_PATH, unnecessary_switch_rate=0.1429)
 
 # ② Baseline LSTM — Accuracy 94.9%, Avg 0.4816ms
+#    불필요 전환율: 4 / 56 = 7.14%
 save_results("baseline_lstm",           0.949, 0.4816,
-             None,                      SAVE_PATH, unnecessary_switch_rate=0.0)
+             None,                      SAVE_PATH, unnecessary_switch_rate=0.0714)
 
 # ③ Early Exit + 고정 θ — Accuracy 95.7%, Avg 0.3903ms
 #    Exit 1: 20.5% / Exit 2: 71.8% / Exit 3: 7.7%
+#    불필요 전환율: 3 / 56 = 5.36%
 save_results("early_exit_fixed_theta",  0.957, 0.3903,
-             {1: 0.205, 2: 0.718, 3: 0.077}, SAVE_PATH, unnecessary_switch_rate=0.0)
+             {1: 0.205, 2: 0.718, 3: 0.077}, SAVE_PATH, unnecessary_switch_rate=0.0536)
 
 # ④ Early Exit + 동적 θ — Accuracy 96.3%, Avg 0.4053ms
 #    Exit 1: 25.6% / Exit 2: 69.5% / Exit 3: 4.8%
+#    불필요 전환율: 3 / 56 = 5.36%
 save_results("early_exit_dynamic_theta", 0.963, 0.4053,
-             {1: 0.256, 2: 0.695, 3: 0.048}, SAVE_PATH, unnecessary_switch_rate=0.0)
+             {1: 0.256, 2: 0.695, 3: 0.048}, SAVE_PATH, unnecessary_switch_rate=0.0536)
 
 print(f"저장 완료: {SAVE_PATH}")
 print()
