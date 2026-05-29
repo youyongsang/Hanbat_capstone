@@ -175,12 +175,14 @@ info = json.load(open('checkpoints/model_info.json'))
 
 # Baseline ③ 고정 θ
 model_fixed = EarlyExitLSTM(hidden_size=info['hidden_size'])
-model_fixed.load_state_dict(torch.load('checkpoints/early_exit_fixed_final.pth'))
+fixed_ckpt = torch.load('checkpoints/early_exit_fixed_final.pth', map_location='cpu')
+model_fixed.load_state_dict(fixed_ckpt['model_state_dict'])
 model_fixed.eval()
 
 # 제안 모델 ④ 동적 θ
 model_dynamic = EarlyExitLSTM(hidden_size=info['hidden_size'])
-model_dynamic.load_state_dict(torch.load('checkpoints/early_exit_dynamic_final.pth'))
+dynamic_ckpt = torch.load('checkpoints/early_exit_dynamic_final.pth', map_location='cpu')
+model_dynamic.load_state_dict(dynamic_ckpt['model_state_dict'])
 model_dynamic.eval()
 ```
 
@@ -188,16 +190,37 @@ model_dynamic.eval()
 
 ## 8. 완료 기준 체크리스트
 
-- [ ] 2단계 결과 분석 및 튜닝 방향 결정 완료
+- [x] 2단계 결과 분석 및 튜닝 방향 결정 완료
 - [ ] 하이퍼파라미터 튜닝 완료 (Exit 1 종료율 60% 이상)
-- [ ] 동적 θ 파라미터 튜닝 완료
-- [ ] 시나리오 0~3 분리 분석 완료
-- [ ] 고정 θ vs 동적 θ 비교 분석 정리 완료
-- [ ] `early_exit_fixed_final.pth` 저장 완료
-- [ ] `early_exit_dynamic_final.pth` 저장 완료
-- [ ] `model_info.json` 저장 완료
+- [x] 동적 θ 파라미터 튜닝 완료
+- [x] 시나리오 0~3 분리 분석 완료
+- [x] 고정 θ vs 동적 θ 비교 분석 정리 완료
+- [x] `early_exit_fixed_final.pth` 저장 완료
+- [x] `early_exit_dynamic_final.pth` 저장 완료
+- [x] `model_info.json` 저장 완료
 - [ ] 김호중에게 최종 모델 및 사용법 전달 완료
 - [ ] 장예나에게 시나리오별 분석 결과 전달 완료
+
+### 2026-05-29 실행 결과
+
+| 구분 | Fixed θ | Dynamic θ |
+|---|---:|---:|
+| 전체 정확도 | 95.7% | 96.3% |
+| 평균 추론 시간 | 3.897ms | 3.681ms |
+| Exit 1 종료율 | 20.5% | 25.6% |
+| Exit 2 종료율 | 71.8% | 69.5% |
+| Exit 3 종료율 | 7.7% | 4.8% |
+
+시나리오별 정확도:
+
+| 시나리오 | Fixed θ | Dynamic θ |
+|---|---:|---:|
+| startup_surge | 96.2% | 96.2% |
+| emergency_ramp | 92.8% | 95.2% |
+| lunch_restart | 96.4% | 96.4% |
+| imbalanced_ap_load | 97.5% | 97.5% |
+
+메모: 현재 실제 stepwise 추론 기준 Exit 1 종료율은 Fixed θ 20.5%, Dynamic θ 25.6%로, 기존 목표였던 60% 이상에는 도달하지 않았다. 대신 Dynamic θ는 전체 정확도 +0.6%p, 평균 추론 시간 -0.217ms, emergency_ramp 정확도 +2.4%p 개선을 보였다.
 
 ---
 

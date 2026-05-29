@@ -113,7 +113,7 @@ def main() -> None:
 
     # ── 결과 요약 출력 ────────────────────────────────────────────
     n_samples = df["sample_id"].nunique()
-    print("test_with_scenario.csv 저장 완료")
+    print("OK test_with_scenario.csv 저장 완료")
     print(f"   경로     : {display_path(dst)}")
     print(f"   전체 행  : {len(df):,}")
     print(f"   전체 샘플: {n_samples}")

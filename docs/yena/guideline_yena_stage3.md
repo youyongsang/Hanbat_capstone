@@ -72,28 +72,23 @@ python project/scripts/generate_test_with_scenario.py
 
 ### `utils/logger.py` 구현
 
-실험 결과를 CSV로 저장하거나 읽어 확인하는 보조 유틸리티 함수.
-최종 4개 방식 비교 결과는 김호중 컴퓨터에서 `compare_baselines.py`를 실행해
-생성된 `project/results/hojung/comparison_summary.csv`를 기준으로 사용한다.
-예나 단계에서는 이 결과를 다시 계산하지 않고, 시각화와 시나리오별 분석에 활용한다.
+실험 결과를 CSV로 저장하는 유틸리티 함수.
 
 ```python
-def save_results(
-    model_name: str,
-    accuracy: float,
-    inference_time: float,
-    exit_rates: dict[int, float] | None,
-    save_path: str,
-    unnecessary_switch_rate: float = 0.0,
-) -> None:
+def save_results(results: list[dict], path: str) -> None:
     """
     Args:
-        model_name: 모델 이름
-        accuracy: 정확도 비율값 (0~1)
-        inference_time: 평균 추론 시간 (ms)
-        exit_rates: Early Exit 종료율 dict. 일반 모델은 None
-        save_path: 저장 경로
-        unnecessary_switch_rate: 불필요한 채널 전환 비율
+        results: 모델별 결과 dict의 리스트
+        path:    저장 경로 (예: 'project/results/yena/comparison_summary.csv')
+
+    dict 필수 키:
+        model                  - 모델 이름 (str)
+        accuracy               - 정확도 (float, 0~1)
+        avg_inference_ms       - 평균 추론 시간 (float, ms 단위)
+        exit1_rate             - Exit 1 종료 비율 (float)
+        exit2_rate             - Exit 2 종료 비율 (float)
+        exit3_rate             - Exit 3 종료 비율 (float)
+        unnecessary_switch_rate - 불필요한 채널 전환 비율 (float)
     """
 ```
 
@@ -101,9 +96,9 @@ def save_results(
 
 | 함수 | 역할 |
 |---|---|
-| `save_results(...)` | 한 모델의 결과를 CSV에 append |
-| `load_summary(path)` | 저장된 CSV를 행 리스트로 불러오기 |
-| `print_summary(path)` | CSV 내용을 터미널에 표 형태로 출력 |
+| `save_results(results, path)` | 결과 리스트를 CSV로 저장 |
+| `load_summary(path)` | 저장된 CSV를 DataFrame으로 불러오기 |
+| `print_summary(df)` | 터미널에 표 형태로 출력 |
 
 ### 저장 형식
 
@@ -124,54 +119,123 @@ model, accuracy, avg_inference_ms, exit1_rate, exit2_rate, exit3_rate, unnecessa
 
 ---
 
-## 4. `comparison_summary.csv` 사용 방법
+## 4. `comparison_summary.csv` 생성 방법
 
 > **목적:** 4개 방식(임계값·Baseline LSTM·EE 고정 θ·EE 동적 θ)의 실험 결과를  
-> 하나의 CSV로 받아 시각화와 분석에 사용한다.  
-> 이 파일은 **김호중 비교 실험 실행 결과**를 기준으로 한다.
+> 하나의 CSV로 취합한다.  
+> 이 파일은 **김호중·유용상 결과를 받은 후** 최종 합산·저장한다.
 
 ### 관련 파일 위치
 
 ```
 project/
-├── experiments/
-│   └── compare_baselines.py              ← 4개 방식 비교 실험 실행
+├── utils/
+│   └── logger.py                          ← save_results() 함수 위치
+├── scripts/
+│   └── generate_summary.py               ← 아래 내용 그대로 실행
 └── results/
-    └── hojung/
-        └── comparison_summary.csv        ← 최종 비교 결과 원본
+    └── yena/
+        └── comparison_summary.csv        ← 최종 저장 위치
 ```
 
-### 생성 방법
+### 방법 1 — 스크립트 실행
 
-김호중 컴퓨터 기준으로 아래 스크립트를 실행하면 자동 생성된다.
+수치를 받은 후 `generate_summary.py`의 `results` 리스트를  
+채워서 실행하면 CSV가 만들어진다.
+
+```python
+# project/scripts/generate_summary.py
+
+from utils.logger import save_results
+
+results = [
+    {
+        "model":                   "threshold",
+        "accuracy":                0.422,   # 42.2%
+        "avg_inference_ms":        0.003,
+        "exit1_rate":              1.0,
+        "exit2_rate":              0.0,
+        "exit3_rate":              0.0,
+        "unnecessary_switch_rate": 0.0,
+    },
+    {
+        "model":                   "baseline_lstm",
+        "accuracy":                0.949,   # 94.9%
+        "avg_inference_ms":        0.482,
+        "exit1_rate":              0.0,
+        "exit2_rate":              0.0,
+        "exit3_rate":              1.0,
+        "unnecessary_switch_rate": 0.0,
+    },
+    {
+        "model":                   "early_exit_fixed_theta",
+        "accuracy":                0.957,   # 95.7%
+        "avg_inference_ms":        0.390,
+        "exit1_rate":              0.31,
+        "exit2_rate":              0.28,
+        "exit3_rate":              0.41,
+        "unnecessary_switch_rate": 0.07,
+    },
+    {
+        "model":                   "early_exit_dynamic_theta",
+        "accuracy":                0.963,   # 96.3%
+        "avg_inference_ms":        0.405,
+        "exit1_rate":              0.29,
+        "exit2_rate":              0.25,
+        "exit3_rate":              0.46,
+        "unnecessary_switch_rate": 0.04,
+    },
+]
+
+save_results(results, "project/results/yena/comparison_summary.csv")
+```
 
 ```bash
-python project/experiments/compare_baselines.py
+# 터미널에서 실행
+python project/scripts/generate_summary.py
 ```
 
-생성 파일:
+### 방법 2 — 평가 코드에 직접 연동
 
-```text
-project/results/hojung/comparison_summary.csv
-project/results/hojung/comparison_summary.txt
+모델 평가 스크립트 끝에 아래 코드를 붙이면 평가 직후 자동 저장된다.
+
+```python
+from utils.logger import save_results
+
+results = []
+results.append({
+    "model":                   "early_exit_dynamic_theta",
+    "accuracy":                eval_accuracy,        # 평가 함수 반환값
+    "avg_inference_ms":        avg_ms,
+    "exit1_rate":              exit1_count / total,
+    "exit2_rate":              exit2_count / total,
+    "exit3_rate":              exit3_count / total,
+    "unnecessary_switch_rate": switch_count / total,
+})
+
+save_results(results, "project/results/yena/comparison_summary.csv")
 ```
 
 ### 결과 확인
 
-```bash
-type project\results\hojung\comparison_summary.csv
+```python
+from utils.logger import load_summary, print_summary
+
+df = load_summary("project/results/yena/comparison_summary.csv")
+print_summary(df)  # 터미널에 표 형태로 출력
 ```
 
 ### 컬럼 설명
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
-| `Method` | str | 비교 방식 이름 |
-| `Accuracy(%)` | float | 분류 정확도 (%) |
-| `Avg_Inference(ms)` | float | 평균 추론 지연 (ms) |
-| `Unnecessary_Switches` | int | 불필요한 채널 전환 횟수 |
-| `Acc_Label_0~3(%)` | float | label별 정확도 (%) |
-| `Exit1~3(%)` | float | Early Exit 방식의 exit별 종료율 (%) |
+| `model` | str | 모델 식별자 (예: `early_exit_dynamic_theta`) |
+| `accuracy` | float | 분류 정확도 (0~1, 예: 0.963 = 96.3%) |
+| `avg_inference_ms` | float | 평균 추론 지연 (ms 단위) |
+| `exit1_rate` | float | Exit 1에서 종료된 비율 |
+| `exit2_rate` | float | Exit 2에서 종료된 비율 |
+| `exit3_rate` | float | Exit 3에서 종료된 비율 (exit1+2+3 합계 = 1.0) |
+| `unnecessary_switch_rate` | float | 불필요한 채널 전환 발생 비율 |
 
 ---
 
@@ -233,7 +297,7 @@ results/
 
 - [x] `test_with_scenario.csv` 생성 완료 (시나리오 컬럼 추가)
 - [x] `utils/logger.py` 구현 완료
-- [ ] `project/results/hojung/comparison_summary.csv` 수신 및 확인
+- [] `comparison_summary.csv` 저장 확인
 - [ ] 정확도 비교 막대그래프 생성 완료
 - [ ] 정확도 vs 추론 시간 산점도 생성 완료
 - [ ] Exit 종료율 파이차트 생성 완료
@@ -245,6 +309,5 @@ results/
 ## 8. 주의사항
 
 - 시각화는 **실험 결과 나온 후**에 만들 것. 예시 그래프는 만들지 않음.
-- `comparison_summary.csv`는 김호중 컴퓨터에서 실행한 `compare_baselines.py` 결과를 기준으로 한다.
-- 예나 단계에서는 `comparison_summary.csv`를 새로 계산하지 않고, 읽어서 그래프와 분석 자료를 만든다.
+- `comparison_summary.csv`는 김호중·유용상 결과를 취합하는 파일이야. 혼자 채우지 말고 두 명 결과 받아서 합칠 것.
 - 그래프는 발표 자료에 바로 쓸 수 있도록 해상도 높게 저장할 것 (`dpi=300`).
