@@ -1,0 +1,25 @@
+{
+  "hidden_size": 128,
+  "num_layers": 3,
+  "dropout": 0.2,
+  "num_classes": 4,
+  "fixed_theta_1": 0.3,
+  "fixed_theta_2": 0.6,
+  "dynamic_base_theta_1": 0.3,
+  "dynamic_base_theta_2": 0.6,
+  "dynamic_high_variance": 0.22,
+  "dynamic_mid_variance": 0.12,
+  "dynamic_min_threshold": 0.22,
+  "dynamic_recent_steps": 5,
+  "dynamic_spike_threshold": 0.25,
+  "dynamic_rule": "lightweight — abs(current_occupancy - previous_occupancy)",
+  "best_val_accuracy": 0.947,
+  "test_accuracy_fixed": 0.957,
+  "test_accuracy_dynamic": 0.963,
+  "_note": "Stage 3 튜닝 완료 후 용상이 최종값으로 업데이트할 것. 현재는 early_exit_stage2_comparison_report.txt 기준값.",
+  "checkpoints": {
+    "best":    "early_exit_lstm_best.pth",
+    "fixed":   "early_exit_fixed.pth",
+    "dynamic": "early_exit_dynamic.pth"
+  }
+}
