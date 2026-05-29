@@ -75,7 +75,14 @@ def save_text_summary(summary_results, save_path):
         lines.append(result["Method"])
         lines.append(f"  Accuracy: {result['Accuracy(%)']:.1f}%")
         lines.append(f"  Avg Inference: {result['Avg_Inference(ms)']:.4f}ms")
-        lines.append(f"  Unnecessary Switches: {result['Unnecessary_Switches']}")
+        lines.append(
+            f"  False Congestion: {result['False_Congestion_Count']} "
+            f"({result['False_Congestion_Rate(%)']:.1f}%)"
+        )
+        lines.append(
+            f"  Unnecessary Switches: {result['Unnecessary_Switches']} "
+            f"({result['Unnecessary_Switch_Rate(%)']:.1f}%)"
+        )
         lines.append("  Label Accuracy:")
         for label in range(4):
             lines.append(f"    Label {label}: {result[f'Acc_Label_{label}(%)']:.1f}%")
@@ -213,6 +220,11 @@ def main():
         avg_time = np.mean(inference_times)
         
         label_accs = calculate_label_accuracies(y_true, y_pred)
+        normal_mask = (y_true == 0)
+        normal_total = max(int(np.sum(normal_mask)), 1)
+        false_congestion_count = int(np.sum(normal_mask & (y_pred != 0)))
+        false_congestion_rate = (false_congestion_count / normal_total) * 100
+        unnecessary_switch_rate = (unnecessary_switches / normal_total) * 100
         
         total = max(len(all_preds), 1)
         e1, e2, e3 = (exit_counts[1]/total)*100, (exit_counts[2]/total)*100, (exit_counts[3]/total)*100
@@ -234,7 +246,10 @@ def main():
             "Method": m["name"], 
             "Accuracy(%)": round(acc, 1), 
             "Avg_Inference(ms)": round(avg_time, 4), 
-            "Unnecessary_Switches": unnecessary_switches
+            "False_Congestion_Count": false_congestion_count,
+            "False_Congestion_Rate(%)": round(false_congestion_rate, 1),
+            "Unnecessary_Switches": unnecessary_switches,
+            "Unnecessary_Switch_Rate(%)": round(unnecessary_switch_rate, 1),
         }
         if m["id"] in [3, 4]:
             res_dict.update({"Exit1(%)": round(e1, 1), "Exit2(%)": round(e2, 1), "Exit3(%)": round(e3, 1)})

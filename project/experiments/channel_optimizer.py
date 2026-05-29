@@ -29,11 +29,24 @@ def optimize_channel(predicted_label, current_channel, available_channels, metri
         current_time = time.time()
         
     # [Policy Parameters]
-    HYSTERESIS_SEC = 300     # 최소 유지 시간 (5분 내 잦은 전환 방지)
+    HYSTERESIS_SEC = 30      # 비교 실험용 최소 유지 시간 (잦은 전환 방지)
     SWITCH_COST_DB = 10      # 채널 전환에 따른 트래픽 단절 패널티 (10dB 수준)
+    LABEL_PENALTY = {
+        0: 0,    # 정상: 현재 채널 유지
+        1: 0,    # 경고: 모니터링만 수행
+        2: 15,   # 혼잡: 현재 채널 품질 점수에 패널티 부여
+        3: 30,   # 심각 혼잡: 강한 패널티로 긴급 전환 유도
+    }
     
     # 1. Hysteresis Check (핑퐁 현상 방지)
-    time_since_switch = current_time - _rrm_state['last_switch_time']
+    # 첫 평가 시점에는 아직 실제 전환이 발생한 적이 없으므로,
+    # 초기 last_switch_time=0 때문에 전환 검토가 막히지 않도록 한다.
+    if _rrm_state.get('current_channel') is None:
+        _rrm_state['current_channel'] = current_channel
+        _rrm_state['last_switch_time'] = current_time - HYSTERESIS_SEC
+        time_since_switch = HYSTERESIS_SEC
+    else:
+        time_since_switch = current_time - _rrm_state['last_switch_time']
     if predicted_label < 3 and time_since_switch < HYSTERESIS_SEC:
         return current_channel, 'keep'
 
@@ -50,6 +63,8 @@ def optimize_channel(predicted_label, current_channel, available_channels, metri
         utilization_penalty = m.get('utilization', 0.5) * 50
         
         score = snr - utilization_penalty
+        if ch == current_channel:
+            score -= LABEL_PENALTY.get(predicted_label, 0)
         
         # Switch Cost 반영: 현재 채널이 아니면 전환 패널티 부여
         if ch != current_channel:

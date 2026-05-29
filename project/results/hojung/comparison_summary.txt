@@ -2,8 +2,9 @@
 
 Baseline 1 (Threshold)
   Accuracy: 42.2%
-  Avg Inference: 0.0031ms
-  Unnecessary Switches: 0
+  Avg Inference: 0.0039ms
+  False Congestion: 8 (14.3%)
+  Unnecessary Switches: 1 (1.8%)
   Label Accuracy:
     Label 0: 85.7%
     Label 1: 29.0%
@@ -12,8 +13,9 @@ Baseline 1 (Threshold)
 
 Baseline 2 (LSTM Full)
   Accuracy: 94.9%
-  Avg Inference: 0.4816ms
-  Unnecessary Switches: 0
+  Avg Inference: 0.5527ms
+  False Congestion: 5 (8.9%)
+  Unnecessary Switches: 0 (0.0%)
   Label Accuracy:
     Label 0: 91.1%
     Label 1: 96.9%
@@ -22,8 +24,9 @@ Baseline 2 (LSTM Full)
 
 Baseline 3 (Early Exit Fixed theta)
   Accuracy: 95.7%
-  Avg Inference: 0.3903ms
-  Unnecessary Switches: 0
+  Avg Inference: 0.4348ms
+  False Congestion: 1 (1.8%)
+  Unnecessary Switches: 0 (0.0%)
   Label Accuracy:
     Label 0: 98.2%
     Label 1: 97.5%
@@ -36,8 +39,9 @@ Baseline 3 (Early Exit Fixed theta)
 
 Baseline 4 (Early Exit Dynamic theta)
   Accuracy: 96.3%
-  Avg Inference: 0.4053ms
-  Unnecessary Switches: 0
+  Avg Inference: 0.4360ms
+  False Congestion: 2 (3.6%)
+  Unnecessary Switches: 0 (0.0%)
   Label Accuracy:
     Label 0: 96.4%
     Label 1: 97.5%
@@ -50,9 +54,9 @@ Baseline 4 (Early Exit Dynamic theta)
 
 Early Exit Fixed vs Dynamic
   Accuracy Change: 0.6%p
-  Avg Inference Change: 0.0150ms
+  Avg Inference Change: 0.0012ms
   Exit 3 Rate Change: -2.9%p
 
 LSTM Full vs Early Exit Dynamic
   Accuracy Change: 1.4%p
-  Avg Inference Change: -0.0763ms
+  Avg Inference Change: -0.1167ms

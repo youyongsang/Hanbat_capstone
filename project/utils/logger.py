@@ -18,6 +18,7 @@ SUMMARY_COLUMNS = [
     "exit1_rate",
     "exit2_rate",
     "exit3_rate",
+    "false_congestion_rate",
     "unnecessary_switch_rate",
 ]
 
@@ -28,6 +29,7 @@ def save_results(
     inference_time: float,
     exit_rates: Optional[Dict[int, float]],
     save_path: Union[str, Path],
+    false_congestion_rate: float = 0.0,
     unnecessary_switch_rate: float = 0.0,
 ) -> None:
     """실험 결과 한 행을 comparison_summary.csv에 저장(추가).
@@ -42,7 +44,8 @@ def save_results(
         exit_rates: {exit_point: rate} dict (키 1, 2, 3) — Early Exit 모델만 해당.
                     Early Exit 없는 모델은 None 또는 {} 전달.
         save_path: 저장할 CSV 파일 경로.
-        unnecessary_switch_rate: 정상 구간(label=0)에서 채널 전환이 발생한 비율 (0 ~ 1).
+        false_congestion_rate: 정상 구간(label=0)을 혼잡(label 1~3)으로 오판한 비율 (0 ~ 1).
+        unnecessary_switch_rate: 정상 구간(label=0)에서 실제 채널 전환이 발생한 비율 (0 ~ 1).
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -57,6 +60,7 @@ def save_results(
         "exit1_rate": round(float(exit_rates[1]), 4) if 1 in exit_rates else "",
         "exit2_rate": round(float(exit_rates[2]), 4) if 2 in exit_rates else "",
         "exit3_rate": round(float(exit_rates[3]), 4) if 3 in exit_rates else "",
+        "false_congestion_rate": round(float(false_congestion_rate), 4),
         "unnecessary_switch_rate": round(float(unnecessary_switch_rate), 4),
     }
 
@@ -86,7 +90,7 @@ def print_summary(save_path: Union[str, Path]) -> None:
         print(f"[비어 있음] {save_path}")
         return
 
-    header = f"{'모델':<40} {'정확도':>8} {'지연(ms)':>10} {'Exit1':>7} {'Exit2':>7} {'Exit3':>7} {'불필요전환':>10}"
+    header = f"{'모델':<40} {'정확도':>8} {'지연(ms)':>10} {'Exit1':>7} {'Exit2':>7} {'Exit3':>7} {'혼잡오판':>10} {'불필요전환':>10}"
     print(header)
     print("-" * len(header))
     for r in rows:
@@ -97,5 +101,6 @@ def print_summary(save_path: Union[str, Path]) -> None:
             f"{r['exit1_rate']:>7} "
             f"{r['exit2_rate']:>7} "
             f"{r['exit3_rate']:>7} "
+            f"{r.get('false_congestion_rate', ''):>10} "
             f"{r['unnecessary_switch_rate']:>10}"
         )
