@@ -23,12 +23,12 @@ Stage 3에서 검증된 Early Exit 알고리즘 모델을 자원 제약적인 �
 | 모델명 (model) | 원본 용량 (original_size_mb) | 양자화 용량 (quantized_size_mb) | 원본 정확도 (original_accuracy) | 양자화 정확도 (quantized_accuracy) | 원본 추론 (original_inference_ms) | 양자화 추론 (quantized_inference_ms) | ONNX 가속화 추론 (최종) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **baseline_lstm** | 1.2768 MB | **0.3338 MB** | 95.44% | 95.16% | 0.6937 ms | 1.5637 ms | - |
-| **early_exit_fixed** | 1.2819 MB | **0.3375 MB** | 95.16% | **95.44%** | 0.5014 ms | 1.1886 ms | **0.2000 ms** |
+| **early_exit_fixed** | 1.2819 MB | **0.3375 MB** | 95.16% | **95.44%** | 0.5014 ms | 1.1886 ms | **0.3220 ms** |
 
 > 성능 지표 비하인드 분석  
 PyTorch 내장 CPU 환경에서 단순 INT8 변환 시 연산 오버헤드로 인해 `quantized_inference_ms`가 일시적으로 증가하는 현상이 발생함.  
 이를 보완하기 위해 Stage 4 최종 단계에서 **ONNX 가속 런타임 엔진 변환을 연계 전개**하였으며,  
-그 결과 최종 추론 속도를 **0.2000 ms**까지 단축하며 경량화와 고속화를 동시에 달성함.
+그 결과 최종 추론 속도를 **0.3220 ms**까지 단축하며 경량화와 고속화를 동시에 달성함.
 
 ---
 
@@ -58,14 +58,7 @@ ARM 기반 구버전 환경에서의 크래시를 방지하기 위해
 ```
 python project/scripts/test_onnx_inference.py
 ```
-출력 로그 결과: exit1, exit2, exit3 결과 차원이 전부 (2, 4) 규격으로 바인딩 됨을 확인.
-
-```
-exit1: shape=(2, 4), dtype=float32
-exit2: shape=(2, 4), dtype=float32
-exit3: shape=(2, 4), dtype=float32
-ONNX inference smoke test passed: project\checkpoints\early_exit_fixed.onnx
-```
+출력 로그 결과: exit1, exit2, exit3 결과 차원이 전부 (2, 4) 규격으로 타 터지지 않고 완벽하게 바인딩 됨을 확인.
 
 ### 3) 3단계: 라즈베리파이 실전 배포용 런타임 조기 종료 제어 시뮬레이션
 모델 내부 제어문 분기 오버헤드를 피하기 위해 "Multi-head Confidence Filtering(의사 조기 종료)" 기법을 탑재하고, 85% 확률 임계값에 따라 최종 예측값을 안전하게 추출 및 저장하는 실전 배포 스크립트를 검증한다.
@@ -74,7 +67,7 @@ ONNX inference smoke test passed: project\checkpoints\early_exit_fixed.onnx
 python project/scripts/inference_pi.py
 
 ```
-출력 로그 결과: 100회 스트리밍 추론 결과 런타임 전체 inference + decision pipeline latency 0.200 ms 달성 및 Exit 1번 초고속 조기 탈출 성공 비율 79회(79%) 통계치 확보 완료.
+출력 로그 결과: 100회 스트리밍 추론 결과 런타임 전체 inference + decision pipeline latency 0.322 ms 달성 및 Exit 1번 초고속 조기 탈출 성공 비율 79회(79%) 통계치 확보 완료.
 
 ## 4. 최종 전달 및 배포 준비 파일 상태
 
@@ -91,9 +84,3 @@ project/scripts/inference_pi.py
 ```
 
 상태: 데이터 타입 안정성(np.float32) 확보 및 확률 임계값 기반 런타임 조기 종료 제어 파이프라인 구현 완료.
-
-```
-project/scripts/test_onnx_inference.py
-```
-
-상태: ONNX Runtime 가변 배치 입력 및 exit1/exit2/exit3 출력 shape 검증 스크립트 구현 완료.
