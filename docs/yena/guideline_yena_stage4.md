@@ -2,7 +2,7 @@
 
 ## 작업 목표
 
-3단계 실험 결과(김호중·유용상)를 취합하여 최종 시각화 그래프 5종을 생성하고,  
+3단계 실험 결과(김호중·유용상)를 취합하여 최종 시각화 그래프 4종을 생성하고,  
 발표 및 보고서에 바로 사용할 수 있는 형태로 정리했다.
 
 ---
@@ -24,12 +24,11 @@
 
 | 파일명 | 설명 | 저장 위치 |
 |---|---|---|
-| `accuracy_comparison.png` | 4개 방식 전체 정확도 막대그래프 | `project/results/yena/` |
-| `accuracy_vs_latency.png` | 정확도 vs 추론시간 산점도 | `project/results/yena/` |
+| `accuracy_latency_combined.png` | 정확도(막대) + 추론시간(꺾은선) 통합 이중 축 그래프 | `project/results/yena/` |
 | `exit_rate_comparison.png` | Exit 1/2/3 종료율 비교 (③ vs ④) | `project/results/yena/` |
 | `scenario_accuracy.png` | 4개 시나리오별 정확도 선그래프 | `project/results/yena/` |
 | `quantization_comparison.png` | INT8 / ONNX 경량화 전후 3종 비교 | `project/results/yena/` |
-| `visualize_results.py` | 위 5개 그래프를 생성하는 Colab용 스크립트 | `project/scripts/` |
+| `visualize_results.py` | 위 4개 그래프를 생성하는 Colab용 스크립트 | `project/scripts/` |
 
 > 모든 그래프는 **dpi=300** 고해상도로 저장하여 발표 슬라이드에 바로 삽입 가능.
 
@@ -39,7 +38,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `project/scripts/visualize_results.py` | 그래프 5종 생성 스크립트 (Colab 실행용) |
+| `project/scripts/visualize_results.py` | 그래프 4종 생성 스크립트 (Colab 실행용) |
 
 ---
 
@@ -56,57 +55,33 @@ exec(open("visualize_results.py").read())
 # 또는 스크립트 내용 전체를 셀에 붙여넣어 실행
 ```
 
-실행 결과 `results/` 폴더에 png 5개가 자동 저장된다.
+실행 결과 `results/` 폴더에 png 4개가 자동 저장된다.
 
 ---
 
 ## 그래프별 설명 및 사용 데이터
 
-### 그래프 1 — 정확도 비교 (`accuracy_comparison.png`)
+### 그래프 1 — 정확도 + 추론시간 통합 (`accuracy_latency_combined.png`)
 
-4개 방식의 전체 분류 정확도를 막대그래프로 비교한다.
-
-| 방식 | 정확도 |
-|---|---:|
-| ① Threshold | 42.2% |
-| ② LSTM Full | 95.4% |
-| ③ EE Fixed θ | 95.2% |
-| ④ EE Dynamic θ (제안) | **95.7%** |
-
-- ④ 제안 모델이 4개 방식 중 가장 높은 정확도를 기록
-- ② LSTM Full 기준선(점선)을 함께 표시하여 LSTM 계열 간 차이를 직관적으로 표현
-
----
-
-### 그래프 2 — 정확도 vs 추론시간 산점도 (`accuracy_vs_latency.png`)
-
-정확도(Y축)와 평균 추론 시간(X축)을 동시에 비교하는 산점도.  
-**왼쪽 위**가 이상적(빠르고 정확).
+기존 정확도 막대그래프(그래프 1)와 산점도(그래프 2)를 하나로 통합했다.  
+왼쪽 y축에 **정확도(막대그래프)**, 오른쪽 y축에 **추론시간(꺾은선그래프)**을 이중 축으로 표현한다.
 
 | 방식 | 정확도 | 추론시간 |
 |---|---:|---:|
 | ① Threshold | 42.2% | 0.011ms |
 | ② LSTM Full | 95.4% | 0.779ms |
 | ③ EE Fixed θ | 95.2% | 0.563ms |
-| ④ EE Dynamic θ | 95.7% | 0.582ms |
+| ④ EE Dynamic θ (제안) | **95.7%** | 0.582ms |
 
-#### 레이블 겹침 수정 이력
+- 막대: 각 방식별 고유 색상, ④ 제안 모델 테두리 강조
+- 꺾은선: 주황색 다이아몬드 마커, 각 점 옆에 ms 수치 표시
+- ② LSTM Full 기준선(파란 점선) 표시
 
-②③④ 세 점이 x=0.56~0.78ms 범위에 몰려 단순 offset 방식으로는 레이블이 겹치는 문제가 있었다.  
-아래 3군데를 수정했다.
-
-| 문제 위치 | 원인 | 해결 방법 |
-|---|---|---|
-| ① Threshold 박스↔점 | 텍스트가 점과 거의 같은 좌표 | `ty=37.0`으로 점 아래로 충분히 내림 |
-| ③④ 박스끼리 겹침 | y 간격이 4.6밖에 안 됨 | ③ `ty=101.5`(위) / ④ `ty=88.5`(아래)로 13 간격 확보 |
-| Ideal 텍스트↔④ 박스 | 텍스트·화살표를 같은 `annotate`로 처리 | 화살표와 텍스트를 완전 분리하여 좌상단 구석에 배치 |
-
-수정 후 모든 레이블은 절대 좌표 + 곡선 화살표(`arc3,rad=0.15`)로 해당 점과 연결된다.  
-코드 수정 위치: `plot_accuracy_vs_latency()` 함수 전체.
+![accuracy_latency_combined](../../project/results/yena/accuracy_latency_combined.png)
 
 ---
 
-### 그래프 3 — Exit 종료율 비교 (`exit_rate_comparison.png`)
+### 그래프 2 — Exit 종료율 비교 (`exit_rate_comparison.png`)
 
 고정 θ(③)와 동적 θ(④)의 Exit 1/2/3 종료율을 나란히 비교한다.
 
@@ -119,9 +94,11 @@ exec(open("visualize_results.py").read())
 동적 θ는 Exit 3(가장 깊은 추론) 비율을 7.1% → 3.7%로 줄여  
 안정 구간에서 연산량을 효과적으로 절감했다.
 
+![exit_rate_comparison](../../project/results/yena/exit_rate_comparison.png)
+
 ---
 
-### 그래프 4 — 시나리오별 정확도 (`scenario_accuracy.png`)
+### 그래프 3 — 시나리오별 정확도 (`scenario_accuracy.png`)
 
 4개 공장 시나리오별로 ②③④ 방식의 정확도를 선그래프로 비교한다.
 
@@ -138,9 +115,11 @@ exec(open("visualize_results.py").read())
 > 데이터 출처: `docs/yongsang/stage3_work_log.md` — 시나리오별 정확도 표  
 > `comparison_summary.csv`에 시나리오별 컬럼이 없어 코드 내 `scenario_data` 딕셔너리에 직접 내장.
 
+![scenario_accuracy](../../project/results/yena/scenario_accuracy.png)
+
 ---
 
-### 그래프 5 — 경량화 비교 (`quantization_comparison.png`)
+### 그래프 4 — 경량화 비교 (`quantization_comparison.png`)
 
 INT8 Quantization 및 ONNX Runtime 변환 전후를 모델 크기·정확도·추론 시간  
 3가지 축으로 비교한다.
@@ -156,6 +135,8 @@ INT8 Quantization 및 ONNX Runtime 변환 전후를 모델 크기·정확도·�
 
 > **주의:** PyTorch INT8 추론 시간(`quantized_inference_ms`)은 Python 오버헤드로  
 > 원본보다 느리게 측정될 수 있다. 실제 배포 속도는 ONNX Runtime 수치를 기준으로 해석할 것.
+
+![quantization_comparison](../../project/results/yena/quantization_comparison.png)
 
 ---
 
@@ -194,11 +175,7 @@ Exit 1 종료율 향상으로 절약한 시간을 상쇄하기 때문이다.
 
 - [x] 김호중 `comparison_summary.csv` 수치 확인 완료
 - [x] 김호중 `quantization_comparison.csv` 수치 확인 완료
-- [x] 정확도 비교 막대그래프 생성 완료 (`accuracy_comparison.png`)
-- [x] 정확도 vs 추론시간 산점도 생성 완료 (`accuracy_vs_latency.png`)
-  - [x] ① Threshold 레이블↔점 겹침 수정
-  - [x] ③④ 박스끼리 겹침 수정
-  - [x] Ideal 텍스트↔④ 박스 겹침 수정
+- [x] 정확도 + 추론시간 통합 그래프 생성 완료 (`accuracy_latency_combined.png`)
 - [x] Exit 종료율 비교 그래프 생성 완료 (`exit_rate_comparison.png`)
 - [x] 시나리오별 정확도 선그래프 생성 완료 (`scenario_accuracy.png`)
 - [x] 경량화 비교 그래프 생성 완료 (`quantization_comparison.png`)
@@ -215,5 +192,3 @@ Exit 1 종료율 향상으로 절약한 시간을 상쇄하기 때문이다.
   로컬 실행 시 상단에 `matplotlib.use('Agg')` 추가 필요.
 - 시나리오별 정확도 수치는 `visualize_results.py` 내 `scenario_data` 딕셔너리에 하드코딩되어 있음.  
   실험 결과가 바뀌면 해당 딕셔너리를 직접 수정할 것.
-- `accuracy_vs_latency.png` 레이블 위치는 현재 CSV 수치 기준으로 조정됨.  
-  추론 시간 값이 크게 바뀌면 `label_cfg` 좌표를 재조정해야 할 수 있음.

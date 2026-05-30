@@ -1,8 +1,23 @@
+"""
+그래프 목록:
+  1. accuracy_latency_combined.png  — 정확도(막대) + 추론시간(꺾은선) 통합
+  2. exit_rate_comparison.png       — Exit 종료율 비교 (③ vs ④)
+  3. scenario_accuracy.png          — 시나리오별 정확도 선그래프
+  4. quantization_comparison.png    — 경량화(INT8 / ONNX) 전후 비교
+"""
 
 import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+MPL_CONFIG_DIR = ROOT_DIR / "project" / "results" / "yena" / ".matplotlib"
+MPL_CONFIG_DIR.mkdir(exist_ok=True)
+os.environ.setdefault("MPLCONFIGDIR", str(MPL_CONFIG_DIR))
+
 import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
@@ -10,10 +25,10 @@ matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 matplotlib.rcParams['axes.unicode_minus'] = False
 
 # ── 경로 설정 ──────────────────────────────────────
-COMPARISON_CSV   = "comparison_summary.csv"
-QUANTIZATION_CSV = "quantization_comparison.csv"
-OUTPUT_DIR       = "results"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+COMPARISON_CSV = ROOT_DIR / "project" / "results" / "hojung" / "comparison_summary.csv"
+QUANTIZATION_CSV = ROOT_DIR / "project" / "results" / "quantization_comparison.csv"
+OUTPUT_DIR = ROOT_DIR / "project" / "results" / "yena"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 DPI = 300
 
 # ── 컬러 팔레트 ────────────────────────────────────
@@ -40,93 +55,77 @@ latency = comp_df["Avg_Inference(ms)"].tolist()
 
 
 # ──────────────────────────────────────────────────
-# 그래프 1 — 4개 방식 정확도 비교 막대그래프
+# 그래프 1 — 정확도(막대) + 추론시간(꺾은선) 통합 이중 축
 # ──────────────────────────────────────────────────
-def plot_accuracy_comparison():
-    fig, ax = plt.subplots(figsize=(9, 6))
-    x    = np.arange(len(METHOD_LABELS))
-    bars = ax.bar(x, acc, color=color_list, width=0.55,
-                  edgecolor="white", linewidth=1.2, zorder=3)
+def plot_accuracy_latency_combined():
+    fig, ax1 = plt.subplots(figsize=(11, 7))
+    ax2 = ax1.twinx()   # 오른쪽 y축 (추론시간)
+
+    x     = np.arange(len(METHOD_LABELS))
+    width = 0.50
+
+    # ── 막대그래프: 정확도 (왼쪽 y축) ──
+    bars = ax1.bar(x, acc, width=width, color=color_list,
+                   edgecolor="white", linewidth=1.2, zorder=3, alpha=0.88)
+    # 제안 모델(④) 테두리 강조
+    bars[3].set_edgecolor("#6C3483"); bars[3].set_linewidth(2.5); bars[3].set_alpha(1.0)
+    # 막대 위 정확도 수치
     for bar, val in zip(bars, acc):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.6,
-                f"{val:.1f}%", ha="center", va="bottom", fontsize=12, fontweight="bold")
-    ax.set_xticks(x); ax.set_xticklabels(METHOD_LABELS, fontsize=11)
-    ax.set_ylabel("Accuracy (%)", fontsize=12)
-    ax.set_ylim(0, 108)
-    ax.set_title("Classification Accuracy Comparison\n(4 Methods)",
-                 fontsize=14, fontweight="bold", pad=14)
-    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
-    ax.set_axisbelow(True)
-    ax.spines[["top", "right"]].set_visible(False)
-    bars[3].set_edgecolor("#6C3483"); bars[3].set_linewidth(2.5)
-    ax.axhline(acc[1], color=COLORS["lstm_full"], linestyle="--",
-               linewidth=1.2, alpha=0.7, label=f"LSTM Full baseline ({acc[1]:.1f}%)")
-    ax.legend(fontsize=10, loc="lower right")
+        ax1.text(bar.get_x() + bar.get_width() / 2,
+                 bar.get_height() + 0.6,
+                 f"{val:.1f}%", ha="center", va="bottom",
+                 fontsize=12, fontweight="bold")
+    # LSTM Full 기준선
+    ax1.axhline(acc[1], color=COLORS["lstm_full"], linestyle="--",
+                linewidth=1.2, alpha=0.6, zorder=2)
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(METHOD_LABELS, fontsize=11)
+    ax1.set_ylabel("Accuracy (%)", fontsize=13, color="#2C3E50")
+    ax1.set_ylim(0, 115)
+    ax1.tick_params(axis="y", labelcolor="#2C3E50")
+    ax1.yaxis.grid(True, linestyle="--", alpha=0.4, zorder=0)
+    ax1.set_axisbelow(True)
+    ax1.spines[["top"]].set_visible(False)
+
+    # ── 꺾은선그래프: 추론시간 (오른쪽 y축) ──
+    ax2.plot(x, latency, color="#E67E22", linewidth=2.2,
+             marker="D", markersize=9, zorder=6,
+             markerfacecolor="white", markeredgewidth=2.2,
+             markeredgecolor="#E67E22", label="Avg Inference Time")
+    # 꺾은선 수치 레이블
+    for xi, val in zip(x, latency):
+        offset = 0.035 if xi != 0 else -0.06   # ① Threshold는 값이 작아서 위로
+        va_dir = "bottom" if xi != 0 else "top"
+        ax2.text(xi + 0.12, val + offset,
+                 f"{val:.3f} ms", ha="left", va=va_dir,
+                 fontsize=10, color="#E67E22", fontweight="bold")
+    # ① Threshold(0.011ms)가 너무 아래쪽이면 y축 여유 확보
+    ax2.set_ylabel("Avg Inference Time (ms)", fontsize=13, color="#E67E22")
+    y2_max = max(latency) * 1.45
+    ax2.set_ylim(-0.05, y2_max)
+    ax2.tick_params(axis="y", labelcolor="#E67E22")
+    ax2.spines[["top"]].set_visible(False)
+
+    # ── 범례 통합 ──
+    bar_handles  = [mpatches.Patch(color=c, label=l, alpha=0.88)
+                    for c, l in zip(color_list, [
+                        "① Threshold", "② LSTM Full",
+                        "③ EE Fixed θ", "④ EE Dynamic θ (Proposed)"])]
+    line_handle  = plt.Line2D([0], [0], color="#E67E22", linewidth=2,
+                               marker="D", markersize=8,
+                               markerfacecolor="white", markeredgecolor="#E67E22",
+                               label="Avg Inference Time (ms)")
+    ax1.legend(handles=bar_handles + [line_handle],
+               fontsize=9.5, loc="upper left",
+               framealpha=0.9, edgecolor="#CCCCCC")
+
+    ax1.set_title("Accuracy & Inference Time Comparison\n(Bar: Accuracy / Line: Inference Time)",
+                  fontsize=14, fontweight="bold", pad=16)
+
     plt.tight_layout()
-    out = os.path.join(OUTPUT_DIR, "accuracy_comparison.png")
-    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.show()
-    print(f"[저장] {out}")
-
-
-# ──────────────────────────────────────────────────
-# 그래프 2 — 정확도 vs 추론시간 산점도  ★수정★
-#   ②③④ 세 점이 0.56~0.78ms에 몰려 있어
-#   텍스트를 절대 좌표로 분산 배치 + 화살표 연결
-# ──────────────────────────────────────────────────
-def plot_accuracy_vs_latency():
-    # ★ 레이블 겹침 수정: 절대 좌표 분산 배치 + 화살표 연결
-    #   ②③④ 세 점이 x=0.56~0.78ms에 몰려 있어 충분히 벌림
-    fig, ax = plt.subplots(figsize=(12, 8))
-
-    for i, (x_val, y_val, color) in enumerate(zip(latency, acc, color_list)):
-        ax.scatter(x_val, y_val, c=color, s=320 if i==3 else 180,
-                   marker="*" if i==3 else "o",
-                   zorder=5, edgecolors="white", linewidths=1.5)
-
-    label_cfg = [
-        # (label,                           tx,    ty  )
-        ("① Threshold",                    -0.04, 37.0),   # 점 아래
-        ("② LSTM Full",                     0.87, 97.0),   # 오른쪽 단독
-        ("③ EE Fixed θ",                   0.30, 101.5),  # 왼쪽 위
-        ("④ EE Dynamic θ\n(Proposed)",     0.30, 88.5 ),  # 왼쪽 아래
-    ]
-    for i, ((label, tx, ty), x_val, y_val, color) in enumerate(
-        zip(label_cfg, latency, acc, color_list)
-    ):
-        ax.annotate(
-            label, xy=(x_val, y_val), xytext=(tx, ty),
-            fontsize=10, ha="left", va="center",
-            arrowprops=dict(arrowstyle="-", color="gray", lw=0.9,
-                            connectionstyle="arc3,rad=0.15"),
-            bbox=dict(boxstyle="round,pad=0.3", fc="white",
-                      ec=color, lw=1.3, alpha=0.95),
-            zorder=6,
-        )
-
-    # Ideal 화살표와 텍스트 완전 분리 (좌상단 구석)
-    ax.annotate("", xy=(0.02, 103.0), xytext=(0.14, 97.0),
-                arrowprops=dict(arrowstyle="->", color="#999999", lw=1.4), zorder=4)
-    ax.text(0.15, 97.5, "← Ideal\n   (Fast & Accurate)",
-            fontsize=9, color="#888888", style="italic", va="bottom", ha="left")
-
-    ax.set_xlabel("Avg Inference Time (ms)", fontsize=12)
-    ax.set_ylabel("Accuracy (%)", fontsize=12)
-    ax.set_title("Accuracy vs. Inference Latency\n(left-upper = better)",
-                 fontsize=14, fontweight="bold", pad=14)
-    ax.set_xlim(-0.09, max(latency) * 1.38)
-    ax.set_ylim(31, 107)
-    ax.yaxis.grid(True, linestyle="--", alpha=0.4)
-    ax.xaxis.grid(True, linestyle="--", alpha=0.4)
-    ax.spines[["top", "right"]].set_visible(False)
-
-    handles = [mpatches.Patch(color=c, label=l)
-               for c, l in zip(color_list,
-                               ["① Threshold", "② LSTM Full",
-                                "③ EE Fixed θ", "④ EE Dynamic θ (Proposed)"])]
-    ax.legend(handles=handles, fontsize=9, loc="lower right")
-    plt.tight_layout()
-    out = os.path.join(OUTPUT_DIR, "accuracy_vs_latency.png")
-    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.show()
+    out = OUTPUT_DIR / "accuracy_latency_combined.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.close(fig)
     print(f"[저장] {out}")
 
 
@@ -175,8 +174,8 @@ def plot_exit_rate_comparison():
     fig.legend(handles=legend_handles, loc="lower center",
                ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.04))
     plt.tight_layout()
-    out = os.path.join(OUTPUT_DIR, "exit_rate_comparison.png")
-    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.show()
+    out = OUTPUT_DIR / "exit_rate_comparison.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.close(fig)
     print(f"[저장] {out}")
 
 
@@ -214,8 +213,8 @@ def plot_scenario_accuracy():
     ax.spines[["top", "right"]].set_visible(False)
     ax.legend(fontsize=10, loc="lower left")
     plt.tight_layout()
-    out = os.path.join(OUTPUT_DIR, "scenario_accuracy.png")
-    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.show()
+    out = OUTPUT_DIR / "scenario_accuracy.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.close(fig)
     print(f"[저장] {out}")
 
 
@@ -304,8 +303,8 @@ def plot_quantization_comparison():
     ax.legend(fontsize=9)
 
     plt.tight_layout()
-    out = os.path.join(OUTPUT_DIR, "quantization_comparison.png")
-    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.show()
+    out = OUTPUT_DIR / "quantization_comparison.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight"); plt.close(fig)
     print(f"[저장] {out}")
 
 
@@ -314,16 +313,14 @@ def plot_quantization_comparison():
 # ──────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 55)
-    print("캡스톤디자인 Stage 4 — 결과 시각화")
+    print("캡스톤디자인 Stage 4 - 결과 시각화")
     print("=" * 55)
-    print("\n[1/5] 정확도 비교 막대그래프...")
-    plot_accuracy_comparison()
-    print("\n[2/5] 정확도 vs 추론시간 산점도...")
-    plot_accuracy_vs_latency()
-    print("\n[3/5] Exit 종료율 비교...")
+    print("\n[1/4] 정확도 + 추론시간 통합 그래프...")
+    plot_accuracy_latency_combined()
+    print("\n[2/4] Exit 종료율 비교...")
     plot_exit_rate_comparison()
-    print("\n[4/5] 시나리오별 정확도...")
+    print("\n[3/4] 시나리오별 정확도...")
     plot_scenario_accuracy()
-    print("\n[5/5] 경량화 비교...")
+    print("\n[4/4] 경량화 비교...")
     plot_quantization_comparison()
-    print(f"\n완료! 저장 위치: {os.path.abspath(OUTPUT_DIR)}/")
+    print(f"\n완료! 저장 위치: {OUTPUT_DIR.resolve()}")

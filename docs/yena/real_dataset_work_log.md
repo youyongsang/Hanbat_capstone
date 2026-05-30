@@ -128,7 +128,22 @@ URL: https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset
 
 ## 변환 실행 방법
 
-원본 파일을 `project/data/external/`에 저장한 뒤 아래 명령 한 줄로 실행한다.
+원본 파일을 `project/data/external/`에 저장한 뒤 실행한다.  
+`--input` 옵션 뒤에는 반드시 실제 CSV 파일 경로가 와야 한다.
+
+먼저 파일명을 확인한다.
+
+```powershell
+dir project\data\external
+```
+
+Windows PowerShell에서는 아래처럼 한 줄로 실행한다.
+
+```powershell
+python project\scripts\generate_from_real_dataset.py --dataset kaggle_6g --input project\data\external\6G_network_slicing_qos_dataset_2345.csv --out-dir project\data\real --overwrite-real
+```
+
+macOS/Linux 또는 Git Bash에서는 아래처럼 줄바꿈해서 실행할 수 있다.
 
 ```bash
 python project/scripts/generate_from_real_dataset.py \
@@ -137,6 +152,12 @@ python project/scripts/generate_from_real_dataset.py \
     --out-dir project/data/real \
     --overwrite-real
 ```
+
+주의 사항:
+
+- `--input`만 입력하고 파일 경로를 생략하면 `argument --input/-i: expected one argument` 에러가 발생한다.
+- 원본 CSV 파일명이 다르면 `--input` 뒤의 파일명도 실제 파일명으로 바꿔야 한다.
+- 원본 CSV는 `.gitignore` 대상이므로 GitHub에는 올라가지 않을 수 있다. 다른 컴퓨터에서 처음 실행할 때는 원본 CSV를 직접 `project/data/external/`에 넣어야 한다.
 
 실행하면 `[1/7]` ~ `[7/7]` 순서로 진행 상황이 출력되고,  
 `project/data/real/` 에 6개 파일이 자동 생성된다.

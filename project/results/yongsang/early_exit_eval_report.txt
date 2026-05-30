@@ -21,7 +21,7 @@ Exit별 성능:
   Exit 2 | Accuracy: 98.8% | Exit Rate: 71.8% | Avg Time: 4.0ms
   Exit 3 | Accuracy: 55.6% | Exit Rate: 7.7% | Avg Time: 8.0ms
 Overall Avg Inference Time: 3.897ms
-Measured Wall Time: 0.769ms
+Measured Wall Time: 0.606ms
 Label별 정확도:
   Label 0 (정상): 98.2%
   Label 1 (혼잡 경고): 97.5%
@@ -40,7 +40,7 @@ Exit별 성능:
   Exit 2 | Accuracy: 97.1% | Exit Rate: 69.5% | Avg Time: 4.0ms
   Exit 3 | Accuracy: 64.7% | Exit Rate: 4.8% | Avg Time: 8.0ms
 Overall Avg Inference Time: 3.681ms
-Measured Wall Time: 0.808ms
+Measured Wall Time: 0.455ms
 Label별 정확도:
   Label 0 (정상): 96.4%
   Label 1 (혼잡 경고): 97.5%

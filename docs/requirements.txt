@@ -1,9 +1,14 @@
 # Project runtime dependencies
 # Recommended: Python 3.11
-
+ 
 --extra-index-url https://download.pytorch.org/whl/cpu
-
+ 
 numpy>=1.26,<3
 pandas>=2.2,<3
 scikit-learn>=1.5,<2
 torch>=2.4,<3
+ 
+# ONNX 변환 및 추론
+onnx>=1.16,<2
+onnxruntime>=1.18,<2
+onnxscript>=0.1,<1
