@@ -226,7 +226,35 @@ python project\scripts\visualize_results.py
 - 입력 파일: `project\results\hojung\comparison_summary.csv`, `project\results\quantization_comparison.csv`
 - 주요 결과: `project\results\yena\accuracy_latency_combined.png`, `exit_rate_comparison.png`, `quantization_comparison.png`, `scenario_accuracy.png`
 
-## 7. 한 번에 실행하는 종합 순서
+## 7. Stage 5 Raspberry Pi 실측 준비
+
+```powershell
+python project\scripts\prepare_pi_bundle.py
+```
+
+- 담당: 김호중
+- Stage: Stage 5
+- 설명: Raspberry Pi로 옮길 ONNX 모델, 테스트 CSV, 실측 스크립트, 실행 README를 `project\deploy\raspberry_pi`에 모은다.
+
+```powershell
+python project\scripts\inference_pi.py --max-samples 100 --output project\results\hojung\pi_inference_results_pc_smoke.csv
+```
+
+- 담당: 김호중
+- Stage: Stage 5
+- 설명: Pi 실측 전 PC에서 ONNX Runtime 추론 CSV 저장 로직이 정상 동작하는지 smoke test한다. 이 결과는 PC 테스트값이므로 최종 Pi 결과로 사용하지 않는다.
+
+Raspberry Pi 안에서는 배포 번들 폴더로 이동한 뒤 아래 명령을 실행한다.
+
+```bash
+python inference_pi.py --model early_exit_fixed.onnx --data test.csv --output pi_inference_results.csv --max-samples 100
+```
+
+- 담당: 김호중
+- Stage: Stage 5
+- 설명: Raspberry Pi 실기기에서 ONNX Early Exit 모델 추론 지연을 측정하고 `pi_inference_results.csv`, `pi_inference_results.txt`를 저장한다.
+
+## 8. 한 번에 실행하는 종합 순서
 
 원본 외부 CSV가 있는 경우에는 아래 순서로 실행한다.
 
@@ -250,6 +278,7 @@ python project\scripts\check_onnx.py
 python project\scripts\test_onnx_inference.py
 python project\scripts\inference_pi.py
 python project\scripts\visualize_results.py
+python project\scripts\prepare_pi_bundle.py
 ```
 
 이미 `project\data\real`에 변환된 데이터가 있는 경우에는 첫 줄을 제외하고 아래부터 실행한다.
@@ -271,9 +300,10 @@ python project\scripts\check_onnx.py
 python project\scripts\test_onnx_inference.py
 python project\scripts\inference_pi.py
 python project\scripts\visualize_results.py
+python project\scripts\prepare_pi_bundle.py
 ```
 
-## 8. 주요 결과 파일 확인 명령어
+## 9. 주요 결과 파일 확인 명령어
 
 ```powershell
 type project\results\hojung\comparison_summary.txt

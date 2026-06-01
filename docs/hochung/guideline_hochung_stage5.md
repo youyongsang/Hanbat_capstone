@@ -176,11 +176,13 @@ print(f"최대: {df['inference_time_ms'].max():.3f}ms")
 
 - [ ] Raspberry Pi OS 설치 완료
 - [ ] ONNX Runtime 설치 확인
-- [ ] 모델 파일 Pi 전송 완료
-- [ ] `inference_pi.py` 실행 및 추론 동작 확인
+- [x] 모델 파일 Pi 전송용 번들 준비 완료
+- [x] `inference_pi.py` 실측 CSV 저장 구조 구현 완료
 - [ ] `pi_inference_results.csv` 저장 완료
 - [ ] PC vs Pi 비교표 완성
 - [ ] 장예나에게 Pi 실측 결과 전달 완료
+
+> 현재 상태: PC에서 smoke test와 배포 번들 생성은 완료. 실제 Raspberry Pi에서 실행한 `pi_inference_results.csv`는 사용자가 Pi에서 생성한 뒤 레포지토리로 가져와야 한다.
 
 ---
 
