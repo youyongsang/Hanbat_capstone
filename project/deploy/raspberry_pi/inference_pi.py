@@ -70,10 +70,11 @@ def load_samples(csv_path: Path, max_samples: int | None) -> tuple[np.ndarray, l
         features = group[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
         samples.append(features)
         first = group.iloc[0]
+        last = group.iloc[-1]
         meta_rows.append(
             {
                 "sample_id": int(sample_id),
-                "true_label": int(first["label"]) if "label" in group.columns else "",
+                "true_label": int(last["label"]) if "label" in group.columns else "",
                 "scenario": str(first["scenario"]) if "scenario" in group.columns else "",
             }
         )

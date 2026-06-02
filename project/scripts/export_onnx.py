@@ -56,7 +56,7 @@ def main() -> None:
     model.eval()
 
     wrapped = EarlyExitOnnxWrapper(model).eval()
-    dummy_input = torch.randn(2, 10, 4, dtype=torch.float32)
+    dummy_input = torch.randn(1, 10, 4, dtype=torch.float32)
 
     ONNX_PATH.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(
@@ -74,6 +74,7 @@ def main() -> None:
         opset_version=16,
         do_constant_folding=True,
         external_data=False,
+        dynamo=False,
     )
 
     print(f"ONNX export complete: {display_path(ONNX_PATH)}")
