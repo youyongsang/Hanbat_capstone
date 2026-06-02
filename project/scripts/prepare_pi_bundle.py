@@ -12,6 +12,7 @@ BUNDLE_DIR = ROOT_DIR / "project" / "deploy" / "raspberry_pi"
 
 FILES = [
     (ROOT_DIR / "project" / "checkpoints" / "early_exit_fixed.onnx", BUNDLE_DIR / "early_exit_fixed.onnx"),
+    (ROOT_DIR / "project" / "checkpoints" / "early_exit_fixed_int8.onnx", BUNDLE_DIR / "early_exit_fixed_int8.onnx"),
     (ROOT_DIR / "project" / "data" / "real" / "test.csv", BUNDLE_DIR / "test.csv"),
     (ROOT_DIR / "project" / "scripts" / "inference_pi.py", BUNDLE_DIR / "inference_pi.py"),
 ]
@@ -26,13 +27,16 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install onnxruntime numpy pandas
-python inference_pi.py --model early_exit_fixed.onnx --data test.csv --output pi_inference_results.csv --max-samples 100
+python inference_pi.py --model early_exit_fixed.onnx --data test.csv --output pi_fp32_results.csv --max-samples 351
+python inference_pi.py --model early_exit_fixed_int8.onnx --data test.csv --output pi_int8_results.csv --max-samples 351
 ```
 
 Expected outputs:
 
-- `pi_inference_results.csv`
-- `pi_inference_results.txt`
+- `pi_fp32_results.csv`
+- `pi_fp32_results.txt`
+- `pi_int8_results.csv`
+- `pi_int8_results.txt`
 
 After the run, copy both result files back to:
 
