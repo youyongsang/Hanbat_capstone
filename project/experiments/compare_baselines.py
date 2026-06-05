@@ -21,6 +21,8 @@ from models.early_exit_lstm import EarlyExitLSTM
 RESULTS_DIR = PROJECT_ROOT / "results" / "hojung"
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+TIMING_REPEATS = 5
+WARMUP_SAMPLES = 10
 
 
 def display_path(path: Path) -> str:
@@ -71,6 +73,9 @@ def load_checkpoint_state(path):
 
 def save_text_summary(summary_results, save_path):
     lines = ["4-Method Comparison Report", ""]
+    lines.append(f"Timing repeats: {TIMING_REPEATS}")
+    lines.append(f"Warmup samples: {WARMUP_SAMPLES}")
+    lines.append("")
     for result in summary_results:
         lines.append(result["Method"])
         lines.append(f"  Accuracy: {result['Accuracy(%)']:.1f}%")
@@ -140,11 +145,6 @@ def main():
     if not early_exit_checkpoint.exists():
         print(f"[Warn] Early Exit checkpoint not found: {display_path(early_exit_checkpoint)}")
 
-    # CPU Latency 측정을 위한 50회 예열 (Warm-up)
-    dummy_input = torch.randn(1, 10, 4)
-    for _ in range(50):
-        with torch.no_grad(): _ = model_lstm(dummy_input)
-
     summary_results = []
     methods = [
         {"id": 1, "name": "Baseline 1 (Threshold)", "file": "baseline_threshold.csv"},
@@ -153,6 +153,19 @@ def main():
         {"id": 4, "name": "Baseline 4 (Early Exit Dynamic theta)", "file": "early_exit_dynamic.csv"}
     ]
 
+    def run_prediction(method, features, model_lstm, model_ee):
+        if method["id"] == 1:
+            occ_val = features.numpy()[0, -1, 1] * 100
+            return threshold_baseline(occ_val), None
+        if method["id"] == 2:
+            with torch.no_grad():
+                return torch.argmax(model_lstm(features), dim=1).item(), None
+        with torch.no_grad():
+            decisions = model_ee.infer_batch_stepwise(features, dynamic=(method["id"] == 4))
+            return torch.argmax(decisions[0].logits, dim=-1).item(), decisions[0].exit_point
+
+    test_batches = list(test_loader)
+
     for m in methods:
         # 명세서 서식 완전 일치 출력
         print(f"Running {m['name']}...")
@@ -160,7 +173,8 @@ def main():
         # 방식 변경 시 Hysteresis 채널 상태 리셋
         ch_opt._rrm_state = {"last_switch_time": 0, "current_channel": None}
 
-        all_preds, all_labels, inference_times = [], [], []
+        all_preds, all_labels = [], []
+        timing_runs = []
         unnecessary_switches = 0
         current_channel = 1
         exit_counts = {1: 0, 2: 0, 3: 0} # 유용상 담당 지표 카운터
@@ -179,30 +193,35 @@ def main():
             model_ee.set_threshold(dynamic=(m["id"] == 4))
             model_ee.eval() 
 
-        for step, (features, targets) in enumerate(test_loader):
-            true_label = int(targets[0].item())
-            
-            start_time = time.perf_counter()
-            
-            # --- 4대 방식 모델 추론 분기 ---
-            if m["id"] == 1:
-                # 명세서 기준: 시계열 없이 현재 타임스텝의 채널 점유율 인덱스 추출 (* 100으로 % 스케일링)
-                occ_val = features.numpy()[0, -1, 1] * 100
-                pred = threshold_baseline(occ_val)
-            elif m["id"] == 2:
-                with torch.no_grad():
-                    pred = torch.argmax(model_lstm(features), dim=1).item()
-            elif m["id"] in [3, 4]:
-                with torch.no_grad():
-                    decisions = model_ee.infer_batch_stepwise(features, dynamic=(m["id"] == 4))
-                    pred = torch.argmax(decisions[0].logits, dim=-1).item()
-                    exit_counts[decisions[0].exit_point] += 1
-            
-            end_time = time.perf_counter()
-            inference_times.append((end_time - start_time) * 1000) # ms 단위 보정
-            
-            all_preds.append(pred)
-            all_labels.append(true_label)
+        for features, _ in test_batches[:WARMUP_SAMPLES]:
+            run_prediction(m, features, model_lstm, model_ee)
+
+        per_sample_times = [[] for _ in test_batches]
+        for run_idx in range(TIMING_REPEATS):
+            run_preds = []
+            run_times = []
+            run_exit_counts = {1: 0, 2: 0, 3: 0}
+            for sample_idx, (features, targets) in enumerate(test_batches):
+                start_time = time.perf_counter()
+                pred, exit_point = run_prediction(m, features, model_lstm, model_ee)
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+                per_sample_times[sample_idx].append(elapsed_ms)
+                run_times.append(elapsed_ms)
+                run_preds.append(pred)
+                if exit_point is not None:
+                    run_exit_counts[exit_point] += 1
+
+            timing_runs.append(float(np.mean(run_times)))
+            if run_idx == 0:
+                all_preds = run_preds
+                all_labels = [int(targets[0].item()) for _, targets in test_batches]
+                exit_counts = run_exit_counts
+
+        inference_times = [float(np.mean(times)) for times in per_sample_times]
+
+        for step, pred in enumerate(all_preds):
+            true_label = all_labels[step]
 
             # 불필요 채널 전환 횟수 계산 (김호중 담당 지표)
             next_channel, _ = ch_opt.optimize_channel(
@@ -217,7 +236,8 @@ def main():
         # 최종 지표 연산 및 포맷 매칭
         y_true, y_pred = np.array(all_labels), np.array(all_preds)
         acc = accuracy_score(y_true, y_pred) * 100
-        avg_time = np.mean(inference_times)
+        avg_time = np.mean(timing_runs)
+        std_time = np.std(timing_runs)
         
         label_accs = calculate_label_accuracies(y_true, y_pred)
         normal_mask = (y_true == 0)
@@ -230,7 +250,7 @@ def main():
         e1, e2, e3 = (exit_counts[1]/total)*100, (exit_counts[2]/total)*100, (exit_counts[3]/total)*100
 
         # 명세서 출력 예시와 공백, 형태까지 완전히 일치화
-        print(f"  Accuracy: {acc:.1f}% | Avg Inference: {avg_time:.1f}ms")
+        print(f"  Accuracy: {acc:.1f}% | Avg Inference: {avg_time:.4f}ms")
         if m["id"] in [3, 4]:
             print(f"  Exit 1: {e1:.1f}% | Exit 2: {e2:.1f}% | Exit 3: {e3:.1f}%")
 
@@ -246,6 +266,8 @@ def main():
             "Method": m["name"], 
             "Accuracy(%)": round(acc, 1), 
             "Avg_Inference(ms)": round(avg_time, 4), 
+            "Std_Inference(ms)": round(std_time, 4),
+            "Timing_Repeats": TIMING_REPEATS,
             "False_Congestion_Count": false_congestion_count,
             "False_Congestion_Rate(%)": round(false_congestion_rate, 1),
             "Unnecessary_Switches": unnecessary_switches,

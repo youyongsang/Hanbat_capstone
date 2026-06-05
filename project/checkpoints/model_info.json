@@ -12,14 +12,13 @@
   "dynamic_min_threshold": 0.22,
   "dynamic_recent_steps": 5,
   "dynamic_spike_threshold": 0.25,
-  "dynamic_rule": "lightweight — abs(current_occupancy - previous_occupancy)",
   "best_val_accuracy": 0.947,
-  "test_accuracy_fixed": 0.9573,
-  "test_accuracy_dynamic": 0.963,
-  "_note": "Stage 3 scenario analysis completed. Accuracy values are from test_with_scenario.csv.",
+  "test_accuracy_fixed": 0.974359,
+  "test_accuracy_dynamic": 0.974359,
+  "_note": "호중 최종 4개 방식 비교 결과와 양자화 평가 기준을 맞춘 값. Early Exit 평가는 theta_1=0.3, theta_2=0.6 기준으로 수행한다.",
   "checkpoints": {
     "best": "early_exit_lstm_best.pth",
-    "fixed": "early_exit_fixed_final.pth",
-    "dynamic": "early_exit_dynamic_final.pth"
+    "fixed": "early_exit_fixed.pth",
+    "dynamic": "early_exit_dynamic.pth"
   }
 }

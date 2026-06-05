@@ -68,21 +68,27 @@ def main() -> None:
     onnx_quantizer.save_and_reload_model_with_shape_infer = infer_shapes_without_external_data
     quantize_dynamic.__globals__["save_and_reload_model_with_shape_infer"] = infer_shapes_without_external_data
 
-    # ------------------------------------------------------------------
-    # 🎯 [수정 및 확장] 고정(Fixed)과 동적(Dynamic) 모델을 모두 처리하는 리스트 생성
-    # ------------------------------------------------------------------
     tasks = [
         {
             "name": "Fixed Theta",
-            "input": args.input,  # 기본값: early_exit_fixed.onnx
-            "output": args.output # 기본값: early_exit_fixed_int8.onnx
+            "input": args.input,
+            "output": args.output,
         },
         {
             "name": "Dynamic Theta",
-            "input": PROJECT_ROOT / "checkpoints" / "early_exit_dynamic.onnx",    # 동적 추가
-            "output": PROJECT_ROOT / "checkpoints" / "early_exit_dynamic_int8.onnx" # 동적 결과 추가
-        }
+            "input": PROJECT_ROOT / "checkpoints" / "early_exit_dynamic.onnx",
+            "output": PROJECT_ROOT / "checkpoints" / "early_exit_dynamic_int8.onnx",
+        },
     ]
+    for prefix, label in (("early_exit_fixed", "Fixed Theta"), ("early_exit_dynamic", "Dynamic Theta")):
+        for stage in (1, 2, 3):
+            tasks.append(
+                {
+                    "name": f"{label} Stage {stage}",
+                    "input": PROJECT_ROOT / "checkpoints" / f"{prefix}_stage{stage}.onnx",
+                    "output": PROJECT_ROOT / "checkpoints" / f"{prefix}_stage{stage}_int8.onnx",
+                }
+            )
 
     # 반복문을 돌면서 두 모델 다 경량화(INT8) 수행
     for task in tasks:
@@ -90,7 +96,7 @@ def main() -> None:
         output_path = task["output"]
 
         if not input_path.exists():
-            print(f"⚠️ [경고] {task['name']} 원본 파일이 없습니다: {display_path(input_path)}")
+            print(f"[warning] {task['name']} source file is missing: {display_path(input_path)}")
             continue
 
         model = onnx.load(str(input_path))
@@ -105,7 +111,7 @@ def main() -> None:
         input_size = input_path.stat().st_size / (1024 * 1024)
         output_size = output_path.stat().st_size / (1024 * 1024)
         
-        print(f"\n✨ [{task['name']}] INT8 ONNX quantization complete")
+        print(f"\n[{task['name']}] INT8 ONNX quantization complete")
         print(f"   input: {display_path(input_path)} ({input_size:.4f} MB)")
         print(f"   output: {display_path(output_path)} ({output_size:.4f} MB)")
 

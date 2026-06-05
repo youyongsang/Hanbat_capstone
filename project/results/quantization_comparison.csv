@@ -1,4 +1,4 @@
-model,original_size_mb,quantized_size_mb,original_accuracy,quantized_accuracy,original_inference_ms,quantized_inference_ms
-baseline_lstm,1.2768,0.3338,96.87,97.15,1.6967,3.3896
-early_exit_fixed,1.2819,0.3375,95.73,95.16,1.0783,2.8691
-early_exit_dynamic,1.2819,0.3376,95.73,95.16,0.999,2.5269
+model,checkpoint,dynamic_theta,theta_1,theta_2,original_size_mb,quantized_size_mb,original_accuracy,quantized_accuracy,original_inference_ms,quantized_inference_ms,original_inference_std_ms,quantized_inference_std_ms,timing_repeats
+baseline_lstm,baseline_lstm_best.pth,False,,,1.2768,0.3338,96.87,97.15,0.5667,1.8977,0.0199,0.3237,5
+early_exit_fixed,early_exit_fixed.pth,False,0.3,0.6,1.2819,0.3375,97.44,96.87,0.5523,1.589,0.0471,0.1649,5
+early_exit_dynamic,early_exit_dynamic.pth,True,0.3,0.6,1.2819,0.3376,97.44,96.87,0.571,1.4996,0.0377,0.2246,5

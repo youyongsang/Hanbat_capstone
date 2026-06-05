@@ -1,5 +1,5 @@
-Method,Accuracy(%),Avg_Inference(ms),False_Congestion_Count,False_Congestion_Rate(%),Unnecessary_Switches,Unnecessary_Switch_Rate(%),Acc_Label_0(%),Acc_Label_1(%),Acc_Label_2(%),Acc_Label_3(%),Exit1(%),Exit2(%),Exit3(%)
-Baseline 1 (Threshold),42.2,0.0035,8,14.3,1,1.8,85.7,29.0,37.9,52.9,,,
-Baseline 2 (LSTM Full),96.9,1.6822,3,5.4,0,0.0,94.6,98.8,94.8,100.0,,,
-Baseline 3 (Early Exit Fixed theta),97.4,0.9391,0,0.0,0,0.0,100.0,98.1,94.8,100.0,4.6,85.5,10.0
-Baseline 4 (Early Exit Dynamic theta),97.4,0.9587,0,0.0,0,0.0,100.0,98.1,94.8,100.0,5.1,88.9,6.0
+Method,Accuracy(%),Avg_Inference(ms),Std_Inference(ms),Timing_Repeats,False_Congestion_Count,False_Congestion_Rate(%),Unnecessary_Switches,Unnecessary_Switch_Rate(%),Acc_Label_0(%),Acc_Label_1(%),Acc_Label_2(%),Acc_Label_3(%),Exit1(%),Exit2(%),Exit3(%)
+Baseline 1 (Threshold),42.2,0.0023,0.0001,5,8,14.3,1,1.8,85.7,29.0,37.9,52.9,,,
+Baseline 2 (LSTM Full),96.9,0.537,0.0366,5,3,5.4,0,0.0,94.6,98.8,94.8,100.0,,,
+Baseline 3 (Early Exit Fixed theta),97.4,0.5805,0.0352,5,0,0.0,0,0.0,100.0,98.1,94.8,100.0,4.6,85.5,10.0
+Baseline 4 (Early Exit Dynamic theta),97.4,0.5345,0.0116,5,0,0.0,0,0.0,100.0,98.1,94.8,100.0,5.1,88.9,6.0
