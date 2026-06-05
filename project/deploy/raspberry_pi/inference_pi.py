@@ -1,7 +1,7 @@
 """Run ONNX Early Exit inference and save Raspberry Pi latency results.
 
 This script is designed to run both from the repository root and from a
-Raspberry Pi deployment bundle directory.
+Raspberry Pi deployment bundle directory
 """
 
 from __future__ import annotations

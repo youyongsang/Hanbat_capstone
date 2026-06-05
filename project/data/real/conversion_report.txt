@@ -4,7 +4,7 @@
 
   데이터셋  : Kaggle – 6G Network Slicing QoS Dataset
   출처 URL  : https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset
-  입력 파일 : project\data\external\6G_network_slicing_qos_dataset_2345.csv
+  입력 파일 : project/data/external/6G_network_slicing_qos_dataset_2345.csv
   원본 행수 : 2,345
 
   ── 출처 표기 (보고서/발표 자료용) ──

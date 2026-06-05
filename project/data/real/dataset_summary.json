@@ -3,7 +3,7 @@
     "description": "Kaggle – 6G Network Slicing QoS Dataset",
     "url": "https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset",
     "citation": "6G Network Slicing QoS Dataset, Kaggle (ziya07). URL: https://www.kaggle.com/datasets/ziya07/wireless-network-slicing-dataset",
-    "input_file": "project\\data\\external\\6G_network_slicing_qos_dataset_2345.csv",
+    "input_file": "project/data/external/6G_network_slicing_qos_dataset_2345.csv",
     "raw_rows": 2345
   },
   "total_samples": 2336,

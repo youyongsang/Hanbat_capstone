@@ -1,3 +1,4 @@
 model,original_size_mb,quantized_size_mb,original_accuracy,quantized_accuracy,original_inference_ms,quantized_inference_ms
-baseline_lstm,1.2768,0.3338,95.4,95.16,0.8878,2.8335
-early_exit_fixed,1.2819,0.3292,95.2,95.44,0.9841,0.0235
+baseline_lstm,1.2768,0.3338,96.87,97.15,1.6967,3.3896
+early_exit_fixed,1.2819,0.3375,95.73,95.16,1.0783,2.8691
+early_exit_dynamic,1.2819,0.3376,95.73,95.16,0.999,2.5269

@@ -1,12 +1,12 @@
 Raspberry Pi inference analysis
 samples: 351
 accuracy: 95.7%
-avg_inference_ms: 1.512202
-p50_inference_ms: 1.488457
-p95_inference_ms: 1.580113
-min_inference_ms: 1.403311
-max_inference_ms: 3.533517
+avg_inference_ms: 1.529763
+p50_inference_ms: 1.489089
+p95_inference_ms: 1.561634
+min_inference_ms: 1.384034
+max_inference_ms: 5.836854
 avg_confidence: 0.919691
-exit1: samples=145, rate=41.3%, accuracy=100.0%, avg_ms=1.497081
-exit2: samples=157, rate=44.7%, accuracy=100.0%, avg_ms=1.513439
-exit3: samples=49, rate=14.0%, accuracy=69.4%, avg_ms=1.552986
+exit1: samples=145, rate=41.3%, accuracy=100.0%, avg_ms=1.518631
+exit2: samples=157, rate=44.7%, accuracy=100.0%, avg_ms=1.549901
+exit3: samples=49, rate=14.0%, accuracy=69.4%, avg_ms=1.498184
