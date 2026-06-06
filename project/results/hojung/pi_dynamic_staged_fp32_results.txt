@@ -1,0 +1,19 @@
+Raspberry Pi ONNX inference summary
+model: early_exit_dynamic_stage1.onnx
+data: test.csv
+sample_count: 351
+avg_inference_ms: 1.989039
+std_inference_ms: 0.681719
+min_inference_ms: 0.740787
+max_inference_ms: 5.816876
+p50_inference_ms: 1.726071
+p95_inference_ms: 3.304772
+exit1_count: 18
+exit1_rate: 0.051282
+exit2_count: 312
+exit2_rate: 0.888889
+exit3_count: 21
+exit3_rate: 0.059829
+measurement_repeats: 5
+inference_mode: staged
+dynamic_theta: 1
