@@ -1,26 +1,34 @@
 # 김호중 방학 3단계 가이드라인
-## 실측 CSV 기반 Raspberry Pi 추론 성능 측정
+## ONNX/INT8 변환 및 Pi CSV 추론 성능 측정
 
 > 담당자: 김호중  
-> 목표: 예나가 수집한 실제 WiFi CSV로 Raspberry Pi 추론 성능을 반복 측정  
+> 단계 목표: 실측 CSV 기준으로 FP32/INT8 ONNX 및 staged Early Exit Pi 성능 측정  
 > 완료 기준: fixed/dynamic, FP32/INT8 조합별 Pi 결과 CSV/TXT/MD 생성
 
 ---
 
-## 1. 해야 할 일 순서
+## 1. 방학 3단계 공통 목표
 
-```
-1. 예나 실측 test.csv를 Pi 배포 폴더에 배치
-2. fixed FP32 staged ONNX 추론 실행
-3. fixed INT8 staged ONNX 추론 실행
-4. dynamic FP32 staged ONNX 추론 실행
-5. dynamic INT8 staged ONNX 추론 실행
-6. 결과 분석 스크립트 실행
-```
+3단계는 세 명 모두 **수집된 데이터를 이용해 본격 실험을 수행하는 단계**다.  
+예나는 실시간 입력과 노이즈 데이터를 만들고, 호중은 Pi/ONNX 측정을 수행하며, 용상은 모델 재학습과 threshold 실험을 수행한다.
+
+| 담당 | 3단계 역할 |
+|---|---|
+| 장예나 | 실시간 입력 루프 검증, 노이즈 추가 시뮬레이터 생성 |
+| 김호중 | ONNX/INT8 변환 및 Pi CSV 추론 측정 |
+| 유용상 | LSTM/EE 재학습 및 동적 θ 경량화 실험 |
 
 ---
 
-## 2. 실행 예시
+## 2. 실행 흐름
+
+```bash
+python project/scripts/export_onnx.py --staged
+python project/scripts/export_onnx_int8.py
+python project/scripts/prepare_pi_bundle.py
+```
+
+Pi에서는 fixed/dynamic, FP32/INT8 조합을 각각 실행한다.
 
 ```bash
 python3 inference_pi.py \
@@ -32,19 +40,6 @@ python3 inference_pi.py \
   --output pi_fixed_staged_fp32_results.csv \
   --repeats 5
 ```
-
-```bash
-python3 inference_pi.py \
-  --mode staged \
-  --stage1 early_exit_fixed_stage1_int8.onnx \
-  --stage2 early_exit_fixed_stage2_int8.onnx \
-  --stage3 early_exit_fixed_stage3_int8.onnx \
-  --data test.csv \
-  --output pi_fixed_staged_int8_results.csv \
-  --repeats 5
-```
-
-동적 threshold는 dynamic 모델 파일과 `--dynamic-theta` 옵션을 사용한다.
 
 ---
 
@@ -74,4 +69,4 @@ python3 inference_pi.py \
 
 - 한 번 측정값보다 `repeats=5` 이상 반복 평균을 기준으로 한다.
 - p95 지연을 함께 기록해 꼬리 지연을 확인한다.
-- 예나 데이터 수집 환경과 다른 장소에서 수행했다면, 결과는 절대 성능 비교보다 동작 검증으로 해석한다.
+- INT8이 항상 더 빠르거나 정확도가 높은 것은 아니므로 결과 그대로 기록한다.
