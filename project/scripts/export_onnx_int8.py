@@ -1,8 +1,8 @@
-"""Quantize the exported Early Exit ONNX model with ONNX Runtime.
+"""Quantize the exported Early Exit ONNX models (Fixed & Dynamic) with ONNX Runtime.
 
 This script expects project/scripts/export_onnx.py to be run first. It does
 not manually assemble an ONNX graph; it preserves the exported LSTM graph and
-creates a separate INT8 model file for deployment comparison.
+creates separate INT8 model files for deployment comparison.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
+
+# [기존 원본 양식 유지] 기본 고정(Fixed) 모델 경로
 DEFAULT_INPUT = PROJECT_ROOT / "checkpoints" / "early_exit_fixed.onnx"
 DEFAULT_OUTPUT = PROJECT_ROOT / "checkpoints" / "early_exit_fixed_int8.onnx"
 QUANT_TEMP_DIR = PROJECT_ROOT / ".tmp" / "onnx_quant"
@@ -36,11 +38,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if not args.input.exists():
-        raise FileNotFoundError(
-            f"FP32 ONNX model not found: {display_path(args.input)}. "
-            "Run `python project\\scripts\\export_onnx.py` first."
-        )
 
     QUANT_TEMP_DIR.mkdir(parents=True, exist_ok=True)
     os.environ["TMP"] = str(QUANT_TEMP_DIR)
@@ -71,21 +68,54 @@ def main() -> None:
     onnx_quantizer.save_and_reload_model_with_shape_infer = infer_shapes_without_external_data
     quantize_dynamic.__globals__["save_and_reload_model_with_shape_infer"] = infer_shapes_without_external_data
 
-    model = onnx.load(str(args.input))
-    quantize_dynamic(
-        model_input=model,
-        model_output=str(args.output),
-        weight_type=QuantType.QInt8,
-        per_channel=False,
-        reduce_range=False,
-    )
+    tasks = [
+        {
+            "name": "Fixed Theta",
+            "input": args.input,
+            "output": args.output,
+        },
+        {
+            "name": "Dynamic Theta",
+            "input": PROJECT_ROOT / "checkpoints" / "early_exit_dynamic.onnx",
+            "output": PROJECT_ROOT / "checkpoints" / "early_exit_dynamic_int8.onnx",
+        },
+    ]
+    for prefix, label in (("early_exit_fixed", "Fixed Theta"), ("early_exit_dynamic", "Dynamic Theta")):
+        for stage in (1, 2, 3):
+            tasks.append(
+                {
+                    "name": f"{label} Stage {stage}",
+                    "input": PROJECT_ROOT / "checkpoints" / f"{prefix}_stage{stage}.onnx",
+                    "output": PROJECT_ROOT / "checkpoints" / f"{prefix}_stage{stage}_int8.onnx",
+                }
+            )
 
-    input_size = args.input.stat().st_size / (1024 * 1024)
-    output_size = args.output.stat().st_size / (1024 * 1024)
-    print("INT8 ONNX quantization complete")
-    print(f"input: {display_path(args.input)} ({input_size:.4f} MB)")
-    print(f"output: {display_path(args.output)} ({output_size:.4f} MB)")
-    print("Next: compare FP32 and INT8 with inference_pi.py before using Pi results in the report.")
+    # 반복문을 돌면서 두 모델 다 경량화(INT8) 수행
+    for task in tasks:
+        input_path = task["input"]
+        output_path = task["output"]
+
+        if not input_path.exists():
+            print(f"[warning] {task['name']} source file is missing: {display_path(input_path)}")
+            continue
+
+        model = onnx.load(str(input_path))
+        quantize_dynamic(
+            model_input=model,
+            model_output=str(output_path),
+            weight_type=QuantType.QInt8,
+            per_channel=False,
+            reduce_range=False,
+        )
+
+        input_size = input_path.stat().st_size / (1024 * 1024)
+        output_size = output_path.stat().st_size / (1024 * 1024)
+        
+        print(f"\n[{task['name']}] INT8 ONNX quantization complete")
+        print(f"   input: {display_path(input_path)} ({input_size:.4f} MB)")
+        print(f"   output: {display_path(output_path)} ({output_size:.4f} MB)")
+
+    print("\nNext: compare FP32 and INT8 with inference_pi.py before using Pi results in the report.")
 
 
 if __name__ == "__main__":

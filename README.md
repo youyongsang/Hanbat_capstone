@@ -1,169 +1,315 @@
-# 경량 Early Exit 딥러닝을 이용한 산업 무선망 트래픽 혼잡 감지 및 채널 최적화
+# Early Exit LSTM 기반 산업 무선망 트래픽 혼잡 감지 시스템
 
-> Lightweight Early Exit Deep Learning for Industrial Wireless Network Traffic Congestion Detection and Channel Optimization
+> Raspberry Pi 엣지 환경에서 동작하는 산업 무선망 혼잡 감지 및 경량 추론 파이프라인
 
 **컴퓨터공학과 | 장예나 · 유용상 · 김호중**
 
 ---
 
-## 📌 프로젝트 개요
+## 프로젝트 개요
 
-스마트팩토리 사설망 환경에서 공장 운영 패턴 기반 트래픽 변화를 **Early Exit LSTM**으로 실시간 분류하고, 혼잡 수준에 따라 최적 채널로 자율 전환하는 경량 엣지 AI 시스템이다.
+본 프로젝트는 산업 무선망에서 발생하는 트래픽 혼잡 상태를 LSTM 기반 시계열 모델로 분류하고, Early Exit 구조와 INT8 Quantization을 적용하여 Raspberry Pi와 같은 엣지 장비에서도 빠르게 추론할 수 있도록 설계한 시스템이다.
 
-### 한 줄 요약
-> 공장 무선망에서 트래픽 혼잡이 생겼을 때, 경량 AI가 혼잡 수준을 실시간으로 판단하고 자동으로 채널을 바꿔주는 시스템
+입력 데이터는 RPS, 채널 점유율, 패킷 손실률, 지연시간으로 구성되며, 모델은 무선망 상태를 0~3단계 혼잡 수준으로 분류한다. 학습된 Early Exit LSTM은 ONNX 형식으로 변환된 뒤, INT8 ONNX 모델로 경량화되어 Raspberry Pi에서 실측 검증되었다.
 
 ---
 
-## 🏭 배경 및 문제
+## 최종 성능 요약
 
-스마트팩토리에서는 수십 대의 로봇과 자동화 장비가 무선으로 연결되어 동작한다. 일과 시작, 긴급 증산, 재가동 등 공장 운영 패턴에 따라 트래픽이 급증하거나 특정 구역에 집중되는 상황이 반복된다.
+Raspberry Pi 실기기에서 FP32 ONNX와 INT8 ONNX를 동일한 테스트셋 351개 샘플로 비교하였다.
 
-공장 무선망은 **인터넷과 분리된 사설망**으로 운영되기 때문에 클라우드 서버에 의존할 수 없다. 채널 혼잡이 해소되지 않으면 패킷 손실이 증가하고 로봇 제어 명령이 유실되어 생산 오류로 이어질 수 있다.
+| 모델 | 정확도 | 평균 추론 시간 | p50 | p95 | Exit1 / Exit2 / Exit3 |
+|---|---:|---:|---:|---:|---:|
+| FP32 ONNX | 95.7% | 1.512ms | 1.488ms | 1.580ms | 41.3% / 44.7% / 14.0% |
+| INT8 ONNX | 95.7% | 0.919ms | 0.895ms | 1.021ms | 41.3% / 45.0% / 13.7% |
 
-### 기존 방식의 한계
+INT8 ONNX 모델은 FP32 ONNX 모델과 동일한 정확도 95.7%를 유지하면서 평균 추론 시간을 약 39.2% 단축하였다.
 
-| 기존 방식 | 한계 |
+---
+
+## 핵심 알고리즘
+
+### Early Exit LSTM
+
+Early Exit LSTM은 3개 LSTM 레이어 뒤에 각각 Exit Classifier를 배치한 구조이다. 각 Exit point에서 Shannon Entropy를 계산하고, 불확실성이 threshold 이하이면 해당 레이어에서 추론을 종료한다. 학습 시에는 모든 Exit의 손실을 가중 합산한 Multi-exit Loss를 사용하고, 추론 시에만 조기 종료를 적용한다.
+
+### 고정 및 동적 Threshold
+
+고정 threshold는 모든 입력에 동일한 조기 종료 기준을 적용한다. 동적 threshold는 최근 timestep의 채널 점유율 변화를 이용해 threshold를 조정한다. 동적 threshold는 Exit 3 도달률 감소와 정확도 개선에 효과가 있었지만, 추가 계산 오버헤드로 인해 실측 지연 우위는 제한적이었다.
+
+### ONNX 및 INT8 경량화
+
+학습된 PyTorch Early Exit 모델을 FP32 ONNX로 변환한 뒤, ONNX Runtime 기반 INT8 Quantization을 적용한다. 최종 배포 모델은 다음 두 가지이다.
+
+| 모델 파일 | 설명 |
 |---|---|
-| 임계값 기반 채널 전환 | 트래픽 패턴 미고려. 일시적 급증에도 불필요한 전환 발생. |
-| 주기적 채널 스캐닝 | 스캐닝 중 통신 중단. 실시간 대응 불가. |
-| 클라우드 AI | 왕복 지연 50ms 이상. 사설망 환경에서 작동 불가. |
+| `early_exit_fixed.onnx` | FP32 ONNX 기준 모델 |
+| `early_exit_fixed_int8.onnx` | INT8 경량화 ONNX 모델 |
 
 ---
 
-## 💡 핵심 아이디어
+## 프로젝트 구조
 
-### 3단계 파이프라인
-
-```
-1단계. 트래픽 생성
-   공장 운영 패턴 4가지를 시뮬레이터로 모사
-   (일과 시작 급증 / 긴급 증산 / 점심 재가동 / 불균형 부하)
-        ↓
-2단계. 딥러닝 예측 (Early Exit LSTM)
-   트래픽 혼잡 수준 실시간 분류
-   (정상 / 혼잡 경고 / 혼잡 / 심각 혼잡)
-   → Early Exit으로 계산 경량화
-        ↓
-3단계. 운용 방안 변화 및 개선 확인
-   혼잡 수준에 따른 채널 전환
-   → 전환 전후 처리량, 지연, 패킷 손실률 비교
-```
-
-### Early Exit이란?
-
-일반 LSTM은 매번 모든 레이어를 통과하는 풀 추론을 수행한다. Early Exit은 같은 구조에서 **필요한 만큼만 계산**한다.
-
-| Exit | 조건 | 결과 | 추론 시간 |
-|---|---|---|---|
-| Exit 1 (1레이어) | 불확실성 낮음 | 정상 → 채널 유지 | ~2ms |
-| Exit 2 (2레이어) | 불확실성 중간 | 혼잡 경고 → 전환 준비 | ~4ms |
-| Exit 3 (3레이어) | 불확실성 높음 | 혼잡/심각 → 채널 전환 | ~8ms |
-
-정상 구간(전체의 약 70%)에서는 Exit 1에서 바로 종료하여 연산량을 절감한다.
-
-### 동적 Threshold
-
-기존 Early Exit은 종료 기준(threshold)을 고정값으로 설정한다. 본 연구는 **최근 트래픽 부하 변동률과 채널 점유율을 입력으로 threshold를 실시간 조정**한다.
-
-- 트래픽 변동이 잦은 시간대 → threshold 낮게 → 더 깊이 추론
-- 안정적인 시간대 → threshold 높게 → 빠른 추론 우선
-
----
-
-## 🗂️ 프로젝트 구조
-
-```
+```text
 project/
+├── checkpoints/
+│   ├── baseline_lstm_best.pth
+│   ├── early_exit_fixed.pth
+│   ├── early_exit_fixed.onnx
+│   └── early_exit_fixed_int8.onnx
 ├── data/
-│   ├── dummy/                  # 개발용 더미 데이터
-│   │   ├── train.csv
-│   │   ├── val.csv
-│   │   └── test.csv
-│   └── real/                   # 시뮬레이터 생성 실제 데이터
+│   ├── external/
+│   └── real/
 │       ├── train.csv
 │       ├── val.csv
 │       └── test.csv
-├── simulator/
-│   └── traffic_simulator.py    # 장예나 - 트래픽 시뮬레이터
+├── deploy/
+│   └── raspberry_pi/
+│       ├── early_exit_fixed.onnx
+│       ├── early_exit_fixed_int8.onnx
+│       ├── inference_pi.py
+│       ├── test.csv
+│       └── README.md
 ├── models/
-│   ├── baseline_lstm.py        # 김호중 - 일반 LSTM
-│   └── early_exit_lstm.py      # 유용상 - Early Exit LSTM
-├── utils/
-│   ├── dataloader.py           # 데이터 로딩 및 전처리
-│   └── metrics.py              # 정확도, 지연 측정 함수
-├── experiments/
-│   └── compare_baselines.py    # 4개 방식 비교 실험
-├── scripts/                    # 실행 스크립트 모음
-│   ├── train.py                # 모델 학습 실행
-│   ├── evaluate.py             # 테스트셋 평가
-│   ├── convert_onnx.py         # ONNX 변환
-│   └── generate_data.py        # 더미 데이터 생성
-├── checkpoints/                # 학습된 모델 저장
-├── results/                    # 실험 결과 CSV, 그래프
-└── README.md
+│   ├── baseline_lstm.py
+│   └── early_exit_lstm.py
+├── results/
+│   ├── hojung/
+│   ├── yena/
+│   └── yongsang/
+├── scripts/
+│   ├── generate_from_real_dataset.py
+│   ├── train.py
+│   ├── train_early_exit.py
+│   ├── evaluate.py
+│   ├── evaluate_early_exit.py
+│   ├── compare_baselines.py
+│   ├── export_onnx.py
+│   ├── export_onnx_int8.py
+│   ├── prepare_pi_bundle.py
+│   ├── inference_pi.py
+│   └── analyze_pi_results.py
+└── utils/
+    ├── dataloader.py
+    └── logger.py
 ```
 
 ---
 
-## 📊 혼잡 수준 분류
+## 설치 방법
 
-| 레이블 | 혼잡 수준 | 채널 점유율 | 대응 |
-|---|---|---|---|
-| 0 | 정상 | 40% 미만 | 채널 유지 |
-| 1 | 혼잡 경고 | 40 ~ 65% | 모니터링 강화 |
-| 2 | 혼잡 | 65 ~ 85% | 채널 전환 |
-| 3 | 심각 혼잡 | 85% 이상 | 즉시 채널 전환 / 5GHz 이동 |
+레포지토리를 받은 뒤 `hojung` 브랜치를 기준으로 실행한다.
+
+```powershell
+git clone https://github.com/youyongsang/Hanbat_capstone.git
+cd Hanbat_capstone
+git switch hojung
+```
+
+Python 가상환경을 생성하고 패키지를 설치한다.
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+pip install onnx onnxruntime onnxscript
+```
 
 ---
 
-## 🧪 비교 실험
+## 전체 실행 순서
 
-| 비교 대상 | 방식 |
+### 1. 데이터 변환
+
+외부 CSV 데이터셋을 프로젝트 학습 형식으로 변환한다.
+
+```powershell
+python project\scripts\generate_from_real_dataset.py --dataset kaggle_6g --input project\data\external\6G_network_slicing_qos_dataset_2345.csv --out-dir project\data\real --overwrite-real
+```
+
+생성 결과:
+
+| 파일 | 설명 |
 |---|---|
-| ① 임계값 방식 (현행) | 채널 점유율 임계값 기준 무조건 전환 |
-| ② 일반 LSTM | 풀 추론 후 혼잡 수준 분류 |
-| ③ Early Exit + 고정 θ | Early Exit 적용, threshold 고정값 |
-| ④ 제안 모델 | Early Exit + 동적 θ + 채널 전환 |
+| `project/data/real/train.csv` | 학습 데이터 |
+| `project/data/real/val.csv` | 검증 데이터 |
+| `project/data/real/test.csv` | 테스트 및 Pi 추론 입력 데이터 |
+| `project/data/real/dataset_summary.json` | 데이터 변환 요약 |
 
----
+### 2. 모델 학습
 
-## 🎯 목표 성능
+Baseline LSTM을 학습한다.
 
-| 평가 항목 | 목표치 |
+```powershell
+python project\scripts\train.py
+```
+
+Early Exit LSTM을 학습한다.
+
+```powershell
+python project\scripts\train_early_exit.py
+```
+
+주요 체크포인트:
+
+| 파일 | 설명 |
 |---|---|
-| 혼잡 분류 정확도 | 90% 이상 |
-| Exit 1 추론 지연 | 2ms 이하 |
-| 평균 추론 지연 | 4ms 이하 |
-| 모델 크기 | 1MB 이하 |
-| 불필요 채널 전환 감소 | 30% 이상 |
+| `baseline_lstm_best.pth` | Baseline LSTM 모델 |
+| `early_exit_lstm_best.pth` | Early Exit LSTM 최적 모델 |
+| `early_exit_fixed.pth` | 고정 threshold Early Exit 모델 |
+| `early_exit_dynamic.pth` | 동적 threshold Early Exit 모델 |
 
----
+### 3. 모델 평가 및 비교
 
-## 🛠️ 기술 스택
+```powershell
+python project\scripts\evaluate.py
+python project\scripts\evaluate_early_exit.py
+python project\scripts\compare_baselines.py
+```
 
-| 영역 | 도구 |
+주요 결과:
+
+| 파일 | 설명 |
 |---|---|
-| 딥러닝 | PyTorch 2.x |
-| 시뮬레이터 | NumPy + SciPy |
-| 경량화 | PyTorch Quantization API (INT8) |
-| 배포 변환 | ONNX + ONNX Runtime |
-| 엣지 타겟 | Raspberry Pi 4 |
-| 실험 관리 | TensorBoard / WandB |
+| `project/results/hojung/comparison_summary.csv` | 전체 알고리즘 비교 결과 |
+| `project/results/hojung/comparison_summary.txt` | 전체 알고리즘 비교 요약 |
+
+### 4. 시나리오 분석
+
+```powershell
+python project\scripts\generate_test_with_scenario.py
+python project\scripts\fill_scenario_analysis.py
+```
+
+주요 결과:
+
+| 파일 | 설명 |
+|---|---|
+| `project/results/yongsang/scenario_analysis_summary.csv` | 시나리오별 정확도 및 Exit 분포 |
+| `project/results/scenario_analysis/` | 개별 시나리오 분석 결과 |
+
+### 5. ONNX 변환 및 INT8 경량화
+
+FP32 ONNX 모델을 생성한다.
+
+```powershell
+python project\scripts\export_onnx.py
+```
+
+INT8 ONNX 모델을 생성한다.
+
+```powershell
+python project\scripts\export_onnx_int8.py
+```
+
+Raspberry Pi 배포 번들을 생성한다.
+
+```powershell
+python project\scripts\prepare_pi_bundle.py
+```
+
+생성 위치:
+
+```text
+project/deploy/raspberry_pi/
+```
 
 ---
 
-## 👥 팀 역할
+## Raspberry Pi 실행 방법
 
-| 팀원 | 역할 | 담당 |
+PC에서 생성한 `project/deploy/raspberry_pi/` 폴더를 Raspberry Pi로 복사한 뒤, Pi에서 해당 폴더로 이동한다.
+
+```bash
+cd ~/raspberry_pi
+```
+
+Pi 실행 환경을 구성한다.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install onnxruntime numpy pandas
+```
+
+FP32 ONNX 모델을 실행한다.
+
+```bash
+python inference_pi.py --model early_exit_fixed.onnx --data test.csv --output pi_fp32_results.csv --max-samples 351
+```
+
+INT8 ONNX 모델을 실행한다.
+
+```bash
+python inference_pi.py --model early_exit_fixed_int8.onnx --data test.csv --output pi_int8_results.csv --max-samples 351
+```
+
+결과를 확인한다.
+
+```bash
+cat pi_fp32_results.txt
+cat pi_int8_results.txt
+```
+
+---
+
+## Pi 결과 분석
+
+Pi에서 생성한 결과 파일을 PC의 `project/results/hojung/` 폴더로 복사한 뒤 분석한다.
+
+```powershell
+python project\scripts\analyze_pi_results.py --input project\results\hojung\pi_fp32_results.csv --output-dir project\results\hojung --name pi_fp32_analysis
+python project\scripts\analyze_pi_results.py --input project\results\hojung\pi_int8_results.csv --output-dir project\results\hojung --name pi_int8_analysis
+```
+
+분석 결과:
+
+| 파일 | 설명 |
+|---|---|
+| `pi_fp32_analysis.txt` | FP32 ONNX 분석 요약 |
+| `pi_fp32_analysis.md` | FP32 ONNX 보고서용 분석 |
+| `pi_fp32_analysis_by_exit.csv` | FP32 Exit별 분석 |
+| `pi_fp32_analysis_by_scenario.csv` | FP32 시나리오별 분석 |
+| `pi_int8_analysis.txt` | INT8 ONNX 분석 요약 |
+| `pi_int8_analysis.md` | INT8 ONNX 보고서용 분석 |
+| `pi_int8_analysis_by_exit.csv` | INT8 Exit별 분석 |
+| `pi_int8_analysis_by_scenario.csv` | INT8 시나리오별 분석 |
+
+---
+
+## 주요 실행 파일
+
+| 파일 | 역할 |
+|---|---|
+| `generate_from_real_dataset.py` | 외부 CSV 데이터셋을 학습용 데이터로 변환 |
+| `train.py` | Baseline LSTM 학습 |
+| `train_early_exit.py` | Early Exit LSTM 학습 |
+| `evaluate.py` | Baseline LSTM 평가 |
+| `evaluate_early_exit.py` | Early Exit LSTM 평가 |
+| `compare_baselines.py` | 임계값, Baseline LSTM, 고정 Early Exit, 동적 Early Exit 비교 |
+| `generate_test_with_scenario.py` | 테스트 데이터에 시나리오 정보 추가 |
+| `fill_scenario_analysis.py` | 시나리오별 성능 분석 |
+| `export_onnx.py` | FP32 ONNX 모델 생성 |
+| `export_onnx_int8.py` | INT8 ONNX 모델 생성 |
+| `prepare_pi_bundle.py` | Raspberry Pi 배포 번들 생성 |
+| `inference_pi.py` | Raspberry Pi ONNX 추론 및 지연 측정 |
+| `analyze_pi_results.py` | Raspberry Pi 결과 분석 |
+
+---
+
+## 팀 역할
+
+| 팀원 | 담당 영역 | 주요 산출물 |
 |---|---|---|
-| 장예나 | 환경·데이터 | 트래픽 시뮬레이터 구현, 데이터셋 생성 |
-| 유용상 | 모델 설계 | Early Exit LSTM, 동적 threshold 설계 |
-| 김호중 | 베이스라인·경량화·배포 | 일반 LSTM, 비교 실험, Quantization, Raspberry Pi |
+| 장예나 | 데이터 및 시나리오 | 외부 데이터 변환, 시나리오 구성, 결과 시각화 |
+| 유용상 | 모델 설계 | Early Exit LSTM, 고정/동적 threshold, 시나리오별 분석 |
+| 김호중 | 비교 실험 및 배포 | Baseline LSTM, 4개 방식 비교, ONNX/INT8, Raspberry Pi 실측 |
 
 ---
 
-## ⚠️ 한계 및 주의사항
+## 한계 및 향후 과제
 
-- 트래픽 시뮬레이터는 실제 공장 환경을 완전히 재현하지 않으며, 공장 운영 패턴을 수식 기반으로 통계적으로 모사한다.
-- Raspberry Pi 4 실기기 배포를 통해 시뮬레이터 결과의 현실 적용 가능성을 부분적으로 검증한다.
+- 실제 무선 AP의 운영 채널을 자동 변경하는 단계는 AP 제어 API, SSH, OpenWrt 등 추가 연동 환경이 필요하다.
+- 동적 threshold는 정확도와 Exit 3 감소 측면에서 효과가 있었지만, 계산 오버헤드로 인해 실측 지연 우위는 제한적이었다.
+- 향후 실제 공장 무선망 데이터와 AP 제어 인터페이스를 연동하면 자동 채널 전환 시스템으로 확장할 수 있다.
