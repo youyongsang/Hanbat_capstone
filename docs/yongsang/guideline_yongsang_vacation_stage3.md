@@ -1,71 +1,78 @@
 # 유용상 방학 3단계 가이드라인
-## 실측 데이터 기반 재학습 및 동적 Threshold 경량화 실험
+## SOTA 모델 조사 및 비교 실험
 
 > 담당자: 유용상  
-> 단계 목표: 실측 데이터로 LSTM/Early Exit를 재학습하고 고정 θ, 기존 동적 θ, 경량 동적 θ를 비교  
-> 완료 기준: 실측 데이터 기준 4개 방식 비교와 경량 동적 θ 비교 결과 생성
+> 기간: 방학 5주차  
+> 목표: Early Exit 관련 SOTA 모델 조사 및 연산량 절감 중심 비교 실험  
+> 완료 기준: SOTA 비교 실험 완료, sota_comparison.csv 저장 완료
 
 ---
 
-## 1. 방학 3단계 공통 목표
+## 1. 해야 할 일 순서
 
-3단계는 세 명 모두 **수집된 데이터를 이용해 본격 실험을 수행하는 단계**다.  
-예나는 실시간 입력과 노이즈 데이터를 만들고, 호중은 Pi/ONNX 측정을 수행하며, 용상은 모델 재학습과 threshold 실험을 수행한다.
-
-| 담당 | 3단계 역할 |
-|---|---|
-| 장예나 | 실시간 입력 루프 검증, 노이즈 추가 시뮬레이터 생성 |
-| 김호중 | ONNX/INT8 변환 및 Pi CSV 추론 측정 |
-| 유용상 | LSTM/EE 재학습 및 동적 θ 경량화 실험 |
-
----
-
-## 2. 실측 데이터 재학습
-
-```bash
-python project/scripts/train.py
-python project/scripts/train_early_exit.py
-python project/experiments/compare_baselines.py
+```
+1. Early Exit 관련 SOTA 모델 조사
+2. 비교 가능한 모델 선정
+3. 비교 실험 수행 (김호중과 협력)
+4. 연산량 절감 중심 결과 정리
 ```
 
-| 방식 | 목적 |
-|---|---|
-| 임계값 방식 | 규칙 기반 대조군 |
-| 일반 LSTM | 풀 추론 기준 모델 |
-| Early Exit 고정 θ | 조기 종료 기준 모델 |
-| Early Exit 동적 θ | 동적 threshold 기준 모델 |
+---
+
+## 2. 조사 방향
+
+피드백 핵심:
+> "단순 LSTM 비교를 넘어 기존 SOTA 모델과의 비교를 추가한다. 연산량을 얼마나 줄이는지를 중심으로 보여줄 것."
+
+### 조사 대상 논문
+
+| 논문 | 내용 | 비교 가능 여부 |
+|---|---|---|
+| Mohammed et al. (2023) arXiv:2308.11100 | AMC에 Early Exit 적용 | 구조 비교 가능 |
+| KU Leuven (2024) arXiv:2405.03222 | Width-wise Early Exit | 연산량 비교 가능 |
+| BranchyNet (2016) | Early Exit 원조 | 기준선 비교 |
+
+### 선정 기준
+
+- 우리와 유사한 시계열 분류 태스크이거나
+- Early Exit 구조를 사용하는 모델이거나
+- 연산량 절감 효과를 정량화한 모델
 
 ---
 
-## 3. 동적 Threshold 경량화
+## 3. 비교 실험 항목
 
-| 방식 | 설명 | 기대 효과 |
+| 항목 | 우리 EE 모델 | SOTA 모델 |
 |---|---|---|
-| max-min 범위 | `std` 대신 `max(window) - min(window)` 사용 | 제곱근 연산 제거 |
-| 주기적 업데이트 | 매 시점이 아니라 K 시점마다 θ 갱신 | 계산 횟수 감소 |
-| 조합 방식 | max-min + 주기적 업데이트 | 오버헤드 최소화 |
+| 분류 정확도 (%) | 96.9 | |
+| 평균 추론 시간 (ms) | 0.563 | |
+| 모델 크기 (MB) | 0.33 | |
+| Exit 1 종료율 (%) | 78.6 | |
+| 연산량 절감률 (%) | | |
 
-```python
-if timestep % 3 == 0:
-    variance = max(recent_window) - min(recent_window)
-    theta_1, theta_2 = adjust_threshold(variance)
+### 결과 저장
+
+```
+results/
+├── sota_comparison.csv
+└── computation_comparison.csv
 ```
 
 ---
 
 ## 4. 완료 기준 체크리스트
 
-- [ ] 실측 데이터 기준 Baseline LSTM 학습 완료
-- [ ] 실측 데이터 기준 Early Exit LSTM 학습 완료
-- [ ] 4개 방식 비교 결과 생성
-- [ ] max-min 기반 경량 동적 θ 구현
-- [ ] 주기적 업데이트 방식 구현
-- [ ] 고정 θ vs 기존 동적 θ vs 경량 동적 θ 비교
+- [ ] SOTA 비교 대상 모델 최소 1개 이상 선정
+- [ ] 비교 실험 완료
+- [ ] `sota_comparison.csv` 저장 완료
+- [ ] `computation_comparison.csv` 저장 완료
+- [ ] 김호중에게 비교 실험 프레임워크 공유 완료
+- [ ] 장예나에게 결과 CSV 전달 완료 (시각화용)
 
 ---
 
 ## 5. 주의사항
 
-- 체크포인트는 용상 환경에서 생성된 결과로 관리한다.
-- 동적 θ가 항상 고정 θ보다 빠르게 나와야 하는 것은 아니다.
-- threshold 파라미터를 바꾸면 값과 이유를 문서화한다.
+- 동일한 테스트 데이터로 비교할 것
+- 연산량(FLOPs 또는 추론 시간) 중심으로 비교하는 게 핵심
+- 정확도가 낮아도 연산량 절감이 크면 의미있는 비교가 됨

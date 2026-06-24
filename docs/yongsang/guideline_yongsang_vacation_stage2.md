@@ -1,48 +1,102 @@
 # 유용상 방학 2단계 가이드라인
-## 실측 데이터 로딩 및 모델 입력 검증
+## 노이즈 데이터 재실험 및 경량 동적 θ 구현
 
 > 담당자: 유용상  
-> 단계 목표: 예나가 만든 실측 CSV가 기존 LSTM 입력 형식과 호환되는지 검증  
-> 완료 기준: `data/real_wifi/` 데이터 로딩과 `(10, 4)` 시계열 입력 변환 확인
+> 기간: 방학 3~4주차  
+> 목표: 경량 동적 θ 구현 완료, 노이즈 추가 데이터로 재실험  
+> 완료 기준: 고정 θ vs 기존 동적 θ vs 경량 동적 θ 비교표 완성
 
 ---
 
-## 1. 방학 2단계 공통 목표
+## 1. 해야 할 일 순서
 
-2단계는 세 명 모두 **실측 데이터 기반 실험에 들어갈 입력을 확보하는 단계**다.  
-예나는 데이터를 만들고, 호중은 Pi에서 읽을 준비를 하며, 용상은 모델 입력으로 변환되는지 확인한다.
+```
+1. 경량 동적 θ 구현 (방법 3: max-min + 주기적 업데이트)
+2. 장예나 노이즈 추가 시뮬레이터 데이터로 재실험
+3. 호중 AP 원본 CSV를 예나가 가공한 실제 WiFi 데이터로 재실험
+4. 고정 θ vs 기존 동적 θ vs 경량 동적 θ 비교 분석
+```
 
-| 담당 | 2단계 역할 |
+---
+
+## 2. 경량 동적 θ 구현
+
+```python
+import numpy as np
+
+def compute_dynamic_threshold_lightweight(
+    recent_window,
+    current_theta_1,
+    current_theta_2,
+    base_theta_1=0.3,
+    base_theta_2=0.6,
+    timestep=0,
+    update_interval=3
+):
+    """
+    경량 동적 threshold 계산
+    - max-min 범위 기반 (std 대신)
+    - K 타임스텝마다 한 번만 계산
+    """
+    if timestep % update_interval != 0:
+        return current_theta_1, current_theta_2
+
+    # recent_window은 정규화된 channel_occupancy(0~1) 기준
+    window = np.asarray(recent_window, dtype=np.float32)
+    variance = float(window.max() - window.min())
+
+    HIGH_VARIANCE = 0.22
+    MID_VARIANCE  = 0.12
+    MIN_THRESHOLD = 0.22
+
+    if variance > HIGH_VARIANCE:
+        theta_1 = base_theta_1 * 0.6
+        theta_2 = base_theta_2 * 0.6
+    elif variance > MID_VARIANCE:
+        theta_1 = base_theta_1 * 0.8
+        theta_2 = base_theta_2 * 0.8
+    else:
+        theta_1 = base_theta_1 * 1.2
+        theta_2 = base_theta_2 * 1.2
+
+    theta_1 = max(theta_1, MIN_THRESHOLD)
+    theta_2 = max(theta_2, MIN_THRESHOLD * 2)
+
+    return theta_1, theta_2
+```
+
+---
+
+## 3. 재실험 비교 항목
+
+| 항목 | 고정 θ | 기존 동적 θ | 경량 동적 θ |
+|---|---|---|---|
+| 전체 정확도 | | | |
+| 평균 추론 시간 | | | |
+| Exit 1 종료율 | | | |
+| 급변 구간 정확도 | | | |
+
+### 데이터별 실험
+
+| 데이터 | 비교 목적 |
 |---|---|
-| 장예나 | 실제 WiFi 데이터 수집 및 train/val/test 생성 |
-| 김호중 | 수집 데이터의 Pi 배포 폴더 반영 및 실행 파일 준비 |
-| 유용상 | 수집 데이터의 dataloader 호환성 검증 |
+| 기존 시뮬레이터 | 기존 결과와 동일한지 확인 |
+| 노이즈 추가 시뮬레이터 | 동적 θ 효과가 더 잘 나오는지 확인 |
+| 실제 WiFi 데이터 | 실제 환경 검증 |
 
 ---
 
-## 2. 해야 할 일 순서
+## 4. 완료 기준 체크리스트
 
-```
-1. 예나가 생성한 data/real_wifi CSV 수령
-2. 컬럼 형식 확인
-3. 라벨 분포 확인
-4. 슬라이딩 윈도우 변환 확인
-5. 기존 dataloader와 호환되는지 검증
-```
+- [ ] 경량 동적 θ 구현 완료
+- [ ] 노이즈 시뮬레이터 데이터 재실험 완료
+- [ ] 실제 WiFi 데이터 재실험 완료
+- [ ] 고정 θ vs 기존 동적 θ vs 경량 동적 θ 비교표 완성
+- [ ] 김호중에게 결과 전달 완료
 
 ---
 
-## 3. 완료 기준 체크리스트
+## 5. 주의사항
 
-- [ ] `data/real_wifi/train.csv`, `val.csv`, `test.csv` 로딩 확인
-- [ ] 라벨별 샘플 수 확인
-- [ ] dataloader 출력 shape 확인
-- [ ] 기존 외부/시뮬레이터 데이터와 분포 차이 기록
-
----
-
-## 4. 주의사항
-
-- 실측 데이터 결과와 기존 시뮬레이터 결과를 섞지 않는다.
-- 데이터 shape가 안 맞으면 모델 수정 전에 전처리 문제인지 먼저 확인한다.
-- 이 단계에서는 모델 성능 비교보다 입력 호환성 확인이 목적이다.
+- 경량 동적 θ가 기존보다 나쁘게 나와도 괜찮아. 결과 그대로 분석하면 돼.
+- 급변 구간 분리 분석을 꼭 할 것. 전체 정확도보다 급변 구간 차이가 더 중요함.
