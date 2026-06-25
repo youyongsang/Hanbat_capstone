@@ -86,29 +86,27 @@ Unnecessary Channel Switch Rate: 8.2%
 
 ### 핵심 원리
 
-추론 중 매 타임스텝마다 최근 트래픽 변동률을 계산하여 θ를 실시간으로 조정.
+추론 중 최근 채널 점유율의 직전 timestep 대비 변화량(delta)을 계산하여 θ를 조정.
 
 ```python
 def compute_dynamic_threshold(recent_window, base_theta_1=0.3, base_theta_2=0.6):
     """
     Args:
-        recent_window: 최근 N 타임스텝의 채널 점유율 값
+        recent_window: 최근 timestep들의 채널 점유율 값
         base_theta_1: 기본 θ₁ 값
         base_theta_2: 기본 θ₂ 값
     Returns:
         theta_1, theta_2: 조정된 threshold 값
     """
-    variance = np.std(recent_window)
+    occupancy = recent_window[-recent_steps:]
+    delta = abs(occupancy[-1] - occupancy[-2])
 
-    if variance > HIGH_VARIANCE:      # 변동 심함
-        theta_1 = base_theta_1 * 0.6  # 낮게 → 더 깊이 추론
-        theta_2 = base_theta_2 * 0.6
-    elif variance > MID_VARIANCE:     # 변동 중간
-        theta_1 = base_theta_1 * 0.8
-        theta_2 = base_theta_2 * 0.8
-    else:                              # 안정적
-        theta_1 = base_theta_1 * 1.2  # 높게 → 빠른 종료
-        theta_2 = base_theta_2 * 1.2
+    if delta > SPIKE_THRESHOLD:        # 급변 구간
+        theta_1 = base_theta_1         # 기본 θ 유지 → 과도한 조기 종료 방지
+        theta_2 = base_theta_2
+    else:                              # 안정 구간
+        theta_1 = base_theta_1 * 1.25  # 높게 → 빠른 종료
+        theta_2 = base_theta_2 * 1.25
 
     # 최솟값 보장 (급변 상황 대비)
     theta_1 = max(theta_1, MIN_THRESHOLD)
@@ -121,9 +119,8 @@ def compute_dynamic_threshold(recent_window, base_theta_1=0.3, base_theta_2=0.6)
 
 | 파라미터 | 초기값 | 설명 |
 |---|---|---|
-| HIGH_VARIANCE | 15.0 | 채널 점유율 표준편차 기준 (실험으로 조정) |
-| MID_VARIANCE | 7.0 | 중간 변동성 기준 |
-| MIN_THRESHOLD | 0.1 | θ 최솟값 (급변 대응 보장) |
+| SPIKE_THRESHOLD | 0.25 | 직전 timestep 대비 급변 감지 기준 |
+| MIN_THRESHOLD | 0.22 | θ 최솟값 (급변 대응 보장) |
 | recent_window | 최근 5 타임스텝 | 너무 길면 급변 감지 늦어짐 |
 
 > 초기값으로 시작하고, 실험 결과 보며 조정할 것.
@@ -136,8 +133,8 @@ def compute_dynamic_threshold(recent_window, base_theta_1=0.3, base_theta_2=0.6)
 # 직전 타임스텝 대비 급격한 변화 감지
 spike = abs(current_occupancy - prev_occupancy) > SPIKE_THRESHOLD
 if spike:
-    theta_1 = MIN_THRESHOLD  # 즉시 낮추기
-    theta_2 = MIN_THRESHOLD * 2
+    theta_1 = base_theta_1  # 기본 θ 유지
+    theta_2 = base_theta_2
 ```
 
 ---
@@ -233,4 +230,4 @@ model_dynamic.set_threshold(dynamic=True)
 - 동적 threshold는 **추론 중에만 동작**함. 학습은 항상 풀 추론(모든 Exit 통과)으로 진행.
 - 동적 θ가 고정 θ보다 나쁘게 나와도 괜찮아. **"어떤 조건에서 효과적인지 분석"** 자체가 기여임.
 - 시나리오별 분리 분석을 꼭 할 것. 전체 정확도가 비슷해도 특정 구간에서 차이가 날 수 있음.
-- HIGH_VARIANCE, MID_VARIANCE 값은 실험하면서 조정. 처음엔 초기값으로 시작하고 Exit 종료율 보며 튜닝.
+- SPIKE_THRESHOLD, MIN_THRESHOLD 값은 실험하면서 조정. 처음엔 초기값으로 시작하고 Exit 종료율 보며 튜닝.

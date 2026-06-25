@@ -29,22 +29,21 @@
 
 ## 동적 Threshold 설계
 
-동적 threshold는 추론 시 각 sample의 최근 채널 점유율 변동성을 보고 조정한다. 데이터는 정규화되어 있으므로 변동성 기준도 `0~1` 스케일로 사용했다.
+동적 threshold는 추론 시 각 sample의 최근 채널 점유율 중 마지막 2개 timestep의 차이(delta)를 보고 조정한다. 데이터는 정규화되어 있으므로 `spike_threshold`도 `0~1` 스케일로 사용했다.
 
 | 파라미터 | 값 | 의미 |
 |---|---:|---|
 | `base_theta_1` | 0.3 | Exit 1 기본 threshold |
 | `base_theta_2` | 0.6 | Exit 2 기본 threshold |
-| `high_variance` | 0.15 | 변동 심함 기준 |
-| `mid_variance` | 0.07 | 변동 중간 기준 |
-| `min_threshold` | 0.1 | 급변 대응 최솟값 |
-| `spike_threshold` | 0.2 | 직전 timestep 대비 급변 감지 기준 |
+| `min_threshold` | 0.22 | threshold 최솟값 |
+| `recent_steps` | 5 | 최근 점유율 확인 범위 |
+| `spike_threshold` | 0.25 | 직전 timestep 대비 급변 감지 기준 |
 
 동작 방향은 아래와 같다.
 
 ```text
-변동성 높음 또는 spike 감지 -> threshold 낮춤 -> 더 깊이 추론
-변동성 낮음                -> threshold 높임 -> 빠른 종료 우선
+delta > spike_threshold -> 기본 threshold 유지 -> 과도한 조기 종료 방지
+delta <= spike_threshold -> threshold 1.25배 상향 -> 빠른 종료 우선
 ```
 
 ## 실행 방법

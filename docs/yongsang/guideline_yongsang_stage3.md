@@ -30,7 +30,7 @@
 |---|---|---|
 | Exit 1 종료율 낮음 (40% 이하) | θ₁이 너무 낮음 | θ₁ 높이기 |
 | Exit 3에 너무 몰림 (40% 이상) | θ₁, θ₂ 전체적으로 낮음 | 둘 다 높이기 |
-| 동적 θ가 고정 θ보다 나쁨 | variance 기준값 잘못 설정 | HIGH_VARIANCE, MID_VARIANCE 조정 |
+| 동적 θ가 고정 θ보다 나쁨 | spike 기준값 또는 안정 구간 scale이 맞지 않음 | SPIKE_THRESHOLD, stable scale 조정 |
 | 급변 구간에서 동적 θ 효과 없음 | 윈도우가 너무 길어서 감지 늦음 | recent_window 크기 줄이기 |
 | 전체 정확도 낮음 | 과적합 또는 학습 부족 | dropout 조정, epochs 늘리기 |
 
@@ -67,11 +67,10 @@
 
 | 파라미터 | 기본값 | 튜닝 범위 | 영향 |
 |---|---|---|---|
-| HIGH_VARIANCE | 15.0 | 10 ~ 20 | 낮출수록 더 자주 깊은 추론 |
-| MID_VARIANCE | 7.0 | 5 ~ 10 | |
-| MIN_THRESHOLD | 0.1 | 0.05 ~ 0.2 | 급변 대응 최소 보장 |
-| recent_window | 5 | 3 ~ 10 | 짧을수록 급변 빨리 감지 |
-| SPIKE_THRESHOLD | 20.0 | 15 ~ 30 | 급변 감지 민감도 |
+| SPIKE_THRESHOLD | 0.25 | 0.15 ~ 0.35 | 낮출수록 더 자주 급변으로 판단 |
+| STABLE_SCALE | 1.25 | 1.1 ~ 1.4 | 안정 구간에서 조기 종료를 얼마나 늘릴지 |
+| MIN_THRESHOLD | 0.22 | 0.15 ~ 0.3 | threshold 최소 보장 |
+| recent_window | 5 | 3 ~ 10 | 최근 점유율 확인 범위 |
 
 ### 튜닝 기준
 
@@ -150,9 +149,9 @@ checkpoints/model_info.json
     "dropout": 0.2,
     "fixed_theta_1": 0.3,
     "fixed_theta_2": 0.6,
-    "dynamic_HIGH_VARIANCE": 15.0,
-    "dynamic_MID_VARIANCE": 7.0,
-    "dynamic_MIN_THRESHOLD": 0.1,
+    "dynamic_spike_threshold": 0.25,
+    "dynamic_stable_scale": 1.25,
+    "dynamic_MIN_THRESHOLD": 0.22,
     "dynamic_recent_window": 5,
     "test_accuracy_fixed": 0.0,
     "test_accuracy_dynamic": 0.0

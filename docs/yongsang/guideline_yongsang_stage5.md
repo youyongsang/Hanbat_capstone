@@ -79,7 +79,7 @@ print(f"차이: {abs(pc_accuracy - pi_accuracy):.1%}")
 
 ```
 - 설계 목적: 변동률 기반 θ 실시간 조정
-- 구현 방법: std 기반 변동률 계산
+- 구현 방법: 직전 timestep 대비 channel_occupancy delta 기반 계산
 - 실험 결과: 고정 θ 대비 비교
 - 한계 분석: 오버헤드 문제
 - 향후 개선 방향
@@ -104,7 +104,7 @@ print(f"차이: {abs(pc_accuracy - pi_accuracy):.1%}")
 
 > "본 연구에서 구현한 규칙 기반 동적 threshold는 Exit 1 종료율을 고정 threshold 대비 일관되게 높이는 효과를 보였다. 그러나 변동률 계산 오버헤드로 인해 실측 추론 시간은 고정 threshold 대비 증가하였다.
 >
-> 이를 개선하기 위한 방향으로는 첫째, std 기반 계산을 max-min 범위로 대체하는 연산 단순화, 둘째, K 타임스텝마다 한 번만 계산하는 주기적 업데이트, 셋째, Multi-Armed Bandit 기반 온라인 학습형 동적 threshold(UAT, 2025) 방식 적용을 제안한다.
+> 이를 개선하기 위한 방향으로는 첫째, K 타임스텝마다 한 번만 계산하는 주기적 업데이트, 둘째, ONNX Runtime 배포 구조에 맞춘 threshold 선택 로직 재설계, 셋째, Multi-Armed Bandit 기반 온라인 학습형 동적 threshold(UAT, 2025) 방식 적용을 제안한다.
 >
 > 또한 본 연구의 시뮬레이터는 패턴이 명확한 데이터를 생성하여 고정 threshold와의 정확도 차이가 미미하였다. 실제 공장 환경의 노이즈가 반영된 데이터에서는 동적 threshold의 강건성 효과가 더 두드러질 것으로 예상된다."
 

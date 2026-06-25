@@ -11,7 +11,7 @@
 ## 1. 해야 할 일 순서
 
 ```
-1. 경량 동적 θ 구현 (방법 3: max-min + 주기적 업데이트)
+1. 경량 동적 θ 구현 (방법 3: delta + 주기적 업데이트)
 2. 장예나 노이즈 추가 시뮬레이터 데이터로 재실험
 3. 호중 AP 원본 CSV를 예나가 가공한 실제 WiFi 데이터로 재실험
 4. 고정 θ vs 기존 동적 θ vs 경량 동적 θ 비교 분석
@@ -35,7 +35,7 @@ def compute_dynamic_threshold_lightweight(
 ):
     """
     경량 동적 threshold 계산
-    - max-min 범위 기반 (std 대신)
+    - 직전 timestep 대비 delta 기반
     - K 타임스텝마다 한 번만 계산
     """
     if timestep % update_interval != 0:
@@ -43,21 +43,19 @@ def compute_dynamic_threshold_lightweight(
 
     # recent_window은 정규화된 channel_occupancy(0~1) 기준
     window = np.asarray(recent_window, dtype=np.float32)
-    variance = float(window.max() - window.min())
+    if len(window) < 2:
+        return base_theta_1, base_theta_2
 
-    HIGH_VARIANCE = 0.22
-    MID_VARIANCE  = 0.12
+    delta = abs(float(window[-1] - window[-2]))
+    SPIKE_THRESHOLD = 0.25
     MIN_THRESHOLD = 0.22
 
-    if variance > HIGH_VARIANCE:
-        theta_1 = base_theta_1 * 0.6
-        theta_2 = base_theta_2 * 0.6
-    elif variance > MID_VARIANCE:
-        theta_1 = base_theta_1 * 0.8
-        theta_2 = base_theta_2 * 0.8
+    if delta > SPIKE_THRESHOLD:
+        theta_1 = base_theta_1
+        theta_2 = base_theta_2
     else:
-        theta_1 = base_theta_1 * 1.2
-        theta_2 = base_theta_2 * 1.2
+        theta_1 = base_theta_1 * 1.25
+        theta_2 = base_theta_2 * 1.25
 
     theta_1 = max(theta_1, MIN_THRESHOLD)
     theta_2 = max(theta_2, MIN_THRESHOLD * 2)

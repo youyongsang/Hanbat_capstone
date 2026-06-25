@@ -38,7 +38,7 @@
 
 ```
 동적 θ 매 타임스텝 추가 연산:
-최근 N 타임스텝 슬라이싱 → std 계산 → 조건 분기 → θ 재설정
+최근 N 타임스텝 슬라이싱 → 마지막 2개 점유율 delta 계산 → 조건 분기 → θ 재설정
 
 이 연산 비용 > Exit 1 종료율 향상으로 절약한 시간
 → 전체 실측 시간 오히려 증가
@@ -57,8 +57,8 @@
 
 ```
 현재 구현:
-np.std(recent_window)  ← N개 값의 분산 계산 + 제곱근
-→ 개선 방향: max-min 범위로 대체, 주기적 업데이트
+delta = abs(current_occupancy - previous_occupancy)
+→ 개선 방향: 계산 주기 줄이기, ONNX Runtime 배포 구조에서 동일 조건 재검증
 ```
 
 ### 원인 2 — 시뮬레이터 데이터 특성
@@ -75,7 +75,7 @@ np.std(recent_window)  ← N개 값의 분산 계산 + 제곱근
 ### 원인 3 — 파라미터 최적화 한계
 
 ```
-HIGH_VARIANCE, MID_VARIANCE 등의 기준값이
+SPIKE_THRESHOLD, stable scale 등의 기준값이
 이 데이터에 완전히 최적화되지 않았을 수 있음
 ```
 
@@ -89,9 +89,6 @@ HIGH_VARIANCE, MID_VARIANCE 등의 기준값이
 
 **경량 동적 θ 설계:**
 ```python
-# std 대신 max-min 범위 사용 (연산 단순화)
-variance = max(recent_window) - min(recent_window)
-
 # K 타임스텝마다 한 번만 계산 (주기적 업데이트)
 if timestep % 3 == 0:
     update_threshold()
@@ -129,7 +126,7 @@ if timestep % 3 == 0:
 
 동적 θ 결과가 기대보다 좋지 않아도 이렇게 서술하면 돼:
 
-> "동적 threshold는 규칙 기반 변동률 계산으로 구현하였으며, Exit 1 종료율이 고정 threshold 대비 일관되게 높게 나타났다. 그러나 변동률 계산 오버헤드로 인해 실측 추론 시간은 고정 threshold 대비 증가하였다. 이는 현재 std 기반 계산의 연산 비용이 Exit 1 종료율 향상으로 얻는 시간 절약을 초과하기 때문으로 분석된다. 향후 max-min 범위 기반 경량 계산 또는 주기적 업데이트 방식으로 오버헤드를 줄이는 것이 개선 방향이다."
+> "동적 threshold는 최근 채널 점유율의 직전 timestep 대비 변화량(delta)을 이용하는 규칙 기반 방식으로 구현하였으며, Exit 1 종료율이 고정 threshold 대비 일관되게 높게 나타났다. 그러나 threshold 계산과 런타임 조건 분기 오버헤드로 인해 실측 추론 시간은 고정 threshold 대비 증가하였다. 향후 주기적 업데이트 방식이나 ONNX Runtime 배포 구조에 맞춘 재설계로 오버헤드를 줄이는 것이 개선 방향이다."
 
 ---
 
