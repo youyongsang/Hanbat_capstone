@@ -3,20 +3,20 @@ Data Directory: project\data\real
 Checkpoint: project\checkpoints\baseline_lstm_best.pth
 
 === Baseline 2: Standard 3-Layer LSTM ===
-Test Accuracy: 96.9%
+Test Accuracy: 96.6%
 Exit별 성능:
   Exit 1 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 2.0ms
   Exit 2 | Accuracy: N/A | Exit Rate: 0.0% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 96.9% | Exit Rate: 100.0% | Avg Time: 8.0ms
+  Exit 3 | Accuracy: 96.6% | Exit Rate: 100.0% | Avg Time: 8.0ms
 Overall Avg Inference Time: 8.000ms
 Measured Wall Time: 0.131ms
 Label별 정확도:
-  Label 0 (정상): Precision: 0.96  Recall: 0.95
-  Label 1 (혼잡 경고): Precision: 0.95  Recall: 0.99
-  Label 2 (혼잡): Precision: 1.00  Recall: 0.95
-  Label 3 (심각): Precision: 0.94  Recall: 1.00
+  Label 0 (정상): Precision: 0.98  Recall: 1.00
+  Label 1 (혼잡 경고): Precision: 0.98  Recall: 0.98
+  Label 2 (혼잡): Precision: 0.96  Recall: 0.95
+  Label 3 (심각): Precision: 0.88  Recall: 0.82
 시나리오별 정확도:
-  emergency_ramp: 94.0%
+  emergency_ramp: 95.2%
   imbalanced_ap_load: 96.2%
-  lunch_restart: 97.6%
-  startup_surge: 99.0%
+  lunch_restart: 98.8%
+  startup_surge: 96.2%

@@ -15,43 +15,43 @@ Threshold Parameters:
   stable rule: theta_1/theta_2 * 1.25
 
 === Baseline 3: Early Exit + fixed theta ===
-Test Accuracy: 97.4%
+Test Accuracy: 95.2%
 Exit별 성능:
-  Exit 1 | Accuracy: 100.0% | Exit Rate: 4.6% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 100.0% | Exit Rate: 85.5% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 74.3% | Exit Rate: 10.0% | Avg Time: 8.0ms
-Overall Avg Inference Time: 4.308ms
-Measured Wall Time: 1.318ms
-Label별 정확도:
-  Label 0 (정상): 100.0%
-  Label 1 (혼잡 경고): 98.1%
-  Label 2 (혼잡): 94.8%
-  Label 3 (심각): 100.0%
-시나리오별 정확도:
-  emergency_ramp: 95.2%
-  imbalanced_ap_load: 97.5%
-  lunch_restart: 98.8%
-  startup_surge: 98.1%
-
-=== Proposed Model 4: Early Exit + dynamic theta ===
-Test Accuracy: 97.4%
-Exit별 성능:
-  Exit 1 | Accuracy: 100.0% | Exit Rate: 5.1% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 98.1% | Exit Rate: 88.9% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 85.7% | Exit Rate: 6.0% | Avg Time: 8.0ms
-Overall Avg Inference Time: 4.137ms
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 0.3% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 99.7% | Exit Rate: 81.8% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 74.6% | Exit Rate: 17.9% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.712ms
 Measured Wall Time: 1.076ms
 Label별 정확도:
   Label 0 (정상): 100.0%
-  Label 1 (혼잡 경고): 98.1%
-  Label 2 (혼잡): 94.8%
-  Label 3 (심각): 100.0%
+  Label 1 (혼잡 경고): 95.7%
+  Label 2 (혼잡): 96.6%
+  Label 3 (심각): 64.7%
 시나리오별 정확도:
-  emergency_ramp: 95.2%
-  imbalanced_ap_load: 97.5%
-  lunch_restart: 98.8%
+  emergency_ramp: 94.0%
+  imbalanced_ap_load: 93.8%
+  lunch_restart: 94.0%
+  startup_surge: 98.1%
+
+=== Proposed Model 4: Early Exit + dynamic theta ===
+Test Accuracy: 95.4%
+Exit별 성능:
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 0.6% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 97.8% | Exit Rate: 88.9% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 75.7% | Exit Rate: 10.5% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.410ms
+Measured Wall Time: 1.038ms
+Label별 정확도:
+  Label 0 (정상): 100.0%
+  Label 1 (혼잡 경고): 96.3%
+  Label 2 (혼잡): 96.6%
+  Label 3 (심각): 64.7%
+시나리오별 정확도:
+  emergency_ramp: 94.0%
+  imbalanced_ap_load: 95.0%
+  lunch_restart: 94.0%
   startup_surge: 98.1%
 
 동적 theta 효과:
-  Accuracy Change: 0.0%
-  Avg Inference Time Change: -0.171ms
+  Accuracy Change: 0.3%
+  Avg Inference Time Change: -0.302ms

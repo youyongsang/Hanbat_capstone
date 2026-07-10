@@ -14,9 +14,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from utils.dataloader import get_dataloader
 import experiments.channel_optimizer as ch_opt
 
-# [브런치의 실제 파일 연동] 두 팀원의 모델을 순수하게 그대로 로드
+# [브런치의 실제 파일 연동] 팀원들의 모델 및 선행연구 SDN 모델 로드
 from models.baseline_lstm import BaselineLSTM
 from models.early_exit_lstm import EarlyExitLSTM
+from models.sdn_lstm import SDNLSTM  # [신규 추가] 선행연구 SDN 모델
 
 RESULTS_DIR = PROJECT_ROOT / "results" / "hojung"
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
@@ -46,9 +47,8 @@ def threshold_baseline(channel_occupancy):
     else:
         return 3  # 심각
 
-# ----------------------------------------------------
+
 # 레이블별 정확도 계산 함수 (김호중 담당 지표)
-# ----------------------------------------------------
 def calculate_label_accuracies(y_true, y_pred):
     accs = {}
     for label in [0, 1, 2, 3]:
@@ -72,7 +72,8 @@ def load_checkpoint_state(path):
 
 
 def save_text_summary(summary_results, save_path):
-    lines = ["4-Method Comparison Report", ""]
+    # 기존 '4-Method'에서 선행연구 포함 '5-Method'로 명칭 변경 및 헤더 유지
+    lines = ["5-Method Comparison Report (with SDN Baseline)", ""]
     lines.append(f"Timing repeats: {TIMING_REPEATS}")
     lines.append(f"Warmup samples: {WARMUP_SAMPLES}")
     lines.append("")
@@ -101,6 +102,7 @@ def save_text_summary(summary_results, save_path):
     fixed = next((item for item in summary_results if "Fixed" in item["Method"]), None)
     dynamic = next((item for item in summary_results if "Dynamic" in item["Method"]), None)
     full = next((item for item in summary_results if "LSTM Full" in item["Method"]), None)
+    
     if fixed and dynamic:
         lines.append("Early Exit Fixed vs Dynamic")
         lines.append(f"  Accuracy Change: {dynamic['Accuracy(%)'] - fixed['Accuracy(%)']:.1f}%p")
@@ -119,6 +121,7 @@ def save_text_summary(summary_results, save_path):
         )
 
     save_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 # ----------------------------------------------------
 # 6. 비교 실험 실행 스크립트 메인 루프
@@ -145,29 +148,55 @@ def main():
     if not early_exit_checkpoint.exists():
         print(f"[Warn] Early Exit checkpoint not found: {display_path(early_exit_checkpoint)}")
 
+    sdn_checkpoint = CHECKPOINT_DIR / "sdn_lstm_best.pth"
+    if not sdn_checkpoint.exists():
+        print(f"[Warn] SDN Baseline checkpoint not found: {display_path(sdn_checkpoint)}")
+
     summary_results = []
+    # methods 리스트에 선행연구인 Baseline 5 (SDN) 추가
     methods = [
         {"id": 1, "name": "Baseline 1 (Threshold)", "file": "baseline_threshold.csv"},
         {"id": 2, "name": "Baseline 2 (LSTM Full)", "file": "baseline_lstm.csv"},
         {"id": 3, "name": "Baseline 3 (Early Exit Fixed theta)", "file": "early_exit_fixed.csv"},
-        {"id": 4, "name": "Baseline 4 (Early Exit Dynamic theta)", "file": "early_exit_dynamic.csv"}
+        {"id": 4, "name": "Baseline 4 (Early Exit Dynamic theta)", "file": "early_exit_dynamic.csv"},
+        {"id": 5, "name": "Baseline 5 (Shallow-Deep Networks SDN)", "file": "sdn_baseline.csv"} # [추가]
     ]
 
-    def run_prediction(method, features, model_lstm, model_ee):
+    def run_prediction(method, features, model_lstm, model_ee, model_sdn):
         if method["id"] == 1:
             occ_val = features.numpy()[0, -1, 1] * 100
             return threshold_baseline(occ_val), None
+        
         if method["id"] == 2:
             with torch.no_grad():
                 return torch.argmax(model_lstm(features), dim=1).item(), None
-        with torch.no_grad():
-            decisions = model_ee.infer_batch_stepwise(features, dynamic=(method["id"] == 4))
-            return torch.argmax(decisions[0].logits, dim=-1).item(), decisions[0].exit_point
+                
+        if method["id"] in [3, 4]:
+            with torch.no_grad():
+                decisions = model_ee.infer_batch_stepwise(features, dynamic=(method["id"] == 4))
+                return torch.argmax(decisions[0].logits, dim=-1).item(), decisions[0].exit_point
+
+        if method["id"] == 5:
+            # [신규 추가] SDN 선행연구 모델의 오리지널 Confidence 기반 조기 종료 모사 로직
+            with torch.no_grad():
+                exit_logits = model_sdn(features) # [Exit1, Exit2, Exit3] 리스트 반환 구조 가정
+                chosen_exit = 3 # 1-based index (1, 2, 3) 매핑 보존용 기본값
+                final_pred = torch.argmax(exit_logits[2], dim=1).item()
+                
+                # 가중치 파일에 설정된 고정 임계치 기준 순차 평가
+                conf_threshold = 0.85 
+                for stage in range(2): # Exit 1 (0) 과 Exit 2 (1) 검사
+                    probs = torch.softmax(exit_logits[stage], dim=1)
+                    confidence = torch.max(probs, dim=1).values.item()
+                    if confidence >= conf_threshold:
+                        chosen_exit = stage + 1
+                        final_pred = torch.argmax(exit_logits[stage], dim=1).item()
+                        break
+                return final_pred, chosen_exit
 
     test_batches = list(test_loader)
 
     for m in methods:
-        # 명세서 서식 완전 일치 출력
         print(f"Running {m['name']}...")
         
         # 방식 변경 시 Hysteresis 채널 상태 리셋
@@ -193,8 +222,18 @@ def main():
             model_ee.set_threshold(dynamic=(m["id"] == 4))
             model_ee.eval() 
 
+        # [신규 추가] 선행연구 SDNLSTM 모델 할당
+        model_sdn = None
+        if m["id"] == 5:
+            model_sdn = SDNLSTM(input_size=4, hidden_size=128, confidence_threshold=0.85)
+            if sdn_checkpoint.exists():
+                state_dict, _ = load_checkpoint_state(sdn_checkpoint)
+                model_sdn.load_state_dict(state_dict)
+            model_sdn.eval()
+
+        # 웜업 세션 진행
         for features, _ in test_batches[:WARMUP_SAMPLES]:
-            run_prediction(m, features, model_lstm, model_ee)
+            run_prediction(m, features, model_lstm, model_ee, model_sdn)
 
         per_sample_times = [[] for _ in test_batches]
         for run_idx in range(TIMING_REPEATS):
@@ -203,7 +242,7 @@ def main():
             run_exit_counts = {1: 0, 2: 0, 3: 0}
             for sample_idx, (features, targets) in enumerate(test_batches):
                 start_time = time.perf_counter()
-                pred, exit_point = run_prediction(m, features, model_lstm, model_ee)
+                pred, exit_point = run_prediction(m, features, model_lstm, model_ee, model_sdn)
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
 
                 per_sample_times[sample_idx].append(elapsed_ms)
@@ -249,12 +288,12 @@ def main():
         total = max(len(all_preds), 1)
         e1, e2, e3 = (exit_counts[1]/total)*100, (exit_counts[2]/total)*100, (exit_counts[3]/total)*100
 
-        # 명세서 출력 예시와 공백, 형태까지 완전히 일치화
+        # 출력 예시 유지
         print(f"  Accuracy: {acc:.1f}% | Avg Inference: {avg_time:.4f}ms")
-        if m["id"] in [3, 4]:
+        if m["id"] in [3, 4, 5]: # SDN 모델(5)도 조기종료 통계 출력 유도
             print(f"  Exit 1: {e1:.1f}% | Exit 2: {e2:.1f}% | Exit 3: {e3:.1f}%")
 
-        # 개별 결과 CSV 출력 저장
+        # 개별 결과 CSV 저장
         pd.DataFrame({
             "True_Label": y_true, 
             "Predicted_Label": y_pred, 
@@ -273,12 +312,12 @@ def main():
             "Unnecessary_Switches": unnecessary_switches,
             "Unnecessary_Switch_Rate(%)": round(unnecessary_switch_rate, 1),
         }
-        if m["id"] in [3, 4]:
+        if m["id"] in [3, 4, 5]: # SDN 모델도 요약 데이터 사전에 조기종료 정보 수집
             res_dict.update({"Exit1(%)": round(e1, 1), "Exit2(%)": round(e2, 1), "Exit3(%)": round(e3, 1)})
         res_dict.update(label_accs)
         summary_results.append(res_dict)
 
-    # 최종 comparison_summary.csv 파일 저장
+    # 최종 comparison_summary.csv 및 txt 파일 업데이트 저장
     pd.DataFrame(summary_results).to_csv(RESULTS_DIR / "comparison_summary.csv", index=False)
     save_text_summary(summary_results, RESULTS_DIR / "comparison_summary.txt")
     print(f"Results saved to {display_path(RESULTS_DIR / 'comparison_summary.csv')}")
