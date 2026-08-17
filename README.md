@@ -96,6 +96,18 @@ project/
 
 ---
 
+## AP 실측 strict 데이터 파이프라인
+
+방학 중 AP 장비에서 수집한 실측 CSV를 기준으로 9개 feature 모델 파이프라인을 별도로 구성했다. 기존 1학기 `project/data/real` 4-feature 실험과 구분하기 위해 AP 실측 데이터는 아래 문서를 기준으로 실행한다.
+
+```text
+project/README_AP_STRICT.md
+```
+
+해당 문서에는 AP strict CSV 기준 feature 목록, 제외 컬럼, train/val/test 변환, AP용 Baseline/Early Exit 학습, 평가, 4개 모델 비교표 생성 절차가 정리되어 있다.
+
+---
+
 ## 설치 방법
 
 레포지토리를 받은 뒤 `hojung` 브랜치를 기준으로 실행한다.
