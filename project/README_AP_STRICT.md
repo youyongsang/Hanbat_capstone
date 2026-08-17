@@ -46,6 +46,24 @@ rssi_delta_db
 rssi_moving_avg_dbm
 ```
 
+### 4개 feature에서 9개 feature로 늘린 이유
+
+기존 1학기 실험은 RPS, channel occupancy, packet loss, latency 중심의 4개 feature를 사용했다. 하지만 AP 실측 데이터에서는 단일 지표만으로 혼잡을 안정적으로 설명하기 어려웠다.
+
+- 채널 점유율은 부하를 줘도 특정 구간에서 크게 변하지 않았다.
+- 패킷 손실률은 대부분 0 또는 N/A에 가까워 구분력이 낮았다.
+- 실제 AP 환경의 혼잡은 throughput, occupancy, jitter, retry/failed, RSSI 변화가 함께 나타나는 복합 현상이다.
+
+따라서 AP strict 실험에서는 트래픽 부하, 채널 상태, 지연 품질, 전송 안정성, 신호 세기 변화를 함께 반영하도록 9개 feature로 확장했다.
+
+| feature 그룹 | 포함 feature | 의미 |
+|---|---|---|
+| 트래픽 부하 | `throughput_mbps` | 실제 전송량 |
+| 채널 사용 상태 | `channel_occupancy_percent` | 채널 busy 비율 |
+| 지연 품질 | `latency_ms`, `jitter_ms` | 지연과 지연 변동 |
+| 전송 안정성 | `tx_retries_delta`, `tx_failed_delta` | 재전송 및 실패 증가 |
+| 무선 신호 상태 | `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm` | 신호 세기 및 변화 |
+
 아래 컬럼은 모델 입력에 넣지 않는다.
 
 | 컬럼 | 용도 | 입력 제외 이유 |
@@ -130,7 +148,7 @@ project/results/yongsang/ap_model_comparison_cleaned_strict.txt
 | 모델 | 역할 |
 |---|---|
 | Baseline LSTM Full | Early Exit 없는 전체 LSTM 기준선 |
-| SDN-style Confidence-only EE | SDN/Shallow-Deep Networks의 confidence-only 조기 종료 정책 baseline |
+| SDN-style Early Exit (trained) | SDN/Shallow-Deep Networks(ICML 2019) loss 가중치(0.15/0.30/0.55)로 AP 9-feature 기준 별도 학습한 confidence-only 조기 종료 baseline |
 | Proposed Early Exit Fixed theta | 우리 AP Early Exit 구조에서 동적 threshold를 제거한 ablation |
 | Proposed Early Exit Dynamic theta | 최근 트래픽 변화 기반 동적 threshold를 적용한 제안 방식 |
 
@@ -138,10 +156,12 @@ project/results/yongsang/ap_model_comparison_cleaned_strict.txt
 
 | 모델 | 정확도 | Label 2 | Label 3 | Exit1 | Exit2 | Exit3 | PC 실측 | 구조상 평균 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Baseline LSTM Full | 92.7% | 77.3% | 100.0% | 0.0% | 0.0% | 100.0% | 0.0631ms | 8.000ms |
-| SDN-style Confidence-only EE | 91.5% | 77.3% | 93.3% | 98.8% | 1.2% | 0.0% | 0.1939ms | 2.024ms |
-| Proposed Early Exit Fixed theta | 91.5% | 77.3% | 93.3% | 15.9% | 32.9% | 51.2% | 0.4391ms | 5.732ms |
-| Proposed Early Exit Dynamic theta | 91.5% | 77.3% | 93.3% | 37.8% | 39.0% | 23.2% | 0.3622ms | 4.171ms |
+| Baseline LSTM Full | 92.7% | 77.3% | 100.0% | 0.0% | 0.0% | 100.0% | 0.0667ms | 8.000ms |
+| SDN-style Early Exit (trained) | 91.5% | 72.7% | 100.0% | 12.2% | 30.5% | 57.3% | 0.4956ms | 6.049ms |
+| Proposed Early Exit Fixed theta | 91.5% | 77.3% | 93.3% | 15.9% | 32.9% | 51.2% | 0.5143ms | 5.732ms |
+| Proposed Early Exit Dynamic theta | 91.5% | 77.3% | 93.3% | 37.8% | 39.0% | 23.2% | 0.4251ms | 4.171ms |
+
+SDN-style은 Early Exit 백본을 재사용하지 않고 `project/scripts/train_ap_sdn.py`로 AP 9-feature 데이터에서 별도 학습한 결과이다(체크포인트: `project/checkpoints/ap_cleaned_strict/ap_sdn_lstm_best.pth`, 평가 리포트: `project/results/yongsang/ap_sdn_cleaned_strict_eval_report.txt`). 전체 정확도는 Proposed와 동일한 91.5%이지만 Label 2(혼잡) 정확도는 72.7%로 Proposed(77.3%)보다 4.6%p 낮다. 이는 제안 모델이 SDN 대비 갖는 실질적 차별점으로 볼 수 있다.
 
 PC 실측 시간은 Python stepwise 분기 오버헤드가 포함되어 Early Exit에 불리하게 측정될 수 있다. 최종 속도 주장은 Raspberry Pi + staged ONNX 실측으로 확정해야 한다.
 
@@ -162,7 +182,7 @@ PC 실측 시간은 Python stepwise 분기 오버헤드가 포함되어 Early Ex
 
 AP strict 기준 최종 Pi 실험을 위해서는 아래 산출물을 다시 만들어야 한다.
 
-1. AP용 SDN LSTM checkpoint 재학습
+1. ~~AP용 SDN LSTM checkpoint 재학습~~ — 완료 (`ap_sdn_lstm_best.pth`, `train_ap_sdn.py`/`evaluate_ap_sdn.py`)
 2. Baseline LSTM ONNX 변환
 3. SDN-style staged ONNX 변환
 4. Proposed Fixed/Dynamic staged ONNX 변환
@@ -171,4 +191,3 @@ AP strict 기준 최종 Pi 실험을 위해서는 아래 산출물을 다시 만
 7. Pi에서 동일 `test.csv` 기준으로 평균, p50, p95, Exit 비율 재측정
 
 라즈베리파이 실험에서는 반드시 staged ONNX 방식으로 실행해야 실제 layer skip 효과를 볼 수 있다.
-

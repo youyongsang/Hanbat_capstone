@@ -1,0 +1,24 @@
+AP SDN-style LSTM Evaluation Report
+Data Directory: project\data\ap_metrics_cleaned_strict
+Checkpoint: project\checkpoints\ap_cleaned_strict\ap_sdn_lstm_best.pth
+
+=== AP SDN-style (Shallow-Deep Networks) ===
+Fixed Confidence Threshold (T): 0.85
+Test Accuracy: 91.5%
+Exit별 성능:
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 12.2% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 100.0% | Exit Rate: 30.5% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 85.1% | Exit Rate: 57.3% | Avg Time: 8.0ms
+Overall Avg Inference Time: 6.049ms
+Measured Wall Time: 0.623ms
+Label별 정확도:
+  Label 0 (정상): 100.0%
+  Label 1 (경고): 96.7%
+  Label 2 (혼잡): 72.7%
+  Label 3 (심각): 100.0%
+시나리오별 정확도:
+  high_load: 94.1%
+  low_load: 100.0%
+  medium_load: 84.6%
+  normal_idle: 100.0%
+  stress_load: 78.9%

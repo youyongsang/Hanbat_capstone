@@ -9,7 +9,6 @@ import time
 from pathlib import Path
 
 import torch
-import torch.nn.functional as F
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -18,8 +17,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_early_exit_lstm import APEarlyExitLSTM  # noqa: E402
+from models.ap_sdn_lstm import APSDNLSTM  # noqa: E402
 from models.baseline_lstm import BaselineLSTM  # noqa: E402
-from models.early_exit_lstm import ExitDecision, entropy_from_logits  # noqa: E402
 from utils.ap_dataloader import load_ap_csv_windows  # noqa: E402
 
 
@@ -45,124 +44,36 @@ def parse_early_exit_block(block: str) -> dict[str, str]:
     }
 
 
-LABEL_NAMES = {0: "정상", 1: "경고", 2: "혼잡", 3: "심각"}
-SIMULATED_EXIT_TIME_MS = {1: 2.0, 2: 4.0, 3: 8.0}
-
-
-def infer_sdn_confidence_stepwise(
-    model: APEarlyExitLSTM,
-    x: torch.Tensor,
-    threshold: float,
-) -> list[ExitDecision]:
-    """SDN-style confidence-only early exit.
-
-    This keeps the trained AP Early Exit backbone but uses the SDN-style
-    policy: stop at an internal classifier when max softmax confidence passes
-    a fixed threshold. It intentionally ignores entropy and traffic variation.
-    """
-
-    decisions: list[ExitDecision] = []
-    with torch.no_grad():
-        for sample_idx in range(x.size(0)):
-            sample = x[sample_idx : sample_idx + 1]
-
-            out1, _ = model.lstm1(sample)
-            logits1 = model.exit_classifier1(model.dropout(out1[:, -1, :]))
-            confidence1 = F.softmax(logits1, dim=-1).max(dim=-1).values[0].item()
-            if confidence1 >= threshold:
-                decisions.append(ExitDecision(logits1[0], 1, entropy_from_logits(logits1)[0]))
-                continue
-
-            out2, _ = model.lstm2(out1)
-            logits2 = model.exit_classifier2(model.dropout(out2[:, -1, :]))
-            confidence2 = F.softmax(logits2, dim=-1).max(dim=-1).values[0].item()
-            if confidence2 >= threshold:
-                decisions.append(ExitDecision(logits2[0], 2, entropy_from_logits(logits2)[0]))
-                continue
-
-            out3, _ = model.lstm3(out2)
-            logits3 = model.exit_classifier3(model.dropout(out3[:, -1, :]))
-            decisions.append(ExitDecision(logits3[0], 3, entropy_from_logits(logits3)[0]))
-
-    return decisions
-
-
-def summarize_decisions(decisions: list[ExitDecision], labels: torch.Tensor) -> dict[str, str]:
-    total = len(decisions)
-    correct = 0
-    label_correct = {label: 0 for label in LABEL_NAMES}
-    label_total = {label: 0 for label in LABEL_NAMES}
-    exit_counts = {exit_point: 0 for exit_point in SIMULATED_EXIT_TIME_MS}
-    simulated_time = 0.0
-
-    for decision, target_tensor in zip(decisions, labels):
-        target = int(target_tensor.item())
-        prediction = int(decision.logits.argmax(dim=-1).item())
-        is_correct = prediction == target
-        correct += int(is_correct)
-        label_correct[target] += int(is_correct)
-        label_total[target] += 1
-        exit_counts[decision.exit_point] += 1
-        simulated_time += SIMULATED_EXIT_TIME_MS[decision.exit_point]
-
-    return {
-        "acc": format_percent(correct / total),
-        "l2": format_percent(label_correct[2] / label_total[2] if label_total[2] else 0.0),
-        "l3": format_percent(label_correct[3] / label_total[3] if label_total[3] else 0.0),
-        "e1": format_percent(exit_counts[1] / total),
-        "e2": format_percent(exit_counts[2] / total),
-        "e3": format_percent(exit_counts[3] / total),
-        "sim": f"{simulated_time / total:.3f}",
-    }
-
-
 def format_percent(value: float) -> str:
     return f"{value * 100:.1f}%"
 
 
-def load_models() -> tuple[BaselineLSTM, APEarlyExitLSTM]:
-    torch.set_num_threads(1)
+def load_models() -> tuple[BaselineLSTM, APSDNLSTM, APEarlyExitLSTM]:
     torch.set_num_threads(1)
 
     base_checkpoint = torch.load(CHECKPOINT_DIR / "ap_baseline_lstm_best.pth", map_location="cpu")
+    sdn_checkpoint = torch.load(CHECKPOINT_DIR / "ap_sdn_lstm_best.pth", map_location="cpu")
     ee_checkpoint = torch.load(CHECKPOINT_DIR / "ap_early_exit_lstm_best.pth", map_location="cpu")
 
     base_model = BaselineLSTM(input_size=9, hidden_size=128, num_classes=4).eval()
     base_model.load_state_dict(base_checkpoint["model_state_dict"])
 
+    sdn_model = APSDNLSTM(
+        hidden_size=int(sdn_checkpoint.get("hidden_size", 128)),
+        confidence_threshold=float(sdn_checkpoint.get("confidence_threshold", 0.85)),
+    ).eval()
+    sdn_model.load_state_dict(sdn_checkpoint["model_state_dict"])
+
     ee_model = APEarlyExitLSTM(hidden_size=128).eval()
     ee_model.load_state_dict(ee_checkpoint["model_state_dict"])
 
-    return base_model, ee_model
-
-
-def tune_sdn_threshold(model: APEarlyExitLSTM) -> float:
-    val_np, val_labels_np = load_ap_csv_windows(DATA_DIR / "val.csv")
-    val_x = torch.from_numpy(val_np)
-    val_labels = torch.from_numpy(val_labels_np)
-
-    best_threshold = 0.9
-    best_accuracy = -1.0
-    best_simulated_time = float("inf")
-    for step in range(50, 100):
-        threshold = step / 100
-        summary = summarize_decisions(infer_sdn_confidence_stepwise(model, val_x, threshold), val_labels)
-        accuracy = float(summary["acc"].rstrip("%")) / 100
-        simulated_time = float(summary["sim"])
-        if accuracy > best_accuracy or (
-            accuracy == best_accuracy and simulated_time < best_simulated_time
-        ):
-            best_threshold = threshold
-            best_accuracy = accuracy
-            best_simulated_time = simulated_time
-
-    return best_threshold
+    return base_model, sdn_model, ee_model
 
 
 def benchmark_pc_time(
     base_model: BaselineLSTM,
+    sdn_model: APSDNLSTM,
     ee_model: APEarlyExitLSTM,
-    sdn_threshold: float,
 ) -> tuple[float, float, float, float]:
     x_np, _ = load_ap_csv_windows(DATA_DIR / "test.csv")
     x = torch.from_numpy(x_np)
@@ -173,7 +84,7 @@ def benchmark_pc_time(
     with torch.no_grad():
         for _ in range(warmup):
             base_model(x)
-            infer_sdn_confidence_stepwise(ee_model, x, sdn_threshold)
+            sdn_model.infer_batch_stepwise(x)
             ee_model.infer_batch_stepwise(x, dynamic=False)
             ee_model.infer_batch_stepwise(x, dynamic=True)
 
@@ -184,7 +95,7 @@ def benchmark_pc_time(
 
         start = time.perf_counter()
         for _ in range(repeats):
-            infer_sdn_confidence_stepwise(ee_model, x, sdn_threshold)
+            sdn_model.infer_batch_stepwise(x)
         sdn_ms = (time.perf_counter() - start) * 1000 / (repeats * len(x))
 
         start = time.perf_counter()
@@ -202,6 +113,7 @@ def benchmark_pc_time(
 
 def main() -> None:
     base_report = (RESULT_DIR / "ap_baseline_lstm_cleaned_strict_eval_report.txt").read_text(encoding="utf-8")
+    sdn_report = (RESULT_DIR / "ap_sdn_cleaned_strict_eval_report.txt").read_text(encoding="utf-8")
     ee_report = (RESULT_DIR / "ap_early_exit_cleaned_strict_eval_report.txt").read_text(encoding="utf-8")
 
     fixed_block = extract(
@@ -210,15 +122,11 @@ def main() -> None:
     )
     dynamic_block = extract(ee_report, r"(=== AP Early Exit \+ dynamic theta ===.*)")
 
+    sdn = parse_early_exit_block(sdn_report)
     fixed = parse_early_exit_block(fixed_block)
     dynamic = parse_early_exit_block(dynamic_block)
-    base_model, ee_model = load_models()
-    sdn_threshold = tune_sdn_threshold(ee_model)
-    test_np, test_labels_np = load_ap_csv_windows(DATA_DIR / "test.csv")
-    test_x = torch.from_numpy(test_np)
-    test_labels = torch.from_numpy(test_labels_np)
-    sdn = summarize_decisions(infer_sdn_confidence_stepwise(ee_model, test_x, sdn_threshold), test_labels)
-    base_ms, sdn_ms, fixed_ms, dynamic_ms = benchmark_pc_time(base_model, ee_model, sdn_threshold)
+    base_model, sdn_model, ee_model = load_models()
+    base_ms, sdn_ms, fixed_ms, dynamic_ms = benchmark_pc_time(base_model, sdn_model, ee_model)
 
     rows = [
         {
@@ -236,9 +144,9 @@ def main() -> None:
             "interpretation": "accuracy upper-bound baseline; no early stopping",
         },
         {
-            "model": "SDN-style Confidence-only EE",
-            "paper_basis": "SDN/Shallow-Deep Networks-style internal classifier policy",
-            "threshold_policy": f"max softmax confidence >= {sdn_threshold:.2f}",
+            "model": "SDN-style Early Exit (trained)",
+            "paper_basis": "SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55)",
+            "threshold_policy": f"max softmax confidence >= {sdn_model.confidence_threshold:.2f}",
             "test_accuracy": sdn["acc"],
             "label2_accuracy": sdn["l2"],
             "label3_accuracy": sdn["l3"],
@@ -247,7 +155,7 @@ def main() -> None:
             "exit3_rate": sdn["e3"],
             "pc_measured_ms_per_sample": f"{sdn_ms:.4f}",
             "simulated_layer_time_ms": sdn["sim"],
-            "interpretation": "paper-policy baseline adapted to AP LSTM; confidence only",
+            "interpretation": "paper-policy baseline trained independently on AP 9-feature data; confidence-only exit",
         },
         {
             "model": "Proposed Early Exit Fixed theta",
@@ -305,7 +213,7 @@ def main() -> None:
             "",
             "해석:",
             "- Baseline LSTM은 정확도 상한선 기준이며 항상 3개 LSTM 계층을 모두 수행한다.",
-            f"- SDN-style Confidence-only는 validation set에서 선택한 confidence threshold {sdn_threshold:.2f}를 test set에 적용했다.",
+            f"- SDN-style Early Exit는 Early Exit 백본을 재사용하지 않고, SDN 논문의 loss 가중치(0.15/0.30/0.55)로 별도 학습한 백본에 고정 confidence threshold {sdn_model.confidence_threshold:.2f}를 적용한 결과이다.",
             "- Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.",
             "- Proposed Dynamic theta는 정확도는 Fixed와 동일하지만 Exit 1/2 비율이 더 높아 구조상 평균 연산 단계가 줄었다.",
             "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX staged 재측정으로 고정해야 한다.",

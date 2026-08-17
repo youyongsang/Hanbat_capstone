@@ -2,14 +2,14 @@ AP strict 데이터 모델 비교표
 
 | 모델 | 근거/역할 | 정확도 | Label 2 | Label 3 | Exit1 | Exit2 | Exit3 | PC 실측(ms/sample) | 구조상 평균(ms) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Baseline LSTM Full | standard full-depth LSTM baseline | 92.7% | 77.3% | 100.0% | 0.0% | 0.0% | 100.0% | 0.0631 | 8.000 |
-| SDN-style Confidence-only EE | SDN/Shallow-Deep Networks-style internal classifier policy | 91.5% | 77.3% | 93.3% | 98.8% | 1.2% | 0.0% | 0.1939 | 2.024 |
-| Proposed Early Exit Fixed theta | our AP Early Exit LSTM ablation | 91.5% | 77.3% | 93.3% | 15.9% | 32.9% | 51.2% | 0.4391 | 5.732 |
-| Proposed Early Exit Dynamic theta | our variant on early-exit LSTM | 91.5% | 77.3% | 93.3% | 37.8% | 39.0% | 23.2% | 0.3622 | 4.171 |
+| Baseline LSTM Full | standard full-depth LSTM baseline | 92.7% | 77.3% | 100.0% | 0.0% | 0.0% | 100.0% | 0.0667 | 8.000 |
+| SDN-style Early Exit (trained) | SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55) | 91.5% | 72.7% | 100.0% | 12.2% | 30.5% | 57.3% | 0.4956 | 6.049 |
+| Proposed Early Exit Fixed theta | our AP Early Exit LSTM ablation | 91.5% | 77.3% | 93.3% | 15.9% | 32.9% | 51.2% | 0.5143 | 5.732 |
+| Proposed Early Exit Dynamic theta | our variant on early-exit LSTM | 91.5% | 77.3% | 93.3% | 37.8% | 39.0% | 23.2% | 0.4251 | 4.171 |
 
 해석:
 - Baseline LSTM은 정확도 상한선 기준이며 항상 3개 LSTM 계층을 모두 수행한다.
-- SDN-style Confidence-only는 validation set에서 선택한 confidence threshold 0.50를 test set에 적용했다.
+- SDN-style Early Exit는 Early Exit 백본을 재사용하지 않고, SDN 논문의 loss 가중치(0.15/0.30/0.55)로 별도 학습한 백본에 고정 confidence threshold 0.85를 적용한 결과이다.
 - Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.
 - Proposed Dynamic theta는 정확도는 Fixed와 동일하지만 Exit 1/2 비율이 더 높아 구조상 평균 연산 단계가 줄었다.
 - PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX staged 재측정으로 고정해야 한다.
