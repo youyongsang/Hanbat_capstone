@@ -183,11 +183,13 @@ PC 실측 시간은 Python stepwise 분기 오버헤드가 포함되어 Early Ex
 AP strict 기준 최종 Pi 실험을 위해서는 아래 산출물을 다시 만들어야 한다.
 
 1. ~~AP용 SDN LSTM checkpoint 재학습~~ — 완료 (`ap_sdn_lstm_best.pth`, `train_ap_sdn.py`/`evaluate_ap_sdn.py`)
-2. Baseline LSTM ONNX 변환
-3. SDN-style staged ONNX 변환
-4. Proposed Fixed/Dynamic staged ONNX 변환
-5. FP32 ONNX와 INT8 ONNX 양자화 파일 생성
-6. `project/deploy/raspberry_pi/` 배포 번들 갱신
-7. Pi에서 동일 `test.csv` 기준으로 평균, p50, p95, Exit 비율 재측정
+2. ~~Baseline LSTM ONNX 변환~~ — 완료 (`export_onnx_ap.py` → `ap_baseline.onnx`)
+3. ~~SDN-style staged ONNX 변환~~ — 완료 (`export_onnx_ap_sdn.py` → `ap_sdn_fixed*.onnx`, `ap_sdn_fixed_stage{1,2,3}.onnx`)
+4. ~~Proposed Fixed/Dynamic staged ONNX 변환~~ — 완료 (`export_onnx_ap.py` → `ap_early_exit_fixed/dynamic*.onnx`, `_stage{1,2,3}.onnx`)
+5. ~~FP32 ONNX와 INT8 ONNX 양자화 파일 생성~~ — 완료 (`export_onnx_int8_ap.py`, Baseline/SDN/Fixed/Dynamic × full+stage1/2/3 전부)
+6. ~~`project/deploy/raspberry_pi_ap/` 배포 번들 갱신~~ — 완료 (`prepare_pi_bundle_ap.py`; 1학기용 `raspberry_pi/`와는 별도 폴더, 4-feature test.csv와 섞지 말 것)
+7. Pi에서 동일 `test.csv` 기준으로 평균, p50, p95, Exit 비율 재측정 — **아직 미완료. 다음 단계.**
 
 라즈베리파이 실험에서는 반드시 staged ONNX 방식으로 실행해야 실제 layer skip 효과를 볼 수 있다.
+
+Pi에서 실행할 절차는 `project/deploy/raspberry_pi_ap/README.md`를 그대로 따르면 된다 (`python3 -m venv .venv` → `pip install onnxruntime numpy pandas` → 모델별 `inference_pi_ap.py` 실행 → `analyze_pi_results.py`로 분석). `docs/hochung/Raspberry_Pi_AP_9feature_FP32_INT8_최종비교표.xlsx`의 기존 결과는 오늘 재학습한 `ap_sdn_fixed.onnx`(SDN 백본)를 반영하지 않은 값이므로, 이 번들로 다시 측정해야 최종 결과로 쓸 수 있다.

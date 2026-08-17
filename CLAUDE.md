@@ -294,19 +294,45 @@ python project\scripts\evaluate_ap_sdn.py --data-dir project\data\ap_metrics_cle
 python project\scripts\generate_ap_comparison.py
 ```
 
+ONNX 변환 (Baseline + Proposed Fixed/Dynamic, full + staged):
+
+```powershell
+python project\scripts\export_onnx_ap.py
+```
+
+ONNX 변환 (SDN-style, full + staged):
+
+```powershell
+python project\scripts\export_onnx_ap_sdn.py
+```
+
+INT8 양자화 (위 두 스크립트 실행 후):
+
+```powershell
+python project\scripts\export_onnx_int8_ap.py
+```
+
+Pi 배포 번들 생성:
+
+```powershell
+python project\scripts\prepare_pi_bundle_ap.py
+```
+
 ## Raspberry Pi 실측 전 남은 작업
 
 AP strict 최종 실험을 위해 다음 작업이 남아 있다.
 
 1. ~~AP용 SDN LSTM checkpoint 재학습~~ — 완료 (`ap_sdn_lstm_best.pth`)
-2. Baseline LSTM ONNX 변환
-3. SDN-style staged ONNX 변환
-4. Proposed Fixed/Dynamic staged ONNX 변환
-5. FP32 ONNX와 INT8 ONNX 생성
-6. `project/deploy/raspberry_pi/` 배포 번들 갱신
-7. Pi에서 동일 `test.csv` 기준으로 평균, p50, p95, Exit 비율 재측정
+2. ~~Baseline LSTM ONNX 변환~~ — 완료 (`ap_baseline.onnx`)
+3. ~~SDN-style staged ONNX 변환~~ — 완료 (`ap_sdn_fixed*.onnx`)
+4. ~~Proposed Fixed/Dynamic staged ONNX 변환~~ — 완료 (`ap_early_exit_fixed/dynamic*.onnx`)
+5. ~~FP32 ONNX와 INT8 ONNX 생성~~ — 완료 (`export_onnx_int8_ap.py`)
+6. ~~`project/deploy/raspberry_pi_ap/` 배포 번들 갱신~~ — 완료 (1학기 4-feature용 `raspberry_pi/`와는 별도 폴더)
+7. Pi에서 동일 `test.csv` 기준으로 평균, p50, p95, Exit 비율 재측정 — **아직 미완료. 다음 단계.**
 
 Early Exit의 실제 속도 이득을 보려면 반드시 staged ONNX 방식이 필요하다.
+
+`docs/hochung/Raspberry_Pi_AP_9feature_FP32_INT8_최종비교표.xlsx`에 이미 호중이 올린 Pi 실측 결과가 있지만, 그 표의 SDN 행은 오늘 재학습한 `ap_sdn_fixed.onnx`가 아니라 예전 confidence-only 재사용 모델 기준이라 최종본으로 쓰면 안 된다. `project/deploy/raspberry_pi_ap/`로 다시 측정해야 한다.
 
 ```text
 stage1.onnx 실행
