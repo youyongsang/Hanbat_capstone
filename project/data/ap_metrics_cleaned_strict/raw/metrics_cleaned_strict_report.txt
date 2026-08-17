@@ -1,0 +1,38 @@
+Strict CSV 추가 정제 결과
+================================
+입력 파일: C:\Users\PC\Documents\카카오톡 받은 파일\metrics_cleaned.csv
+기존 행 수: 596
+normal_idle throughput_mbps > 5 제거 후보: 6행
+normal_idle tx_retries_delta 또는 tx_failed_delta >= 50 제거 후보: 8행
+중복 포함 최종 제거 행 수: 8행
+최종 행 수: 588
+
+시나리오별 최종 행 수:
+scenario
+low_load       120
+medium_load    120
+high_load      120
+stress_load    120
+normal_idle    108
+
+최종 label 분포:
+label
+0.0    116
+1.0    213
+2.0    152
+3.0    107
+
+제거 기준:
+- scenario == normal_idle 이면서 throughput_mbps > 5
+- scenario == normal_idle 이면서 tx_retries_delta >= 50 또는 tx_failed_delta >= 50
+
+제거된 행 요약:
+          timestamp    scenario  throughput_mbps  channel_occupancy_percent  tx_retries_delta  tx_failed_delta  congestion_score  label
+2026-08-15 11:35:38 normal_idle            10.57                      40.00               157              157            0.3661    2.0
+2026-08-15 11:35:42 normal_idle             9.15                      24.14               287              287            0.3071    1.0
+2026-08-15 11:35:50 normal_idle             1.52                      43.33                55               55            0.3561    2.0
+2026-08-15 11:35:57 normal_idle            12.62                      23.33               233              233            0.3125    1.0
+2026-08-15 11:36:22 normal_idle            10.15                      40.00               113              113            0.3642    2.0
+2026-08-15 11:36:34 normal_idle            19.44                      33.33               179              179            0.3633    2.0
+2026-08-15 11:36:38 normal_idle             7.14                      27.59               106              106            0.3143    1.0
+2026-08-15 11:39:22 normal_idle             0.00                      40.00                50               50            0.3402    1.0
