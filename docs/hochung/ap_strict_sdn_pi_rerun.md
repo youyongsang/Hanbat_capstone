@@ -13,7 +13,7 @@
 | ONNX 변환 여부 | **이미 완료됨.** PC에서 다시 export할 필요 없음 |
 | FP32 ONNX | `project/checkpoints/ap_cleaned_strict/ap_sdn_fixed_stage1.onnx` / `_stage2.onnx` / `_stage3.onnx` |
 | INT8 ONNX | `project/checkpoints/ap_cleaned_strict/ap_sdn_fixed_stage1_int8.onnx` / `_stage2_int8.onnx` / `_stage3_int8.onnx` |
-| Pi 입력 데이터 | `project/data/ap_metrics_cleaned_strict/test.csv` (351 샘플, 9-feature) |
+| Pi 입력 데이터 | `project/data/ap_metrics_cleaned_strict/test.csv` (82 샘플, 9-feature — 1학기 351 샘플과 다름) |
 | Pi 실행 스크립트 | `project/scripts/inference_pi_ap.py` (또는 `project/deploy/raspberry_pi_ap/inference_pi_ap.py`) |
 
 기존 1학기용 `project/deploy/raspberry_pi/`, `inference_pi.py`와는 별개다. 4-feature `test.csv`와 9-feature `test.csv`를 섞으면 안 된다.
@@ -68,13 +68,13 @@ pip install onnxruntime numpy pandas
 방법 A 또는 C로 `raspberry_pi_ap` 폴더 안에서 실행 중이면 아래 그대로 실행한다. 방법 B로 SDN 파일만 옮겼다면 `--stage1/--stage2/--stage3` 뒤 파일명을 옮긴 경로에 맞게 조정한다.
 
 ```bash
-python inference_pi_ap.py --mode staged-confidence --stage1 ap_sdn_fixed_stage1.onnx --stage2 ap_sdn_fixed_stage2.onnx --stage3 ap_sdn_fixed_stage3.onnx --data test.csv --output pi_ap_sdn_fp32_results.csv --max-samples 351 --repeats 5
+python inference_pi_ap.py --mode staged-confidence --stage1 ap_sdn_fixed_stage1.onnx --stage2 ap_sdn_fixed_stage2.onnx --stage3 ap_sdn_fixed_stage3.onnx --data test.csv --output pi_ap_sdn_fp32_results.csv --max-samples 82 --repeats 5
 
-python inference_pi_ap.py --mode staged-confidence --stage1 ap_sdn_fixed_stage1_int8.onnx --stage2 ap_sdn_fixed_stage2_int8.onnx --stage3 ap_sdn_fixed_stage3_int8.onnx --data test.csv --output pi_ap_sdn_int8_results.csv --max-samples 351 --repeats 5
+python inference_pi_ap.py --mode staged-confidence --stage1 ap_sdn_fixed_stage1_int8.onnx --stage2 ap_sdn_fixed_stage2_int8.onnx --stage3 ap_sdn_fixed_stage3_int8.onnx --data test.csv --output pi_ap_sdn_int8_results.csv --max-samples 82 --repeats 5
 ```
 
 - `--mode staged-confidence`: SDN 논문 정책대로 각 exit에서 max softmax confidence가 threshold(기본 0.85) 이상이면 그 자리에서 종료. entropy 기준(Proposed Fixed/Dynamic)과는 다른 정책이므로 반드시 이 모드를 써야 한다.
-- `--max-samples 351`은 AP strict test.csv 전체 샘플 수 기준이다.
+- `--max-samples 82`은 AP strict test.csv 전체 샘플 수 기준이다.
 
 ## 5. 결과 분석
 

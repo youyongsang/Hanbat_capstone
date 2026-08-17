@@ -9,20 +9,20 @@ pip install --upgrade pip
 pip install onnxruntime numpy pandas
 
 # Baseline (always full-depth, no early exit)
-python inference_pi_ap.py --mode baseline --model ap_baseline.onnx --data test.csv --output pi_ap_baseline_fp32_results.csv --max-samples 351 --repeats 5
-python inference_pi_ap.py --mode baseline --model ap_baseline_int8.onnx --data test.csv --output pi_ap_baseline_int8_results.csv --max-samples 351 --repeats 5
+python inference_pi_ap.py --mode baseline --model ap_baseline.onnx --data test.csv --output pi_ap_baseline_fp32_results.csv --max-samples 82 --repeats 5
+python inference_pi_ap.py --mode baseline --model ap_baseline_int8.onnx --data test.csv --output pi_ap_baseline_int8_results.csv --max-samples 82 --repeats 5
 
 # SDN-style (confidence-threshold staged exit)
-python inference_pi_ap.py --mode staged-confidence --stage-prefix ap_sdn_fixed --data test.csv --output pi_ap_sdn_fp32_results.csv --max-samples 351 --repeats 5
-python inference_pi_ap.py --mode staged-confidence --stage1 ap_sdn_fixed_stage1_int8.onnx --stage2 ap_sdn_fixed_stage2_int8.onnx --stage3 ap_sdn_fixed_stage3_int8.onnx --data test.csv --output pi_ap_sdn_int8_results.csv --max-samples 351 --repeats 5
+python inference_pi_ap.py --mode staged-confidence --stage-prefix ap_sdn_fixed --data test.csv --output pi_ap_sdn_fp32_results.csv --max-samples 82 --repeats 5
+python inference_pi_ap.py --mode staged-confidence --stage1 ap_sdn_fixed_stage1_int8.onnx --stage2 ap_sdn_fixed_stage2_int8.onnx --stage3 ap_sdn_fixed_stage3_int8.onnx --data test.csv --output pi_ap_sdn_int8_results.csv --max-samples 82 --repeats 5
 
 # Proposed Fixed theta (entropy-threshold staged exit)
-python inference_pi_ap.py --mode staged --stage-prefix ap_early_exit_fixed --data test.csv --output pi_ap_fixed_fp32_results.csv --max-samples 351 --repeats 5
-python inference_pi_ap.py --mode staged --stage1 ap_early_exit_fixed_stage1_int8.onnx --stage2 ap_early_exit_fixed_stage2_int8.onnx --stage3 ap_early_exit_fixed_stage3_int8.onnx --data test.csv --output pi_ap_fixed_int8_results.csv --max-samples 351 --repeats 5
+python inference_pi_ap.py --mode staged --stage-prefix ap_early_exit_fixed --data test.csv --output pi_ap_fixed_fp32_results.csv --max-samples 82 --repeats 5
+python inference_pi_ap.py --mode staged --stage1 ap_early_exit_fixed_stage1_int8.onnx --stage2 ap_early_exit_fixed_stage2_int8.onnx --stage3 ap_early_exit_fixed_stage3_int8.onnx --data test.csv --output pi_ap_fixed_int8_results.csv --max-samples 82 --repeats 5
 
 # Proposed Dynamic theta (entropy-threshold staged exit, dynamic theta from recent occupancy)
-python inference_pi_ap.py --mode staged --dynamic-theta --stage-prefix ap_early_exit_dynamic --data test.csv --output pi_ap_dynamic_fp32_results.csv --max-samples 351 --repeats 5
-python inference_pi_ap.py --mode staged --dynamic-theta --stage1 ap_early_exit_dynamic_stage1_int8.onnx --stage2 ap_early_exit_dynamic_stage2_int8.onnx --stage3 ap_early_exit_dynamic_stage3_int8.onnx --data test.csv --output pi_ap_dynamic_int8_results.csv --max-samples 351 --repeats 5
+python inference_pi_ap.py --mode staged --dynamic-theta --stage-prefix ap_early_exit_dynamic --data test.csv --output pi_ap_dynamic_fp32_results.csv --max-samples 82 --repeats 5
+python inference_pi_ap.py --mode staged --dynamic-theta --stage1 ap_early_exit_dynamic_stage1_int8.onnx --stage2 ap_early_exit_dynamic_stage2_int8.onnx --stage3 ap_early_exit_dynamic_stage3_int8.onnx --data test.csv --output pi_ap_dynamic_int8_results.csv --max-samples 82 --repeats 5
 
 # Analysis (accuracy / latency / exit distribution / scenario breakdown)
 python analyze_pi_results.py --input pi_ap_baseline_fp32_results.csv --output-dir . --name pi_ap_baseline_fp32_analysis
