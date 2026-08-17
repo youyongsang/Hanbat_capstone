@@ -193,3 +193,5 @@ AP strict 기준 최종 Pi 실험을 위해서는 아래 산출물을 다시 만
 라즈베리파이 실험에서는 반드시 staged ONNX 방식으로 실행해야 실제 layer skip 효과를 볼 수 있다.
 
 Pi에서 실행할 절차는 `project/deploy/raspberry_pi_ap/README.md`를 그대로 따르면 된다 (`python3 -m venv .venv` → `pip install onnxruntime numpy pandas` → 모델별 `inference_pi_ap.py` 실행 → `analyze_pi_results.py`로 분석). `docs/hochung/Raspberry_Pi_AP_9feature_FP32_INT8_최종비교표.xlsx`의 기존 결과는 오늘 재학습한 `ap_sdn_fixed.onnx`(SDN 백본)를 반영하지 않은 값이므로, 이 번들로 다시 측정해야 최종 결과로 쓸 수 있다.
+
+**호중 재측정용 최소 가이드**: 4개 모델 전체가 아니라 SDN 행만 급하게 다시 측정하면 되는 상황이라면 `docs/hochung/ap_strict_sdn_pi_rerun.md`를 참고한다. ONNX/INT8 변환은 이미 끝나서 커밋되어 있으므로, 브랜치 pull 후 바로 Pi 측정 단계로 넘어가면 된다.
