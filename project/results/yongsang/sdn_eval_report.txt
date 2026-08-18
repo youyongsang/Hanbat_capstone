@@ -1,0 +1,23 @@
+SDN Baseline Evaluation Report
+Data Directory: project\data\real
+Checkpoint: project\checkpoints\sdn_lstm_best.pth
+
+=== Baseline 2: Shallow-Deep Networks (SDN) ===
+Fixed Confidence Threshold (T): 0.85
+Test Accuracy: 94.9%
+Exit별 성능:
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 44.7% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 98.5% | Exit Rate: 38.7% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 72.4% | Exit Rate: 16.5% | Avg Time: 8.0ms
+Overall Avg Inference Time: 3.766ms
+Measured Wall Time: 0.707ms
+Label별 정확도:
+  Label 0 (정상): 92.9%
+  Label 1 (혼잡 경고): 98.1%
+  Label 2 (혼잡): 90.5%
+  Label 3 (심각): 100.0%
+시나리오별 정확도:
+  emergency_ramp: 91.6%
+  imbalanced_ap_load: 93.8%
+  lunch_restart: 98.8%
+  startup_surge: 95.2%

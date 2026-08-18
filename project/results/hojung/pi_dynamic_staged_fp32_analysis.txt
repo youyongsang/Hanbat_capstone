@@ -1,0 +1,14 @@
+Raspberry Pi inference analysis
+samples: 351
+measurement_repeats: 5
+accuracy: 97.4%
+avg_inference_ms: 1.989039
+avg_sample_std_ms: 0.607081
+p50_inference_ms: 1.726071
+p95_inference_ms: 3.304772
+min_inference_ms: 0.740787
+max_inference_ms: 5.816876
+avg_confidence: 0.916990
+exit1: samples=18, rate=5.1%, accuracy=100.0%, avg_ms=0.771918
+exit2: samples=312, rate=88.9%, accuracy=98.1%, avg_ms=1.972177
+exit3: samples=21, rate=6.0%, accuracy=85.7%, avg_ms=3.282805

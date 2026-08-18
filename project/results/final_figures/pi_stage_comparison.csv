@@ -1,0 +1,5 @@
+key,model,theta_mode,precision,samples,accuracy_percent,avg_inference_ms,avg_sample_std_ms,p50_inference_ms,p95_inference_ms,measurement_repeats,exit1_percent,exit2_percent,exit3_percent
+fixed_fp32,Fixed FP32,fixed,FP32,351,95.73,1.481112,0.0,1.461335,1.547379,1,41.31,44.73,13.96
+fixed_int8,Fixed INT8,fixed,INT8,351,95.73,0.86052,0.0,0.852138,0.913369,1,41.31,45.01,13.68
+dynamic_fp32,Dynamic FP32,dynamic,FP32,351,92.02,1.463609,0.0,1.442095,1.547658,1,99.43,0.57,0.0
+dynamic_int8,Dynamic INT8,dynamic,INT8,351,92.02,0.880486,0.0,0.868231,0.958239,1,99.15,0.85,0.0

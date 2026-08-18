@@ -1,0 +1,6 @@
+Method,Accuracy(%),Avg_Inference(ms),Std_Inference(ms),Timing_Repeats,False_Congestion_Count,False_Congestion_Rate(%),Unnecessary_Switches,Unnecessary_Switch_Rate(%),Acc_Label_0(%),Acc_Label_1(%),Acc_Label_2(%),Acc_Label_3(%),Exit1(%),Exit2(%),Exit3(%)
+Baseline 1 (Threshold),42.2,0.003,0.0001,5,8,14.3,1,1.8,85.7,29.0,37.9,52.9,,,
+Baseline 2 (LSTM Full),97.7,1.1725,0.1624,5,0,0.0,0,0.0,100.0,99.4,94.0,100.0,,,
+Baseline 3 (Early Exit Fixed theta),98.3,1.0876,0.094,5,0,0.0,0,0.0,100.0,98.8,96.6,100.0,5.7,84.3,10.0
+Baseline 4 (Early Exit Dynamic theta),98.3,1.0114,0.1711,5,0,0.0,0,0.0,100.0,97.5,98.3,100.0,6.0,87.5,6.6
+Baseline 5 (Shallow-Deep Networks SDN),98.3,1.3341,0.1315,5,0,0.0,0,0.0,100.0,98.8,96.6,100.0,3.4,70.4,26.2
