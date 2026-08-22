@@ -32,8 +32,15 @@ def multi_exit_loss(
     exit_logits: Sequence[Tensor],
     target: Tensor,
     weights: Sequence[float] = DEFAULT_LOSS_WEIGHTS,
+    class_weights: Tensor | None = None,
 ) -> Tensor:
-    """Compute weighted cross-entropy across all exit classifiers."""
+    """Compute weighted cross-entropy across all exit classifiers.
+
+    `class_weights` (per-class, e.g. inverse label frequency) is optional and
+    defaults to None (unweighted) to keep existing callers unchanged. Pass it
+    when the label distribution is imbalanced enough that plain
+    cross-entropy collapses to predicting only the majority class(es).
+    """
 
     if len(exit_logits) != len(weights):
         raise ValueError(
@@ -43,7 +50,7 @@ def multi_exit_loss(
 
     total = exit_logits[0].new_tensor(0.0)
     for logits, weight in zip(exit_logits, weights):
-        total = total + float(weight) * F.cross_entropy(logits, target)
+        total = total + float(weight) * F.cross_entropy(logits, target, weight=class_weights)
     return total
 
 

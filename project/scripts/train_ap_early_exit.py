@@ -25,17 +25,39 @@ def display_path(path: Path) -> str:
     return str(path.resolve().relative_to(REPO_ROOT))
 
 
+def compute_class_weights(
+    labels: torch.Tensor,
+    num_classes: int = 4,
+) -> torch.Tensor:
+    """Inverse-frequency class weights (N / (K * count_c)) for imbalanced labels.
+
+    Without this, plain cross-entropy on a skewed label distribution (e.g.
+    AP strict live-collection congestion labels, where label 1/2 heavily
+    outnumber label 3) lets the model collapse to always predicting the
+    majority class(es) and never output the rare ones at all.
+    """
+
+    counts = torch.bincount(labels, minlength=num_classes).float()
+    counts = counts.clamp(min=1.0)
+    weights = labels.numel() / (num_classes * counts)
+    return weights
+
+
 def run_epoch(
     model: APEarlyExitLSTM,
     dataloader: torch.utils.data.DataLoader,
     optimizer: torch.optim.Optimizer | None = None,
     device: torch.device = torch.device("cpu"),
-) -> tuple[float, float]:
+    class_weights: torch.Tensor | None = None,
+    num_classes: int = 4,
+) -> tuple[float, float, float]:
     is_train = optimizer is not None
     model.train(is_train)
     total_loss = 0.0
     total_correct = 0
     total_samples = 0
+    class_correct = [0] * num_classes
+    class_total = [0] * num_classes
 
     for x_batch, y_batch in dataloader:
         x_batch = x_batch.to(device)
@@ -45,18 +67,32 @@ def run_epoch(
             optimizer.zero_grad()
 
         exit_logits = model(x_batch)
-        loss = multi_exit_loss(exit_logits, y_batch)
+        loss = multi_exit_loss(exit_logits, y_batch, class_weights=class_weights)
 
         if is_train:
             loss.backward()
             optimizer.step()
 
+        preds = exit_logits[-1].argmax(dim=1)
         batch_size = y_batch.size(0)
         total_loss += loss.item() * batch_size
-        total_correct += int((exit_logits[-1].argmax(dim=1) == y_batch).sum().item())
+        total_correct += int((preds == y_batch).sum().item())
         total_samples += batch_size
 
-    return total_loss / total_samples, total_correct / total_samples
+        for c in range(num_classes):
+            mask = y_batch == c
+            class_total[c] += int(mask.sum().item())
+            class_correct[c] += int((preds[mask] == c).sum().item())
+
+    # Balanced accuracy: mean of per-class recall, ignoring classes absent
+    # from this split. Plain accuracy alone rewards checkpoints that just
+    # collapse to the majority class(es) on an imbalanced split.
+    per_class_recall = [
+        class_correct[c] / class_total[c] for c in range(num_classes) if class_total[c] > 0
+    ]
+    balanced_acc = sum(per_class_recall) / len(per_class_recall) if per_class_recall else 0.0
+
+    return total_loss / total_samples, total_correct / total_samples, balanced_acc
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,6 +115,10 @@ def main() -> None:
     train_loader = get_ap_dataloader(args.data_dir / "train.csv", args.batch_size, shuffle=True)
     val_loader = get_ap_dataloader(args.data_dir / "val.csv", args.batch_size, shuffle=False)
 
+    train_labels = train_loader.dataset.tensors[1]
+    class_weights = compute_class_weights(train_labels).to(device)
+    print(f"Class weights (inverse frequency): {class_weights.tolist()}")
+
     model = APEarlyExitLSTM(
         hidden_size=args.hidden_size,
         theta_1=args.theta_1,
@@ -90,20 +130,25 @@ def main() -> None:
     checkpoint_path = args.checkpoint_dir / "ap_early_exit_lstm_best.pth"
     fixed_checkpoint_path = args.checkpoint_dir / "ap_early_exit_fixed.pth"
     dynamic_checkpoint_path = args.checkpoint_dir / "ap_early_exit_dynamic.pth"
+    best_val_balanced_acc = -1.0
     best_val_acc = -1.0
 
     for epoch in range(1, args.epochs + 1):
-        train_loss, train_acc = run_epoch(model, train_loader, optimizer, device=device)
+        train_loss, train_acc, _ = run_epoch(
+            model, train_loader, optimizer, device=device, class_weights=class_weights
+        )
         with torch.no_grad():
-            val_loss, val_acc = run_epoch(model, val_loader, device=device)
+            val_loss, val_acc, val_balanced_acc = run_epoch(model, val_loader, device=device)
 
         print(
             f"Epoch {epoch}/{args.epochs} | "
             f"Train Loss: {train_loss:.3f} | Train Acc: {format_percent(train_acc)} | "
-            f"Val Loss: {val_loss:.3f} | Val Acc: {format_percent(val_acc)}"
+            f"Val Loss: {val_loss:.3f} | Val Acc: {format_percent(val_acc)} | "
+            f"Val Balanced Acc: {format_percent(val_balanced_acc)}"
         )
 
-        if val_acc > best_val_acc:
+        if val_balanced_acc > best_val_balanced_acc:
+            best_val_balanced_acc = val_balanced_acc
             best_val_acc = val_acc
             checkpoint = {
                 "model_state_dict": model.state_dict(),
@@ -123,6 +168,7 @@ def main() -> None:
     print(f"Dynamic-threshold AP checkpoint saved: {display_path(dynamic_checkpoint_path)}")
     print(f"Feature count: {len(AP_FEATURE_COLUMNS)}")
     print(f"Best Val Accuracy: {format_percent(best_val_acc)}")
+    print(f"Best Val Balanced Accuracy: {format_percent(best_val_balanced_acc)}")
 
 
 if __name__ == "__main__":
