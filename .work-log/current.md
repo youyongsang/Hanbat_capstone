@@ -1,5 +1,37 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-22 (밤, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
+최종 업데이트: 2026-08-23 (새벽, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
+
+## 완료된 작업 (2026-08-23 새벽 세션, Claude Code와 진행)
+
+### Pi SSH 로그인 미스터리 해결: 계정명은 "capstone", "CapsTone" 정체도 파악
+- 라즈베리파이가 Opal LAN 포트에 유선 연결되어 있다는데 station dump/DHCP/ARP 어디에도 안 잡히는 문제를 오래 추적함
+- SD카드를 노트북에 꽂아 boot 파티션(`bootfs`, FAT32)의 cloud-init 설정을 직접 확인 → **계정명이 `pi`가 아니라 `capstone`**이었음이 확인됨 (지난 세션의 추측이 맞았음). `hostname: CapsTone`으로 설정되어 있는 것도 확인
+- **중요한 재해석**: 어젯밤(8/22) 극한 부하 테스트에서 "새 공기계"로 추가했던 `192.168.8.109`(hostname "CapsTone")가 사실 새 폰이 아니라 **이 라즈베리파이 자체**였음을 MAC 벤더 조회(`d8:3a:dd:48:55:97` → Raspberry Pi Trading Ltd, API로 검증)로 확인. 즉 어젯밤엔 파이가 이더넷으로 정상 연결되어 9분 넘게 iperf3 트래픽까지 잘 주고받았음
+- 오늘은 케이블/SD카드를 여러 번 재연결해도 Opal 쪽에서도, SD카드에 설정된 백업 Wi-Fi(`SK_0600_5G`, 집 공유기)에서도 전혀 안 잡힘. 중간에 초록 활동 LED가 "깜빡이다 꺼짐" 현상 관찰 → SD카드 접촉 불량으로 인한 boot 실패 패턴으로 추정
+- SD카드의 boot 파티션(FAT32)은 노트북에서 읽히지만, 이건 OS가 있는 루트 파티션(ext4, 노트북에서 못 읽음)이 멀쩡하다는 뜻은 아님 — boot는 되지만 그 다음 단계에서 막히는 것과 완전히 다른 문제
+- **결론: 잠정 보류.** TV에 직접 연결해서 화면으로 부팅 진행 상황을 봐야 확실해짐 (오늘은 시간 관계상 보류, 다음 세션 과제)
+- 참고: `network-config`(netplan) 내용 — `eth0: dhcp4 true, optional true` / `wlan0: SK_0600_5G에 자동연결, optional true`. `user-data`(cloud-init) — 계정 `capstone`, `enable_ssh: true`, `ssh_pwauth: true`, `avahi-daemon` 설치됨. **비밀번호는 해시(yescrypt)라 SD카드에서 평문 확인 불가** — 호중에게 "capstone 계정" 비밀번호로 다시 확인 필요
+
+### 데이터 수집 계속 확대 (834행 → 1254행) — 진짜 다중 station 경합으로 label 3 대폭 확보
+- 어제 세션 마지막에 발견한 문제("노트북이 발신 허브라 진짜 다중 station 경합이 아니었다")를 해결: 폰을 2대(`192.168.8.103`, 나중엔 새 폰 `192.168.8.191`) 동시에 사용해서 각각 독립적으로 100~120Mbps UDP 부하를 걸어 진짜 2-station 경합 재현
+- `high_load` 단일기기로 10분 추가 수집(244행), 2폰 동시 부하로 `stress_load`에 2회 추가 수집(총 523행까지), `medium_load`도 폰 하나로 보충(187행) → 최종 **1254행**
+- 라벨 재계산 결과 **label 3(심각) 4개 → 13개**로 대폭 증가 (채널 100% 포화 순간이 훨씬 자주 잡힘). val/test에도 각각 2개씩 포함되어 처음으로 통계적으로 유의미한 평가가 가능해짐
+- 재학습 후 confusion matrix 확인: **모델이 이제 4개 클래스를 전부 예측함**(전엔 label 2/3을 아예 안 찍었음). label 3 정확도 0%→50%(2개 중 1개), val balanced accuracy 54.4%→69.4%
+- **새로 드러난 부작용**: label 3에 준 클래스 가중치가 너무 세서(train 9개뿐이라 가중치 ~20배) label 2(혼잡)를 label 3으로 오버슈팅하는 경향 생김(label 2 정확도 19%로 하락, 58개 중 33개를 3으로 오분류). 다음에 가중치를 완화(역빈도 대신 제곱근 역빈도 등)하면 다듬을 수 있을 것으로 보임
+- 폰 iperf3 서버가 화면 꺼짐으로 중간에 두 번 죽음(`termux-wake-lock` 안 걸어둔 폰들) → 재시작 대기 중 세션 일시 중단, 여기서 기록 저장
+
+## 다음 할 일 (2026-08-23 기준 갱신)
+- [ ] **최우선**: 파이를 TV(HDMI)에 직접 연결해서 부팅 화면 확인 — boot 단계까지만 가는지, OS까지 완전히 뜨는지, 뜬다면 화면에서 IP 확인
+- [ ] 화면에서 문제 확인되면 SD카드 재굽기 (설정 정보는 이미 확보: hostname `CapsTone`, 계정 `capstone`, Wi-Fi `SK_0600_5G`, SSH 활성화 — 비밀번호만 새로 정해서 기록)
+- [ ] 호중에게 "capstone 계정" 비밀번호 재확인 요청 (기존엔 "pi" 계정으로 잘못 시도했을 가능성)
+- [ ] 두 폰(`103`, `191`) 다 Termux에서 `termux-wake-lock` 걸고 `iperf3 -s` 재시작 → 2폰 동시 부하 stress_load 수집 이어가기 (label 3 더 필요)
+- [ ] label 3 class weight 완화 실험 (제곱근 역빈도 등, label 2 오버슈팅 완화 목적)
+- [ ] Pi 연결되면 `project/deploy/raspberry_pi_ap/` 번들로 SDN FP32/INT8 재측정
+- [ ] label 1/2 경계(congestion_score 0.50 부근) 재설계 논의 — threshold 재조정 또는 feature 추가 필요할 수 있음
+- [ ] 스케일러 불일치 발견 사항을 예나·팀에 공유 (원본 `ap_cleaned_strict`의 latency_ms/rssi_dbm 측정 방식 재검토 필요)
+- [ ] 장기적으로 이 실측 방식으로 모델을 새로 학습/파인튜닝할지 팀 논의 필요
+- [ ] (여유 시) AP strict용 실시간 추론 파이프라인 설계 착수 — 현재 어느 브랜치에도 코드 없음
+
 
 ## 프로젝트 개요
 산업 무선망(AP) 트래픽 혼잡을 Early Exit LSTM으로 실시간 분류하고, Raspberry Pi + ONNX/INT8로 엣지 배포하는 캡스톤 프로젝트. 방학 중 교수 피드백에 따라 1학기 4-feature 시뮬레이터 기반에서 실제 GL.iNet AP 실측 9-feature(`ap_metrics_cleaned_strict`) 기반으로 피벗함. 팀: 유용상(모델 설계), 장예나(데이터), 김호중(경량화·배포).
@@ -69,16 +101,6 @@
 - 결과: label 2 정확도 0% → 60.0%로 개선 (전체 정확도는 69.5%→57.6%로 하락했지만, 이는 "다수 클래스 찍기로 만든 가짜 높은 점수"가 없어진 것이라 더 정직한 수치). label 3은 train 2개/test 1개뿐이라 가중치를 줘도 여전히 학습 불가 — 데이터 자체가 부족한 문제라 알고리즘으로 해결 안 됨
 - 검증용 체크포인트: `project/checkpoints/ap_new_collection_test/` (프로덕션 `ap_cleaned_strict` 체크포인트는 안 건드림)
 
-## 다음 할 일
-- [ ] 호중에게 Pi SSH 실제 로그인 명령어(아이디 포함) 받기 — 안 풀리면 SD카드 재굽기 고려
-- [ ] Pi 접속되면 `project/deploy/raspberry_pi_ap/` 번들로 SDN FP32/INT8 재측정 (`--mode staged-confidence`, threshold 0.85, `--max-samples 82`) → `analyze_pi_results.py` 분석 → 결과 저장 후 커밋
-- [ ] **label 3(심각) 데이터 추가 확보**: 노트북을 발신 허브로 쓰지 말고 폰↔폰 직접 전송 또는 노트북을 iperf3 서버로 추가해서 진짜 독립적인 다중 station 경합 재현, 채널 포화 상태를 더 길게/안정적으로 만들 수 있는지 시도. 단, 하드웨어 자체가 802.11 backoff 특성상 "장시간 100% 포화"를 잘 허용하지 않을 수 있어 기대치는 낮게 잡을 것
-- [ ] label 1/2 경계(congestion_score 0.50 부근)가 여전히 애매함 — class weight로 완화됐지만 근본적으로 feature 값이 겹치는 구간이라, 이 경계 자체를 다시 설계(예: threshold 재조정, feature 추가)할지 팀 논의 필요
-- [ ] 스케일러 불일치 발견 사항을 예나·팀에 공유 (원본 `ap_cleaned_strict`의 latency_ms/rssi_dbm 측정 방식 재검토 필요 — 이번 실측과 물리적으로 다른 조건에서 수집됐을 가능성)
-- [ ] `connected_clients` 전환 시점 관련 후처리는 이번에 버그 자체를 코드 레벨에서 고쳐서 더 이상 필요 없음 (완료로 전환)
-- [ ] 장기적으로 이 실측 방식으로 모델을 새로 학습/파인튜닝할지 팀 논의 필요 (기존 `ap_cleaned_strict` 학습 데이터와 스케일이 안 맞음)
-- [ ] (여유 시) AP strict용 실시간 추론 파이프라인 설계 착수 — 현재 어느 브랜치에도 코드 없음
-
 ## 주요 파일
 - `project/scripts/collect_metrics.py` — AP 라이브 측정 스크립트. station 재연결 스파이크 버그 수정 완료, congestion_score 임계값(`JITTER_MAX_MS`, `RETRY_FAILED_MAX`) 재보정 완료
 - `project/scripts/metrics_v2.csv` — 실측 데이터 누적본 (834행, 5개 시나리오, 2대 동시 부하 포함)
@@ -99,7 +121,8 @@
 - **iperf3 UDP `-b` 타겟은 실제 전달량과 다름**: 단일 스트림이든 2개 스트림이든, 이 AP의 실제 물리 채널 용량은 대략 35~50Mbps대에서 포화되는 것으로 보임(타겟을 100M로 걸든 150M로 걸든 실제 전달량은 비슷). 부하를 더 세게 걸고 싶으면 타겟 숫자보다 "몇 대가 동시에 붙어있는지"가 더 중요함
 - **폰 iperf3 서버 화면 꺼짐 대응**: `termux-wake-lock` 먼저 실행해두고 `iperf3 -s` 띄우는 걸 권장 (화면 꺼지면 서버 죽을 위험)
 - **Opal 포트 구분 중요**: 집 인터넷은 반드시 Opal의 **WAN 포트**에 꽂아야 함. LAN 포트에 꽂으면 Opal이 브릿지 모드처럼 동작해서 자기 관리 IP(`192.168.8.1`)가 WiFi 클라이언트에서 안 열림
-- **AP 비번 ≠ Pi 비번**: 호중이 알려준 비밀번호는 `root@192.168.8.1`(AP)엔 맞지만 `pi@192.168.8.109`(Pi)엔 안 맞음 — 팀 내에서 이 둘을 같은 걸로 착각하기 쉬우니 항상 어느 기기 얘기인지 구분할 것
+- **AP 비번 ≠ Pi 비번, Pi 계정명은 `capstone`**: 호중이 알려준 비밀번호는 `root@192.168.8.1`(AP)엔 맞지만 Pi엔 안 맞음. SD카드 cloud-init 설정 확인 결과 **Pi 계정명은 `pi`가 아니라 `capstone`**(hostname `CapsTone`) — 로그인 시도할 땐 `capstone@<Pi IP>`로 해야 함
+- **주의**: 어젯밤(8/22) "새 공기계"로 착각하고 극한 부하 테스트에 썼던 `192.168.8.109`(hostname "CapsTone")는 사실 폰이 아니라 **라즈베리파이 그 자체**였음(MAC `d8:3a:dd:48:55:97` → Raspberry Pi Trading Ltd 벤더 조회로 확인). 그 세션에선 파이가 이더넷으로 정상 동작했었음 — 즉 하드웨어 자체는 멀쩡했던 적이 있으므로, 지금 안 잡히는 건 케이블/SD카드 접촉 문제일 가능성이 하드웨어 고장보다 높음
 - AP 모델은 GL.iNet Opal(GL-SFT1200), 관리 IP `192.168.8.1`(WAN 포트로 인터넷 연결 시 정상적으로 이 IP로 접속 가능)
 - AP dropbear SSH가 오래돼서 `ssh-rsa`/RSA 키만 지원함 (ed25519 거부됨, `HostKeyAlgorithms`/`PubkeyAcceptedAlgorithms` 옵션 필수)
 - AP strict `test.csv`(`ap_metrics_cleaned_strict`)는 82개 샘플, 이번에 새로 만든 `ap_metrics_new_collection`은 41개 샘플 — 서로 다른 데이터셋이니 항상 경로 확인할 것
