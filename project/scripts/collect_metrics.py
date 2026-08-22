@@ -2,18 +2,21 @@
 import csv
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
 import time
 from collections import deque
 
+IS_WINDOWS = platform.system() == "Windows"
+
 # ============================================================
 # 기본 설정
 # ============================================================
 
 AP_IP = "192.168.8.1"
-SERVER_IP = "192.168.8.109"
+SERVER_IP = "192.168.8.103"
 INTERFACE = "wlan0"
 
 CSV_FILE = "metrics_v2.csv"
@@ -140,15 +143,30 @@ def get_ap_metrics():
 # ============================================================
 
 def parse_station_info(output):
-    stations = []
+    # MAC 주소별로 개별 추적한다. 여러 station의 바이트/카운터를
+    # 그냥 합산해버리면, 어떤 station이 잠깐 station dump에서
+    # 빠졌다가(절전모드 등) 다시 나타나는 순간 그 station의 전체
+    # 누적 카운터가 "한 폴링 주기 동안의 증가분"으로 잘못 계산된다.
+    stations = {}
+    current_mac = None
     current = None
 
     for raw_line in output.splitlines():
         line = raw_line.strip()
 
         if line.startswith("Station "):
-            if current is not None:
-                stations.append(current)
+            if current_mac is not None:
+                stations[current_mac] = current
+
+            mac_match = re.match(
+                r"Station\s+([0-9A-Fa-f:]{17})",
+                line,
+            )
+            current_mac = (
+                mac_match.group(1)
+                if mac_match
+                else line
+            )
 
             current = {
                 "rx_bytes": 0,
@@ -226,20 +244,19 @@ def parse_station_info(output):
                     match.group(1)
                 )
 
-    if current is not None:
-        stations.append(current)
+    if current_mac is not None:
+        stations[current_mac] = current
 
     if not stations:
         return None
 
-    rx_bytes = sum(s["rx_bytes"] for s in stations)
-    tx_bytes = sum(s["tx_bytes"] for s in stations)
-    tx_retries = sum(s["tx_retries"] for s in stations)
-    tx_failed = sum(s["tx_failed"] for s in stations)
+    return stations
 
+
+def summarize_stations(stations):
     signal_values = [
         s["signal_avg"]
-        for s in stations
+        for s in stations.values()
         if s["signal_avg"] is not None
     ]
 
@@ -249,14 +266,7 @@ def parse_station_info(output):
         else 0.0
     )
 
-    return {
-        "rx_bytes": rx_bytes,
-        "tx_bytes": tx_bytes,
-        "tx_retries": tx_retries,
-        "tx_failed": tx_failed,
-        "signal_avg": signal_avg,
-        "connected_clients": len(stations),
-    }
+    return signal_avg, len(stations)
 
 
 # ============================================================
@@ -375,19 +385,40 @@ def calculate_channel_occupancy(
 # ============================================================
 
 def get_ping_metrics():
-    output = run_command(
-        [
-            "ping",
-            "-c", "4",
-            "-W", "1",
-            SERVER_IP,
-        ],
-        timeout=8,
-    )
+    if IS_WINDOWS:
+        command = ["ping", "-n", "4", "-w", "1000", SERVER_IP]
+    else:
+        command = ["ping", "-c", "4", "-W", "1", SERVER_IP]
+
+    output = run_command(command, timeout=8)
 
     latency = 0.0
     jitter = 0.0
     packet_loss = 0.0
+
+    if IS_WINDOWS:
+        # Windows ping output is locale-dependent (Korean/English/...),
+        # but "TTL=" and the "<N>ms" reply time token are not localized,
+        # so parse per-reply lines instead of the summary sentence.
+        reply_times = [
+            float(value)
+            for line in output.splitlines()
+            if "TTL=" in line.upper()
+            for value in re.findall(r"(\d+(?:\.\d+)?)\s*ms", line)
+        ]
+
+        if reply_times:
+            latency = sum(reply_times) / len(reply_times)
+            jitter = max(reply_times) - min(reply_times)
+
+        # The only "%" in ping output is the packet loss percentage,
+        # regardless of display language.
+        loss_match = re.search(r"(\d+(?:\.\d+)?)\s*%", output)
+
+        if loss_match:
+            packet_loss = float(loss_match.group(1))
+
+        return latency, jitter, packet_loss
 
     rtt_match = re.search(
         r"=\s*"
@@ -500,36 +531,48 @@ def get_iperf_udp_loss():
 # Throughput
 # ============================================================
 
-def calculate_station_throughput(
-    previous,
-    current,
-    elapsed,
+def calculate_station_deltas(
+    previous_stations,
+    current_stations,
 ):
-    if previous is None or elapsed <= 0:
-        return 0.0
+    # 이전 폴링에 있던 station과 MAC이 일치하는 경우에만 델타를
+    # 누적한다. 새로 나타난 station(최초 연결이든, 절전모드 등으로
+    # 빠졌다가 재등장한 것이든)은 기준값을 알 수 없으므로 이번
+    # 폴링 한 번은 델타 0으로 건너뛴다. 그래야 재등장 시 station의
+    # 전체 누적 카운터가 한 폴링 주기 증가분으로 잘못 계산되는
+    # 것을 막을 수 있다.
+    rx_delta = 0
+    tx_delta = 0
+    retries_delta = 0
+    failed_delta = 0
 
-    rx_delta = max(
-        0,
-        current["rx_bytes"]
-        - previous["rx_bytes"],
-    )
+    if not previous_stations:
+        return rx_delta, tx_delta, retries_delta, failed_delta
 
-    tx_delta = max(
-        0,
-        current["tx_bytes"]
-        - previous["tx_bytes"],
-    )
+    for mac, current in current_stations.items():
+        previous = previous_stations.get(mac)
 
-    total_bytes = rx_delta + tx_delta
+        if previous is None:
+            continue
 
-    mbps = (
-        total_bytes
-        * 8
-        / elapsed
-        / 1_000_000
-    )
+        rx_delta += max(
+            0,
+            current["rx_bytes"] - previous["rx_bytes"],
+        )
+        tx_delta += max(
+            0,
+            current["tx_bytes"] - previous["tx_bytes"],
+        )
+        retries_delta += max(
+            0,
+            current["tx_retries"] - previous["tx_retries"],
+        )
+        failed_delta += max(
+            0,
+            current["tx_failed"] - previous["tx_failed"],
+        )
 
-    return round(mbps, 2)
+    return rx_delta, tx_delta, retries_delta, failed_delta
 
 
 # ============================================================
@@ -690,11 +733,8 @@ def main():
         get_iperf_json_mtime()
     )
 
-    previous_station = None
+    previous_stations = {}
     previous_time = None
-
-    previous_retries = None
-    previous_failed = None
 
     previous_active = None
     previous_busy = None
@@ -730,8 +770,8 @@ def main():
 
             current_active, current_busy = survey
 
-            connected_clients = (
-                station["connected_clients"]
+            signal_avg, connected_clients = (
+                summarize_stations(station)
             )
 
             # ------------------------------------------------
@@ -802,46 +842,43 @@ def main():
 
             now = time.time()
 
-            if previous_station is None:
+            (
+                rx_delta,
+                tx_delta,
+                tx_retries_delta,
+                tx_failed_delta,
+            ) = calculate_station_deltas(
+                previous_stations,
+                station,
+            )
+
+            elapsed_since_previous = (
+                now - previous_time
+                if previous_time is not None
+                else 0
+            )
+
+            if elapsed_since_previous <= 0:
                 throughput = 0.0
             else:
-                throughput = (
-                    calculate_station_throughput(
-                        previous_station,
-                        station,
-                        now - previous_time,
-                    )
+                throughput = round(
+                    (rx_delta + tx_delta)
+                    * 8
+                    / elapsed_since_previous
+                    / 1_000_000,
+                    2,
                 )
 
             # ------------------------------------------------
-            # 6. Retry / Failed delta
+            # 6. (Retry / Failed delta는 위 calculate_station_deltas
+            #    에서 station별로 이미 계산됨)
             # ------------------------------------------------
-
-            if previous_retries is None:
-                tx_retries_delta = 0
-            else:
-                tx_retries_delta = max(
-                    0,
-                    station["tx_retries"]
-                    - previous_retries,
-                )
-
-            if previous_failed is None:
-                tx_failed_delta = 0
-            else:
-                tx_failed_delta = max(
-                    0,
-                    station["tx_failed"]
-                    - previous_failed,
-                )
 
             # ------------------------------------------------
             # 7. RSSI + delta + moving average
             # ------------------------------------------------
 
-            current_rssi = (
-                station["signal_avg"]
-            )
+            current_rssi = signal_avg
 
             if previous_rssi is None:
                 rssi_delta = 0.0
@@ -994,15 +1031,8 @@ def main():
             # 11. 이전값 갱신
             # ------------------------------------------------
 
-            previous_station = station
+            previous_stations = station
             previous_time = now
-
-            previous_retries = (
-                station["tx_retries"]
-            )
-            previous_failed = (
-                station["tx_failed"]
-            )
 
             previous_active = current_active
             previous_busy = current_busy
