@@ -13,6 +13,15 @@
 - `evaluate_ap_early_exit.py`로 새 데이터 평가 (`project/results/yongsang/ap_new_collection_eval_report.txt`): 정확도 50%(test 샘플 6개뿐이라 통계적 의미 낮음), 정상/경고는 100% 맞히지만 혼잡/심각은 0% — 사전학습 모델이 새 측정 환경에 일반화 안 되는 것을 확인
 - `.work-log/current.md`, `.work-log/progress.md` 갱신
 
+### (같은 날 밤 세션, Claude Code와 진행)
+- station 재연결 스파이크 버그를 실제로 코드 수정 (`parse_station_info`를 MAC별 개별 추적으로 변경, 신규 station 첫 폴링은 델타 0으로 스킵). 시뮬레이션 테스트 + 45분 실측으로 재현 안 됨 검증. 커밋 `126c782`
+- 5개 시나리오를 각 9~10분씩 재수집(636행) → `congestion_score` 계산의 `JITTER_MAX_MS`(1.0→300.0), `RETRY_FAILED_MAX`(100→25000) 재보정 → label 2 쏠림(66%) 문제 해결했으나 label 3 문턱(0.75)을 못 넘는 문제 발견
+- 공기계(폰) 추가로 2대 동시 iperf3 부하 시도. 150Mbps×2에서 AP(Opal)가 58초 만에 완전히 크래시(WiFi 방송 중단), 물리적 재부팅으로 복구. 100Mbps×2로 재시도해 9분 완주, `channel_occupancy_percent=100.0` 순간을 포착해 진짜 label 3 샘플 3개 신규 확보(총 834행)
+- 체크포인트 불일치 가설을 직접 검증: 새 데이터로 재학습하니 39.3%→79.8%로 확인. 그런데도 label 2가 0%로 나와서 confusion matrix 확인 → 모델이 label 2/3을 아예 예측하지 않는 완전한 class collapse였음
+- 원인 규명: `multi_exit_loss`가 클래스 비율 무시하는 순수 cross-entropy였고, 더 결정적으로 `train_ap_early_exit.py`의 체크포인트 저장 기준이 raw accuracy라 class-weighted loss로 학습해도 다수 클래스 찍는 에폭이 선택되고 있었음. `class_weights` 파라미터 추가 + balanced accuracy 기준 체크포인트 선택으로 변경 → label 2 정확도 0%→60.0%
+- label 3(train 2개/test 1개)은 알고리즘으로 해결 안 되는 순수 데이터 부족 문제로 결론, 다음 세션 과제로 남김. 노트북이 발신 허브 역할이라 실제로는 독립적 다중 station 경합이 아니었다는 것도 논의 중 발견 — 다음엔 폰↔폰 직접 전송 등으로 트래픽 발신원을 분산할 필요
+- `.work-log/current.md`, `.work-log/progress.md` 갱신
+
 ## 2026-08-21
 - 호중 노트북 발열 문제로 라즈베리파이를 용상이 직접 이어받게 되면서, "AP 기기 측정"이 서로 다른 두 작업을 가리킬 수 있음을 정리: (1) Pi ONNX 추론 속도 재측정(오프라인, AP 불필요) vs (2) AP 라이브 트래픽 원본 CSV 수집(`collect_metrics.py`, AP 전원+트래픽 필요, 원래 호중 담당)
 - Pi ONNX 추론 속도 재측정: `project/deploy/raspberry_pi_ap/README.md` 기준 8개 명령어(Baseline/SDN/Fixed/Dynamic × FP32/INT8) 실행 절차와 결과 회수 방법 안내

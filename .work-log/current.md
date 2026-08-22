@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-22 (새벽, yongsang 새 노트북 DESKTOP-29GLQJF 세션)
+최종 업데이트: 2026-08-22 (밤, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
 
 ## 프로젝트 개요
 산업 무선망(AP) 트래픽 혼잡을 Early Exit LSTM으로 실시간 분류하고, Raspberry Pi + ONNX/INT8로 엣지 배포하는 캡스톤 프로젝트. 방학 중 교수 피드백에 따라 1학기 4-feature 시뮬레이터 기반에서 실제 GL.iNet AP 실측 9-feature(`ap_metrics_cleaned_strict`) 기반으로 피벗함. 팀: 유용상(모델 설계), 장예나(데이터), 김호중(경량화·배포).
@@ -39,21 +39,55 @@
   - → 1학기/AP strict 원본 학습 데이터의 측정 방식 자체에 단위 버그가 있거나, 완전히 다른 물리적 실험 조건(매우 가까운 거리)에서 수집됐을 가능성. **예나·팀에 공유 필요**
 - `evaluate_ap_early_exit.py`로 `ap_early_exit_lstm_best.pth` 평가 (자체 스케일러 사용, `project/results/yongsang/ap_new_collection_eval_report.txt`에 저장): 전체 정확도 50%(단, test 샘플 6개뿐이라 통계적으로 거의 무의미), Label 0/1(정상/경고)은 100% 정확했지만 **Label 2/3(혼잡/심각)은 0%** — 사전학습된 모델이 이 새로운 측정 환경에 일반화되지 않음을 시사
 
+## 완료된 작업 (2026-08-22 밤 세션, Claude Code와 진행)
+
+### station 재연결 스파이크 버그 실제 수정 (이전 세션엔 "미수정"으로 남아있던 것)
+- 원인: `parse_station_info`가 연결된 모든 station의 누적 rx/tx bytes·재시도 카운터를 그냥 합산해서 반환 → 어떤 station이 station dump에서 잠깐 빠졌다 재등장하면 그 station의 전체 누적값이 "한 폴링 주기 증가분"으로 잘못 계산되어 throughput이 수천 Mbps로 튀는 버그였음
+- 수정: station을 MAC 주소별로 개별 추적하도록 변경(`parse_station_info`가 dict 반환), `calculate_station_deltas` 신설 — 직전 폴링에 없던(방금 나타난) station은 이번 폴링 델타를 0으로 스킵. 시뮬레이션 테스트 + 실측(약 45분 연속 수집) 양쪽에서 재현 안 됨 확인 (`project/scripts/collect_metrics.py`)
+- 커밋: `126c782`
+
+### 데이터 재수집 (67행 → 636행 → 834행, 3단계)
+1. 버그 수정 스크립트로 5개 시나리오 짧게(각 60~90초) 재수집 → 67행, 커밋 `d328115`
+2. "샘플이 너무 적다"는 판단 하에 5개 시나리오를 각 9~10분씩 재수집 → 636행. `connected_clients`가 9분 내내 안정적으로 유지되고 스파이크 없음을 재검증
+3. 2대 동시 부하(아래 항목)로 stress_load에 197행 추가 → 최종 **834행**
+
+### congestion_score 계산식 재보정 (`JITTER_MAX_MS`, `RETRY_FAILED_MAX`)
+- 기존 `JITTER_MAX_MS=1.0`, `RETRY_FAILED_MAX=100.0`은 시뮬레이터 데이터 기준값이라 실측 AP 데이터(jitter 수백ms, retry 수천~수만)에서 `jitter_score`/`retry_failed_score`가 거의 항상 1.0으로 clamp됨 → label 2(혼잡)로 66% 쏠리는 문제 확인
+- 실측 분포 p90 근처로 재보정(`JITTER_MAX_MS=300.0`, `RETRY_FAILED_MAX=25000.0`) → saturation 문제는 해결됐으나, congestion_score 자체가 0.25~0.55 구간에 몰려있어 label 3(≥0.75) 문턱을 못 넘는 문제가 새로 드러남 → **채널 100% 포화 같은 진짜 극단 조건이 있어야 label 3이 실제로 나온다**는 결론
+
+### 2대 동시 부하로 진짜 다중 station 혼잡 재현 시도
+- 처음엔 노트북 하나로 iperf3 `-P 4`(다중 논리 스트림)를 시도했으나 폰 서버 프로세스가 병목이 되어 오히려 약해짐 → **물리적으로 다른 기기**가 필요하다는 결론
+- 공기계(Termux+iperf3, `192.168.8.235`) 추가 확보 → 노트북에서 두 폰으로 각각 150Mbps UDP 동시 발사 → **AP(Opal)가 58초만에 크래시, WiFi SSID 자체가 완전히 사라짐**(재부팅 필요)
+- 재부팅 후 100M×2로 재시도 성공 — 560초 전부 완료, AP 생존, `channel_occupancy_percent=100.0`(완전 포화) 순간을 포착해 **진짜 label 3(심각) 샘플 3개 신규 확보**(기존 1개 포함 총 4개)
+- 이후 새 공기계(`192.168.8.109`, "CapsTone")로 교체 진행. **중요 인사이트**: 지금까지 구성은 "노트북 1대가 발신 허브로 두 폰에 동시 전송"이라 실제로는 노트북의 단일 업링크가 병목일 수 있음 — 진짜 독립적인 다중 station 경합을 만들려면 폰↔폰 직접 전송이나 노트북을 수신측(iperf3 -s)으로 추가하는 식으로 트래픽 발신원 자체를 분산해야 함 (다음 세션 과제)
+
+### 모델 학습 파이프라인의 근본 버그 발견 및 수정: class imbalance로 인한 완전한 클래스 붕괴
+- 체크포인트 불일치(스케일러 다른 모델로 새 데이터 평가) 때문에 정확도가 낮다는 가설을 직접 검증: 새 데이터로 처음부터 재학습 → 39.3% → 79.8%로 확인, 가설 맞음
+- 그런데 재학습해도 label 2(혼잡)가 여전히 0%로 나와서 confusion matrix를 직접 뽑아봄 → **모델이 label 2/3을 단 한 번도 예측하지 않는 완전한 class collapse** 확인 (`actual 2: [0, 30, 0, 0]`)
+- 원인 1: `multi_exit_loss`(`project/models/early_exit_lstm.py`)가 클래스 비율을 전혀 반영 안 하는 순수 `F.cross_entropy` → `class_weights` 파라미터 추가(옵션, 기본값 None이라 다른 호출부(`train_early_exit.py`, `train_ap_sdn.py`)는 영향 없음)
+- 원인 2 (더 결정적): `train_ap_early_exit.py`의 체크포인트 저장 기준이 raw val accuracy였음 — val set이 label 0+1로 74% 쏠려있어서, class-weighted loss로 학습해도 "다수 클래스만 찍어서 raw acc가 우연히 높은 에폭"이 선택되고 있었음 → **balanced accuracy(클래스별 recall 평균) 기준으로 체크포인트 선택하도록 변경**
+- 결과: label 2 정확도 0% → 60.0%로 개선 (전체 정확도는 69.5%→57.6%로 하락했지만, 이는 "다수 클래스 찍기로 만든 가짜 높은 점수"가 없어진 것이라 더 정직한 수치). label 3은 train 2개/test 1개뿐이라 가중치를 줘도 여전히 학습 불가 — 데이터 자체가 부족한 문제라 알고리즘으로 해결 안 됨
+- 검증용 체크포인트: `project/checkpoints/ap_new_collection_test/` (프로덕션 `ap_cleaned_strict` 체크포인트는 안 건드림)
+
 ## 다음 할 일
 - [ ] 호중에게 Pi SSH 실제 로그인 명령어(아이디 포함) 받기 — 안 풀리면 SD카드 재굽기 고려
 - [ ] Pi 접속되면 `project/deploy/raspberry_pi_ap/` 번들로 SDN FP32/INT8 재측정 (`--mode staged-confidence`, threshold 0.85, `--max-samples 82`) → `analyze_pi_results.py` 분석 → 결과 저장 후 커밋
-- [ ] `project/scripts/metrics_v2.csv`, `project/data/ap_metrics_new_collection/`, `project/results/yongsang/ap_new_collection_eval_report.txt`, `collect_metrics.py` Windows ping 수정 git 커밋
-- [ ] 스케일러 불일치 발견 사항을 예나·팀에 공유 (원본 latency_ms/tx_retries_delta 측정 방식 재검토 필요)
-- [ ] 각 시나리오를 훨씬 오래(몇 분 단위) 반복 수집해서 샘플 수 늘리기 — 지금 41샘플은 통계적 결론 내리기엔 너무 적음
-- [ ] `connected_clients` 전환 시점 스파이크를 걸러내는 후처리 로직 추가 논의 (예나 또는 스크립트 수정)
+- [ ] **label 3(심각) 데이터 추가 확보**: 노트북을 발신 허브로 쓰지 말고 폰↔폰 직접 전송 또는 노트북을 iperf3 서버로 추가해서 진짜 독립적인 다중 station 경합 재현, 채널 포화 상태를 더 길게/안정적으로 만들 수 있는지 시도. 단, 하드웨어 자체가 802.11 backoff 특성상 "장시간 100% 포화"를 잘 허용하지 않을 수 있어 기대치는 낮게 잡을 것
+- [ ] label 1/2 경계(congestion_score 0.50 부근)가 여전히 애매함 — class weight로 완화됐지만 근본적으로 feature 값이 겹치는 구간이라, 이 경계 자체를 다시 설계(예: threshold 재조정, feature 추가)할지 팀 논의 필요
+- [ ] 스케일러 불일치 발견 사항을 예나·팀에 공유 (원본 `ap_cleaned_strict`의 latency_ms/rssi_dbm 측정 방식 재검토 필요 — 이번 실측과 물리적으로 다른 조건에서 수집됐을 가능성)
+- [ ] `connected_clients` 전환 시점 관련 후처리는 이번에 버그 자체를 코드 레벨에서 고쳐서 더 이상 필요 없음 (완료로 전환)
 - [ ] 장기적으로 이 실측 방식으로 모델을 새로 학습/파인튜닝할지 팀 논의 필요 (기존 `ap_cleaned_strict` 학습 데이터와 스케일이 안 맞음)
 - [ ] (여유 시) AP strict용 실시간 추론 파이프라인 설계 착수 — 현재 어느 브랜치에도 코드 없음
 
 ## 주요 파일
-- `project/scripts/collect_metrics.py` — AP 라이브 측정 스크립트. AP_IP=`192.168.8.1`, SERVER_IP=`192.168.8.103`(폰)로 갱신됨, Windows ping 파싱 버그 수정 완료
-- `project/scripts/metrics_v2.csv` — 이번 세션에서 수집한 원본 실측 데이터 (91행, 5개 시나리오, git 미커밋)
-- `project/data/ap_metrics_new_collection/` — 새 실측 데이터 기반 windowed train/val/test (자체 스케일러, `ap_metrics_cleaned_strict`와 별개)
-- `project/results/yongsang/ap_new_collection_eval_report.txt` — 새 데이터로 `ap_early_exit_lstm_best.pth` 평가한 리포트
+- `project/scripts/collect_metrics.py` — AP 라이브 측정 스크립트. station 재연결 스파이크 버그 수정 완료, congestion_score 임계값(`JITTER_MAX_MS`, `RETRY_FAILED_MAX`) 재보정 완료
+- `project/scripts/metrics_v2.csv` — 실측 데이터 누적본 (834행, 5개 시나리오, 2대 동시 부하 포함)
+- `project/data/ap_metrics_new_collection/` — 새 실측 데이터 기반 windowed train/val/test (자체 스케일러, `ap_metrics_cleaned_strict`와 별개, train 548/val 118/test 118)
+- `project/results/yongsang/ap_new_collection_eval_report.txt` — 기존(스케일러 다른) 체크포인트로 새 데이터 평가한 리포트
+- `project/results/yongsang/ap_new_collection_freshmodel_eval_report.txt` — 새 데이터로 처음부터 학습한 체크포인트 평가 리포트
+- `project/checkpoints/ap_new_collection_test/` — 새 데이터 전용 검증용 체크포인트 (class-weighted + balanced-accuracy 선택 적용)
+- `project/models/early_exit_lstm.py` — `multi_exit_loss`에 옵션 `class_weights` 파라미터 추가
+- `project/scripts/train_ap_early_exit.py` — inverse-frequency 클래스 가중치 계산(`compute_class_weights`) + balanced accuracy 기준 체크포인트 선택 추가
 - `~/.ssh/config`, `~/.ssh/id_rsa_ap*` — 이 노트북 로컬 SSH 키/설정 (git에는 없음, 이 기기에서만 유효). AP(`root@192.168.8.1`) 비밀번호 없이 접속 가능
 - `C:\Users\dkssu\anaconda3\envs\capstone` — 이 노트북에서 torch(CPU)+pandas+numpy 설치된 conda 환경 (base는 DLL 로딩 실패)
 - `project/README_AP_STRICT.md` — AP strict 파이프라인 전체 기준 문서
@@ -61,6 +95,9 @@
 - `project/deploy/raspberry_pi_ap/README.md` — Pi ONNX 8개 조합 재측정 명령어 (아직 미착수, Pi 로그인 대기 중)
 
 ## 특이사항 / 결정 사항
+- **AP(Opal)가 과도한 부하에서 완전히 크래시될 수 있음**: 150Mbps×2(합계 300M) 동시 부하에서 58초 만에 WiFi 자체가 완전히 죽음(SSID 방송 중단), 물리적 재부팅 필요했음. 100M×2(합계 200M)는 9분 넘게 안정적으로 버팀 — 이 AP로 극한 테스트할 땐 200M대에서 시작해서 조심스럽게 올릴 것
+- **iperf3 UDP `-b` 타겟은 실제 전달량과 다름**: 단일 스트림이든 2개 스트림이든, 이 AP의 실제 물리 채널 용량은 대략 35~50Mbps대에서 포화되는 것으로 보임(타겟을 100M로 걸든 150M로 걸든 실제 전달량은 비슷). 부하를 더 세게 걸고 싶으면 타겟 숫자보다 "몇 대가 동시에 붙어있는지"가 더 중요함
+- **폰 iperf3 서버 화면 꺼짐 대응**: `termux-wake-lock` 먼저 실행해두고 `iperf3 -s` 띄우는 걸 권장 (화면 꺼지면 서버 죽을 위험)
 - **Opal 포트 구분 중요**: 집 인터넷은 반드시 Opal의 **WAN 포트**에 꽂아야 함. LAN 포트에 꽂으면 Opal이 브릿지 모드처럼 동작해서 자기 관리 IP(`192.168.8.1`)가 WiFi 클라이언트에서 안 열림
 - **AP 비번 ≠ Pi 비번**: 호중이 알려준 비밀번호는 `root@192.168.8.1`(AP)엔 맞지만 `pi@192.168.8.109`(Pi)엔 안 맞음 — 팀 내에서 이 둘을 같은 걸로 착각하기 쉬우니 항상 어느 기기 얘기인지 구분할 것
 - AP 모델은 GL.iNet Opal(GL-SFT1200), 관리 IP `192.168.8.1`(WAN 포트로 인터넷 연결 시 정상적으로 이 IP로 접속 가능)
