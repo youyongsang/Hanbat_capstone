@@ -1,0 +1,116 @@
+{
+  "source": {
+    "input_file": "project\\scripts\\metrics_v2.csv",
+    "raw_rows": 91,
+    "prepared_rows": 86,
+    "dropped_first_row_per_scenario": true,
+    "stride": 1
+  },
+  "features": [
+    "throughput_mbps",
+    "channel_occupancy_percent",
+    "latency_ms",
+    "jitter_ms",
+    "tx_retries_delta",
+    "tx_failed_delta",
+    "rssi_dbm",
+    "rssi_delta_db",
+    "rssi_moving_avg_dbm"
+  ],
+  "window_size": 10,
+  "label_names": {
+    "0": "정상",
+    "1": "경고",
+    "2": "혼잡",
+    "3": "심각"
+  },
+  "scaler_params": {
+    "throughput_mbps": {
+      "min": 0.0,
+      "max": 2420.36
+    },
+    "channel_occupancy_percent": {
+      "min": 16.67,
+      "max": 82.76
+    },
+    "latency_ms": {
+      "min": 2.0,
+      "max": 841.0
+    },
+    "jitter_ms": {
+      "min": 0.0,
+      "max": 559.0
+    },
+    "tx_retries_delta": {
+      "min": 0.0,
+      "max": 207121.0
+    },
+    "tx_failed_delta": {
+      "min": 0.0,
+      "max": 209971.0
+    },
+    "rssi_dbm": {
+      "min": -67.0,
+      "max": -53.5
+    },
+    "rssi_delta_db": {
+      "min": -10.0,
+      "max": 8.0
+    },
+    "rssi_moving_avg_dbm": {
+      "min": -63.2,
+      "max": -54.5
+    }
+  },
+  "preprocessing": {
+    "dropped_first_row_per_scenario": true,
+    "occupancy_outlier_fixes": 5,
+    "model_excluded_columns": [
+      "timestamp",
+      "scenario",
+      "channel_occupancy_method",
+      "packet_loss_udp_percent",
+      "connected_clients",
+      "throughput_score",
+      "occupancy_score",
+      "retry_failed_score",
+      "jitter_score",
+      "congestion_score"
+    ]
+  },
+  "splits": {
+    "train": {
+      "rows": 280,
+      "samples": 28,
+      "shape": "(28, 10, 9)",
+      "label_distribution": {
+        "0:정상": 6,
+        "1:경고": 13,
+        "2:혼잡": 8,
+        "3:심각": 1
+      }
+    },
+    "val": {
+      "rows": 70,
+      "samples": 7,
+      "shape": "(7, 10, 9)",
+      "label_distribution": {
+        "0:정상": 1,
+        "1:경고": 3,
+        "2:혼잡": 2,
+        "3:심각": 1
+      }
+    },
+    "test": {
+      "rows": 60,
+      "samples": 6,
+      "shape": "(6, 10, 9)",
+      "label_distribution": {
+        "0:정상": 1,
+        "1:경고": 2,
+        "2:혼잡": 2,
+        "3:심각": 1
+      }
+    }
+  }
+}

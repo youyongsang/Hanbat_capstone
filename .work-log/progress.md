@@ -1,3 +1,18 @@
+## 2026-08-22
+- (8/21 밤부터 이어지는 세션, 새 노트북 DESKTOP-29GLQJF) AP WiFi SSID는 뜨는데 `192.168.8.1` 관리 페이지/SSH가 안 열리는 문제의 원인을 추적: 노트북이 Opal이 아니라 집 공유기(다른 물리 기기, MAC 다름)가 준 IP(`192.168.75.x`)를 받고 있었음을 확인. 원인은 집 랜선을 Opal의 LAN 포트에 꽂아서 브릿지 모드처럼 동작한 것
+- 호중에게 확인해서 원래 성공했던 구성("집 공유기 → Opal WAN 포트")을 알아냄. 랜선을 WAN 포트로 옮겨 연결 → 노트북이 `192.168.8.226` 받고 인터넷+AP 관리 페이지 동시에 정상 작동 확인 (Claude Code 세션 끊김 없이 유지)
+- AP(`root@192.168.8.1`) SSH는 호중이 알려준 비번으로 성공(단 `HostKeyAlgorithms=+ssh-rsa` 등 구형 dropbear 호환 옵션 필요). RSA 키 생성 후 `ssh-copy-id`로 등록, `~/.ssh/config`에 등록해서 비밀번호 없이 자동 인증되도록 설정 완료
+- Pi(`pi@192.168.8.109`) SSH는 호중이 알려준 비번이 3회 다 실패. 호중 본인은 된다고 하는데 우리 쪽만 안 됨 → 계정 이름이 `pi`가 아닐 가능성으로 결론, 호중에게 실제 명령어 전체를 복사해서 보내달라고 요청. **아직 미해결**, SD카드 재굽기는 대안으로만 검토 중
+- `collect_metrics.py`의 Windows ping 파싱 버그 발견 및 수정: 기존 코드가 Linux `ping -c/-W` 형식만 파싱해서 Windows(한글 로캘)에서 latency/jitter/packet_loss가 조용히 전부 0으로 찍히는 문제였음. `platform.system()` 분기 + `TTL=` 줄에서 로케일 무관 `(숫자)ms` 정규식 추출로 수정
+- 이 노트북(WiFi Client) + 폰 Termux(`iperf3 -s` 서버) 구성으로 5개 시나리오(`normal_idle`/`low_load`/`medium_load`/`high_load`/`stress_load`) 라이브 실측 완료, 총 91행 `project/scripts/metrics_v2.csv`에 저장 (git 미커밋). 부하 증가에 따라 UDP 손실률이 1.2%→68.1%로 뚜렷하게 증가하는 것 확인
+- `low_load` 첫 수집 시 프로세스 종료 타이밍이 늦어서 157초 중 대부분이 무부하 상태로 잘못 라벨링된 오염 데이터 발견 → 삭제 후 정확히 68초로 재수집
+- `connected_clients`가 1→2로 바뀌는 순간(station 재연결) throughput/재전송이 비현실적으로 튀는 구조적 버그 발견(스크립트 미수정, 팀 공유용으로만 기록)
+- torch DLL 로딩 실패(이 노트북 anaconda base에서도 재현) → 새 conda 환경 `capstone` 생성해서 torch(CPU)+pandas+numpy 설치로 해결
+- `prepare_ap_metrics_dataset.py`로 새 실측 데이터를 별도 폴더(`project/data/ap_metrics_new_collection/`, 기존 `ap_metrics_cleaned_strict`는 안 건드림)에 윈도우 변환 (41 샘플)
+- **중요 발견**: 원본 학습 스케일러(`ap_metrics_cleaned_strict/scaler_params.json`)와 실측 데이터 범위가 완전히 다름 — latency_ms(원본 0.047~0.163 vs 실측 2~841), tx_retries_delta(원본 최대 23 vs 실측 최대 20만대), rssi_dbm(원본 -30~-17 vs 실측 -67~-53.5). 1학기/AP strict 원본 데이터 측정 방식에 단위 버그가 있거나 완전히 다른 물리 조건(매우 근접 거리)에서 수집됐을 가능성 — 예나·팀 공유 필요
+- `evaluate_ap_early_exit.py`로 새 데이터 평가 (`project/results/yongsang/ap_new_collection_eval_report.txt`): 정확도 50%(test 샘플 6개뿐이라 통계적 의미 낮음), 정상/경고는 100% 맞히지만 혼잡/심각은 0% — 사전학습 모델이 새 측정 환경에 일반화 안 되는 것을 확인
+- `.work-log/current.md`, `.work-log/progress.md` 갱신
+
 ## 2026-08-21
 - 호중 노트북 발열 문제로 라즈베리파이를 용상이 직접 이어받게 되면서, "AP 기기 측정"이 서로 다른 두 작업을 가리킬 수 있음을 정리: (1) Pi ONNX 추론 속도 재측정(오프라인, AP 불필요) vs (2) AP 라이브 트래픽 원본 CSV 수집(`collect_metrics.py`, AP 전원+트래픽 필요, 원래 호중 담당)
 - Pi ONNX 추론 속도 재측정: `project/deploy/raspberry_pi_ap/README.md` 기준 8개 명령어(Baseline/SDN/Fixed/Dynamic × FP32/INT8) 실행 절차와 결과 회수 방법 안내
