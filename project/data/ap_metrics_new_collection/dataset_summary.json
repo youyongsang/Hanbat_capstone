@@ -1,8 +1,8 @@
 {
   "source": {
     "input_file": "project\\scripts\\metrics_v2.csv",
-    "raw_rows": 91,
-    "prepared_rows": 86,
+    "raw_rows": 834,
+    "prepared_rows": 829,
     "dropped_first_row_per_scenario": true,
     "stride": 1
   },
@@ -27,44 +27,44 @@
   "scaler_params": {
     "throughput_mbps": {
       "min": 0.0,
-      "max": 2420.36
+      "max": 133.15
     },
     "channel_occupancy_percent": {
-      "min": 16.67,
-      "max": 82.76
+      "min": 13.33,
+      "max": 80.0
     },
     "latency_ms": {
-      "min": 2.0,
-      "max": 841.0
+      "min": 0.0,
+      "max": 547.0
     },
     "jitter_ms": {
       "min": 0.0,
-      "max": 559.0
+      "max": 858.0
     },
     "tx_retries_delta": {
       "min": 0.0,
-      "max": 207121.0
+      "max": 29373.0
     },
     "tx_failed_delta": {
       "min": 0.0,
-      "max": 209971.0
+      "max": 32997.0
     },
     "rssi_dbm": {
-      "min": -67.0,
-      "max": -53.5
+      "min": -65.0,
+      "max": -42.0
     },
     "rssi_delta_db": {
-      "min": -10.0,
-      "max": 8.0
+      "min": -16.0,
+      "max": 10.0
     },
     "rssi_moving_avg_dbm": {
-      "min": -63.2,
-      "max": -54.5
+      "min": -64.3,
+      "max": -42.7
     }
   },
   "preprocessing": {
     "dropped_first_row_per_scenario": true,
-    "occupancy_outlier_fixes": 5,
+    "occupancy_outlier_fixes": 58,
     "model_excluded_columns": [
       "timestamp",
       "scenario",
@@ -80,35 +80,35 @@
   },
   "splits": {
     "train": {
-      "rows": 280,
-      "samples": 28,
-      "shape": "(28, 10, 9)",
+      "rows": 5480,
+      "samples": 548,
+      "shape": "(548, 10, 9)",
       "label_distribution": {
-        "0:정상": 6,
-        "1:경고": 13,
-        "2:혼잡": 8,
-        "3:심각": 1
+        "0:정상": 103,
+        "1:경고": 303,
+        "2:혼잡": 140,
+        "3:심각": 2
       }
     },
     "val": {
-      "rows": 70,
-      "samples": 7,
-      "shape": "(7, 10, 9)",
+      "rows": 1180,
+      "samples": 118,
+      "shape": "(118, 10, 9)",
       "label_distribution": {
-        "0:정상": 1,
-        "1:경고": 3,
-        "2:혼잡": 2,
+        "0:정상": 22,
+        "1:경고": 65,
+        "2:혼잡": 30,
         "3:심각": 1
       }
     },
     "test": {
-      "rows": 60,
-      "samples": 6,
-      "shape": "(6, 10, 9)",
+      "rows": 1180,
+      "samples": 118,
+      "shape": "(118, 10, 9)",
       "label_distribution": {
-        "0:정상": 1,
-        "1:경고": 2,
-        "2:혼잡": 2,
+        "0:정상": 22,
+        "1:경고": 65,
+        "2:혼잡": 30,
         "3:심각": 1
       }
     }

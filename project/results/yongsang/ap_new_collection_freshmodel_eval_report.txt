@@ -1,0 +1,43 @@
+AP Early Exit LSTM Evaluation Report
+Data Directory: project\data\ap_metrics_new_collection
+Checkpoint: project\checkpoints\ap_new_collection_test\ap_early_exit_lstm_best.pth
+
+=== AP Early Exit + fixed theta ===
+Test Accuracy: 69.5%
+Exit별 성능:
+  Exit 1 | Accuracy: 0.0% | Exit Rate: 0.0% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 94.7% | Exit Rate: 16.1% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 64.6% | Exit Rate: 83.9% | Avg Time: 8.0ms
+Overall Avg Inference Time: 7.356ms
+Measured Wall Time: 1.092ms
+Label별 정확도:
+  Label 0 (정상): 86.4%
+  Label 1 (경고): 96.9%
+  Label 2 (혼잡): 0.0%
+  Label 3 (심각): 0.0%
+시나리오별 정확도:
+  high_load: 58.8%
+  low_load: 95.0%
+  medium_load: 40.0%
+  normal_idle: 95.0%
+  stress_load: 60.9%
+
+=== AP Early Exit + dynamic theta ===
+Test Accuracy: 69.5%
+Exit별 성능:
+  Exit 1 | Accuracy: 0.0% | Exit Rate: 0.0% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 70.8% | Exit Rate: 89.8% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 58.3% | Exit Rate: 10.2% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.407ms
+Measured Wall Time: 0.848ms
+Label별 정확도:
+  Label 0 (정상): 86.4%
+  Label 1 (경고): 96.9%
+  Label 2 (혼잡): 0.0%
+  Label 3 (심각): 0.0%
+시나리오별 정확도:
+  high_load: 58.8%
+  low_load: 95.0%
+  medium_load: 40.0%
+  normal_idle: 95.0%
+  stress_load: 60.9%
