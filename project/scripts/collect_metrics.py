@@ -615,11 +615,17 @@ def calculate_scores(
         jitter / JITTER_MAX_MS
     )
 
+    # 2026-08-23 저녁 재보정: 기존 가중치(0.35/0.35/0.20/0.10)는
+    # throughput_score가 label 2와 3 사이를 거의 구분하지 못했다
+    # (실측 stress_load 평균: label2 0.665 vs label3 0.707 - 차이 미미).
+    # 반면 occupancy_score(0.449 -> 0.898)와 jitter_score(0.512 -> 0.802)는
+    # label 2/3 사이에 뚜렷한 차이를 보였다. throughput 비중을 낮추고
+    # occupancy/jitter 비중을 높여 실제 변별력에 맞게 재조정했다.
     congestion_score = (
-        0.35 * throughput_score
-        + 0.35 * occupancy_score
+        0.20 * throughput_score
+        + 0.45 * occupancy_score
         + 0.20 * retry_failed_score
-        + 0.10 * jitter_score
+        + 0.15 * jitter_score
     )
 
     congestion_score = round(

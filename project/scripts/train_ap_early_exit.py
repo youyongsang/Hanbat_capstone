@@ -28,7 +28,7 @@ def display_path(path: Path) -> str:
 def compute_class_weights(
     labels: torch.Tensor,
     num_classes: int = 4,
-    power: float = 0.7,
+    power: float = 1.0,
 ) -> torch.Tensor:
     """Power-softened inverse-frequency class weights for imbalanced labels.
 
@@ -37,13 +37,17 @@ def compute_class_weights(
     outnumber label 3) lets the model collapse to always predicting the
     majority class(es) and never output the rare ones at all.
 
-    Plain inverse frequency (N / (K * count_c)), i.e. power=1.0, overcorrects
-    on this data: with only 9-14 label-3 (severe) train examples, the raw
-    weight lands around 20x, aggressive enough that label 2 (congested) gets
-    routinely over-predicted as label 3 (label 2 recall dropped to ~19% in an
-    earlier run). power=0.5 (sqrt) fixed that (label 2 recall 79%) but swung
-    too far the other way (label 3 recall 0%). power=0.7 is a midpoint
-    between the two, tuned by observing that tradeoff on this dataset.
+    power controls how hard label 3 (severe) is upweighted, and there is a
+    sharp cliff rather than a smooth tradeoff on this dataset (~23 label-3
+    train examples after the 2026-08-23 congestion_score reweighting):
+    power<=0.85 gives strong label 0-2 accuracy (85.8% overall @ 0.7) but
+    label 3 recall stays exactly 0%; only power=1.0 (plain inverse
+    frequency) gets the model to ever predict label 3 at all (40% recall),
+    at the cost of label 2 (congested) recall dropping to 35.6% as some
+    congested samples get over-predicted as severe. power=1.0 was chosen
+    deliberately: missing a real severe-congestion event (false negative)
+    is worse for this project's use case than a congested reading being
+    over-flagged as severe (false positive).
     """
 
     counts = torch.bincount(labels, minlength=num_classes).float()
@@ -114,6 +118,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden-size", type=int, default=128)
     parser.add_argument("--theta-1", type=float, default=0.3)
     parser.add_argument("--theta-2", type=float, default=0.6)
+    parser.add_argument("--class-weight-power", type=float, default=1.0)
     return parser.parse_args()
 
 
@@ -125,8 +130,8 @@ def main() -> None:
     val_loader = get_ap_dataloader(args.data_dir / "val.csv", args.batch_size, shuffle=False)
 
     train_labels = train_loader.dataset.tensors[1]
-    class_weights = compute_class_weights(train_labels).to(device)
-    print(f"Class weights (inverse frequency ^0.7): {class_weights.tolist()}")
+    class_weights = compute_class_weights(train_labels, power=args.class_weight_power).to(device)
+    print(f"Class weights (inverse frequency ^{args.class_weight_power}): {class_weights.tolist()}")
 
     model = APEarlyExitLSTM(
         hidden_size=args.hidden_size,

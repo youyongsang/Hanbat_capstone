@@ -1,5 +1,30 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-23 (저녁, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
+최종 업데이트: 2026-08-23 (밤, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
+
+## 완료된 작업 (2026-08-23 밤 세션, Claude Code와 진행)
+
+### congestion_score 가중치 재조정 — AP 재부팅 없이 label 3을 21개→33개로 늘림
+- AP가 반복 크래시로 더 이상 데이터를 못 모으는 상황에서, 이미 모아둔 `metrics_v2.csv`(1265행)를 분석해보니 **원래 가중치(throughput 35% / occupancy 35% / retry 20% / jitter 10%)가 실제 변별력과 안 맞았음**을 발견
+  - stress_load 구간에서 label 2 vs label 3의 sub-score 평균 비교: `throughput_score` 0.665→0.707(거의 차이 없음), `occupancy_score` 0.449→0.898(거의 2배), `jitter_score` 0.512→0.802(큰 차이), `retry_score` 0.724→0.834(약한 차이)
+  - 즉 throughput은 정상/경고를 가르는 덴 유용하지만 혼잡/심각을 가르는 덴 거의 기여를 못 하고 있었음
+- `collect_metrics.py`의 `calculate_scores()` 가중치를 **throughput 20% / occupancy 45% / retry 20% / jitter 15%**로 재조정 (occupancy·jitter 비중 상향, throughput 비중 하향)
+- 새 가중치를 기존 원시 데이터(1265행)에 그대로 재적용하는 `project/scripts/relabel_metrics_v2.py` 신설 — **AP 재수집 없이** raw 데이터 재라벨링만으로 label 3을 21개→33개로 늘림 (label 0: 166→149, label 1: 516→670, label 2: 562→413)
+- `ap_metrics_new_collection` 재변환: label 3 샘플이 train 14→23, val 3→5, test 3→5로 증가
+
+### class weight power 재실험 — power=1.0으로 확정 (트레이드오프가 완만하지 않고 절벽형)
+- `train_ap_early_exit.py`에 `--class-weight-power` CLI 인자 추가(기존엔 하드코딩)
+- 재라벨링된 데이터로 power 0.7 / 0.85 / 1.0 비교:
+
+  | power | 전체 정확도 | Label 0 | Label 1 | Label 2 | **Label 3** |
+  |---|---:|---:|---:|---:|---:|
+  | 0.7 | 85.8% | 95.5% | 86.6% | 88.1% | **0%** |
+  | 0.85 | 76.5% | 95.5% | 70.1% | 86.4% | **0%** |
+  | 1.0 | 65~66% | 95.5% | 75~77% | 36~42% | **40%** |
+
+- **0.7/0.85는 label 3을 아예 0%로 계속 놓침. 1.0(순수 역빈도)에서만 label 3이 잡히기 시작**하며, 그 대신 label 2 정확도가 크게 하락(88%→36~42%) — 완만한 트레이드오프가 아니라 거의 전부/전무에 가까운 절벽
+- 팀 판단으로 **power=1.0을 기본값으로 확정**: 이 프로젝트 목적상 심각 혼잡을 놓치는 것(false negative)이 혼잡을 심각으로 과잉 경고하는 것(false positive)보다 더 치명적이라는 이유
+- 최종 체크포인트: `project/checkpoints/ap_new_collection_test/`(power=1.0), 평가 리포트: `project/results/yongsang/ap_new_collection_freshmodel_eval_report.txt`
+- **주의**: 이 재조정으로 `ap_metrics_new_collection`의 label 정의(congestion_score 가중치)가 production `ap_cleaned_strict`(588행, 옛 가중치 0.35/0.35/0.20/0.10)와 달라짐. 두 데이터셋을 같은 기준으로 비교하면 안 됨 — `ap_cleaned_strict`를 새 가중치로 재라벨링할지는 아직 미결정(팀 논의 필요)
 
 ## 완료된 작업 (2026-08-23 저녁 세션, Claude Code와 진행)
 
@@ -58,16 +83,18 @@
 - **새로 드러난 부작용**: label 3에 준 클래스 가중치가 너무 세서(train 9개뿐이라 가중치 ~20배) label 2(혼잡)를 label 3으로 오버슈팅하는 경향 생김(label 2 정확도 19%로 하락, 58개 중 33개를 3으로 오분류). 다음에 가중치를 완화(역빈도 대신 제곱근 역빈도 등)하면 다듬을 수 있을 것으로 보임
 - 폰 iperf3 서버가 화면 꺼짐으로 중간에 두 번 죽음(`termux-wake-lock` 안 걸어둔 폰들) → 재시작 대기 중 세션 일시 중단, 여기서 기록 저장
 
-## 다음 할 일 (2026-08-23 저녁 세션 기준 갱신)
+## 다음 할 일 (2026-08-23 밤 세션 기준 갱신)
 - [x] 파이를 TV(HDMI)에 연결해서 부팅 화면 확인 — 정상 부팅, `capstone@CapsTone` 프롬프트 뜸
 - [x] SSH 키 인증 설정 완료 (`ssh capstone@192.168.45.31` 비밀번호 없이 접속 가능)
 - [x] `project/deploy/raspberry_pi_ap/` 번들로 8개 조합 Pi 실측 완료 (단, 구버전 588행 데이터 기준 — 위 섹션 참고)
-- [x] label 3 class weight 완화 실험 1차 (power=0.5, 0.7 비교) — 결론: 현재 데이터로는 label 2/3 트레이드오프 한계, 데이터 부족이 근본 원인
-- [x] 와이파이를 Opal AP로 전환, 폰 3대(103/191/221) 붙여서 label 3 추가 수집 시도 — 12행 확보(label 3 1개 포함)했지만 AP가 4번 크래시함(아래 항목)
-- [ ] **최우선(다음 세션)**: AP 반복 크래시 원인 조사 — 충분히 식힌 뒤(전원 뽑고 몇 시간 이상 방치 권장) 가벼운 부하(폰 1대, 50M 단일 스트림)부터 다시 안정성 확인. 계속 즉시 크래시하면 열/메모리 누수보다 펌웨어 이슈일 가능성 고려, 호중과 공유 필요
-- [ ] AP 안정성 재확인되면 폰 2대로 stress_load 수집 이어가기 (label 3 더 필요, 지금 test 3~4개로는 recall 0%)
+- [x] 와이파이를 Opal AP로 전환, 폰 3대(103/191/221) 붙여서 label 3 추가 수집 시도 — 12행 확보(label 3 1개 포함)했지만 AP가 4번 크래시함
+- [x] congestion_score 가중치 재조정(occupancy/jitter 상향, throughput 하향) + 기존 데이터 재라벨링으로 label 3 21→33개 확보 (AP 재수집 없이)
+- [x] class weight power 재실험 및 확정 — **power=1.0**(순수 역빈도)을 기본값으로 채택, label 3 recall 0%→40%, 대신 label 2 recall 88%→36~42% (팀 판단: 심각 미탐지가 더 치명적)
+- [ ] **최우선(다음 세션)**: AP 충분히 식힌 뒤(전원 뽑고 몇 시간 이상 방치) 가벼운 부하(폰 1대, 50M 단일 스트림)부터 안정성 재확인. 계속 즉시 크래시하면 열/메모리 누수보다 펌웨어 이슈일 가능성 고려, 호중과 공유 필요
+- [ ] AP 안정성 재확인되면 폰 2대(또는 채널폭 제한 방식)로 stress_load 수집 이어가기 — label 3 test 5개로 늘긴 했지만 여전히 통계적으로 얇음
+- [ ] **`ap_cleaned_strict`(production, 588행)를 새 congestion_score 가중치로 재라벨링할지 팀 논의 필요** — 지금 `ap_metrics_new_collection`과 `ap_cleaned_strict`가 서로 다른 라벨 기준(가중치)을 쓰고 있어서 두 데이터셋을 같은 기준으로 비교하면 안 됨
 - [ ] `192.168.8.103` 폰이 오프라인됐던 원인 확인 (Termux 강제종료 추정) — 배터리 최적화 예외 설정 확인 권장, 복귀하면 `collect_metrics.py`의 `SERVER_IP`를 다시 `103`으로 되돌릴지 `191` 유지할지는 팀 편의대로
-- [ ] label 3 샘플 확보 후 `ap_metrics_new_collection` 재변환 + 재학습 + class weight power 재튜닝 (오늘 12행 추가분은 아직 미반영, 증가폭 작아서 우선순위 낮음)
+- [ ] `ap_metrics_new_collection`(1260행) 기준 ONNX export + Pi 배포 번들은 아직 없음
 - [ ] `ap_metrics_new_collection`(1253행) 기준 ONNX export + Pi 배포 번들은 아직 없음 — `ap_cleaned_strict`용 `export_onnx_ap.py`/`prepare_pi_bundle_ap.py`를 새 데이터 경로로 재사용할지, 별도 스크립트를 만들지 결정 필요
 - [ ] 호중에게 "capstone 계정" 비밀번호 재확인은 더 이상 불필요 (SSH 키 인증으로 해결됨), 대신 이 사실 공유
 - [ ] label 1/2 경계(congestion_score 0.50 부근) 재설계 논의 — threshold 재조정 또는 feature 추가 필요할 수 있음
