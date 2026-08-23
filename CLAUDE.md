@@ -94,7 +94,7 @@ project/results/hojung/sdn_baseline.csv
 
 **1차 = `ap_cleaned_strict`(588행).** 아래 "현재 AP strict 데이터 기준" ~ "Raspberry Pi 실측 전 남은 작업" 섹션이 전부 이 라인 기준이다. Baseline/SDN/Proposed Fixed/Dynamic 4개 모델 학습, ONNX/INT8 변환, Raspberry Pi 배포 번들까지 전부 완료된 상태다. **2026-08-23 확인: 이 데이터는 실제로 팀이 구매한 AP 장비의 실측이 아니라 인터넷에 공개돼 있던 데이터를 가공해서 만든 것**이었다. 즉 "방학 중 변경 방향"에서 말한 "실제 AP 장비에서 CSV 수집"이라는 목표는 1차 단계에서는 완전히 실현되지 않았다(이게 이 데이터셋의 feature 스케일이 실측 라이브 데이터와 크게 다른 이유이기도 하다 — `latency_ms` 원본 0.047~0.163 vs 실측 2~841ms 등). 그럼에도 9-feature 파이프라인, congestion score 라벨링, Early Exit/SDN 비교 구조 전체를 미리 검증하는 역할을 했으므로 그대로 archived 상태로 남겨둔다. **더 이상 재라벨링하거나 재학습하지 않는다** — 필요하면 아래 2차 라인에서 이어간다.
 
-**2차 = `ap_metrics_v2`.** 2026-08-23부터 팀이 실제로 구매한 GL.iNet Opal(GL-SFT1200) AP에서 `project/scripts/collect_metrics.py`로 직접 라이브 수집한 진짜 실측 데이터다. "방학 중 변경 방향"의 취지(실제 AP 장비 실측)를 온전히 만족하는 라인이며, 현재 진행 중인 공식 재설계 라인이다. 자세한 내용은 아래 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션을 참고한다.
+**2차 = `ap_metrics_v2`.** 2026-08-23부터 팀이 실제로 구매한 GL.iNet Opal(GL-SFT1200) AP에서 `project/scripts/collect_metrics.py`로 직접 라이브 수집한 진짜 실측 데이터다. "방학 중 변경 방향"의 취지(실제 AP 장비 실측)를 온전히 만족하는 라인이며, 현재 진행 중인 공식 재설계 라인이다. 자세한 내용은 아래 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션과 `project/README_AP_V2.md`를 참고한다(1차의 `project/README_AP_STRICT.md`에 대응하는 문서).
 
 두 라인은 **congestion_score 계산 가중치 자체가 다르므로 label 정의가 다르다.** 정확도나 label 분포를 같은 표에 놓고 직접 비교하지 않는다.
 
@@ -610,6 +610,7 @@ docs/hochung/guideline_hochung_vacation_stage5.md
 ### 9. 2차 AP 실측 재설계(ap_metrics_v2) 파일
 
 ```text
+project/README_AP_V2.md
 project/scripts/metrics_v2.csv
 project/scripts/collect_metrics.py
 project/scripts/relabel_metrics_v2.py
@@ -622,7 +623,8 @@ project/results/yongsang/ap_v2_eval_report.txt
 
 역할:
 
-- 1차와 별개로 진행 중인, 팀이 실제로 구매한 AP 장비 실측 기반 재설계 라인이다. 자세한 내용은 위 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션을 참고한다.
+- `project/README_AP_V2.md`는 1차의 `project/README_AP_STRICT.md`에 대응하는 2차 전용 문서다. 기준 데이터, congestion_score 계산식, 재라벨링/변환/학습/평가 명령어, 1차와의 차이, 알려진 한계를 정리한다. 2차 라인을 재현하려면 이 문서를 먼저 본다.
+- 1차와 별개로 진행 중인, 팀이 실제로 구매한 AP 장비 실측 기반 재설계 라인이다. 자세한 내용은 위 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션도 참고한다.
 - `.work-log/current.md`에 AP 하드웨어 크래시, congestion_score 재조정, class weight power 실험 등 이 라인의 최신 진행 상황이 세션별로 기록되어 있다 — 이 문서(CLAUDE.md)보다 더 최신 세부사항은 여기서 확인한다.
 
 ### 10. Claude에게 중요한 해석 기준
