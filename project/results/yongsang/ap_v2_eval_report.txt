@@ -1,6 +1,6 @@
 AP Early Exit LSTM Evaluation Report
-Data Directory: project\data\ap_metrics_new_collection
-Checkpoint: project\checkpoints\ap_new_collection_test\ap_early_exit_lstm_best.pth
+Data Directory: project\data\ap_metrics_v2
+Checkpoint: project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth
 
 === AP Early Exit + fixed theta ===
 Test Accuracy: 66.1%
@@ -9,7 +9,7 @@ Exit별 성능:
   Exit 2 | Accuracy: 100.0% | Exit Rate: 2.7% | Avg Time: 4.0ms
   Exit 3 | Accuracy: 62.3% | Exit Rate: 86.9% | Avg Time: 8.0ms
 Overall Avg Inference Time: 7.268ms
-Measured Wall Time: 1.209ms
+Measured Wall Time: 1.188ms
 Label별 정확도:
   Label 0 (정상): 95.5%
   Label 1 (경고): 75.3%
@@ -29,7 +29,7 @@ Exit별 성능:
   Exit 2 | Accuracy: 72.0% | Exit Rate: 13.7% | Avg Time: 4.0ms
   Exit 3 | Accuracy: 61.3% | Exit Rate: 74.9% | Avg Time: 8.0ms
 Overall Avg Inference Time: 6.765ms
-Measured Wall Time: 1.284ms
+Measured Wall Time: 1.127ms
 Label별 정확도:
   Label 0 (정상): 95.5%
   Label 1 (경고): 75.3%
