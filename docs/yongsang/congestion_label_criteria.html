@@ -1,0 +1,961 @@
+<title>혼잡 라벨 분류 기준</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #f5f7fa;
+    --panel:        #fcfcfb;
+    --panel-raise:  #ffffff;
+    --ink:          #12151b;
+    --ink-2:        #4b5566;
+    --ink-mute:     #7c8494;
+    --rule:         #e2e6ec;
+    --rule-strong:  #c9d0da;
+    --accent:       #2a78d6;
+    --accent-2:     #eb6834;
+    --accent-ink:   #ffffff;
+    --good:         #0ca30c;
+    --warning:      #fab219;
+    --serious:      #ec835a;
+    --critical:     #d03b3b;
+    --shadow:       0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:        #0e1116;
+      --panel:        #1a1a19;
+      --panel-raise:  #20242c;
+      --ink:          #f3f5f8;
+      --ink-2:        #b8c0cc;
+      --ink-mute:     #8890a0;
+      --rule:         #242a33;
+      --rule-strong:  #333b47;
+      --accent:       #3987e5;
+      --accent-2:     #d95926;
+      --accent-ink:   #0e1116;
+      --shadow:       0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:        #0e1116;
+    --panel:        #1a1a19;
+    --panel-raise:  #20242c;
+    --ink:          #f3f5f8;
+    --ink-2:        #b8c0cc;
+    --ink-mute:     #8890a0;
+    --rule:         #242a33;
+    --rule-strong:  #333b47;
+    --accent:       #3987e5;
+    --accent-2:     #d95926;
+    --accent-ink:   #0e1116;
+    --shadow:       0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 4rem 1.75rem 6rem;
+  }
+
+  header.page-head {
+    max-width: 680px;
+    margin-bottom: 3.25rem;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 1.5rem + 1.6vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.18;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+  }
+
+  .page-head p {
+    color: var(--ink-2);
+    font-size: 1.05rem;
+    margin: 0 0 0;
+    max-width: 62ch;
+  }
+
+  .gen-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.4rem;
+  }
+
+  .gen-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    font-size: 0.82rem;
+    color: var(--ink-2);
+  }
+  .gen-badge b { color: var(--ink); font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+  .gen-badge.archived { opacity: 0.72; }
+  .gen-badge.active { border-color: var(--accent); color: var(--ink); }
+  .gen-badge.active b { color: var(--accent); }
+
+  section {
+    margin-top: 3.5rem;
+  }
+
+  section > h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  section > h2 .step {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+
+  section > .lede {
+    color: var(--ink-2);
+    max-width: 68ch;
+    margin: 0 0 1.5rem;
+  }
+
+  /* ---- 4-label spec grid ---- */
+
+  .label-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .label-card {
+    background: var(--panel);
+    padding: 1.15rem 1.1rem 1.3rem;
+    position: relative;
+  }
+
+  .label-card .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 1.9rem;
+    font-weight: 600;
+    line-height: 1;
+    margin-bottom: 0.6rem;
+  }
+
+  .label-card .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.7rem;
+  }
+
+  .label-card .chip::before {
+    content: "";
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--dot);
+    flex: none;
+  }
+
+  .label-card .range {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+    color: var(--ink-mute);
+    margin-bottom: 0.55rem;
+  }
+
+  .label-card .meaning {
+    font-size: 0.86rem;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+
+  .label-card.l0 { --dot: var(--good); }
+  .label-card.l1 { --dot: var(--warning); }
+  .label-card.l2 { --dot: var(--serious); }
+  .label-card.l3 { --dot: var(--critical); }
+  .label-card.l0 .chip { color: var(--good); }
+  .label-card.l1 .chip { color: #a5680a; }
+  .label-card.l2 .chip { color: var(--serious); }
+  .label-card.l3 .chip { color: var(--critical); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .label-card.l1 .chip { color: var(--warning); }
+  }
+  :root[data-theme="dark"] .label-card.l1 .chip { color: var(--warning); }
+
+  /* ---- threshold scale diagram ---- */
+
+  .scale-wrap {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.6rem 1.5rem 1.3rem;
+    box-shadow: var(--shadow);
+  }
+
+  .scale-track {
+    position: relative;
+    display: flex;
+    height: 34px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--rule-strong);
+  }
+
+  .scale-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+  }
+  .scale-seg.s0 { flex: 25; background: var(--good); }
+  .scale-seg.s1 { flex: 25; background: var(--warning); color: #3a2a00; }
+  .scale-seg.s2 { flex: 25; background: var(--serious); }
+  .scale-seg.s3 { flex: 25; background: var(--critical); }
+
+  .scale-ticks {
+    position: relative;
+    margin-top: 0.5rem;
+    height: 1.1rem;
+  }
+  .scale-ticks span {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--ink-mute);
+  }
+  .scale-ticks span:first-child { transform: translateX(0); }
+  .scale-ticks span:last-child { transform: translateX(-100%); }
+
+  .scale-caption {
+    margin-top: 1.1rem;
+    font-size: 0.86rem;
+    color: var(--ink-2);
+  }
+
+  /* ---- formula panels ---- */
+
+  .formula-general {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 6px;
+    padding: 1.2rem 1.4rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.88rem;
+    line-height: 1.85;
+    overflow-x: auto;
+    margin-bottom: 1.4rem;
+  }
+  .formula-general .w { color: var(--accent); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .formula-general .w { color: #7fb3f0; }
+  }
+  :root[data-theme="dark"] .formula-general .w { color: #7fb3f0; }
+
+  .formula-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .formula-card {
+    background: var(--panel);
+    padding: 1.2rem 1.3rem 1.35rem;
+  }
+
+  .formula-card .gen-tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 0.15rem;
+  }
+  .formula-card.gen1 .gen-tag { color: var(--ink-mute); }
+  .formula-card.gen2 .gen-tag { color: var(--accent); }
+
+  .formula-card .gen-name {
+    font-size: 0.92rem;
+    color: var(--ink-2);
+    margin-bottom: 0.9rem;
+  }
+
+  .weight-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .weight-row {
+    display: grid;
+    grid-template-columns: 88px 1fr 42px;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .weight-row .wlabel {
+    font-size: 0.78rem;
+    color: var(--ink-2);
+  }
+
+  .weight-row .wtrack {
+    height: 8px;
+    background: var(--rule);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .weight-row .wfill {
+    height: 100%;
+    border-radius: 2px;
+  }
+  .formula-card.gen1 .wfill { background: var(--ink-mute); }
+  .formula-card.gen2 .wfill { background: var(--accent); }
+
+  .weight-row .wval {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    text-align: right;
+    color: var(--ink);
+  }
+
+  .subscore-table {
+    margin-top: 1.6rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .subscore-table caption {
+    text-align: left;
+    font-size: 0.86rem;
+    color: var(--ink-2);
+    margin-bottom: 0.6rem;
+  }
+  .subscore-table th, .subscore-table td {
+    text-align: left;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .subscore-table th {
+    font-weight: 600;
+    color: var(--ink-mute);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .subscore-table td.num, .subscore-table th.num { text-align: right; font-family: "IBM Plex Mono", monospace; }
+  .subscore-table td code { font-family: "IBM Plex Mono", monospace; font-size: 0.83em; color: var(--ink-2); }
+
+  /* ---- dumbbell chart ---- */
+
+  .chart-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.5rem 1.6rem 1.3rem;
+    box-shadow: var(--shadow);
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 1.4rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    color: var(--ink-2);
+  }
+  .chart-legend .lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .chart-legend .lg::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--c);
+  }
+  .chart-legend .lg.a { --c: var(--accent); }
+  .chart-legend .lg.b { --c: var(--accent-2); }
+
+  .dumbbell-row {
+    display: grid;
+    grid-template-columns: 116px 1fr 96px;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .dumbbell-row:first-of-type { border-top: none; }
+
+  .dumbbell-name {
+    font-size: 0.83rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .dumbbell-name small {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--ink-mute);
+    font-weight: 400;
+    margin-top: 0.1rem;
+  }
+
+  .dumbbell-track {
+    position: relative;
+    height: 28px;
+  }
+
+  .dumbbell-grid {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: space-between;
+  }
+  .dumbbell-grid i {
+    width: 1px;
+    background: var(--rule);
+  }
+
+  .dumbbell-baseline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: var(--rule-strong);
+  }
+
+  .dumbbell-connector {
+    position: absolute;
+    top: 50%;
+    height: 3px;
+    transform: translateY(-50%);
+    background: var(--ink-mute);
+    opacity: 0.45;
+    border-radius: 2px;
+  }
+
+  .dumbbell-point {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px solid var(--panel);
+    cursor: default;
+    padding: 0;
+    appearance: none;
+  }
+  .dumbbell-point.a { background: var(--accent); z-index: 2; }
+  .dumbbell-point.b { background: var(--accent-2); z-index: 3; }
+
+  .dumbbell-point .tip {
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .dumbbell-point:hover .tip,
+  .dumbbell-point:focus-visible .tip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .dumbbell-point:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .dumbbell-delta {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    text-align: right;
+    color: var(--ink-2);
+  }
+  .dumbbell-delta b { color: var(--ink); font-weight: 600; }
+
+  .scale-foot {
+    position: relative;
+    height: 1rem;
+    margin-top: 0.3rem;
+  }
+  .scale-foot span {
+    position: absolute;
+    transform: translateX(-50%);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--ink-mute);
+  }
+  .scale-foot span:first-child { transform: translateX(0); }
+  .scale-foot span:last-child { transform: translateX(-100%); }
+
+  details.data-table {
+    margin-top: 1.1rem;
+  }
+  details.data-table summary {
+    font-size: 0.8rem;
+    color: var(--ink-mute);
+    cursor: pointer;
+    user-select: none;
+    width: fit-content;
+  }
+  details.data-table summary:hover { color: var(--ink-2); }
+  details.data-table table {
+    margin-top: 0.8rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  details.data-table th, details.data-table td {
+    text-align: right;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", monospace;
+  }
+  details.data-table th:first-child, details.data-table td:first-child {
+    text-align: left;
+    font-family: inherit;
+  }
+
+  /* ---- power table ---- */
+
+  .power-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .power-table th, .power-table td {
+    padding: 0.75rem 0.9rem;
+    text-align: right;
+    border-bottom: 1px solid var(--rule);
+  }
+  .power-table th:first-child, .power-table td:first-child { text-align: left; }
+  .power-table thead th {
+    background: var(--paper);
+    font-weight: 600;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-mute);
+  }
+  .power-table td { font-family: "IBM Plex Mono", monospace; }
+  .power-table td:first-child, .power-table th:first-child { font-family: inherit; }
+  .power-table tbody tr:last-child td { border-bottom: none; }
+  .power-table tbody tr.chosen { background: color-mix(in oklab, var(--accent) 10%, var(--panel)); }
+  .power-table tbody tr.chosen td:first-child { font-weight: 700; color: var(--accent); }
+  .power-table td.zero { color: var(--critical); font-weight: 600; }
+  .power-table td.hit { color: var(--good); font-weight: 700; }
+
+  .callout {
+    display: flex;
+    gap: 0.85rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    margin-top: 1.4rem;
+  }
+  .callout b { color: var(--ink); }
+
+  footer.page-foot {
+    margin-top: 4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.82rem;
+    color: var(--ink-mute);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  footer.page-foot code {
+    font-family: "IBM Plex Mono", monospace;
+    background: var(--panel);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+  }
+
+  @media (max-width: 640px) {
+    .label-grid { grid-template-columns: repeat(2, 1fr); }
+    .formula-pair { grid-template-columns: 1fr; }
+    .dumbbell-row { grid-template-columns: 90px 1fr 74px; gap: 0.6rem; }
+    .power-table { font-size: 0.8rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
+    <h1>혼잡 라벨 분류 기준</h1>
+    <p>AP 무선 트래픽을 4단계로 분류하는 <code class="mono">congestion_score</code> 계산식과 라벨 경계를 정리한다. 데이터 라인이 두 개(1차·2차)이고 계산식 가중치가 서로 다르므로, 반드시 구분해서 읽는다.</p>
+    <div class="gen-badges">
+      <span class="gen-badge archived">1차 <b>ap_cleaned_strict</b> · archived</span>
+      <span class="gen-badge active">2차 <b>ap_metrics_v2</b> · 진행 중</span>
+    </div>
+  </header>
+
+  <section id="labels">
+    <h2><span class="step">01</span> 4단계 라벨</h2>
+    <p class="lede">경계값(0.25 / 0.50 / 0.75)은 1차·2차 공통이다. 라벨을 만드는 <code class="mono">congestion_score</code>의 가중치만 라인마다 다르다.</p>
+
+    <div class="label-grid">
+      <div class="label-card l0">
+        <div class="num">0</div>
+        <div class="chip">정상</div>
+        <div class="range">score &lt; 0.25</div>
+        <div class="meaning">채널 여유, 지연·재전송 낮음. 개입 불필요.</div>
+      </div>
+      <div class="label-card l1">
+        <div class="num">1</div>
+        <div class="chip">경고</div>
+        <div class="range">0.25 ≤ score &lt; 0.50</div>
+        <div class="meaning">부하가 오르기 시작. 지켜볼 단계.</div>
+      </div>
+      <div class="label-card l2">
+        <div class="num">2</div>
+        <div class="chip">혼잡</div>
+        <div class="range">0.50 ≤ score &lt; 0.75</div>
+        <div class="meaning">품질 저하 체감 구간. 재전송·지연 변동 증가.</div>
+      </div>
+      <div class="label-card l3">
+        <div class="num">3</div>
+        <div class="chip">심각</div>
+        <div class="range">score ≥ 0.75</div>
+        <div class="meaning">채널 포화에 근접. 조기 경보 대상.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scale">
+    <h2><span class="step">02</span> 임계값 스케일</h2>
+    <p class="lede"><code class="mono">congestion_score</code> 0~1을 네 구간으로 나눈다.</p>
+
+    <div class="scale-wrap">
+      <div class="scale-track">
+        <div class="scale-seg s0">정상</div>
+        <div class="scale-seg s1">경고</div>
+        <div class="scale-seg s2">혼잡</div>
+        <div class="scale-seg s3">심각</div>
+      </div>
+      <div class="scale-ticks">
+        <span style="left:0%">0.00</span>
+        <span style="left:25%">0.25</span>
+        <span style="left:50%">0.50</span>
+        <span style="left:75%">0.75</span>
+        <span style="left:100%">1.00</span>
+      </div>
+      <p class="scale-caption">경계는 등간격(0.25 단위)이지만 <code class="mono">congestion_score</code> 자체는 4개 sub-score의 가중합이라 등간격으로 오르내리지 않는다 — 아래 §03에서 그 가중치를 다룬다.</p>
+    </div>
+  </section>
+
+  <section id="formula">
+    <h2><span class="step">03</span> congestion_score 계산식</h2>
+    <p class="lede">4개 sub-score를 가중합해서 만든다. 각 sub-score는 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이다.</p>
+
+    <div class="formula-general">
+congestion_score =
+&nbsp;&nbsp;<span class="w">w_t</span> · throughput_score
+&nbsp;+ <span class="w">w_o</span> · occupancy_score
+&nbsp;+ <span class="w">w_r</span> · retry_failed_score
+&nbsp;+ <span class="w">w_j</span> · jitter_score
+    </div>
+
+    <div class="formula-pair">
+      <div class="formula-card gen1">
+        <div class="gen-tag">1차</div>
+        <div class="gen-name">ap_cleaned_strict — archived</div>
+        <div class="weight-bars">
+          <div class="weight-row"><span class="wlabel">throughput</span><span class="wtrack"><span class="wfill" style="width:70%"></span></span><span class="wval">0.35</span></div>
+          <div class="weight-row"><span class="wlabel">occupancy</span><span class="wtrack"><span class="wfill" style="width:70%"></span></span><span class="wval">0.35</span></div>
+          <div class="weight-row"><span class="wlabel">retry/failed</span><span class="wtrack"><span class="wfill" style="width:40%"></span></span><span class="wval">0.20</span></div>
+          <div class="weight-row"><span class="wlabel">jitter</span><span class="wtrack"><span class="wfill" style="width:20%"></span></span><span class="wval">0.10</span></div>
+        </div>
+      </div>
+      <div class="formula-card gen2">
+        <div class="gen-tag">2차</div>
+        <div class="gen-name">ap_metrics_v2 — 진행 중</div>
+        <div class="weight-bars">
+          <div class="weight-row"><span class="wlabel">throughput</span><span class="wtrack"><span class="wfill" style="width:40%"></span></span><span class="wval">0.20</span></div>
+          <div class="weight-row"><span class="wlabel">occupancy</span><span class="wtrack"><span class="wfill" style="width:90%"></span></span><span class="wval">0.45</span></div>
+          <div class="weight-row"><span class="wlabel">retry/failed</span><span class="wtrack"><span class="wfill" style="width:40%"></span></span><span class="wval">0.20</span></div>
+          <div class="weight-row"><span class="wlabel">jitter</span><span class="wtrack"><span class="wfill" style="width:30%"></span></span><span class="wval">0.15</span></div>
+        </div>
+      </div>
+    </div>
+
+    <table class="subscore-table">
+      <caption>sub-score 정의 (1차·2차 공통)</caption>
+      <thead>
+        <tr><th>sub-score</th><th>계산</th><th class="num">상한</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>throughput_score</code></td><td><code>throughput_mbps / MAX</code></td><td class="num">150 Mbps</td></tr>
+        <tr><td><code>occupancy_score</code></td><td><code>channel_occupancy_percent / 100</code></td><td class="num">100%</td></tr>
+        <tr><td><code>retry_failed_score</code></td><td><code>(tx_retries+tx_failed) / MAX</code></td><td class="num">25,000</td></tr>
+        <tr><td><code>jitter_score</code></td><td><code>jitter_ms / MAX</code></td><td class="num">300 ms</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="evidence">
+    <h2><span class="step">04</span> 왜 2차에서 가중치를 바꿨나</h2>
+    <p class="lede">2차 stress_load 구간(535행)에서 label 2(혼잡)와 label 3(심각)의 sub-score 평균을 비교했다. throughput은 둘을 거의 못 갈랐고, occupancy·jitter는 뚜렷하게 갈랐다.</p>
+
+    <div class="chart-card">
+      <div class="chart-legend">
+        <span class="lg a">Label 2 · 혼잡 (평균)</span>
+        <span class="lg b">Label 3 · 심각 (평균)</span>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">throughput<small>score</small></div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:66.5%; width:4.2%;"></div>
+          <button class="dumbbell-point a" style="left:66.5%"><span class="tip">혼잡 0.665</span></button>
+          <button class="dumbbell-point b" style="left:70.7%"><span class="tip">심각 0.707</span></button>
+        </div>
+        <div class="dumbbell-delta">Δ<b>0.042</b></div>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">occupancy<small>score</small></div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:44.9%; width:44.9%;"></div>
+          <button class="dumbbell-point a" style="left:44.9%"><span class="tip">혼잡 0.449</span></button>
+          <button class="dumbbell-point b" style="left:89.8%"><span class="tip">심각 0.898</span></button>
+        </div>
+        <div class="dumbbell-delta">Δ<b>0.449</b></div>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">retry_failed<small>score</small></div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:72.4%; width:11%;"></div>
+          <button class="dumbbell-point a" style="left:72.4%"><span class="tip">혼잡 0.724</span></button>
+          <button class="dumbbell-point b" style="left:83.4%"><span class="tip">심각 0.834</span></button>
+        </div>
+        <div class="dumbbell-delta">Δ<b>0.110</b></div>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">jitter<small>score</small></div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:51.2%; width:29%;"></div>
+          <button class="dumbbell-point a" style="left:51.2%"><span class="tip">혼잡 0.512</span></button>
+          <button class="dumbbell-point b" style="left:80.2%"><span class="tip">심각 0.802</span></button>
+        </div>
+        <div class="dumbbell-delta">Δ<b>0.290</b></div>
+      </div>
+
+      <div class="scale-foot">
+        <span style="left:0%">0.0</span>
+        <span style="left:25%">0.25</span>
+        <span style="left:50%">0.5</span>
+        <span style="left:75%">0.75</span>
+        <span style="left:100%">1.0</span>
+      </div>
+
+      <details class="data-table">
+        <summary>표로 보기</summary>
+        <table>
+          <thead><tr><th>sub-score</th><th>Label 2 평균</th><th>Label 3 평균</th><th>차이</th></tr></thead>
+          <tbody>
+            <tr><td>throughput_score</td><td>0.665</td><td>0.707</td><td>0.042</td></tr>
+            <tr><td>occupancy_score</td><td>0.449</td><td>0.898</td><td>0.449</td></tr>
+            <tr><td>retry_failed_score</td><td>0.724</td><td>0.834</td><td>0.110</td></tr>
+            <tr><td>jitter_score</td><td>0.512</td><td>0.802</td><td>0.290</td></tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+
+    <div class="callout"><span>→</span><span><b>occupancy</b>와 <b>jitter</b>의 차이가 컸고 <b>throughput</b>은 거의 없었다. 그래서 throughput 비중을 낮추고 occupancy·jitter 비중을 올렸다. 이 재조정을 이미 모은 raw 데이터에 재적용(<code class="mono">relabel_metrics_v2.py</code>)한 것만으로 — AP를 다시 부하 테스트하지 않고도 — label 3 표본이 <b>21개 → 33개</b>로 늘었다.</span></div>
+  </section>
+
+  <section id="weight-shift">
+    <h2><span class="step">05</span> 가중치 변화: 1차 → 2차</h2>
+    <p class="lede">같은 4개 축을 1차·2차 가중치로 나란히 놓으면 이동이 뚜렷하다.</p>
+
+    <div class="chart-card">
+      <div class="chart-legend">
+        <span class="lg a">1차 가중치</span>
+        <span class="lg b">2차 가중치</span>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">throughput</div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:40%; width:30%;"></div>
+          <button class="dumbbell-point a" style="left:70%"><span class="tip">1차 0.35</span></button>
+          <button class="dumbbell-point b" style="left:40%"><span class="tip">2차 0.20</span></button>
+        </div>
+        <div class="dumbbell-delta">−0.15</div>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">occupancy</div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:70%; width:20%;"></div>
+          <button class="dumbbell-point a" style="left:70%"><span class="tip">1차 0.35</span></button>
+          <button class="dumbbell-point b" style="left:90%"><span class="tip">2차 0.45</span></button>
+        </div>
+        <div class="dumbbell-delta"><b>+0.10</b></div>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">retry_failed</div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <button class="dumbbell-point a" style="left:40%"><span class="tip">1차 0.20</span></button>
+          <button class="dumbbell-point b" style="left:40%; border-color: var(--panel);"><span class="tip">2차 0.20</span></button>
+        </div>
+        <div class="dumbbell-delta">동일</div>
+      </div>
+
+      <div class="dumbbell-row">
+        <div class="dumbbell-name">jitter</div>
+        <div class="dumbbell-track">
+          <div class="dumbbell-grid"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="dumbbell-baseline"></div>
+          <div class="dumbbell-connector" style="left:20%; width:10%;"></div>
+          <button class="dumbbell-point a" style="left:20%"><span class="tip">1차 0.10</span></button>
+          <button class="dumbbell-point b" style="left:30%"><span class="tip">2차 0.15</span></button>
+        </div>
+        <div class="dumbbell-delta">+0.05</div>
+      </div>
+
+      <div class="scale-foot">
+        <span style="left:0%">0.0</span>
+        <span style="left:20%">0.1</span>
+        <span style="left:40%">0.2</span>
+        <span style="left:60%">0.3</span>
+        <span style="left:80%">0.4</span>
+        <span style="left:100%">0.5</span>
+      </div>
+
+      <details class="data-table">
+        <summary>표로 보기</summary>
+        <table>
+          <thead><tr><th>축</th><th>1차</th><th>2차</th><th>변화</th></tr></thead>
+          <tbody>
+            <tr><td>throughput</td><td>0.35</td><td>0.20</td><td>−0.15</td></tr>
+            <tr><td>occupancy</td><td>0.35</td><td>0.45</td><td>+0.10</td></tr>
+            <tr><td>retry_failed</td><td>0.20</td><td>0.20</td><td>0.00</td></tr>
+            <tr><td>jitter</td><td>0.10</td><td>0.15</td><td>+0.05</td></tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <section id="class-weight">
+    <h2><span class="step">06</span> class weight power — 학습 단계의 별도 보정</h2>
+    <p class="lede">라벨 정의(위 §03~05)와는 별개로, 학습 시 <code class="mono">train_ap_early_exit.py --class-weight-power</code>(기본 1.0)가 소수 클래스(label 3)를 얼마나 강하게 밀어붙일지 결정한다. 2차 데이터에서는 완만한 트레이드오프가 아니라 절벽형이었다.</p>
+
+    <table class="power-table">
+      <thead>
+        <tr><th>power</th><th>전체 정확도</th><th>Label 0</th><th>Label 1</th><th>Label 2</th><th>Label 3</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0.7</td><td>85.8%</td><td>95.5%</td><td>86.6%</td><td>88.1%</td><td class="zero">0%</td></tr>
+        <tr><td>0.85</td><td>76.5%</td><td>95.5%</td><td>70.1%</td><td>86.4%</td><td class="zero">0%</td></tr>
+        <tr class="chosen"><td>1.0 · 채택</td><td>65~66%</td><td>95.5%</td><td>75~77%</td><td>36~42%</td><td class="hit">40%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout"><span>→</span><span><code class="mono">power=1.0</code>(순수 역빈도)에서만 label 3이 잡히기 시작하고, 그 대신 label 2 recall이 떨어진다. <b>"심각 미탐지가 혼잡 과잉 경고보다 더 치명적"</b>이라는 판단으로 <code class="mono">power=1.0</code>을 기본값으로 채택했다.</span></div>
+  </section>
+
+  <footer class="page-foot">
+    <span>작성 2026-08-23 · 데이터 기준 <code>metrics_v2.csv</code> 1265행</span>
+    <span>전체 배경: <code>CLAUDE.md</code> "데이터 계보" · 1차 상세: <code>project/README_AP_STRICT.md</code> · 2차 상세: <code>project/README_AP_V2.md</code></span>
+    <span>1차와 2차는 라벨 정의가 다르므로 정확도·분포를 같은 표에서 직접 비교하지 않는다.</span>
+  </footer>
+
+</main>
