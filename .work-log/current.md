@@ -9,7 +9,7 @@
   - 즉 throughput은 정상/경고를 가르는 덴 유용하지만 혼잡/심각을 가르는 덴 거의 기여를 못 하고 있었음
 - `collect_metrics.py`의 `calculate_scores()` 가중치를 **throughput 20% / occupancy 45% / retry 20% / jitter 15%**로 재조정 (occupancy·jitter 비중 상향, throughput 비중 하향)
 - 새 가중치를 기존 원시 데이터(1265행)에 그대로 재적용하는 `project/scripts/relabel_metrics_v2.py` 신설 — **AP 재수집 없이** raw 데이터 재라벨링만으로 label 3을 21개→33개로 늘림 (label 0: 166→149, label 1: 516→670, label 2: 562→413)
-- `ap_metrics_new_collection` 재변환: label 3 샘플이 train 14→23, val 3→5, test 3→5로 증가
+- `ap_metrics_v2` 재변환: label 3 샘플이 train 14→23, val 3→5, test 3→5로 증가
 
 ### class weight power 재실험 — power=1.0으로 확정 (트레이드오프가 완만하지 않고 절벽형)
 - `train_ap_early_exit.py`에 `--class-weight-power` CLI 인자 추가(기존엔 하드코딩)
@@ -23,8 +23,8 @@
 
 - **0.7/0.85는 label 3을 아예 0%로 계속 놓침. 1.0(순수 역빈도)에서만 label 3이 잡히기 시작**하며, 그 대신 label 2 정확도가 크게 하락(88%→36~42%) — 완만한 트레이드오프가 아니라 거의 전부/전무에 가까운 절벽
 - 팀 판단으로 **power=1.0을 기본값으로 확정**: 이 프로젝트 목적상 심각 혼잡을 놓치는 것(false negative)이 혼잡을 심각으로 과잉 경고하는 것(false positive)보다 더 치명적이라는 이유
-- 최종 체크포인트: `project/checkpoints/ap_new_collection_test/`(power=1.0), 평가 리포트: `project/results/yongsang/ap_new_collection_freshmodel_eval_report.txt`
-- **주의**: 이 재조정으로 `ap_metrics_new_collection`의 label 정의(congestion_score 가중치)가 production `ap_cleaned_strict`(588행, 옛 가중치 0.35/0.35/0.20/0.10)와 달라짐. 두 데이터셋을 같은 기준으로 비교하면 안 됨 — `ap_cleaned_strict`를 새 가중치로 재라벨링할지는 아직 미결정(팀 논의 필요)
+- 최종 체크포인트: `project/checkpoints/ap_v2/`(power=1.0), 평가 리포트: `project/results/yongsang/ap_v2_eval_report.txt`
+- **주의**: 이 재조정으로 `ap_metrics_v2`의 label 정의(congestion_score 가중치)가 production `ap_cleaned_strict`(588행, 옛 가중치 0.35/0.35/0.20/0.10)와 달라짐. 두 데이터셋을 같은 기준으로 비교하면 안 됨 — `ap_cleaned_strict`를 새 가중치로 재라벨링할지는 아직 미결정(팀 논의 필요)
 
 ## 완료된 작업 (2026-08-23 저녁 세션, Claude Code와 진행)
 
@@ -50,19 +50,19 @@
 - 정확도는 PC 평가와 완전히 일치(Baseline 92.7%, 나머지 91.5%) — 동일 checkpoint/scaler 확인됨
 - **핵심 발견**: PC에서는 안 보이던 Early Exit 속도 우위가 Pi + staged ONNX 실측에서는 실제로 나타남. Proposed Dynamic FP32(1.699ms 평균)가 Baseline FP32(1.837ms)보다 7.5% 빠름. Dynamic theta의 Exit1 비율(37.8%)이 Fixed(15.9%)보다 훨씬 높은 게 원인
 - 결과 저장: `project/results/yongsang/pi_ap_measurements/` (원시 CSV 56개 + `pi_ap_measurement_summary.md` 요약표)
-- **주의**: 이 실측은 `ap_cleaned_strict`(588행) 파이프라인 기준이고, 아래 `ap_metrics_new_collection`(1253행, 실제 최신 데이터)과는 별개 — 아직 새 데이터 기준 ONNX/Pi 번들은 없음
+- **주의**: 이 실측은 `ap_cleaned_strict`(588행) 파이프라인 기준이고, 아래 `ap_metrics_v2`(1253행, 실제 최신 데이터)과는 별개 — 아직 새 데이터 기준 ONNX/Pi 번들은 없음
 
-### `ap_metrics_new_collection` 데이터셋이 낡은 스냅샷 기준이었던 버그 발견 및 수정
+### `ap_metrics_v2` 데이터셋이 낡은 스냅샷 기준이었던 버그 발견 및 수정
 - 어젯밤 커밋(`bef79fd`, "1254행으로 확장")의 커밋 메시지는 "재생성 완료(train 707/val 151/test 152)"라고 했지만, 실제 `conversion_report.txt`를 까보니 **`raw_rows: 1060`** — 즉 `metrics_v2.csv`가 1253행까지 다 채워지기 *전* 스냅샷으로 변환 스크립트를 돌리고, 그 뒤 193행을 추가 수집한 걸 같은 커밋에 묶어 올린 것으로 보임
-- `prepare_ap_metrics_dataset.py --input project/scripts/metrics_v2.csv --out-dir project/data/ap_metrics_new_collection --overwrite`로 최신 1253행 전체 기준 재변환 → **train 843 / val 181 / test 179** (raw_rows 1253으로 일치 확인). label 3(심각)도 train 14/val 3/test 3으로 소폭 증가(이전 9/2/2)
+- `prepare_ap_metrics_dataset.py --input project/scripts/metrics_v2.csv --out-dir project/data/ap_metrics_v2 --overwrite`로 최신 1253행 전체 기준 재변환 → **train 843 / val 181 / test 179** (raw_rows 1253으로 일치 확인). label 3(심각)도 train 14/val 3/test 3으로 소폭 증가(이전 9/2/2)
 
 ### 클래스 가중치 완화 실험 (새벽 세션에 남겨둔 "다음 할 일" 항목 해결)
 - `train_ap_early_exit.py`의 `compute_class_weights`가 순수 역빈도(`N/(K*count)`, power=1.0)만 지원해서 label 3에 ~20배 가중치가 붙어 label 2를 3으로 오버슈팅하던 문제(label 2 recall 19%)를 재현할 것으로 예상됨
 - `power` 파라미터를 추가해서 `(N/(K*count))**power` 형태로 일반화. power=0.5(sqrt)로 재학습 → label 2 recall 19%→79%로 크게 개선됐지만 label 3 recall이 0%로 떨어짐(트레이드오프가 반대로 과함)
 - **power=0.7로 재조정**(현재 값) → val balanced acc 62.8%(0.5일 때 58.3%보다 나음), test 전체 정확도 74.3%, label 0=77.3%/label 1=84.9%/label 2=66.7%/**label 3=0%**
 - label 3는 test 샘플이 3개뿐이라 가중치를 아무리 조정해도 한계가 있음 — 알고리즘이 아니라 데이터 부족 문제. 다음 수집에서 label 3(채널 100% 포화) 샘플을 더 확보해야 근본 해결됨
-- 재학습된 체크포인트: `project/checkpoints/ap_new_collection_test/`(검증용, production `ap_cleaned_strict`와는 별개 그대로 유지)
-- 평가 리포트: `project/results/yongsang/ap_new_collection_freshmodel_eval_report.txt`
+- 재학습된 체크포인트: `project/checkpoints/ap_v2/`(검증용, production `ap_cleaned_strict`와는 별개 그대로 유지)
+- 평가 리포트: `project/results/yongsang/ap_v2_eval_report.txt`
 
 ## 완료된 작업 (2026-08-23 새벽 세션, Claude Code와 진행)
 
@@ -92,10 +92,10 @@
 - [x] class weight power 재실험 및 확정 — **power=1.0**(순수 역빈도)을 기본값으로 채택, label 3 recall 0%→40%, 대신 label 2 recall 88%→36~42% (팀 판단: 심각 미탐지가 더 치명적)
 - [ ] **최우선(다음 세션)**: AP 충분히 식힌 뒤(전원 뽑고 몇 시간 이상 방치) 가벼운 부하(폰 1대, 50M 단일 스트림)부터 안정성 재확인. 계속 즉시 크래시하면 열/메모리 누수보다 펌웨어 이슈일 가능성 고려, 호중과 공유 필요
 - [ ] AP 안정성 재확인되면 폰 2대(또는 채널폭 제한 방식)로 stress_load 수집 이어가기 — label 3 test 5개로 늘긴 했지만 여전히 통계적으로 얇음
-- [ ] **`ap_cleaned_strict`(production, 588행)를 새 congestion_score 가중치로 재라벨링할지 팀 논의 필요** — 지금 `ap_metrics_new_collection`과 `ap_cleaned_strict`가 서로 다른 라벨 기준(가중치)을 쓰고 있어서 두 데이터셋을 같은 기준으로 비교하면 안 됨
+- [ ] **`ap_cleaned_strict`(production, 588행)를 새 congestion_score 가중치로 재라벨링할지 팀 논의 필요** — 지금 `ap_metrics_v2`과 `ap_cleaned_strict`가 서로 다른 라벨 기준(가중치)을 쓰고 있어서 두 데이터셋을 같은 기준으로 비교하면 안 됨
 - [ ] `192.168.8.103` 폰이 오프라인됐던 원인 확인 (Termux 강제종료 추정) — 배터리 최적화 예외 설정 확인 권장, 복귀하면 `collect_metrics.py`의 `SERVER_IP`를 다시 `103`으로 되돌릴지 `191` 유지할지는 팀 편의대로
-- [ ] `ap_metrics_new_collection`(1260행) 기준 ONNX export + Pi 배포 번들은 아직 없음
-- [ ] `ap_metrics_new_collection`(1253행) 기준 ONNX export + Pi 배포 번들은 아직 없음 — `ap_cleaned_strict`용 `export_onnx_ap.py`/`prepare_pi_bundle_ap.py`를 새 데이터 경로로 재사용할지, 별도 스크립트를 만들지 결정 필요
+- [ ] `ap_metrics_v2`(1260행) 기준 ONNX export + Pi 배포 번들은 아직 없음
+- [ ] `ap_metrics_v2`(1253행) 기준 ONNX export + Pi 배포 번들은 아직 없음 — `ap_cleaned_strict`용 `export_onnx_ap.py`/`prepare_pi_bundle_ap.py`를 새 데이터 경로로 재사용할지, 별도 스크립트를 만들지 결정 필요
 - [ ] 호중에게 "capstone 계정" 비밀번호 재확인은 더 이상 불필요 (SSH 키 인증으로 해결됨), 대신 이 사실 공유
 - [ ] label 1/2 경계(congestion_score 0.50 부근) 재설계 논의 — threshold 재조정 또는 feature 추가 필요할 수 있음
 - [ ] 스케일러 불일치 발견 사항을 예나·팀에 공유 (원본 `ap_cleaned_strict`의 latency_ms/rssi_dbm 측정 방식 재검토 필요)
@@ -133,13 +133,13 @@
 
 ### 모델 파이프라인 end-to-end 검증 + 중요 발견
 - 이 노트북 anaconda base 환경은 기존에 알려진 것과 동일한 torch DLL 로딩 실패 문제 있음 → **새 conda 환경 `capstone` 생성**(`C:\Users\dkssu\anaconda3\envs\capstone`)에 torch(CPU)+pandas+numpy 설치해서 해결
-- `prepare_ap_metrics_dataset.py --input project/scripts/metrics_v2.csv --out-dir project/data/ap_metrics_new_collection`로 윈도우 변환 (41 샘플: train 28/val 7/test 6) — **기존 `ap_metrics_cleaned_strict` 폴더는 건드리지 않고 별도 폴더로 생성**
+- `prepare_ap_metrics_dataset.py --input project/scripts/metrics_v2.csv --out-dir project/data/ap_metrics_v2`로 윈도우 변환 (41 샘플: train 28/val 7/test 6) — **기존 `ap_metrics_cleaned_strict` 폴더는 건드리지 않고 별도 폴더로 생성**
 - **중요 발견**: 원본 학습 스케일러(`ap_metrics_cleaned_strict/scaler_params.json`)와 우리 실측 데이터의 실제 범위가 완전히 다름
   - `latency_ms`: 원본 0.047~0.163 vs 실측 2~841 (원본이 ms 단위가 맞는지 의심스러움)
   - `tx_retries_delta`: 원본 최대 23 vs 실측 최대 20만대
   - `rssi_dbm`: 원본 -30~-17(매우 근접 측정) vs 실측 -67~-53.5
   - → 1학기/AP strict 원본 학습 데이터의 측정 방식 자체에 단위 버그가 있거나, 완전히 다른 물리적 실험 조건(매우 가까운 거리)에서 수집됐을 가능성. **예나·팀에 공유 필요**
-- `evaluate_ap_early_exit.py`로 `ap_early_exit_lstm_best.pth` 평가 (자체 스케일러 사용, `project/results/yongsang/ap_new_collection_eval_report.txt`에 저장): 전체 정확도 50%(단, test 샘플 6개뿐이라 통계적으로 거의 무의미), Label 0/1(정상/경고)은 100% 정확했지만 **Label 2/3(혼잡/심각)은 0%** — 사전학습된 모델이 이 새로운 측정 환경에 일반화되지 않음을 시사
+- `evaluate_ap_early_exit.py`로 `ap_early_exit_lstm_best.pth` 평가 (자체 스케일러 사용, `project/results/yongsang/ap_v2_mismatched_scaler_diagnostic.txt`에 저장): 전체 정확도 50%(단, test 샘플 6개뿐이라 통계적으로 거의 무의미), Label 0/1(정상/경고)은 100% 정확했지만 **Label 2/3(혼잡/심각)은 0%** — 사전학습된 모델이 이 새로운 측정 환경에 일반화되지 않음을 시사
 
 ## 완료된 작업 (2026-08-22 밤 세션, Claude Code와 진행)
 
@@ -169,15 +169,15 @@
 - 원인 1: `multi_exit_loss`(`project/models/early_exit_lstm.py`)가 클래스 비율을 전혀 반영 안 하는 순수 `F.cross_entropy` → `class_weights` 파라미터 추가(옵션, 기본값 None이라 다른 호출부(`train_early_exit.py`, `train_ap_sdn.py`)는 영향 없음)
 - 원인 2 (더 결정적): `train_ap_early_exit.py`의 체크포인트 저장 기준이 raw val accuracy였음 — val set이 label 0+1로 74% 쏠려있어서, class-weighted loss로 학습해도 "다수 클래스만 찍어서 raw acc가 우연히 높은 에폭"이 선택되고 있었음 → **balanced accuracy(클래스별 recall 평균) 기준으로 체크포인트 선택하도록 변경**
 - 결과: label 2 정확도 0% → 60.0%로 개선 (전체 정확도는 69.5%→57.6%로 하락했지만, 이는 "다수 클래스 찍기로 만든 가짜 높은 점수"가 없어진 것이라 더 정직한 수치). label 3은 train 2개/test 1개뿐이라 가중치를 줘도 여전히 학습 불가 — 데이터 자체가 부족한 문제라 알고리즘으로 해결 안 됨
-- 검증용 체크포인트: `project/checkpoints/ap_new_collection_test/` (프로덕션 `ap_cleaned_strict` 체크포인트는 안 건드림)
+- 검증용 체크포인트: `project/checkpoints/ap_v2/` (프로덕션 `ap_cleaned_strict` 체크포인트는 안 건드림)
 
 ## 주요 파일
 - `project/scripts/collect_metrics.py` — AP 라이브 측정 스크립트. station 재연결 스파이크 버그 수정 완료, congestion_score 임계값(`JITTER_MAX_MS`, `RETRY_FAILED_MAX`) 재보정 완료
 - `project/scripts/metrics_v2.csv` — 실측 데이터 누적본 (834행, 5개 시나리오, 2대 동시 부하 포함)
-- `project/data/ap_metrics_new_collection/` — 새 실측 데이터 기반 windowed train/val/test (자체 스케일러, `ap_metrics_cleaned_strict`와 별개, train 548/val 118/test 118)
-- `project/results/yongsang/ap_new_collection_eval_report.txt` — 기존(스케일러 다른) 체크포인트로 새 데이터 평가한 리포트
-- `project/results/yongsang/ap_new_collection_freshmodel_eval_report.txt` — 새 데이터로 처음부터 학습한 체크포인트 평가 리포트
-- `project/checkpoints/ap_new_collection_test/` — 새 데이터 전용 검증용 체크포인트 (class-weighted + balanced-accuracy 선택 적용)
+- `project/data/ap_metrics_v2/` — 새 실측 데이터 기반 windowed train/val/test (자체 스케일러, `ap_metrics_cleaned_strict`와 별개, train 548/val 118/test 118)
+- `project/results/yongsang/ap_v2_mismatched_scaler_diagnostic.txt` — 기존(스케일러 다른) 체크포인트로 새 데이터 평가한 리포트
+- `project/results/yongsang/ap_v2_eval_report.txt` — 새 데이터로 처음부터 학습한 체크포인트 평가 리포트
+- `project/checkpoints/ap_v2/` — 새 데이터 전용 검증용 체크포인트 (class-weighted + balanced-accuracy 선택 적용)
 - `project/models/early_exit_lstm.py` — `multi_exit_loss`에 옵션 `class_weights` 파라미터 추가
 - `project/scripts/train_ap_early_exit.py` — inverse-frequency 클래스 가중치 계산(`compute_class_weights`) + balanced accuracy 기준 체크포인트 선택 추가
 - `~/.ssh/config`, `~/.ssh/id_rsa_ap*` — 이 노트북 로컬 SSH 키/설정 (git에는 없음, 이 기기에서만 유효). AP(`root@192.168.8.1`) 비밀번호 없이 접속 가능
@@ -195,6 +195,6 @@
 - **주의**: 어젯밤(8/22) "새 공기계"로 착각하고 극한 부하 테스트에 썼던 `192.168.8.109`(hostname "CapsTone")는 사실 폰이 아니라 **라즈베리파이 그 자체**였음(MAC `d8:3a:dd:48:55:97` → Raspberry Pi Trading Ltd 벤더 조회로 확인). 그 세션에선 파이가 이더넷으로 정상 동작했었음 — 즉 하드웨어 자체는 멀쩡했던 적이 있으므로, 지금 안 잡히는 건 케이블/SD카드 접촉 문제일 가능성이 하드웨어 고장보다 높음
 - AP 모델은 GL.iNet Opal(GL-SFT1200), 관리 IP `192.168.8.1`(WAN 포트로 인터넷 연결 시 정상적으로 이 IP로 접속 가능)
 - AP dropbear SSH가 오래돼서 `ssh-rsa`/RSA 키만 지원함 (ed25519 거부됨, `HostKeyAlgorithms`/`PubkeyAcceptedAlgorithms` 옵션 필수)
-- AP strict `test.csv`(`ap_metrics_cleaned_strict`)는 82개 샘플, 이번에 새로 만든 `ap_metrics_new_collection`은 41개 샘플 — 서로 다른 데이터셋이니 항상 경로 확인할 것
+- AP strict `test.csv`(`ap_metrics_cleaned_strict`)는 82개 샘플, 이번에 새로 만든 `ap_metrics_v2`은 41개 샘플 — 서로 다른 데이터셋이니 항상 경로 확인할 것
 - `torch`가 시스템 기본 python(anaconda base)에서 DLL 로딩 실패하는 문제는 노트북이 바뀌어도(이전 DESKTOP-5A9LEGQ, 이번 DESKTOP-29GLQJF) 계속 재현됨 — 항상 별도 conda 환경에 torch 설치할 것
 - Fixed/Dynamic은 같은 체크포인트(`ap_early_exit_lstm_best.pth`)에서 threshold 정책만 다르게 평가하는 것이고, SDN은 반드시 독립 학습해야 공정 비교가 됨

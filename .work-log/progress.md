@@ -18,9 +18,9 @@
 - `low_load` 첫 수집 시 프로세스 종료 타이밍이 늦어서 157초 중 대부분이 무부하 상태로 잘못 라벨링된 오염 데이터 발견 → 삭제 후 정확히 68초로 재수집
 - `connected_clients`가 1→2로 바뀌는 순간(station 재연결) throughput/재전송이 비현실적으로 튀는 구조적 버그 발견(스크립트 미수정, 팀 공유용으로만 기록)
 - torch DLL 로딩 실패(이 노트북 anaconda base에서도 재현) → 새 conda 환경 `capstone` 생성해서 torch(CPU)+pandas+numpy 설치로 해결
-- `prepare_ap_metrics_dataset.py`로 새 실측 데이터를 별도 폴더(`project/data/ap_metrics_new_collection/`, 기존 `ap_metrics_cleaned_strict`는 안 건드림)에 윈도우 변환 (41 샘플)
+- `prepare_ap_metrics_dataset.py`로 새 실측 데이터를 별도 폴더(`project/data/ap_metrics_v2/`, 기존 `ap_metrics_cleaned_strict`는 안 건드림)에 윈도우 변환 (41 샘플)
 - **중요 발견**: 원본 학습 스케일러(`ap_metrics_cleaned_strict/scaler_params.json`)와 실측 데이터 범위가 완전히 다름 — latency_ms(원본 0.047~0.163 vs 실측 2~841), tx_retries_delta(원본 최대 23 vs 실측 최대 20만대), rssi_dbm(원본 -30~-17 vs 실측 -67~-53.5). 1학기/AP strict 원본 데이터 측정 방식에 단위 버그가 있거나 완전히 다른 물리 조건(매우 근접 거리)에서 수집됐을 가능성 — 예나·팀 공유 필요
-- `evaluate_ap_early_exit.py`로 새 데이터 평가 (`project/results/yongsang/ap_new_collection_eval_report.txt`): 정확도 50%(test 샘플 6개뿐이라 통계적 의미 낮음), 정상/경고는 100% 맞히지만 혼잡/심각은 0% — 사전학습 모델이 새 측정 환경에 일반화 안 되는 것을 확인
+- `evaluate_ap_early_exit.py`로 새 데이터 평가 (`project/results/yongsang/ap_v2_mismatched_scaler_diagnostic.txt`): 정확도 50%(test 샘플 6개뿐이라 통계적 의미 낮음), 정상/경고는 100% 맞히지만 혼잡/심각은 0% — 사전학습 모델이 새 측정 환경에 일반화 안 되는 것을 확인
 - `.work-log/current.md`, `.work-log/progress.md` 갱신
 
 ### (같은 날 밤 세션, Claude Code와 진행)
