@@ -1,6 +1,6 @@
 # Claude용 프로젝트 맥락 정리
 
-이 문서는 Claude 또는 외부 AI 도구에 현재 프로젝트 맥락을 전달하기 위한 요약 파일이다. 기존 1학기 실험, 방학 중 작업, 현재 AP 실측 strict 데이터 기준 진행 상태를 구분해서 설명한다.
+이 문서는 Claude 또는 외부 AI 도구에 현재 프로젝트 맥락을 전달하기 위한 요약 파일이다. 기존 1학기 실험, 방학 중 작업, 현재 AP 실측 strict 데이터(1차) 기준 진행 상태, 그리고 2026-08-23부터 시작된 실제 구매 장비 실측 재설계(2차, `ap_metrics_v2`) 진행 상태를 구분해서 설명한다. 1차와 2차의 정확한 구분은 아래 "데이터 계보" 섹션을 반드시 먼저 읽는다.
 
 ## 프로젝트 개요
 
@@ -88,7 +88,17 @@ project/results/hojung/sdn_baseline.csv
 4. 최종 실험은 PC 결과만으로 끝내지 않고 Raspberry Pi + ONNX + INT8 환경에서 실측한다.
 5. 비교 대상은 Baseline LSTM, SDN-style baseline, Proposed EE Fixed, Proposed EE Dynamic으로 정리한다.
 
-## 현재 AP strict 데이터 기준
+## 데이터 계보: 1차(ap_cleaned_strict, archived) vs 2차(ap_metrics_v2, 진행 중)
+
+이 프로젝트에는 "AP 실측"이라는 이름을 쓰는 서로 다른 두 데이터 라인이 있다. 섞어서 말하면 안 된다.
+
+**1차 = `ap_cleaned_strict`(588행).** 아래 "현재 AP strict 데이터 기준" ~ "Raspberry Pi 실측 전 남은 작업" 섹션이 전부 이 라인 기준이다. Baseline/SDN/Proposed Fixed/Dynamic 4개 모델 학습, ONNX/INT8 변환, Raspberry Pi 배포 번들까지 전부 완료된 상태다. **2026-08-23 확인: 이 데이터는 실제로 팀이 구매한 AP 장비의 실측이 아니라 인터넷에 공개돼 있던 데이터를 가공해서 만든 것**이었다. 즉 "방학 중 변경 방향"에서 말한 "실제 AP 장비에서 CSV 수집"이라는 목표는 1차 단계에서는 완전히 실현되지 않았다(이게 이 데이터셋의 feature 스케일이 실측 라이브 데이터와 크게 다른 이유이기도 하다 — `latency_ms` 원본 0.047~0.163 vs 실측 2~841ms 등). 그럼에도 9-feature 파이프라인, congestion score 라벨링, Early Exit/SDN 비교 구조 전체를 미리 검증하는 역할을 했으므로 그대로 archived 상태로 남겨둔다. **더 이상 재라벨링하거나 재학습하지 않는다** — 필요하면 아래 2차 라인에서 이어간다.
+
+**2차 = `ap_metrics_v2`.** 2026-08-23부터 팀이 실제로 구매한 GL.iNet Opal(GL-SFT1200) AP에서 `project/scripts/collect_metrics.py`로 직접 라이브 수집한 진짜 실측 데이터다. "방학 중 변경 방향"의 취지(실제 AP 장비 실측)를 온전히 만족하는 라인이며, 현재 진행 중인 공식 재설계 라인이다. 자세한 내용은 아래 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션을 참고한다.
+
+두 라인은 **congestion_score 계산 가중치 자체가 다르므로 label 정의가 다르다.** 정확도나 label 분포를 같은 표에 놓고 직접 비교하지 않는다.
+
+## 현재 AP strict 데이터 기준 (1차, archived)
 
 현재 최종 기준으로 잡은 AP 실측 데이터셋은 다음 경로에 있다.
 
@@ -344,15 +354,110 @@ stage1.onnx 실행
 
 하나의 ONNX 모델을 끝까지 실행한 뒤 exit point만 기록하면 실제 layer skip 효과를 측정할 수 없다.
 
+## 2차 AP 실측 재설계 (ap_metrics_v2)
+
+2026-08-23부터 시작된 두 번째 데이터 라인이다. 1차(`ap_cleaned_strict`)와 달리 팀이 실제로 구매한 GL.iNet Opal(GL-SFT1200) AP에서 `project/scripts/collect_metrics.py`로 직접 라이브 수집하며, `metrics_v2.csv`는 계속 자라는 누적 원본이다.
+
+### 파일 위치
+
+```text
+project/scripts/metrics_v2.csv          원본 raw 수집 CSV (누적, 계속 자람)
+project/scripts/collect_metrics.py      라이브 수집 스크립트 (congestion_score 계산도 여기서)
+project/scripts/relabel_metrics_v2.py   가중치가 바뀔 때 raw CSV를 재수집 없이 재라벨링
+project/scripts/prepare_ap_metrics_dataset.py  windowed train/val/test 변환 (1차와 공용 스크립트)
+project/data/ap_metrics_v2/             windowed train/val/test, scaler, dataset_summary.json
+project/checkpoints/ap_v2/              Early Exit LSTM 체크포인트
+project/results/yongsang/ap_v2_eval_report.txt              최신 평가 리포트
+project/results/yongsang/ap_v2_mismatched_scaler_diagnostic.txt  1차 체크포인트/스케일러로 2차 데이터를 잘못 평가했을 때의 진단 기록(역사적 자료, 최종 결과 아님)
+```
+
+### congestion_score 계산식 (1차와 다름)
+
+```text
+congestion_score = 0.20 * throughput_score + 0.45 * occupancy_score + 0.20 * retry_failed_score + 0.15 * jitter_score
+```
+
+1차 `ap_cleaned_strict`는 `0.35 * throughput + 0.35 * occupancy + 0.20 * retry + 0.10 * jitter`를 그대로 쓴다 — 서로 다른 라벨 기준이므로 섞어서 비교하지 않는다. label 경계 자체는 동일: `<0.25`→0, `0.25~0.50`→1, `0.50~0.75`→2, `≥0.75`→3.
+
+가중치를 바꾼 이유: 실측 stress_load 구간에서 label 2와 3의 sub-score 평균을 비교해보니 `throughput_score`(0.665→0.707)는 거의 차이가 없었던 반면 `occupancy_score`(0.449→0.898)와 `jitter_score`(0.512→0.802)는 뚜렷한 차이를 보였다. throughput은 정상/경고를 가르는 덴 유용하지만 혼잡/심각을 가르는 덴 기여가 거의 없었으므로, occupancy·jitter 비중을 높이고 throughput 비중을 낮췄다. 이 재조정을 이미 모아둔 raw 데이터에 재적용(`relabel_metrics_v2.py`)한 것만으로 label 3이 21개→33개로 늘었다 — AP를 다시 부하 테스트하지 않고도 얻은 개선이다.
+
+### class weight power = 1.0
+
+`train_ap_early_exit.py --class-weight-power`(기본값 1.0, `compute_class_weights`)로 조절한다. 이 데이터셋에서는 완만한 트레이드오프가 아니라 절벽형이었다:
+
+| power | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
+|---|---:|---:|---:|---:|---:|
+| 0.7 | 85.8% | 95.5% | 86.6% | 88.1% | **0%** |
+| 0.85 | 76.5% | 95.5% | 70.1% | 86.4% | **0%** |
+| **1.0** | 65~66% | 95.5% | 75~77% | 36~42% | **40%** |
+
+0.7/0.85는 label 3 recall이 계속 0%이고, power=1.0(순수 역빈도)에서만 label 3이 잡히기 시작하며 그 대신 label 2 recall이 하락한다. "심각(label 3) 미탐지가 혼잡을 심각으로 과잉 경고하는 것보다 더 치명적"이라는 프로젝트 판단으로 **power=1.0을 기본값으로 채택**했다.
+
+### 현재 라벨 분포 (2026-08-23 기준, `metrics_v2.csv` 1265행, windowed)
+
+| Label | train | val | test |
+|---|---:|---:|---:|
+| 0 정상 | 100 | 21 | 22 |
+| 1 경고 | 452 | 97 | 97 |
+| 2 혼잡 | 275 | 59 | 59 |
+| 3 심각 | 23 | 5 | 5 |
+
+### 현재 평가 결과 (power=1.0, `ap_v2_eval_report.txt`)
+
+| | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
+|---|---:|---:|---:|---:|---:|
+| Fixed theta | 66.1% | 95.5% | 75.3% | 42.4% | 40.0% |
+| Dynamic theta | 66.1% | 95.5% | 75.3% | 42.4% | 40.0% |
+
+### 알려진 한계
+
+- Label 3(심각) 샘플이 여전히 얇다(test 5개) — recall 40%가 통계적으로 안정적이라 보기 어렵다.
+- Label 2/3 트레이드오프가 절벽형이라 class weight power 중간값 튜닝이 잘 안 먹힌다.
+- AP(Opal) 장비가 다중 station 동시 부하에서 반복 크래시하는 하드웨어 문제가 있어(부하를 낮춰도 재시도할수록 더 빨리 크래시하는 패턴 관찰) label 3 데이터 추가 수집이 제한적이다. 원인 미확정, 자세한 내용은 `.work-log/current.md` 참고.
+- 아직 ONNX/INT8/Raspberry Pi 배포 파이프라인이 없다. 1차의 `export_onnx_ap.py`/`prepare_pi_bundle_ap.py`를 새 경로로 재사용할지 별도 스크립트를 만들지 미정.
+- 1차 `ap_cleaned_strict`를 새 가중치로 재라벨링할지는 아직 팀 미결정 상태다.
+
+### 재현 명령어
+
+데이터 변환:
+
+```powershell
+python project\scripts\prepare_ap_metrics_dataset.py --input project\scripts\metrics_v2.csv --out-dir project\data\ap_metrics_v2 --overwrite
+```
+
+가중치만 바뀌었을 때 raw 데이터 재라벨링(AP 재수집 불필요, 그 다음 위 변환 명령을 다시 돌려야 windowed 데이터에 반영됨):
+
+```powershell
+python project\scripts\relabel_metrics_v2.py
+```
+
+Early Exit LSTM 학습:
+
+```powershell
+python project\scripts\train_ap_early_exit.py --data-dir project\data\ap_metrics_v2 --checkpoint-dir project\checkpoints\ap_v2 --epochs 50 --batch-size 32 --class-weight-power 1.0
+```
+
+평가:
+
+```powershell
+python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metrics_v2 --checkpoint project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth --output project\results\yongsang\ap_v2_eval_report.txt
+```
+
 ## 현재 결론
 
-현재 상태는 다음처럼 정리할 수 있다.
+**1차(`ap_cleaned_strict`, archived) 기준:**
 
 - AP 실측 strict 데이터 기준 4단계 혼잡 분류는 동작한다.
 - Baseline LSTM 정확도는 92.7%이고, Proposed EE Dynamic은 91.5%로 정확도 손실은 1.2%p 수준이다.
 - Label 2 혼잡 정확도는 77.3%로, 1학기 데이터보다 낮다. 이는 실제 AP 데이터가 더 어렵고 라벨 경계가 덜 깔끔하기 때문이다.
-- PC Python 환경에서는 Early Exit 속도 우위를 강하게 주장하기 어렵다.
-- 최종 주장은 Raspberry Pi + staged ONNX + INT8 실측 결과로 확정해야 한다.
+- PC Python 환경에서는 Early Exit 속도 우위를 강하게 주장하기 어려웠으나, Raspberry Pi + staged ONNX 실측에서는 Proposed Dynamic FP32가 Baseline FP32보다 7.5% 빠르다는 실측 우위를 확인했다(`project/results/yongsang/pi_ap_measurements/`).
+- 이 라인은 완료 상태이며 더 이상 갱신하지 않는다.
+
+**2차(`ap_metrics_v2`, 진행 중) 기준:**
+
+- 실제 구매 장비 실측이라는 목표를 처음으로 만족하는 라인이지만, 아직 label 3 데이터가 얇고 ONNX/Pi 배포 파이프라인이 없어 1차만큼 완성되지 않았다.
+- AP 하드웨어 안정성 문제로 데이터 추가 수집이 막혀 있는 상태다(다음 세션 최우선 과제).
+- 최종적으로 이 라인이 1차를 대체할지, 두 라인을 report에서 어떻게 병기할지는 아직 팀 논의가 필요하다.
 
 ## Claude가 추가로 참고해야 할 파일
 
@@ -502,14 +607,34 @@ docs/hochung/guideline_hochung_vacation_stage5.md
 - 방학 중 역할 분담과 작업 방향을 확인할 수 있다.
 - 교수님 피드백에 따라 논문 baseline, AP 실측, ONNX/INT8, Raspberry Pi 실험으로 방향이 이동한 흐름을 이해하는 데 도움이 된다.
 
-### 9. Claude에게 중요한 해석 기준
+### 9. 2차 AP 실측 재설계(ap_metrics_v2) 파일
+
+```text
+project/scripts/metrics_v2.csv
+project/scripts/collect_metrics.py
+project/scripts/relabel_metrics_v2.py
+project/data/ap_metrics_v2/dataset_summary.json
+project/data/ap_metrics_v2/conversion_report.txt
+project/checkpoints/ap_v2/ap_early_exit_lstm_best.pth
+project/results/yongsang/ap_v2_eval_report.txt
+.work-log/current.md
+```
+
+역할:
+
+- 1차와 별개로 진행 중인, 팀이 실제로 구매한 AP 장비 실측 기반 재설계 라인이다. 자세한 내용은 위 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션을 참고한다.
+- `.work-log/current.md`에 AP 하드웨어 크래시, congestion_score 재조정, class weight power 실험 등 이 라인의 최신 진행 상황이 세션별로 기록되어 있다 — 이 문서(CLAUDE.md)보다 더 최신 세부사항은 여기서 확인한다.
+
+### 10. Claude에게 중요한 해석 기준
 
 Claude가 답변할 때는 아래 기준을 지켜야 한다.
 
-1. 1학기 결과와 AP strict 결과를 섞어서 말하지 않는다.
-2. 1학기 `project/data/real`은 4-feature이고, AP strict는 9-feature이다.
+1. 1학기 결과와 AP strict(1차) 결과를 섞어서 말하지 않는다.
+2. 1학기 `project/data/real`은 4-feature이고, AP strict(1차)와 `ap_metrics_v2`(2차)는 9-feature이다.
 3. 기존 `compare_baselines.py`는 AP strict 데이터에 그대로 쓰면 안 된다.
 4. AP strict의 `SDN-style Early Exit (trained)` 결과는 더 이상 임시 비교가 아니라, `ap_sdn_lstm.py`/`train_ap_sdn.py`로 AP 9-feature 데이터에서 별도 학습한 최종 checkpoint(`ap_sdn_lstm_best.pth`) 기준이다.
 5. Fixed/Dynamic은 별도 backbone을 새로 학습하는 것이 아니라, 같은 Early Exit backbone에서 threshold 정책을 바꿔 평가하는 구조이다.
 6. PC wall-time만으로 Early Exit 속도 우위를 주장하면 위험하다.
 7. 최종 속도 주장은 Raspberry Pi + staged ONNX + INT8 실측으로 확정해야 한다.
+8. **1차(`ap_cleaned_strict`)와 2차(`ap_metrics_v2`)는 congestion_score 가중치 자체가 달라 label 정의가 다르다.** 두 라인의 정확도/label 분포를 같은 표에서 직접 비교하지 않는다. "AP 실측 데이터"라고만 말하면 어느 라인인지 모호하니 항상 1차/2차(또는 데이터셋 경로)를 명시한다.
+9. 1차는 실제 구매 장비 실측이 아니라 인터넷 공개 데이터 기반이었다(2026-08-23 확인). "실제 AP 장비 실측"이라는 표현은 2차(`ap_metrics_v2`)에만 쓴다.
