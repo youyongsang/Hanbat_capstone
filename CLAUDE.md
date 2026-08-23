@@ -393,23 +393,23 @@ congestion_score = 0.20 * throughput_score + 0.45 * occupancy_score + 0.20 * ret
 
 0.7/0.85는 label 3 recall이 계속 0%이고, power=1.0(순수 역빈도)에서만 label 3이 잡히기 시작하며 그 대신 label 2 recall이 하락한다. "심각(label 3) 미탐지가 혼잡을 심각으로 과잉 경고하는 것보다 더 치명적"이라는 프로젝트 판단으로 **power=1.0을 기본값으로 채택**했다.
 
-### 현재 라벨 분포 (2026-08-23 밤 기준, `metrics_v2.csv` 1338행, windowed)
+### 현재 라벨 분포 (2026-08-24 새벽 기준, `metrics_v2.csv` 1514행, windowed)
 
 | Label | train | val | test |
 |---|---:|---:|---:|
-| 0 정상 | 101 | 22 | 21 |
-| 1 경고 | 468 | 100 | 100 |
-| 2 혼잡 | 307 | 66 | 65 |
-| 3 심각 | 27 | 6 | 5 |
+| 0 정상 | 118 | 25 | 26 |
+| 1 경고 | 515 | 110 | 111 |
+| 2 혼잡 | 363 | 78 | 78 |
+| 3 심각 | 28 | 6 | 6 |
 
 ### 현재 평가 결과 (power=1.0, `ap_v2_eval_report.txt`)
 
 | | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
 |---|---:|---:|---:|---:|---:|
-| Fixed theta | 73.3% | 90.5% | 74.0% | 70.8% | 20.0% |
-| Dynamic theta | 73.3% | 90.5% | 74.0% | 70.8% | 20.0% |
+| Fixed theta | 67.0% | 88.5% | 86.5% | 32.1% | 66.7% |
+| Dynamic theta | 67.0% | 88.5% | 86.5% | 32.1% | 66.7% |
 
-이전(1265행 기준) 결과는 Label 2 42.4% / Label 3 40.0%였다. Label 2는 크게 좋아졌지만 Label 3은 20.0%로 낮아졌다 — test label 3이 5개뿐이라 1개 차이가 20%p를 좌우한다. 표본이 더 늘어야 안정적으로 비교 가능하다.
+test label 3이 5~6개 수준이라 recall이 실행마다 크게 흔들린다(40.0% → 20.0% → 66.7% 순으로 관측). 표본이 두 자릿수 중반 이상으로 늘 때까지는 추세로만 참고할 것.
 
 ### 알려진 한계
 
@@ -458,7 +458,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 **2차(`ap_metrics_v2`, 진행 중) 기준:**
 
 - 실제 구매 장비 실측이라는 목표를 처음으로 만족하는 라인이지만, 아직 label 3 데이터가 얇고 ONNX/Pi 배포 파이프라인이 없어 1차만큼 완성되지 않았다.
-- AP 하드웨어 안정성 문제로 데이터 추가 수집이 막혀 있는 상태다(다음 세션 최우선 과제).
+- AP 하드웨어 안정성 문제로 데이터 추가 수집이 막혀 있는 상태다(다음 세션 최우선 과제). 원인 분석은 `docs/yongsang/ap_crash_analysis.md` — "몇 대가 붙었는가"보다 "누가 송신하는가"(노트북 송신은 안정적, 폰 송신은 거의 즉시 크래시)가 핵심 변수로 보인다.
 - 최종적으로 이 라인이 1차를 대체할지, 두 라인을 report에서 어떻게 병기할지는 아직 팀 논의가 필요하다.
 
 ## Claude가 추가로 참고해야 할 파일
@@ -613,6 +613,7 @@ docs/hochung/guideline_hochung_vacation_stage5.md
 
 ```text
 project/README_AP_V2.md
+docs/yongsang/ap_crash_analysis.md
 project/scripts/metrics_v2.csv
 project/scripts/collect_metrics.py
 project/scripts/relabel_metrics_v2.py
@@ -626,6 +627,7 @@ project/results/yongsang/ap_v2_eval_report.txt
 역할:
 
 - `project/README_AP_V2.md`는 1차의 `project/README_AP_STRICT.md`에 대응하는 2차 전용 문서다. 기준 데이터, congestion_score 계산식, 재라벨링/변환/학습/평가 명령어, 1차와의 차이, 알려진 한계를 정리한다. 2차 라인을 재현하려면 이 문서를 먼저 본다.
+- `docs/yongsang/ap_crash_analysis.md`는 AP(Opal) 반복 크래시 원인을 분석한 문서다. "다중 station"이 아니라 "누가 송신하는가"(노트북 송신은 안정적, 폰 송신은 거의 즉시 크래시)가 핵심 변수라는 결론과 근거 데이터, 다음 검증 방향을 정리한다.
 - 1차와 별개로 진행 중인, 팀이 실제로 구매한 AP 장비 실측 기반 재설계 라인이다. 자세한 내용은 위 "2차 AP 실측 재설계(ap_metrics_v2)" 섹션도 참고한다.
 - `.work-log/current.md`에 AP 하드웨어 크래시, congestion_score 재조정, class weight power 실험 등 이 라인의 최신 진행 상황이 세션별로 기록되어 있다 — 이 문서(CLAUDE.md)보다 더 최신 세부사항은 여기서 확인한다.
 

@@ -21,16 +21,16 @@ project/data/ap_metrics_v2/
 
 `metrics_v2.csv`는 `project/scripts/collect_metrics.py <scenario>`로 라이브 수집할 때마다 한 행씩 append되는 누적 파일이다(1차의 `raw/metrics_cleaned_strict.csv`처럼 고정된 스냅샷이 아니다). 새로 수집하거나 congestion_score 가중치를 바꾼 뒤에는 반드시 아래 "데이터 변환" 명령을 다시 돌려서 `ap_metrics_v2/`를 최신 상태로 맞춰야 한다.
 
-라벨 분포(2026-08-23 밤 기준, `metrics_v2.csv` 1338행 → windowed 샘플):
+라벨 분포(2026-08-24 새벽 기준, `metrics_v2.csv` 1514행 → windowed 샘플):
 
 | Label | 의미 | train | val | test |
 |---|---|---:|---:|---:|
-| 0 | 정상 | 101 | 22 | 21 |
-| 1 | 경고 | 468 | 100 | 100 |
-| 2 | 혼잡 | 307 | 66 | 65 |
-| 3 | 심각 | 27 | 6 | 5 |
+| 0 | 정상 | 118 | 25 | 26 |
+| 1 | 경고 | 515 | 110 | 111 |
+| 2 | 혼잡 | 363 | 78 | 78 |
+| 3 | 심각 | 28 | 6 | 6 |
 
-Label 3(심각)이 여전히 얇다. AP 하드웨어가 다중 station 부하에서 반복 크래시하는 문제가 있어 추가 수집이 제한적인 상태다 — 자세한 내용과 다음 시도 방향은 `.work-log/current.md`를 참고한다.
+Label 3(심각)이 여전히 얇다. AP 하드웨어가 부하 종류에 따라 반복 크래시하는 문제가 있어 추가 수집이 제한적인 상태다 — 크래시 원인 분석은 `docs/yongsang/ap_crash_analysis.md`(및 아티팩트), 다음 시도 방향은 `.work-log/current.md`를 참고한다.
 
 ## 입력 feature
 
@@ -138,14 +138,14 @@ project/checkpoints/ap_v2/
 python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metrics_v2 --checkpoint project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth --output project\results\yongsang\ap_v2_eval_report.txt
 ```
 
-현재 결과(`power=1.0`, 2026-08-23 밤 기준 1338행 데이터로 재학습):
+현재 결과(`power=1.0`, 2026-08-24 새벽 기준 1514행 데이터로 재학습):
 
 | | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
 |---|---:|---:|---:|---:|---:|
-| Fixed theta | 73.3% | 90.5% | 74.0% | 70.8% | 20.0% |
-| Dynamic theta | 73.3% | 90.5% | 74.0% | 70.8% | 20.0% |
+| Fixed theta | 67.0% | 88.5% | 86.5% | 32.1% | 66.7% |
+| Dynamic theta | 67.0% | 88.5% | 86.5% | 32.1% | 66.7% |
 
-이전(1265행, test label 3=5개) 결과는 Label 2 42.4% / Label 3 40.0%였다. 지금은 Label 2가 70.8%로 크게 좋아졌지만 Label 3은 20.0%로 낮아졌다 — **test label 3이 여전히 5개뿐이라 1개 차이가 20%p를 좌우한다.** 이 정도 흔들림은 통계적 노이즈로 보는 게 맞고, label 3 표본이 더 늘어야 안정적으로 비교할 수 있다.
+세션마다 test label 3이 5~6개 수준이라 recall이 계속 크게 흔들린다(직전 두 실행만 봐도 40.0% → 20.0% → 66.7%). **숫자 하나하나에 의미를 두지 말고, 표본이 두 자릿수 중반 이상으로 늘 때까지는 추세로만 참고할 것.**
 
 참고: `project/results/yongsang/ap_v2_mismatched_scaler_diagnostic.txt`는 1차 체크포인트/스케일러로 2차 데이터를 잘못 평가했을 때(정확도 39.3%)의 진단 기록이다. 역사적 자료일 뿐 최종 결과가 아니다.
 
@@ -154,7 +154,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 | 구분 | 1차 (`ap_cleaned_strict`) | 2차 (`ap_metrics_v2`) |
 |---|---|---|
 | 데이터 출처 | 인터넷 공개 데이터 가공 (2026-08-23 확인) | 팀이 구매한 GL.iNet Opal AP 실측 |
-| 원본 raw | `raw/metrics_cleaned_strict.csv` (588행, 고정) | `project/scripts/metrics_v2.csv` (1338행, 계속 누적) |
+| 원본 raw | `raw/metrics_cleaned_strict.csv` (588행, 고정) | `project/scripts/metrics_v2.csv` (1514행, 계속 누적) |
 | congestion_score 가중치 | throughput 35% / occupancy 35% / retry 20% / jitter 10% | throughput 20% / occupancy 45% / retry 20% / jitter 15% |
 | class weight | 미사용(plain cross-entropy) | `--class-weight-power` (기본 1.0) |
 | checkpoint 경로 | `project/checkpoints/ap_cleaned_strict/` | `project/checkpoints/ap_v2/` |
@@ -167,7 +167,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 - **Label 3(심각) 데이터가 얇다** — test 5개뿐이라 recall 40%가 통계적으로 안정적이라 보기 어렵다.
 - **Label 2/3 트레이드오프가 절벽형** — class weight power 중간값 튜닝이 잘 안 먹힌다. label 3 표본이 더 늘어야 완만한 튜닝이 가능할 것으로 보인다.
-- **AP(Opal) 하드웨어 안정성 문제** — 다중 station(2대 이상) 동시 부하에서는 재현성 있게 크래시한다(재연결 유무, 부하 크기와 무관하게 20~60초 내). 폰 1대 단일 연속 스트림은 훨씬 안정적이라 100Mbps로 5분 완주 + label 3 4개 확보에 성공했지만, **완전히 안전한 것도 아니다** — 같은 세션에서 세 번째 연속 시도(20분 목표)는 2분 41초 만에 크래시했다. 짧은 휴식 없이 반복 사용하면 단일 station이라도 누적 피로(열 등 추정, 원인 미확정)로 크래시할 수 있다. 다음 시도 전 AP를 충분히(몇 시간 이상) 쉬게 하고, 폰 1대 단일 스트림으로 시작하되 세션 사이에 휴식 시간을 두는 것을 권장한다. 자세한 내용은 `.work-log/current.md`.
+- **AP(Opal) 하드웨어 안정성 문제** — 상세 원인 분석은 `docs/yongsang/ap_crash_analysis.md`. 요약: **"몇 대가 붙어있는가"가 아니라 "누가 송신하는가"가 핵심 변수로 보인다.** 노트북이 송신자일 때(폰이든 유선 파이든, 목적지 무관)는 150Mbps까지도 몇 분간 안정적이었던 반면, **폰이 송신자일 때는 목적지·전송률과 무관하게 거의 즉시 크래시**했다. 다만 노트북 송신도 완전히 안전하진 않다 — 휴식 없이 반복하면 결국 크래시한다(같은 밤 세 번째 연속 시도가 2분 41초 만에 실패). 또한 유선 파이를 목적지로 쓰면 안정적이지만 retry/jitter가 낮게 나와 **label 3 자체가 구조적으로 잘 안 나온다**(최대 congestion_score 0.65, 문턱 0.75 미달) — 안전성과 label 3 생성 능력이 트레이드오프 관계. 다음 시도: 다른 폰(221)으로 교체해서 재현되는지 확인, 폰 송신을 훨씬 낮은 전송률(10~20Mbps)로 재시도, 채널폭 제한(2.4GHz 또는 5GHz 20MHz)과 병행. 자세한 내용은 `.work-log/current.md`.
 - **ONNX/INT8/Raspberry Pi 배포 파이프라인 없음** — 1차의 `export_onnx_ap.py`/`export_onnx_int8_ap.py`/`prepare_pi_bundle_ap.py`를 새 경로(`ap_metrics_v2`, `ap_v2`)로 재사용할지, 별도 스크립트를 만들지 아직 미정.
 - **SDN-style / Baseline 비교 없음** — 1차처럼 Baseline LSTM, SDN-style Early Exit과의 비교표가 아직 이 라인에 없다. `train_ap_baseline_lstm.py`, `train_ap_sdn.py`를 `--data-dir project\data\ap_metrics_v2 --checkpoint-dir project\checkpoints\ap_v2`로 재사용 가능한지는 검증 필요.
 - **1차를 새 가중치로 재라벨링할지 미결정** — 팀 논의 필요 항목. 재라벨링하면 1차의 완료된 학습/ONNX/Pi 배포 전체를 다시 돌려야 하므로 신중히 결정한다.

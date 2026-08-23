@@ -5,7 +5,7 @@
   },
   "channel_occupancy_percent": {
     "min": 13.33,
-    "max": 80.0
+    "max": 83.33
   },
   "latency_ms": {
     "min": 0.0,
@@ -13,7 +13,7 @@
   },
   "jitter_ms": {
     "min": 0.0,
-    "max": 858.0
+    "max": 912.0
   },
   "tx_retries_delta": {
     "min": 0.0,
