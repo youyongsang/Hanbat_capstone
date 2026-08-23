@@ -9,7 +9,7 @@
   },
   "latency_ms": {
     "min": 0.0,
-    "max": 606.333
+    "max": 903.0
   },
   "jitter_ms": {
     "min": 0.0,

@@ -3,41 +3,41 @@ Data Directory: project\data\ap_metrics_v2
 Checkpoint: project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth
 
 === AP Early Exit + fixed theta ===
-Test Accuracy: 66.1%
+Test Accuracy: 73.3%
 Exit별 성능:
-  Exit 1 | Accuracy: 89.5% | Exit Rate: 10.4% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 100.0% | Exit Rate: 2.7% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 62.3% | Exit Rate: 86.9% | Avg Time: 8.0ms
-Overall Avg Inference Time: 7.268ms
-Measured Wall Time: 1.188ms
+  Exit 1 | Accuracy: 91.7% | Exit Rate: 6.3% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 87.5% | Exit Rate: 4.2% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 71.3% | Exit Rate: 89.5% | Avg Time: 8.0ms
+Overall Avg Inference Time: 7.455ms
+Measured Wall Time: 1.251ms
 Label별 정확도:
-  Label 0 (정상): 95.5%
-  Label 1 (경고): 75.3%
-  Label 2 (혼잡): 42.4%
-  Label 3 (심각): 40.0%
+  Label 0 (정상): 90.5%
+  Label 1 (경고): 74.0%
+  Label 2 (혼잡): 70.8%
+  Label 3 (심각): 20.0%
 시나리오별 정확도:
-  high_load: 69.0%
-  low_load: 88.2%
-  medium_load: 66.7%
-  normal_idle: 87.0%
-  stress_load: 53.2%
+  high_load: 76.2%
+  low_load: 94.1%
+  medium_load: 75.9%
+  normal_idle: 90.9%
+  stress_load: 61.7%
 
 === AP Early Exit + dynamic theta ===
-Test Accuracy: 66.1%
+Test Accuracy: 73.3%
 Exit별 성능:
-  Exit 1 | Accuracy: 90.5% | Exit Rate: 11.5% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 72.0% | Exit Rate: 13.7% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 61.3% | Exit Rate: 74.9% | Avg Time: 8.0ms
-Overall Avg Inference Time: 6.765ms
-Measured Wall Time: 1.127ms
+  Exit 1 | Accuracy: 86.7% | Exit Rate: 7.9% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 86.7% | Exit Rate: 7.9% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 70.8% | Exit Rate: 84.3% | Avg Time: 8.0ms
+Overall Avg Inference Time: 7.215ms
+Measured Wall Time: 1.263ms
 Label별 정확도:
-  Label 0 (정상): 95.5%
-  Label 1 (경고): 75.3%
-  Label 2 (혼잡): 42.4%
-  Label 3 (심각): 40.0%
+  Label 0 (정상): 90.5%
+  Label 1 (경고): 74.0%
+  Label 2 (혼잡): 70.8%
+  Label 3 (심각): 20.0%
 시나리오별 정확도:
-  high_load: 69.0%
-  low_load: 88.2%
-  medium_load: 66.7%
-  normal_idle: 87.0%
-  stress_load: 53.2%
+  high_load: 76.2%
+  low_load: 94.1%
+  medium_load: 75.9%
+  normal_idle: 90.9%
+  stress_load: 61.7%

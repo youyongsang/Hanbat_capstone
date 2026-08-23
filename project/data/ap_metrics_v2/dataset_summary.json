@@ -1,8 +1,8 @@
 {
   "source": {
     "input_file": "project\\scripts\\metrics_v2.csv",
-    "raw_rows": 1265,
-    "prepared_rows": 1260,
+    "raw_rows": 1338,
+    "prepared_rows": 1333,
     "dropped_first_row_per_scenario": true,
     "stride": 1
   },
@@ -35,7 +35,7 @@
     },
     "latency_ms": {
       "min": 0.0,
-      "max": 606.333
+      "max": 903.0
     },
     "jitter_ms": {
       "min": 0.0,
@@ -64,7 +64,7 @@
   },
   "preprocessing": {
     "dropped_first_row_per_scenario": true,
-    "occupancy_outlier_fixes": 101,
+    "occupancy_outlier_fixes": 108,
     "model_excluded_columns": [
       "timestamp",
       "scenario",
@@ -80,35 +80,35 @@
   },
   "splits": {
     "train": {
-      "rows": 8500,
-      "samples": 850,
-      "shape": "(850, 10, 9)",
+      "rows": 9030,
+      "samples": 903,
+      "shape": "(903, 10, 9)",
       "label_distribution": {
-        "0:정상": 100,
-        "1:경고": 452,
-        "2:혼잡": 275,
-        "3:심각": 23
+        "0:정상": 101,
+        "1:경고": 468,
+        "2:혼잡": 307,
+        "3:심각": 27
       }
     },
     "val": {
-      "rows": 1820,
-      "samples": 182,
-      "shape": "(182, 10, 9)",
+      "rows": 1940,
+      "samples": 194,
+      "shape": "(194, 10, 9)",
       "label_distribution": {
-        "0:정상": 21,
-        "1:경고": 97,
-        "2:혼잡": 59,
-        "3:심각": 5
+        "0:정상": 22,
+        "1:경고": 100,
+        "2:혼잡": 66,
+        "3:심각": 6
       }
     },
     "test": {
-      "rows": 1830,
-      "samples": 183,
-      "shape": "(183, 10, 9)",
+      "rows": 1910,
+      "samples": 191,
+      "shape": "(191, 10, 9)",
       "label_distribution": {
-        "0:정상": 22,
-        "1:경고": 97,
-        "2:혼잡": 59,
+        "0:정상": 21,
+        "1:경고": 100,
+        "2:혼잡": 65,
         "3:심각": 5
       }
     }
