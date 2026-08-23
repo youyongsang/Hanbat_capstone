@@ -1,0 +1,414 @@
+<title>AP 크래시 원인 분석</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #f5f7fa;
+    --panel:        #fcfcfb;
+    --ink:          #12151b;
+    --ink-2:        #4b5566;
+    --ink-mute:     #7c8494;
+    --rule:         #e2e6ec;
+    --rule-strong:  #c9d0da;
+    --accent:       #2a78d6;
+    --accent-2:     #eb6834;
+    --good:         #0ca30c;
+    --critical:     #d03b3b;
+    --good-bg:      #e5f6e5;
+    --critical-bg:  #fbe9e9;
+    --shadow:       0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:        #0e1116;
+      --panel:        #1a1a19;
+      --ink:          #f3f5f8;
+      --ink-2:        #b8c0cc;
+      --ink-mute:     #8890a0;
+      --rule:         #242a33;
+      --rule-strong:  #333b47;
+      --accent:       #3987e5;
+      --accent-2:     #d95926;
+      --good:         #0ca30c;
+      --critical:     #e66767;
+      --good-bg:      rgba(12,163,12,0.14);
+      --critical-bg:  rgba(230,103,103,0.14);
+      --shadow:       0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:        #0e1116;
+    --panel:        #1a1a19;
+    --ink:          #f3f5f8;
+    --ink-2:        #b8c0cc;
+    --ink-mute:     #8890a0;
+    --rule:         #242a33;
+    --rule-strong:  #333b47;
+    --accent:       #3987e5;
+    --accent-2:     #d95926;
+    --good:         #0ca30c;
+    --critical:     #e66767;
+    --good-bg:      rgba(12,163,12,0.14);
+    --critical-bg:  rgba(230,103,103,0.14);
+    --shadow:       0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 4rem 1.75rem 6rem; }
+
+  header.page-head { max-width: 700px; margin-bottom: 3.25rem; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--critical);
+    font-weight: 600;
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 1.5rem + 1.6vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.18;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+  }
+
+  .page-head p { color: var(--ink-2); font-size: 1.05rem; margin: 0; max-width: 64ch; }
+
+  .thesis {
+    margin-top: 1.5rem;
+    padding: 1.1rem 1.3rem;
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    border-radius: 4px;
+    font-size: 0.95rem;
+  }
+  .thesis b { color: var(--accent); }
+
+  section { margin-top: 3.5rem; }
+
+  section > h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  section > h2 .step { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--ink-mute); font-weight: 500; }
+  section > .lede { color: var(--ink-2); max-width: 68ch; margin: 0 0 1.5rem; }
+
+  /* ---- hypothesis stepper ---- */
+
+  .hyp-list { display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .hyp-row { background: var(--panel); padding: 1.1rem 1.3rem; display: grid; grid-template-columns: 90px 1fr; gap: 1.2rem; align-items: start; }
+  .hyp-row.rejected { opacity: 0.6; }
+  .hyp-status {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.25rem 0.55rem;
+    border-radius: 3px;
+    text-align: center;
+    height: fit-content;
+  }
+  .hyp-row.rejected .hyp-status { background: var(--critical-bg); color: var(--critical); }
+  .hyp-row.current .hyp-status { background: var(--good-bg); color: var(--good); }
+  .hyp-body b { display: block; margin-bottom: 0.3rem; font-size: 0.95rem; }
+  .hyp-body p { margin: 0; font-size: 0.87rem; color: var(--ink-2); }
+
+  /* ---- config comparison ---- */
+
+  .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .config-card { background: var(--panel); padding: 1.2rem 1.2rem 1.3rem; position: relative; }
+  .config-card .outcome-tag {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.74rem; font-weight: 700;
+    padding: 0.25rem 0.55rem; border-radius: 3px; margin-bottom: 0.9rem;
+  }
+  .config-card .outcome-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+  .config-card.ok .outcome-tag { background: var(--good-bg); color: var(--good); --dot: var(--good); }
+  .config-card.bad .outcome-tag { background: var(--critical-bg); color: var(--critical); --dot: var(--critical); }
+  .config-card .cfg-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; line-height: 1.4; }
+  .config-card .cfg-detail { font-size: 0.82rem; color: var(--ink-mute); }
+  .config-card.highlight { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* ---- timeline chart ---- */
+
+  .chart-card { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 1.5rem 1.6rem 1.3rem; box-shadow: var(--shadow); }
+
+  .chart-legend { display: flex; gap: 1.4rem; margin-bottom: 1.4rem; font-size: 0.82rem; color: var(--ink-2); }
+  .chart-legend .lg { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .chart-legend .lg::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--c); }
+  .chart-legend .lg.ok { --c: var(--good); }
+  .chart-legend .lg.bad { --c: var(--critical); }
+
+  .tl-row { display: grid; grid-template-columns: 168px 1fr 88px; align-items: center; gap: 0.8rem; padding: 0.6rem 0; border-top: 1px solid var(--rule); }
+  .tl-row:first-of-type { border-top: none; }
+  .tl-name { font-size: 0.79rem; color: var(--ink); line-height: 1.35; }
+  .tl-track { position: relative; height: 20px; background: var(--rule); border-radius: 3px; overflow: hidden; }
+  .tl-bar { position: absolute; top: 0; left: 0; bottom: 0; border-radius: 3px 0 0 3px; }
+  .tl-bar.ok { background: var(--good); }
+  .tl-bar.bad { background: var(--critical); }
+  .tl-target { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink-mute); }
+  .tl-val { font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; text-align: right; color: var(--ink-2); white-space: nowrap; }
+
+  .tl-axis { position: relative; height: 1rem; margin-top: 0.4rem; margin-left: calc(168px + 0.8rem); margin-right: 88px; }
+  .tl-axis span { position: absolute; transform: translateX(-50%); font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; color: var(--ink-mute); }
+  .tl-axis span:first-child { transform: translateX(0); }
+
+  .tl-note { margin-top: 1rem; font-size: 0.78rem; color: var(--ink-mute); }
+  .tl-note .tick { display: inline-block; width: 2px; height: 10px; background: var(--ink-mute); vertical-align: middle; margin-right: 0.3rem; }
+
+  /* ---- ceiling chart ---- */
+
+  .ceiling-row { display: grid; grid-template-columns: 180px 1fr 70px; align-items: center; gap: 0.8rem; padding: 0.75rem 0; border-top: 1px solid var(--rule); }
+  .ceiling-row:first-of-type { border-top: none; }
+  .ceiling-track { position: relative; height: 22px; background: var(--rule); border-radius: 3px; overflow: hidden; }
+  .ceiling-bar { position: absolute; top: 0; left: 0; bottom: 0; background: var(--accent); border-radius: 3px 0 0 3px; }
+  .ceiling-threshold { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--critical); }
+  .ceiling-threshold::after {
+    content: "label 3 문턱 0.75";
+    position: absolute; top: -1.3rem; left: 50%; transform: translateX(-50%);
+    font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; color: var(--critical); white-space: nowrap;
+  }
+  .ceiling-val { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; text-align: right; }
+
+  .callout {
+    display: flex; gap: 0.85rem;
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    border-radius: 4px; padding: 1rem 1.2rem; font-size: 0.88rem; color: var(--ink-2); margin-top: 1.4rem;
+  }
+  .callout b { color: var(--ink); }
+  .callout.warn { border-left-color: var(--critical); }
+
+  ol.next-steps { padding-left: 1.4rem; margin: 0; }
+  ol.next-steps li { margin-bottom: 0.9rem; font-size: 0.92rem; }
+  ol.next-steps li b { display: block; color: var(--ink); margin-bottom: 0.15rem; }
+  ol.next-steps li span { color: var(--ink-2); font-size: 0.87rem; }
+
+  footer.page-foot {
+    margin-top: 4rem; padding-top: 1.6rem; border-top: 1px solid var(--rule);
+    font-size: 0.82rem; color: var(--ink-mute);
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  footer.page-foot code { font-family: "IBM Plex Mono", monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 3px; border: 1px solid var(--rule); }
+
+  @media (max-width: 640px) {
+    .tl-row { grid-template-columns: 110px 1fr 70px; gap: 0.5rem; }
+    .tl-axis { margin-left: calc(110px + 0.5rem); margin-right: 70px; }
+    .tl-name { font-size: 0.72rem; }
+    .ceiling-row { grid-template-columns: 120px 1fr 60px; }
+    .hyp-row { grid-template-columns: 70px 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">AP 크래시 원인 분석 — 2026-08-23/24</p>
+    <h1>AP 크래시 원인 분석</h1>
+    <p>label 3(심각) 데이터를 더 모으려고 여러 부하 조합을 시도하며 관찰한 GL.iNet Opal(GL-SFT1200) 크래시 패턴을 정리한다. 가설을 두 번 정정했다.</p>
+    <div class="thesis">현재 결론: <b>"몇 대가 붙어있는가"가 아니라 "누가 능동적으로 송신하는가"</b>가 크래시의 핵심 변수였다. 노트북이 보내면 안정적이고, 폰이 보내면 거의 즉시 죽는다 — 목적지와 전송률은 상관없었다.</div>
+  </header>
+
+  <section id="hypotheses">
+    <h2><span class="step">01</span> 가설의 변화</h2>
+    <p class="lede">두 번 정정했다. 매번 반례가 나와서 다음 가설로 넘어갔다.</p>
+
+    <div class="hyp-list">
+      <div class="hyp-row rejected">
+        <div class="hyp-status">기각</div>
+        <div class="hyp-body">
+          <b>1차 — 잦은 재연결(reconnect churn)이 원인이다</b>
+          <p>UDP 손실률을 계속 갱신하려고 2~5초마다 iperf3를 재접속시켰는데, 이게 AP에 부담을 준다고 생각했다. 재연결 루프를 완전히 제거한 시도(2대, 100Mbps)도 여전히 ~22초 만에 크래시해서 기각.</p>
+        </div>
+      </div>
+      <div class="hyp-row rejected">
+        <div class="hyp-status">기각</div>
+        <div class="hyp-body">
+          <b>2차 — 동시 station이 2개 이상이면 크래시한다</b>
+          <p>3대/2대 조합은 전부 20~60초 안에 죽었고, 1대만 쓴 시도는 훨씬 오래 버텼다. 그런데 "폰 1대(무선)→파이(유선)"는 station이 똑같이 1개인데도 거의 즉시 크래시했다. station 개수만으로는 설명이 안 됨.</p>
+        </div>
+      </div>
+      <div class="hyp-row current">
+        <div class="hyp-status">현재</div>
+        <div class="hyp-body">
+          <b>3차 — 폰이 능동적으로 송신할 때 크래시한다</b>
+          <p>노트북이 송신자면 목적지·전송률 무관하게 안정적(150Mbps까지 확인). 폰이 송신자면 목적지·전송률 무관하게 거의 즉시 크래시. 아래 §02 참고.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="comparison">
+    <h2><span class="step">02</span> 핵심 비교 — 송신자가 갈랐다</h2>
+    <p class="lede">station 수와 목적지가 같아도, 누가 보내느냐에 따라 결과가 정반대였다.</p>
+
+    <div class="config-grid">
+      <div class="config-card bad">
+        <div class="outcome-tag">크래시</div>
+        <div class="cfg-title">폰 2~3대 동시 송신</div>
+        <div class="cfg-detail">station 2~3개 · 20~60초 내 크래시(첫 시도 예외)</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">안정</div>
+        <div class="cfg-title">노트북 → 폰(무선)</div>
+        <div class="cfg-detail">station 1개 · 70~100Mbps, 2~5분 완주</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">안정</div>
+        <div class="cfg-title">노트북 → 파이(유선)</div>
+        <div class="cfg-detail">station 1개 · 150Mbps까지, 3분 완주</div>
+      </div>
+      <div class="config-card bad highlight">
+        <div class="outcome-tag">크래시</div>
+        <div class="cfg-title">폰 → 파이(유선)</div>
+        <div class="cfg-detail">station 1개(!) · 즉시 크래시, 수집 행 0개</div>
+      </div>
+    </div>
+    <div class="callout"><span>→</span><span>3번째·4번째 카드가 결정적이다 — station 수와 목적지가 완전히 같은데 <b>송신자만 바뀌었고 결과가 정반대</b>다.</span></div>
+  </section>
+
+  <section id="timeline">
+    <h2><span class="step">03</span> 오늘 밤 시도 타임라인</h2>
+    <p class="lede">시도할수록 버티는 시간이 짧아지는 패턴도 겹쳐 있다 — 송신자 요인 위에 누적 사용 피로가 겹쳤을 가능성.</p>
+
+    <div class="chart-card">
+      <div class="chart-legend">
+        <span class="lg ok">완주</span>
+        <span class="lg bad">크래시</span>
+      </div>
+
+      <div class="tl-row">
+        <div class="tl-name">3대·40M·재연결<small></small></div>
+        <div class="tl-track"><div class="tl-bar ok" style="width:30%"></div></div>
+        <div class="tl-val">90/90s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">3대·40M·10분·재연결</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:13.3%"></div><div class="tl-target" style="left:96.7%"></div></div>
+        <div class="tl-val">~40/580s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">3대·25M·재연결</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:6%"></div><div class="tl-target" style="left:40%"></div></div>
+        <div class="tl-val">~18/120s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">2대·100M·재연결없음</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:7.3%"></div><div class="tl-target" style="left:60%"></div></div>
+        <div class="tl-val">~22/180s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">1대(폰)·70M</div>
+        <div class="tl-track"><div class="tl-bar ok" style="width:40%"></div></div>
+        <div class="tl-val">120/120s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">1대(폰)·100M</div>
+        <div class="tl-track"><div class="tl-bar ok" style="width:100%"></div></div>
+        <div class="tl-val">300/300s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">1대(폰)·100M·20분</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:53.7%"></div><div class="tl-target" style="left:100%"></div></div>
+        <div class="tl-val">~161/1200s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">1대(폰)·100M·재개</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:24.7%"></div><div class="tl-target" style="left:100%"></div></div>
+        <div class="tl-val">~74/300s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">1대(폰)·40M</div>
+        <div class="tl-track"><div class="tl-bar ok" style="width:40%"></div></div>
+        <div class="tl-val">120/120s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">1대(폰)·80M</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:7%"></div><div class="tl-target" style="left:40%"></div></div>
+        <div class="tl-val">~21/120s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">노트북→파이·150M</div>
+        <div class="tl-track"><div class="tl-bar ok" style="width:60%"></div></div>
+        <div class="tl-val">180/180s</div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-name">폰→파이·100M</div>
+        <div class="tl-track"><div class="tl-bar bad" style="width:1%"></div><div class="tl-target" style="left:40%"></div></div>
+        <div class="tl-val">~0/120s</div>
+      </div>
+
+      <div class="tl-axis">
+        <span style="left:0%">0s</span>
+        <span style="left:33.3%">100s</span>
+        <span style="left:66.6%">200s</span>
+        <span style="left:100%">300s</span>
+      </div>
+      <p class="tl-note"><span class="tick"></span>회색 세로선 = 원래 목표 시간(300초 축을 넘는 경우 축 끝에 표시). 막대 길이는 실제 생존 시간.</p>
+    </div>
+  </section>
+
+  <section id="ceiling">
+    <h2><span class="step">04</span> 부가 발견 — 유선 구조는 안전하지만 label 3을 못 만든다</h2>
+    <p class="lede">노트북→파이 150Mbps 시도에서 <code class="mono">channel_occupancy</code>가 100%까지 여러 번 찍혔는데도 congestion_score는 문턱을 못 넘었다.</p>
+
+    <div class="chart-card">
+      <div class="ceiling-row">
+        <div class="tl-name">노트북→파이(유선) 최고 기록</div>
+        <div class="ceiling-track">
+          <div class="ceiling-bar" style="width:86.1%"></div>
+          <div class="ceiling-threshold" style="left:75%"></div>
+        </div>
+        <div class="ceiling-val">0.646</div>
+      </div>
+      <details class="data-table" style="margin-top:1.6rem">
+        <summary style="font-size:0.8rem;color:var(--ink-mute);cursor:pointer;">왜 이런 일이 생기나</summary>
+        <p style="font-size:0.85rem;color:var(--ink-2);margin-top:0.8rem;">congestion_score의 45%는 occupancy가 담당하지만 나머지 55%(throughput+retry+jitter)도 같이 높아야 0.75를 넘는다. 유선 목적지는 무선 충돌·재전송이 거의 없는 "깨끗한" 경로라 <code class="mono">retry_failed_score</code>·<code class="mono">jitter_score</code>가 낮게 유지된다 — 그래서 occupancy가 100%여도 전체 점수가 문턱을 못 넘는다.</p>
+      </details>
+    </div>
+
+    <div class="callout warn"><span>→</span><span><b>안전성(노트북 송신)과 label 3 생성 능력(무선 경합 필요)이 트레이드오프 관계</b>다. 지금까지는 폰이 송신해야만 label 3급 재전송/지연 변동이 나왔는데, 그게 바로 크래시를 유발하는 조건이기도 하다.</span></div>
+  </section>
+
+  <section id="next">
+    <h2><span class="step">05</span> 다음 검증 방향</h2>
+    <ol class="next-steps">
+      <li><b>다른 폰(221)으로 교체해서 재현 여부 확인</b><span>재현 안 되면 191 폰 특정 문제, 재현되면 AP의 폰-일반 호환성 문제로 원인이 좁혀진다.</span></li>
+      <li><b>폰 송신을 훨씬 낮은 전송률(10~20Mbps)로 재시도</b><span>지금까지 폰 송신은 항상 40Mbps 이상이었다 — 더 약하게 걸어도 즉시 죽는지 확인 필요.</span></li>
+      <li><b>채널폭 제한(2.4GHz 또는 5GHz 20MHz)과 병행</b><span>낮은 전송률로도 점유율을 쉽게 포화시켜, 폰 송신 부담을 줄이면서 label 3을 노려본다.</span></li>
+      <li><b>호중에게 이 분석 공유</b><span>펌웨어 업데이트 여부나 대체 장비 확보 가능성 문의.</span></li>
+    </ol>
+  </section>
+
+  <footer class="page-foot">
+    <span>작성 2026-08-24 새벽 · 오늘 밤 실측 로그 기준</span>
+    <span>세션별 상세 타임라인: <code>.work-log/current.md</code> · 2차 데이터 라인 전체: <code>project/README_AP_V2.md</code></span>
+  </footer>
+
+</main>
