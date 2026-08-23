@@ -1,5 +1,31 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-23 (새벽, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
+최종 업데이트: 2026-08-23 (오후, yongsang DESKTOP-29GLQJF 세션 — Claude Code와 함께 진행)
+
+## 완료된 작업 (2026-08-23 오후 세션, Claude Code와 진행)
+
+### Pi를 TV(HDMI)에 연결, SSH 키 인증 설정 완료 — 새벽 세션의 "최우선" 항목 해결
+- TV에 HDMI로 연결해서 부팅 화면 확인 → 정상 부팅되어 `capstone@CapsTone:~ $` 프롬프트까지 뜸 (SD카드 접촉 불량 의심은 해소된 것으로 보임)
+- Pi를 와이파이(`192.168.45.x` 대역, 노트북과 같은 네트워크)에 새로 연결. `hostname -I`로 IP 확인 → `192.168.45.31`
+- 이 노트북의 `~/.ssh/id_ed25519` 공개키를 Pi의 `~/.ssh/authorized_keys`에 등록해서 비밀번호 없이 `ssh capstone@192.168.45.31` 접속 가능해짐 (AP용 `id_rsa_ap`와는 별개 키)
+
+### `project/deploy/raspberry_pi_ap/` 번들로 Pi 실측 완료 (단, 구버전 588행 `ap_cleaned_strict` 데이터 기준)
+- 번들 전체를 scp로 Pi에 전송, `.venv`에 onnxruntime 1.29.0 설치, README의 8개 조합(Baseline/SDN/Fixed/Dynamic × FP32/INT8) 전부 실행 완료
+- 정확도는 PC 평가와 완전히 일치(Baseline 92.7%, 나머지 91.5%) — 동일 checkpoint/scaler 확인됨
+- **핵심 발견**: PC에서는 안 보이던 Early Exit 속도 우위가 Pi + staged ONNX 실측에서는 실제로 나타남. Proposed Dynamic FP32(1.699ms 평균)가 Baseline FP32(1.837ms)보다 7.5% 빠름. Dynamic theta의 Exit1 비율(37.8%)이 Fixed(15.9%)보다 훨씬 높은 게 원인
+- 결과 저장: `project/results/yongsang/pi_ap_measurements/` (원시 CSV 56개 + `pi_ap_measurement_summary.md` 요약표)
+- **주의**: 이 실측은 `ap_cleaned_strict`(588행) 파이프라인 기준이고, 아래 `ap_metrics_new_collection`(1253행, 실제 최신 데이터)과는 별개 — 아직 새 데이터 기준 ONNX/Pi 번들은 없음
+
+### `ap_metrics_new_collection` 데이터셋이 낡은 스냅샷 기준이었던 버그 발견 및 수정
+- 어젯밤 커밋(`bef79fd`, "1254행으로 확장")의 커밋 메시지는 "재생성 완료(train 707/val 151/test 152)"라고 했지만, 실제 `conversion_report.txt`를 까보니 **`raw_rows: 1060`** — 즉 `metrics_v2.csv`가 1253행까지 다 채워지기 *전* 스냅샷으로 변환 스크립트를 돌리고, 그 뒤 193행을 추가 수집한 걸 같은 커밋에 묶어 올린 것으로 보임
+- `prepare_ap_metrics_dataset.py --input project/scripts/metrics_v2.csv --out-dir project/data/ap_metrics_new_collection --overwrite`로 최신 1253행 전체 기준 재변환 → **train 843 / val 181 / test 179** (raw_rows 1253으로 일치 확인). label 3(심각)도 train 14/val 3/test 3으로 소폭 증가(이전 9/2/2)
+
+### 클래스 가중치 완화 실험 (새벽 세션에 남겨둔 "다음 할 일" 항목 해결)
+- `train_ap_early_exit.py`의 `compute_class_weights`가 순수 역빈도(`N/(K*count)`, power=1.0)만 지원해서 label 3에 ~20배 가중치가 붙어 label 2를 3으로 오버슈팅하던 문제(label 2 recall 19%)를 재현할 것으로 예상됨
+- `power` 파라미터를 추가해서 `(N/(K*count))**power` 형태로 일반화. power=0.5(sqrt)로 재학습 → label 2 recall 19%→79%로 크게 개선됐지만 label 3 recall이 0%로 떨어짐(트레이드오프가 반대로 과함)
+- **power=0.7로 재조정**(현재 값) → val balanced acc 62.8%(0.5일 때 58.3%보다 나음), test 전체 정확도 74.3%, label 0=77.3%/label 1=84.9%/label 2=66.7%/**label 3=0%**
+- label 3는 test 샘플이 3개뿐이라 가중치를 아무리 조정해도 한계가 있음 — 알고리즘이 아니라 데이터 부족 문제. 다음 수집에서 label 3(채널 100% 포화) 샘플을 더 확보해야 근본 해결됨
+- 재학습된 체크포인트: `project/checkpoints/ap_new_collection_test/`(검증용, production `ap_cleaned_strict`와는 별개 그대로 유지)
+- 평가 리포트: `project/results/yongsang/ap_new_collection_freshmodel_eval_report.txt`
 
 ## 완료된 작업 (2026-08-23 새벽 세션, Claude Code와 진행)
 
@@ -20,16 +46,19 @@
 - **새로 드러난 부작용**: label 3에 준 클래스 가중치가 너무 세서(train 9개뿐이라 가중치 ~20배) label 2(혼잡)를 label 3으로 오버슈팅하는 경향 생김(label 2 정확도 19%로 하락, 58개 중 33개를 3으로 오분류). 다음에 가중치를 완화(역빈도 대신 제곱근 역빈도 등)하면 다듬을 수 있을 것으로 보임
 - 폰 iperf3 서버가 화면 꺼짐으로 중간에 두 번 죽음(`termux-wake-lock` 안 걸어둔 폰들) → 재시작 대기 중 세션 일시 중단, 여기서 기록 저장
 
-## 다음 할 일 (2026-08-23 기준 갱신)
-- [ ] **최우선**: 파이를 TV(HDMI)에 직접 연결해서 부팅 화면 확인 — boot 단계까지만 가는지, OS까지 완전히 뜨는지, 뜬다면 화면에서 IP 확인
-- [ ] 화면에서 문제 확인되면 SD카드 재굽기 (설정 정보는 이미 확보: hostname `CapsTone`, 계정 `capstone`, Wi-Fi `SK_0600_5G`, SSH 활성화 — 비밀번호만 새로 정해서 기록)
-- [ ] 호중에게 "capstone 계정" 비밀번호 재확인 요청 (기존엔 "pi" 계정으로 잘못 시도했을 가능성)
-- [ ] 두 폰(`103`, `191`) 다 Termux에서 `termux-wake-lock` 걸고 `iperf3 -s` 재시작 → 2폰 동시 부하 stress_load 수집 이어가기 (label 3 더 필요)
-- [ ] label 3 class weight 완화 실험 (제곱근 역빈도 등, label 2 오버슈팅 완화 목적)
-- [ ] Pi 연결되면 `project/deploy/raspberry_pi_ap/` 번들로 SDN FP32/INT8 재측정
+## 다음 할 일 (2026-08-23 오후 세션 기준 갱신)
+- [x] 파이를 TV(HDMI)에 연결해서 부팅 화면 확인 — 정상 부팅, `capstone@CapsTone` 프롬프트 뜸
+- [x] SSH 키 인증 설정 완료 (`ssh capstone@192.168.45.31` 비밀번호 없이 접속 가능)
+- [x] `project/deploy/raspberry_pi_ap/` 번들로 8개 조합 Pi 실측 완료 (단, 구버전 588행 데이터 기준 — 위 섹션 참고)
+- [x] label 3 class weight 완화 실험 1차 (power=0.5, 0.7 비교) — 결론: 현재 데이터로는 label 2/3 트레이드오프 한계, 데이터 부족이 근본 원인
+- [ ] **다음 우선순위**: 와이파이를 Opal AP(`GL-SFT1200-a08`, `192.168.8.x`)로 다시 전환해서 폰 2대로 label 3(채널 100% 포화) 샘플 추가 수집 — 현재 노트북/Pi는 다른 와이파이(`192.168.45.x`)에 있어서 AP 실측 불가 상태
+- [ ] 두 폰(`103`, `191`) 다 Termux에서 `termux-wake-lock` 걸고 `iperf3 -s` 재시작 → 2폰 동시 부하 stress_load 수집 이어가기 (label 3 더 필요, 지금 test 3개로는 recall 0%)
+- [ ] label 3 샘플 확보 후 `ap_metrics_new_collection` 재변환 + 재학습 + class weight power 재튜닝
+- [ ] `ap_metrics_new_collection`(1253행) 기준 ONNX export + Pi 배포 번들은 아직 없음 — `ap_cleaned_strict`용 `export_onnx_ap.py`/`prepare_pi_bundle_ap.py`를 새 데이터 경로로 재사용할지, 별도 스크립트를 만들지 결정 필요
+- [ ] 호중에게 "capstone 계정" 비밀번호 재확인은 더 이상 불필요 (SSH 키 인증으로 해결됨), 대신 이 사실 공유
 - [ ] label 1/2 경계(congestion_score 0.50 부근) 재설계 논의 — threshold 재조정 또는 feature 추가 필요할 수 있음
 - [ ] 스케일러 불일치 발견 사항을 예나·팀에 공유 (원본 `ap_cleaned_strict`의 latency_ms/rssi_dbm 측정 방식 재검토 필요)
-- [ ] 장기적으로 이 실측 방식으로 모델을 새로 학습/파인튜닝할지 팀 논의 필요
+- [ ] 장기적으로 이 실측 방식으로 모델을 새로 학습/파인튜닝해서 `ap_cleaned_strict`를 대체할지, 팀 논의 필요
 - [ ] (여유 시) AP strict용 실시간 추론 파이프라인 설계 착수 — 현재 어느 브랜치에도 코드 없음
 
 

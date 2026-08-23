@@ -1,0 +1,2 @@
+exit_point,samples,rate,accuracy,avg_inference_ms,p95_inference_ms,avg_confidence
+3,82,1.0,0.9268,1.132252,1.144162,0.902716

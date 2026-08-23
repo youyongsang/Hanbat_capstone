@@ -28,18 +28,27 @@ def display_path(path: Path) -> str:
 def compute_class_weights(
     labels: torch.Tensor,
     num_classes: int = 4,
+    power: float = 0.7,
 ) -> torch.Tensor:
-    """Inverse-frequency class weights (N / (K * count_c)) for imbalanced labels.
+    """Power-softened inverse-frequency class weights for imbalanced labels.
 
     Without this, plain cross-entropy on a skewed label distribution (e.g.
     AP strict live-collection congestion labels, where label 1/2 heavily
     outnumber label 3) lets the model collapse to always predicting the
     majority class(es) and never output the rare ones at all.
+
+    Plain inverse frequency (N / (K * count_c)), i.e. power=1.0, overcorrects
+    on this data: with only 9-14 label-3 (severe) train examples, the raw
+    weight lands around 20x, aggressive enough that label 2 (congested) gets
+    routinely over-predicted as label 3 (label 2 recall dropped to ~19% in an
+    earlier run). power=0.5 (sqrt) fixed that (label 2 recall 79%) but swung
+    too far the other way (label 3 recall 0%). power=0.7 is a midpoint
+    between the two, tuned by observing that tradeoff on this dataset.
     """
 
     counts = torch.bincount(labels, minlength=num_classes).float()
     counts = counts.clamp(min=1.0)
-    weights = labels.numel() / (num_classes * counts)
+    weights = (labels.numel() / (num_classes * counts)) ** power
     return weights
 
 
@@ -117,7 +126,7 @@ def main() -> None:
 
     train_labels = train_loader.dataset.tensors[1]
     class_weights = compute_class_weights(train_labels).to(device)
-    print(f"Class weights (inverse frequency): {class_weights.tolist()}")
+    print(f"Class weights (inverse frequency ^0.7): {class_weights.tolist()}")
 
     model = APEarlyExitLSTM(
         hidden_size=args.hidden_size,

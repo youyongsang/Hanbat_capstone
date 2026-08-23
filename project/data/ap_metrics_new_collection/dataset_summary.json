@@ -1,8 +1,8 @@
 {
   "source": {
     "input_file": "project\\scripts\\metrics_v2.csv",
-    "raw_rows": 1060,
-    "prepared_rows": 1055,
+    "raw_rows": 1253,
+    "prepared_rows": 1248,
     "dropped_first_row_per_scenario": true,
     "stride": 1
   },
@@ -64,7 +64,7 @@
   },
   "preprocessing": {
     "dropped_first_row_per_scenario": true,
-    "occupancy_outlier_fixes": 78,
+    "occupancy_outlier_fixes": 101,
     "model_excluded_columns": [
       "timestamp",
       "scenario",
@@ -80,36 +80,36 @@
   },
   "splits": {
     "train": {
-      "rows": 7070,
-      "samples": 707,
-      "shape": "(707, 10, 9)",
+      "rows": 8430,
+      "samples": 843,
+      "shape": "(843, 10, 9)",
       "label_distribution": {
-        "0:정상": 104,
-        "1:경고": 326,
-        "2:혼잡": 268,
-        "3:심각": 9
+        "0:정상": 106,
+        "1:경고": 341,
+        "2:혼잡": 382,
+        "3:심각": 14
       }
     },
     "val": {
-      "rows": 1510,
-      "samples": 151,
-      "shape": "(151, 10, 9)",
+      "rows": 1810,
+      "samples": 181,
+      "shape": "(181, 10, 9)",
       "label_distribution": {
-        "0:정상": 22,
-        "1:경고": 70,
-        "2:혼잡": 57,
-        "3:심각": 2
+        "0:정상": 23,
+        "1:경고": 73,
+        "2:혼잡": 82,
+        "3:심각": 3
       }
     },
     "test": {
-      "rows": 1520,
-      "samples": 152,
-      "shape": "(152, 10, 9)",
+      "rows": 1790,
+      "samples": 179,
+      "shape": "(179, 10, 9)",
       "label_distribution": {
-        "0:정상": 23,
-        "1:경고": 69,
-        "2:혼잡": 58,
-        "3:심각": 2
+        "0:정상": 22,
+        "1:경고": 73,
+        "2:혼잡": 81,
+        "3:심각": 3
       }
     }
   }
