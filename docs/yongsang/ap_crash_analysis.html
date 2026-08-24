@@ -229,10 +229,10 @@
 <main>
 
   <header class="page-head">
-    <p class="eyebrow">AP 크래시 원인 분석 — 2026-08-23 밤 ~ 2026-08-24 아침</p>
+    <p class="eyebrow">AP 크래시 원인 분석 — 2026-08-23 밤 ~ 2026-08-24 밤</p>
     <h1>AP 크래시 원인 분석</h1>
-    <p>label 3(심각) 데이터를 더 모으려고 여러 부하 조합을 시도하며 관찰한 GL.iNet Opal(GL-SFT1200) 크래시 패턴을 정리한다. 가설을 세 번 정정했다.</p>
-    <div class="thesis">현재 결론: 새벽 세션엔 <b>"몇 대가 붙어있는가"가 아니라 "누가 능동적으로 송신하는가"</b>가 핵심 변수라고 봤다. 그런데 아침 세션에 다른 폰(S26)으로 교체하니 재현되지 않았다 — <b>"폰 송신 자체가 위험"이 아니라 "191 폰 개별 하드웨어/드라이버 문제였을 가능성"</b> 쪽으로 무게가 옮겨가는 중이다.</div>
+    <p>label 3(심각) 데이터를 더 모으려고 여러 부하 조합을 시도하며 관찰한 GL.iNet Opal(GL-SFT1200) 크래시 패턴을 정리한다. 가설을 네 번 정정했다.</p>
+    <div class="thesis">최신 결론(8/24 밤): 하루 종일 가설이 두 번 더 뒤집혔다. "191 폰 개별 문제"라고 봤던 게 오후 세션에서 <b>191이 5단계(40~150Mbps) 연속 생존하며 반증</b>됐고, 대신 <b>"몇 대가 동시에 붙어있는가"(다중 station)가 다시 핵심 변수</b>로 재확정됐다. 저녁~밤 세션에서 콤보 부하를 스위핑한 결과 <b>191=60M/S26=60M(2분 내외)이 안정성·label 3 생성력 둘 다의 스위트스팟</b>임을 확인했다 — 그 위(80/80)나 장시간(10분)은 완전 크래시는 아니어도 SSH가 최대 156초까지 끊기는 심한 지연을 유발했다.</div>
   </header>
 
   <section id="hypotheses">
@@ -261,11 +261,18 @@
           <p>노트북이 송신자면 목적지·전송률 무관하게 안정적(150Mbps까지 확인). 191 폰이 송신자면 목적지·전송률 무관하게 거의 즉시 크래시했다. 아래 §02 참고. 그런데 §06에서 다른 폰(S26)으로는 재현되지 않아, "폰이면 다 위험하다"는 일반화는 유지하기 어려워졌다.</p>
         </div>
       </div>
+      <div class="hyp-row rejected">
+        <div class="hyp-status">반증</div>
+        <div class="hyp-body">
+          <b>4차 — 191 폰 개별 하드웨어/드라이버 문제였을 가능성</b>
+          <p>같은 조건(station 수·목적지·전송률)에서 S26은 안정적이었기에 유력해 보였다. 하지만 오후 세션에서 191을 40M→70M→100M→120M→150M 다섯 단계 연속으로 돌려도 크래시가 한 번도 안 났다 — 오히려 label 3을 S26보다 훨씬 잘 만들어냈다. 이 5단계 연속 생존 자체가 "191 개별 문제" 결론과 정면으로 배치되어 반증에 가깝게 뒤집혔다.</p>
+        </div>
+      </div>
       <div class="hyp-row current">
         <div class="hyp-status">현재</div>
         <div class="hyp-body">
-          <b>4차 — 191 폰 개별 하드웨어/드라이버 문제였을 가능성</b>
-          <p>같은 조건(station 수·목적지·전송률)에서 S26은 안정적이었다. "폰 송신 자체가 위험"이 아니라 191 폰 한 대의 개별 이슈였을 가능성이 더 유력해졌다. 다만 S26이 70~100Mbps 고부하에서도 계속 안정적인지는 아직 미검증이라 확정은 이르다. 아래 §06 참고.</p>
+          <b>5차 — 다시 "몇 대가 동시에 붙어있는가"(다중 station)가 핵심 변수</b>
+          <p>S26/191 둘 다 단독으로는 40~150Mbps까지 전 구간 크래시 없이 완주했지만, <b>191+S26을 동시에 붙이면 부하 크기와 무관하게 불안정성이 나타난다</b>. 저녁~밤 세션에서 콤보 부하를 스위핑한 결과 191=60M/S26=60M(2분 내외)이 스위트스팟이었고, 그 위(80/80)나 장시간(10분)은 SSH가 최대 156초까지 끊기는 심한 지연을 유발했다(완전 크래시까지 간 적도 1회). 아래 §06~§08 참고.</p>
         </div>
       </div>
     </div>
@@ -428,19 +435,136 @@
     </div>
   </section>
 
+  <section id="solo-ramp">
+    <h2><span class="step">06</span> 추가 검증 (오후 세션) — S26/191 각각 단독 램프업, "191 개별 문제" 반증</h2>
+    <p class="lede">목적지는 항상 이 노트북(무선), AP는 세션 시작 시 재부팅 직후 상태에서 출발. 전송률을 단계적으로 올리며 안정성과 label 3 생성력을 비교했다.</p>
+
+    <div class="config-grid">
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 0</div>
+        <div class="cfg-title">S26 · 70Mbps(90초)</div>
+        <div class="cfg-detail">occupancy 100%는 찍혔지만 retry/jitter가 같이 안 터짐 · congestion 최대 0.618</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 0</div>
+        <div class="cfg-title">S26 · 100Mbps(180초)</div>
+        <div class="cfg-detail">retry 최대 25,422까지 튀었지만 occupancy와 타이밍이 안 맞음 · congestion 최대 0.692</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 1</div>
+        <div class="cfg-title">191 · 40Mbps(120초)</div>
+        <div class="cfg-detail">retry 18,840 / occupancy 100% · congestion 0.860</div>
+      </div>
+      <div class="config-card ok highlight">
+        <div class="outcome-tag">완주 · label3 1</div>
+        <div class="cfg-title">191 · 70Mbps(120초)</div>
+        <div class="cfg-detail">retry 13,074 / jitter 412ms · congestion <b>0.911</b>(오늘 최고)</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 1</div>
+        <div class="cfg-title">191 · 100Mbps(180초)</div>
+        <div class="cfg-detail">retry 23,487 / occupancy 100% · congestion 0.846</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 1</div>
+        <div class="cfg-title">191 · 120Mbps(90초)</div>
+        <div class="cfg-detail">occupancy 62%인데도 retry/jitter가 커서 문턱 돌파 · congestion 0.751</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 0</div>
+        <div class="cfg-title">191 · 150Mbps(90초)</div>
+        <div class="cfg-detail">완주했지만 이번엔 occupancy 최대치가 낮게 잡힘(53%대) · congestion 최대 0.706</div>
+      </div>
+    </div>
+    <div class="callout"><span>→</span><span>191이 <b>5단계(40~150Mbps) 연속 크래시 없이 생존</b>했고, 오히려 S26보다 label 3을 훨씬 잘 만들어냈다 — retry_delta 최대치는 두 폰이 비슷한 수준(S26 25,422 vs 191 23,487)이라 "191이 노이즈가 많다"기보다 <b>occupancy 포화와 retry/jitter 폭주가 겹치는 타이밍</b>이 191에서 더 잦았던 것으로 보인다. §01의 4차 가설("191 개별 문제")은 이 결과로 반증에 가깝게 뒤집혔다.</span></div>
+  </section>
+
+  <section id="combo">
+    <h2><span class="step">07</span> 추가 검증 (저녁~밤 세션) — 콤보(다중 station) 부하 스위핑, "60/60이 스위트스팟"</h2>
+    <p class="lede">단독으로는 둘 다 안정적이었으니, 191+S26을 동시에 붙여 다중 station 가설을 직접 재검증했다. 부하 크기를 바꿔가며 label 3 생성 비율과 안정성을 같이 봤다.</p>
+
+    <div class="chart-card">
+      <div class="ceiling-row">
+        <div class="tl-name">191=40M / S26=60M<br><span style="color:var(--ink-mute);font-size:0.74rem">90초</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:0%;background:var(--ink-mute)"></div></div>
+        <div class="ceiling-val">0.0%</div>
+      </div>
+      <div class="ceiling-row">
+        <div class="tl-name" style="font-weight:600">191=60M / S26=60M<br><span style="color:var(--good);font-size:0.74rem">120초 · 스위트스팟</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:98%;background:var(--good)"></div></div>
+        <div class="ceiling-val" style="color:var(--good);font-weight:700">9.8%</div>
+      </div>
+      <div class="ceiling-row">
+        <div class="tl-name">191=80M / S26=80M<br><span style="color:var(--critical);font-size:0.74rem">150초 · SSH 110초 끊김</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:0%;background:var(--critical)"></div></div>
+        <div class="ceiling-val">0.0%</div>
+      </div>
+      <div class="ceiling-row">
+        <div class="tl-name">191=60M / S26=60M<br><span style="color:var(--ink-mute);font-size:0.74rem">600초(1회차)</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:26%"></div></div>
+        <div class="ceiling-val">2.6%</div>
+      </div>
+      <div class="ceiling-row">
+        <div class="tl-name">191=60M / S26=60M<br><span style="color:var(--critical);font-size:0.74rem">600초(2회차) · SSH 156초 끊김</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:42%"></div></div>
+        <div class="ceiling-val">4.2%</div>
+      </div>
+      <div class="ceiling-row">
+        <div class="tl-name">191=80M / S26=60M<br><span style="color:var(--ink-mute);font-size:0.74rem">120초 · 비대칭</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:0%;background:var(--ink-mute)"></div></div>
+        <div class="ceiling-val">0.0%</div>
+      </div>
+      <div class="ceiling-row">
+        <div class="tl-name">191=100M / S26=100M<br><span style="color:var(--ink-mute);font-size:0.74rem">120초 · 3차 시도(정상 동시 시작)</span></div>
+        <div class="ceiling-track"><div class="ceiling-bar" style="width:29%"></div></div>
+        <div class="ceiling-val">2.9%</div>
+      </div>
+    </div>
+    <p class="tl-note" style="margin-top:1rem">막대 = label 3 비율(해당 시나리오 행 수 대비). 100/100의 1·2차 시도는 폰 연결 문제로 무효(§08 참고)라 표에서 제외.</p>
+
+    <div class="callout warn" style="margin-top:1.4rem"><span>→</span><span><b>부하를 올릴수록 좋아지지 않는다</b> — 60/60(2분)이 안정성·label 3 생성력 둘 다에서 최고였고, 80/80으로 올리면 SSH가 최대 110초 끊기면서 label 3도 0개로 떨어졌다. <b>지속시간을 늘리는 것도 역효과</b>다 — 같은 60/60을 10분으로 늘리면 비율이 오히려 2.6~4.2%로 낮아지고 폴링 지연은 최대 156초까지 심해졌다. 짧게(2분) 여러 번 반복하는 쪽이 길게 한 번 도는 것보다 효율적이다.</span></div>
+    <div class="callout" style="margin-top:0.9rem"><span>→</span><span><b>"SSH 완전 끊김 후 자연 복구"</b>라는 중간 심각도 증상을 처음 명확히 관측했다(80/80에서 12.5초 연결 자체 실패, 60/60 10분 2회차에서 156초 지연) — 물리 재부팅이 필요한 완전 크래시와 정상 폴링 사이에 스펙트럼이 있다.</span></div>
+  </section>
+
+  <section id="timing">
+    <h2><span class="step">08</span> 콤보 재현성의 진짜 변수: 부하 크기가 아니라 "동시 시작" 여부</h2>
+    <p class="lede">191=100M/S26=100M을 세 번 시도하면서, 콤보가 무효화되는 원인이 부하 자체가 아니라 폰 쪽 연결 상태였음을 확인했다.</p>
+
+    <div class="config-grid">
+      <div class="config-card bad">
+        <div class="outcome-tag">사실상 단독</div>
+        <div class="cfg-title">1차 시도</div>
+        <div class="cfg-detail">191의 iperf3가 접속 실패("unable to send control message") → S26 혼자만 부하를 걺. 시나리오명을 <code class="mono">s26_100m_test_2</code>로 사후 정정</div>
+      </div>
+      <div class="config-card bad">
+        <div class="outcome-tag">22초만 겹침</div>
+        <div class="cfg-title">2차 시도</div>
+        <div class="cfg-detail">191 와이파이 자체가 불안정(핑 손실 66%)했던 상태로 시작 → 재접속 후에도 두 폰이 실제로 겹친 구간이 22초뿐. label 3 0개</div>
+      </div>
+      <div class="config-card ok highlight">
+        <div class="outcome-tag">깨끗하게 동시 시작</div>
+        <div class="cfg-title">3차 시도</div>
+        <div class="cfg-detail">label 3 1개 확보(jitter 769ms, 역대 최고) · congestion 0.764</div>
+      </div>
+    </div>
+    <div class="callout"><span>→</span><span><b>콤보 실험의 재현성은 부하 크기보다 "두 폰이 실제로 동시에 부하를 걸었는가"에 더 좌우된다.</b> 폰 와이파이가 불안정하거나 시작 타이밍이 몇 분 어긋나면, 콤보를 시도해도 사실상 단독 부하가 되어 label 3이 안 나온다.</span></div>
+  </section>
+
   <section id="next">
-    <h2><span class="step">06</span> 다음 검증 방향</h2>
+    <h2><span class="step">09</span> 다음 검증 방향</h2>
     <ol class="next-steps">
-      <li style="opacity:0.55"><b>~~다른 폰으로 교체해서 재현 여부 확인~~ — 완료</b><span>S26으로 재검증 완료, 재현 안 됨 (§06 참고).</span></li>
-      <li><b>S26으로 전송률을 70~100Mbps까지 단계적으로 올리기</b><span>고부하에서도 안정적인지, label 3(채널 포화 + retry/jitter 동반)을 안전하게 만들 수 있는지 확인 — 다음 세션 최우선.</span></li>
+      <li style="opacity:0.55"><b>~~다른 폰으로 교체해서 재현 여부 확인~~ — 완료</b><span>S26으로 재검증 완료, 40Mbps대에서는 재현 안 됨.</span></li>
+      <li style="opacity:0.55"><b>~~S26/191 단독으로 70~150Mbps까지 단계적으로 올리기~~ — 완료</b><span>둘 다 단독으로는 150Mbps까지 안정적, "191 개별 문제" 반증 (§06).</span></li>
+      <li style="opacity:0.55"><b>~~AP 재부팅 후 콤보를 반복해서 크래시 재현성 확인~~ — 완료</b><span>191=60M/S26=60M(2분 내외)이 스위트스팟임을 확인 (§07~§08).</span></li>
+      <li><b>다음 세션 최우선: 60/60 스위트스팟을 반복해서 label 3 표본을 두 자릿수 중반 이상으로 늘리기</b><span>지금까지 효율이 가장 좋은 조합.</span></li>
+      <li><b>콤보 시작 전 두 폰의 와이파이 상태를 먼저 확인하는 절차 넣기</b><span>접속 실패·타이밍 어긋남으로 실험이 무효화되는 사례가 반복됨 (§08).</span></li>
       <li><b>채널폭 제한(2.4GHz 또는 5GHz 20MHz)과 병행</b><span>낮은 전송률로도 점유율을 쉽게 포화시켜, 송신 부담을 줄이면서 label 3을 노려본다.</span></li>
-      <li><b>여유가 되면 191 폰을 다시 송신자로 세워 직접 재확인</b><span>지금은 S26으로 대체 검증만 한 상태 — "191 폰 특정 문제"인지 직접 확인은 아직 안 함.</span></li>
       <li><b>호중에게 이 분석 공유</b><span>펌웨어 업데이트 여부나 대체 장비 확보 가능성 문의.</span></li>
     </ol>
   </section>
 
   <footer class="page-foot">
-    <span>작성 2026-08-24 새벽 · 2026-08-24 아침 세션(S26 재검증) 반영해 갱신</span>
+    <span>작성 2026-08-24 새벽 · 2026-08-24 밤 세션(콤보 스위핑, 60/60 스위트스팟) 반영해 갱신</span>
     <span>세션별 상세 타임라인: <code>.work-log/current.md</code> · 2차 데이터 라인 전체: <code>project/README_AP_V2.md</code></span>
   </footer>
 
