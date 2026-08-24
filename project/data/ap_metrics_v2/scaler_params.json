@@ -9,7 +9,7 @@
   },
   "latency_ms": {
     "min": 0.0,
-    "max": 903.0
+    "max": 956.0
   },
   "jitter_ms": {
     "min": 0.0,
@@ -17,11 +17,11 @@
   },
   "tx_retries_delta": {
     "min": 0.0,
-    "max": 44559.0
+    "max": 66870.0
   },
   "tx_failed_delta": {
     "min": 0.0,
-    "max": 44607.0
+    "max": 78012.0
   },
   "rssi_dbm": {
     "min": -65.0,
@@ -29,7 +29,7 @@
   },
   "rssi_delta_db": {
     "min": -16.0,
-    "max": 12.0
+    "max": 12.67
   },
   "rssi_moving_avg_dbm": {
     "min": -64.3,

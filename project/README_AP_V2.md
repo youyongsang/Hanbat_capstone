@@ -21,14 +21,14 @@ project/data/ap_metrics_v2/
 
 `metrics_v2.csv`는 `project/scripts/collect_metrics.py <scenario>`로 라이브 수집할 때마다 한 행씩 append되는 누적 파일이다(1차의 `raw/metrics_cleaned_strict.csv`처럼 고정된 스냅샷이 아니다). 새로 수집하거나 congestion_score 가중치를 바꾼 뒤에는 반드시 아래 "데이터 변환" 명령을 다시 돌려서 `ap_metrics_v2/`를 최신 상태로 맞춰야 한다.
 
-라벨 분포(2026-08-24 오후 기준, `metrics_v2.csv` 2110행 → windowed 샘플):
+라벨 분포(2026-08-24 저녁 기준, `metrics_v2.csv` 2287행 → windowed 샘플):
 
 | Label | 의미 | train | val | test |
 |---|---|---:|---:|---:|
-| 0 | 정상 | 354 | 76 | 76 |
-| 1 | 경고 | 554 | 119 | 118 |
-| 2 | 혼잡 | 433 | 93 | 92 |
-| 3 | 심각 | 31 | 7 | 7 |
+| 0 | 정상 | 407 | 87 | 87 |
+| 1 | 경고 | 561 | 120 | 121 |
+| 2 | 혼잡 | 465 | 100 | 99 |
+| 3 | 심각 | 35 | 8 | 7 |
 
 Label 3(심각)이 여전히 얇다. AP 하드웨어가 부하 종류에 따라 반복 크래시하는 문제가 있어 추가 수집이 제한적인 상태다 — 크래시 원인 분석은 `docs/yongsang/ap_crash_analysis.md`(및 아티팩트), 다음 시도 방향은 `.work-log/current.md`를 참고한다.
 
@@ -138,14 +138,14 @@ project/checkpoints/ap_v2/
 python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metrics_v2 --checkpoint project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth --output project\results\yongsang\ap_v2_eval_report.txt
 ```
 
-현재 결과(`power=1.0`, 2026-08-24 오후 기준 2110행 데이터로 재학습):
+현재 결과(`power=1.0`, 2026-08-24 저녁 기준 2287행 데이터로 재학습):
 
 | | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
 |---|---:|---:|---:|---:|---:|
-| Fixed theta | 80.5% | 93.4% | 83.9% | 69.6% | 28.6% |
-| Dynamic theta | 80.5% | 94.7% | 83.9% | 68.5% | 28.6% |
+| Fixed theta | 82.5% | 96.6% | 78.5% | 76.8% | 57.1% |
+| Dynamic theta | 83.1% | 96.6% | 79.3% | 77.8% | 57.1% |
 
-전체 정확도는 이전 세션(67.0%) 대비 크게 개선됐지만, test label 3 표본이 7개로 늘면서 recall은 오히려 낮아졌다(66.7%→28.6%, 7개 중 2개). **숫자 하나하나에 의미를 두지 말고, 표본이 두 자릿수 중반 이상으로 늘 때까지는 추세로만 참고할 것.**
+전체 정확도·label 3 recall 모두 오후 세션(80.5%/28.6%)보다 개선됐다(test label 3 여전히 7개, 4개 정답). **숫자 하나하나에 의미를 두지 말고, 표본이 두 자릿수 중반 이상으로 늘 때까지는 추세로만 참고할 것.**
 
 참고: `project/results/yongsang/ap_v2_mismatched_scaler_diagnostic.txt`는 1차 체크포인트/스케일러로 2차 데이터를 잘못 평가했을 때(정확도 39.3%)의 진단 기록이다. 역사적 자료일 뿐 최종 결과가 아니다.
 
@@ -167,7 +167,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 - **Label 3(심각) 데이터가 얇다** — test 5개뿐이라 recall 40%가 통계적으로 안정적이라 보기 어렵다.
 - **Label 2/3 트레이드오프가 절벽형** — class weight power 중간값 튜닝이 잘 안 먹힌다. label 3 표본이 더 늘어야 완만한 튜닝이 가능할 것으로 보인다.
-- **AP(Opal) 하드웨어 안정성 문제** — 상세 원인 분석은 `docs/yongsang/ap_crash_analysis.md`. 2026-08-24 오후 세션 기준 최신 결론: **"누가 송신하는가"가 아니라 다시 "몇 대가 동시에 붙어있는가"가 핵심 변수 쪽으로 재선회.** S26/191 두 폰 모두 단독으로는 40~150Mbps까지 전 구간 크래시 없이 완주했고(191이 label 3을 더 잘 만들어냄, retry_delta는 두 폰이 비슷한 수준), **191+S26을 동시에 붙였을 때만 크래시**(2회 중 1회, SSH 완전 타임아웃)가 발생했다. "191 폰 개별 하드웨어 문제"라는 이전 결론은 191의 5단계(40/70/100/120/150M) 연속 생존으로 사실상 반증됨. 다만 콤보는 1승 1패라 표본이 매우 적어 확정은 이름 — 재부팅 후 같은 콤보를 반복해 재현성을 확인해야 한다. 자세한 내용은 `.work-log/current.md`.
+- **AP(Opal) 하드웨어 안정성 문제** — 상세 원인 분석은 `docs/yongsang/ap_crash_analysis.md`. 2026-08-24 저녁 세션 기준 최신 결론: **"몇 대가 동시에 붙어있는가"(다중 station)가 핵심 변수.** S26/191 두 폰 모두 단독으로는 40~150Mbps까지 전 구간 크래시 없이 완주했지만, 191+S26을 동시에 붙이면 부하 크기와 무관하게 불안정성이 나타난다. 재부팅 후 콤보 부하를 스위핑한 결과 **191=60M/S26=60M(2분 내외)이 안정성·label 3 생성력 둘 다에서 스위트스팟**이었다 — 그 위(80M/80M)로 올리거나 지속시간을 10분으로 늘리면 완전 크래시는 아니어도 SSH가 최대 110초까지 끊기는 심한 지연이 나타나고 label 3 생성 비율도 오히려 떨어졌다. "191 폰 개별 하드웨어 문제"라는 이전 결론은 191의 다단계(40/70/100/120/150M) 연속 생존으로 반증됨. 자세한 내용은 `.work-log/current.md`와 `docs/yongsang/ap_crash_analysis.md`.
 - **ONNX/INT8/Raspberry Pi 배포 파이프라인 없음** — 1차의 `export_onnx_ap.py`/`export_onnx_int8_ap.py`/`prepare_pi_bundle_ap.py`를 새 경로(`ap_metrics_v2`, `ap_v2`)로 재사용할지, 별도 스크립트를 만들지 아직 미정.
 - **SDN-style / Baseline 비교 없음** — 1차처럼 Baseline LSTM, SDN-style Early Exit과의 비교표가 아직 이 라인에 없다. `train_ap_baseline_lstm.py`, `train_ap_sdn.py`를 `--data-dir project\data\ap_metrics_v2 --checkpoint-dir project\checkpoints\ap_v2`로 재사용 가능한지는 검증 필요.
 - **1차를 새 가중치로 재라벨링할지 미결정** — 팀 논의 필요 항목. 재라벨링하면 1차의 완료된 학습/ONNX/Pi 배포 전체를 다시 돌려야 하므로 신중히 결정한다.

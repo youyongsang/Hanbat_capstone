@@ -1,8 +1,8 @@
 {
   "source": {
     "input_file": "project\\scripts\\metrics_v2.csv",
-    "raw_rows": 2110,
-    "prepared_rows": 2095,
+    "raw_rows": 2287,
+    "prepared_rows": 2268,
     "dropped_first_row_per_scenario": true,
     "stride": 1
   },
@@ -35,7 +35,7 @@
     },
     "latency_ms": {
       "min": 0.0,
-      "max": 903.0
+      "max": 956.0
     },
     "jitter_ms": {
       "min": 0.0,
@@ -43,11 +43,11 @@
     },
     "tx_retries_delta": {
       "min": 0.0,
-      "max": 44559.0
+      "max": 66870.0
     },
     "tx_failed_delta": {
       "min": 0.0,
-      "max": 44607.0
+      "max": 78012.0
     },
     "rssi_dbm": {
       "min": -65.0,
@@ -55,7 +55,7 @@
     },
     "rssi_delta_db": {
       "min": -16.0,
-      "max": 12.0
+      "max": 12.67
     },
     "rssi_moving_avg_dbm": {
       "min": -64.3,
@@ -64,7 +64,7 @@
   },
   "preprocessing": {
     "dropped_first_row_per_scenario": true,
-    "occupancy_outlier_fixes": 147,
+    "occupancy_outlier_fixes": 153,
     "model_excluded_columns": [
       "timestamp",
       "scenario",
@@ -80,35 +80,35 @@
   },
   "splits": {
     "train": {
-      "rows": 13720,
-      "samples": 1372,
-      "shape": "(1372, 10, 9)",
+      "rows": 14680,
+      "samples": 1468,
+      "shape": "(1468, 10, 9)",
       "label_distribution": {
-        "0:정상": 354,
-        "1:경고": 554,
-        "2:혼잡": 433,
-        "3:심각": 31
+        "0:정상": 407,
+        "1:경고": 561,
+        "2:혼잡": 465,
+        "3:심각": 35
       }
     },
     "val": {
-      "rows": 2950,
-      "samples": 295,
-      "shape": "(295, 10, 9)",
+      "rows": 3150,
+      "samples": 315,
+      "shape": "(315, 10, 9)",
       "label_distribution": {
-        "0:정상": 76,
-        "1:경고": 119,
-        "2:혼잡": 93,
-        "3:심각": 7
+        "0:정상": 87,
+        "1:경고": 120,
+        "2:혼잡": 100,
+        "3:심각": 8
       }
     },
     "test": {
-      "rows": 2930,
-      "samples": 293,
-      "shape": "(293, 10, 9)",
+      "rows": 3140,
+      "samples": 314,
+      "shape": "(314, 10, 9)",
       "label_distribution": {
-        "0:정상": 76,
-        "1:경고": 118,
-        "2:혼잡": 92,
+        "0:정상": 87,
+        "1:경고": 121,
+        "2:혼잡": 99,
         "3:심각": 7
       }
     }
