@@ -1,0 +1,4 @@
+timestamp,throughput_mbps,channel_occupancy,packet_loss,latency,label,scenario
+2026-08-05 13:13:26,538.0,46.67,0,0.888,-1,test1
+2026-08-05 13:15:17,431.0,40.0,0,0.901,-1,test2
+2026-08-05 13:15:57,564.0,40.0,0,0.891,-1,test3

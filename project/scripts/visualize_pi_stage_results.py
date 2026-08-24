@@ -155,27 +155,16 @@ def plot_accuracy_latency(df: pd.DataFrame) -> Path:
             fontweight="bold",
         )
 
-    for pair in ([0, 1], [2, 3]):
-        ax2.errorbar(
-            x[pair],
-            latency[pair],
-            yerr=latency_std[pair],
-            color="#111827",
-            marker="D",
-            markersize=7,
-            linewidth=2.2,
-            capsize=4,
-        )
-        improvement = (latency[pair[0]] - latency[pair[1]]) / latency[pair[0]] * 100
-        ax2.annotate(
-            f"{improvement:.1f}% faster",
-            xy=((x[pair[0]] + x[pair[1]]) / 2, min(latency[pair]) - 0.12),
-            ha="center",
-            va="top",
-            fontsize=9,
-            color="#111827",
-            fontweight="bold",
-        )
+    ax2.errorbar(
+        x,
+        latency,
+        yerr=latency_std,
+        color="#111827",
+        marker="D",
+        markersize=7,
+        linewidth=2.2,
+        capsize=4,
+    )
     for xi, value in zip(x, latency):
         ax2.text(xi + 0.08, value, f"{value:.4f}ms", ha="left", va="center", fontsize=9)
 
@@ -191,13 +180,7 @@ def plot_accuracy_latency(df: pd.DataFrame) -> Path:
     ax2.spines[["top"]].set_visible(False)
 
     fig.suptitle("Raspberry Pi Staged ONNX: Accuracy and Latency", fontsize=15, fontweight="bold", y=0.98)
-    fig.text(
-        0.5,
-        0.02,
-        "Bar: accuracy, paired line: FP32 to INT8 latency change within each theta mode.",
-        ha="center",
-        fontsize=9,
-    )
+    fig.text(0.5, 0.02, "Bar: accuracy, line: average inference time with sample-level std.", ha="center", fontsize=9)
     fig.tight_layout(rect=(0, 0.04, 1, 0.96))
 
     out = OUTPUT_DIR / "pi_stage_accuracy_latency.png"
@@ -226,17 +209,6 @@ def plot_exit_distribution(df: pd.DataFrame) -> Path:
                     va="center",
                     fontsize=9,
                     color="white",
-                    fontweight="bold",
-                )
-            elif value > 0:
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    base + value + 1.0,
-                    f"{value:.1f}%",
-                    ha="center",
-                    va="bottom",
-                    fontsize=8,
-                    color="#1F2937",
                     fontweight="bold",
                 )
         bottom += values[:, idx]

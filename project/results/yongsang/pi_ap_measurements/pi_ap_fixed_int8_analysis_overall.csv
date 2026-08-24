@@ -1,2 +1,0 @@
-samples,accuracy,avg_inference_ms,min_inference_ms,max_inference_ms,p50_inference_ms,p95_inference_ms,avg_confidence,avg_sample_std_ms,measurement_repeats
-82,0.9146,1.470089,0.515722,3.370836,1.730986,2.020222,0.774453,0.272842,5

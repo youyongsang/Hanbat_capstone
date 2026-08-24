@@ -1,5 +1,0 @@
-﻿model,paper_basis,threshold_policy,test_accuracy,label2_accuracy,label3_accuracy,exit1_rate,exit2_rate,exit3_rate,pc_measured_ms_per_sample,simulated_layer_time_ms,interpretation
-Baseline LSTM Full,standard full-depth LSTM baseline,none; always runs all 3 LSTM layers,92.7%,77.3%,100.0%,0.0%,0.0%,100.0%,0.0667,8.000,accuracy upper-bound baseline; no early stopping
-SDN-style Early Exit (trained),"SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55)",max softmax confidence >= 0.85,91.5%,72.7%,100.0%,12.2%,30.5%,57.3%,0.4956,6.049,paper-policy baseline trained independently on AP 9-feature data; confidence-only exit
-Proposed Early Exit Fixed theta,our AP Early Exit LSTM ablation,fixed entropy theta,91.5%,77.3%,93.3%,15.9%,32.9%,51.2%,0.5143,5.732,proposed model without dynamic threshold
-Proposed Early Exit Dynamic theta,our variant on early-exit LSTM,dynamic theta adjusted by recent traffic variation,91.5%,77.3%,93.3%,37.8%,39.0%,23.2%,0.4251,4.171,proposed method; more Exit 1/2 decisions than fixed theta

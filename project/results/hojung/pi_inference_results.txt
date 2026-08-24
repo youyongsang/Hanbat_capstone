@@ -1,0 +1,15 @@
+Raspberry Pi ONNX inference summary
+model: /home/capstone/raspberry_pi/early_exit_fixed.onnx
+data: /home/capstone/raspberry_pi/test.csv
+sample_count: 100
+avg_inference_ms: 1.454013
+min_inference_ms: 1.400672
+max_inference_ms: 1.525911
+p50_inference_ms: 1.444236
+p95_inference_ms: 1.504490
+exit1_count: 45
+exit1_rate: 0.450000
+exit2_count: 39
+exit2_rate: 0.390000
+exit3_count: 16
+exit3_rate: 0.160000

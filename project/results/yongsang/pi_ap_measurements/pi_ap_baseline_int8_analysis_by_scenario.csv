@@ -1,6 +1,0 @@
-scenario,samples,accuracy,avg_inference_ms,p95_inference_ms,exit1_rate,exit2_rate,exit3_rate
-high_load,17,1.0,1.135158,1.15331,0.0,0.0,1.0
-low_load,18,1.0,1.131198,1.142616,0.0,0.0,1.0
-medium_load,13,0.8462,1.131341,1.138745,0.0,0.0,1.0
-normal_idle,15,1.0,1.134114,1.160569,0.0,0.0,1.0
-stress_load,19,0.7895,1.129803,1.138043,0.0,0.0,1.0

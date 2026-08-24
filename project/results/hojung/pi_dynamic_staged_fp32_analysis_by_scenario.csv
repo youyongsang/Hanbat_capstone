@@ -1,0 +1,5 @@
+scenario,samples,accuracy,avg_inference_ms,p95_inference_ms,exit1_rate,exit2_rate,exit3_rate
+emergency_ramp,83,0.9518,2.070102,3.326531,0.0482,0.8795,0.0723
+imbalanced_ap_load,80,0.975,1.966394,3.287114,0.0375,0.925,0.0375
+lunch_restart,84,0.9881,1.959569,3.293941,0.1071,0.8214,0.0714
+startup_surge,104,0.9808,1.965564,3.27642,0.0192,0.9231,0.0577
