@@ -16,7 +16,7 @@ IS_WINDOWS = platform.system() == "Windows"
 # ============================================================
 
 AP_IP = "192.168.8.1"
-SERVER_IP = "192.168.8.191"
+SERVER_IP = "192.168.8.103"
 INTERFACE = "wlan0"
 
 CSV_FILE = "metrics_v2.csv"
