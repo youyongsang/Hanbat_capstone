@@ -1,23 +1,23 @@
 AP Metrics Dataset Conversion Report
 Input: project\scripts\metrics_v2.csv
-Raw rows: 3766
-Prepared rows before windowing: 3736
+Raw rows: 3981
+Prepared rows before windowing: 3946
 Window size: 10
 Feature count: 9
-Occupancy outlier fixes: 200
+Occupancy outlier fixes: 221
 
-[train] 2426 samples / 24260 rows
-  0:정상: 1224
-  1:경고: 588
-  2:혼잡: 573
-  3:심각: 41
-[val] 520 samples / 5200 rows
-  0:정상: 262
-  1:경고: 126
-  2:혼잡: 123
-  3:심각: 9
-[test] 521 samples / 5210 rows
-  0:정상: 263
-  1:경고: 126
-  2:혼잡: 123
-  3:심각: 9
+[train] 2543 samples / 25430 rows
+  0:정상: 1260
+  1:경고: 608
+  2:혼잡: 626
+  3:심각: 49
+[val] 544 samples / 5440 rows
+  0:정상: 270
+  1:경고: 130
+  2:혼잡: 134
+  3:심각: 10
+[test] 547 samples / 5470 rows
+  0:정상: 270
+  1:경고: 131
+  2:혼잡: 135
+  3:심각: 11

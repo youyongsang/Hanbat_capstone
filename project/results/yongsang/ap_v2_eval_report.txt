@@ -3,87 +3,91 @@ Data Directory: project\data\ap_metrics_v2
 Checkpoint: project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth
 
 === AP Early Exit + fixed theta ===
-Test Accuracy: 89.6%
+Test Accuracy: 87.2%
 Exit별 성능:
-  Exit 1 | Accuracy: 99.3% | Exit Rate: 28.0% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 98.1% | Exit Rate: 29.6% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 77.4% | Exit Rate: 42.4% | Avg Time: 8.0ms
-Overall Avg Inference Time: 5.136ms
-Measured Wall Time: 0.884ms
+  Exit 1 | Accuracy: 99.5% | Exit Rate: 38.8% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 92.1% | Exit Rate: 23.0% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 71.8% | Exit Rate: 38.2% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.753ms
+Measured Wall Time: 0.881ms
 Label별 정확도:
-  Label 0 (정상): 99.2%
-  Label 1 (경고): 87.3%
-  Label 2 (혼잡): 75.6%
-  Label 3 (심각): 33.3%
+  Label 0 (정상): 97.8%
+  Label 1 (경고): 77.1%
+  Label 2 (혼잡): 78.5%
+  Label 3 (심각): 54.5%
 시나리오별 정확도:
-  combo_s21_100m_s26_100m_v2: 100.0%
+  combo_s21_100m_s26_100m_v2: 85.7%
   combo_s21_100m_s26_100m_v3: 100.0%
-  combo_s21_40m_s26_60m: 50.0%
+  combo_s21_40m_s26_60m: 0.0%
   combo_s21_60m_s26_100m: 100.0%
-  combo_s21_60m_s26_60m: 87.5%
-  combo_s21_60m_s26_60m_7min: 99.0%
-  combo_s21_60m_s26_60m_long: 60.0%
-  combo_s21_60m_s26_60m_rep2: 70.0%
-  combo_s21_60m_s26_60m_rep3: 100.0%
-  combo_s21_60m_s26_60m_rep4: 75.0%
-  combo_s21_60m_s26_60m_rep5: 98.6%
+  combo_s21_60m_s26_60m: 83.3%
+  combo_s21_60m_s26_60m_7min: 96.4%
+  combo_s21_60m_s26_60m_long: 100.0%
+  combo_s21_60m_s26_60m_rep2: 80.0%
+  combo_s21_60m_s26_60m_rep3: 50.0%
+  combo_s21_60m_s26_60m_rep4: 100.0%
+  combo_s21_60m_s26_60m_rep5: 97.2%
+  combo_s21_60m_s26_60m_rep6: 66.7%
+  combo_s21_60m_s26_60m_rep8: 40.0%
+  combo_s21_60m_s26_60m_rep9: 71.4%
   combo_s21_70m_s26_100m: 100.0%
-  combo_s21_80m_s26_80m: 50.0%
+  combo_s21_80m_s26_80m: 100.0%
   combo_s21_80m_s26_80m_rep2: 100.0%
-  high_load: 91.2%
+  high_load: 81.1%
   low_load: 100.0%
-  medium_load: 84.0%
-  normal_idle: 95.0%
+  medium_load: 80.0%
+  normal_idle: 95.2%
   s21_100m_test: 100.0%
-  s21_120m_test: 100.0%
-  s21_150m_test: 80.0%
-  s21_40m_test: 66.7%
-  s21_70m_test: 0.0%
-  s26_100m_test: 83.3%
+  s21_120m_test: 66.7%
+  s21_150m_test: 60.0%
+  s21_40m_test: 100.0%
+  s26_100m_test: 100.0%
   s26_100m_test_2: 100.0%
-  s26_70m_test: 92.3%
-  s26_sender_test: 93.5%
-  stress_load: 77.1%
+  s26_70m_test: 100.0%
+  s26_sender_test: 89.7%
+  stress_load: 74.3%
 
 === AP Early Exit + dynamic theta ===
-Test Accuracy: 89.6%
+Test Accuracy: 87.4%
 Exit별 성능:
-  Exit 1 | Accuracy: 98.9% | Exit Rate: 34.9% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 91.6% | Exit Rate: 32.1% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 77.9% | Exit Rate: 33.0% | Avg Time: 8.0ms
-Overall Avg Inference Time: 4.622ms
-Measured Wall Time: 0.976ms
+  Exit 1 | Accuracy: 99.6% | Exit Rate: 41.1% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 84.7% | Exit Rate: 32.2% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 71.9% | Exit Rate: 26.7% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.245ms
+Measured Wall Time: 0.861ms
 Label별 정확도:
-  Label 0 (정상): 99.2%
-  Label 1 (경고): 87.3%
-  Label 2 (혼잡): 75.6%
-  Label 3 (심각): 33.3%
+  Label 0 (정상): 97.8%
+  Label 1 (경고): 76.3%
+  Label 2 (혼잡): 80.0%
+  Label 3 (심각): 54.5%
 시나리오별 정확도:
-  combo_s21_100m_s26_100m_v2: 100.0%
+  combo_s21_100m_s26_100m_v2: 85.7%
   combo_s21_100m_s26_100m_v3: 100.0%
-  combo_s21_40m_s26_60m: 50.0%
+  combo_s21_40m_s26_60m: 0.0%
   combo_s21_60m_s26_100m: 100.0%
-  combo_s21_60m_s26_60m: 87.5%
-  combo_s21_60m_s26_60m_7min: 99.0%
-  combo_s21_60m_s26_60m_long: 60.0%
-  combo_s21_60m_s26_60m_rep2: 70.0%
-  combo_s21_60m_s26_60m_rep3: 100.0%
-  combo_s21_60m_s26_60m_rep4: 75.0%
+  combo_s21_60m_s26_60m: 83.3%
+  combo_s21_60m_s26_60m_7min: 96.4%
+  combo_s21_60m_s26_60m_long: 100.0%
+  combo_s21_60m_s26_60m_rep2: 80.0%
+  combo_s21_60m_s26_60m_rep3: 50.0%
+  combo_s21_60m_s26_60m_rep4: 100.0%
   combo_s21_60m_s26_60m_rep5: 98.6%
+  combo_s21_60m_s26_60m_rep6: 77.8%
+  combo_s21_60m_s26_60m_rep8: 60.0%
+  combo_s21_60m_s26_60m_rep9: 71.4%
   combo_s21_70m_s26_100m: 100.0%
-  combo_s21_80m_s26_80m: 50.0%
+  combo_s21_80m_s26_80m: 100.0%
   combo_s21_80m_s26_80m_rep2: 100.0%
-  high_load: 91.2%
+  high_load: 81.1%
   low_load: 100.0%
-  medium_load: 84.0%
-  normal_idle: 95.0%
+  medium_load: 76.7%
+  normal_idle: 90.5%
   s21_100m_test: 100.0%
-  s21_120m_test: 100.0%
-  s21_150m_test: 80.0%
-  s21_40m_test: 66.7%
-  s21_70m_test: 0.0%
-  s26_100m_test: 83.3%
+  s21_120m_test: 66.7%
+  s21_150m_test: 60.0%
+  s21_40m_test: 100.0%
+  s26_100m_test: 100.0%
   s26_100m_test_2: 100.0%
-  s26_70m_test: 92.3%
-  s26_sender_test: 93.5%
-  stress_load: 77.1%
+  s26_70m_test: 100.0%
+  s26_sender_test: 89.7%
+  stress_load: 74.3%
