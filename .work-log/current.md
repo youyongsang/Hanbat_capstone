@@ -1,5 +1,41 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-27 심야 (yongsang 세션 — 재설계 스키마로 다중 시나리오 데이터 1390행 수집, latency RTT/2 + failure=max 수정)
+최종 업데이트: 2026-08-27 심야 (yongsang 세션 — 재설계 스키마 데이터 1614행 → 재학습 완료, label 3 recall 76%, LSTM이 occupancy 문턱 F1 능가)
+
+## 완료 (2026-08-27 심야 — 재설계 스키마 재학습 + occupancy 문턱 비교)
+
+### 파이프라인 완주: 수집 → remeasure → 변환 → 학습 → 평가
+- **신규 `project/scripts/remeasure_redesign.py`**: `metrics_v2_pi_redesign.csv` 전체를 현재 `calculate_scores`(RTT/2 + failure=max)로 재계산. failure=max 게이트(`probe_ever_ok` per-scenario + `channel_active`)도 replay. `--drop load_45`로 dud 제외.
+- `metrics_v2_pi_redesign_relabeled.csv` **1614행** {0:837, 1:184, 2:335, 3:258}. (load_25b 139행 추가 수집됨, load_20 크래시 후 재개해서 총 8시나리오)
+- `project/data/ap_metrics_v2_redesign/` (6 feature, window 10): train 1067 / val 229 / **test 228 (label 3 = 38창)**. 스케일러 자체.
+- `project/checkpoints/ap_v2_redesign/` — `--class-weight-power 1.0`, best val balanced acc 82.6%.
+- `project/results/yongsang/ap_v2_redesign_eval_report.txt`, `ap_v2_redesign_threshold_comparison.txt`.
+
+### 평가 결과 — 역대 최고이자 가장 안정적
+- **fixed θ: test 85.5%** | Label0 95.5% / Label1 70.4% / Label2 78.4% / **Label3 76.3%**
+- dynamic θ: 84.6%, Label3 81.6%(label2 70.6%로)
+- **class collapse 없음** — 4클래스 다 70~95%. 역대 label 3 recall이 0/12.5/40/54.5%로 8~11창에서 요동쳤는데, 이번엔 38창에서 76%.
+
+### 핵심: 심각(label 3) 탐지 — LSTM vs occupancy 단일 문턱
+
+| 방법 | recall | precision | F1 |
+|---|---:|---:|---:|
+| **LSTM** | 76.3% | **85.3%** | **80.6%** |
+| occ ≥ 65% | 81.6% | 56.4% | 66.7% |
+| occ ≥ 70% | 78.9% | 71.4% | 75.0% |
+| occ ≥ 75% | 60.5% | 100% | 75.4% |
+| occ ≥ 80% | 55.3% | 100% | 71.2% |
+
+- occupancy 문턱은 트레이드오프에 갇힘: 낮추면 recall↑ FP↑(label 2를 심각이라 함), 높이면 FP 0이지만 심각의 40~45% 놓침. **LSTM은 recall 76% + precision 85% 동시** — retry/RSSI/throughput/추세로 "occ 70% + victim 정상"과 "occ 70% + victim 붕괴"를 구분.
+- **참 label 3 & occ<75% (15창, occupancy 문턱이 원리상 못 잡음)**: LSTM 6/15 정탐(대부분 occ 73% 경계), 9창은 label 1~2로 과소, **정상이라 한 건 0건**. occ≥75 문턱은 0/15.
+
+### 남은 것 / 한계
+- occ 47~67%의 진짜 어려운 심각 케이스는 LSTM도 label 2로 과소평가 — 이 구간 데이터가 얇음(load_15c/20에서 소수)
+- label 1 recall 70% — 정상/경고 경계 약함
+- test에 "label 0/1 & 고occupancy" 창이 없어 "오탐 0"은 데이터 한계
+- AP 크래시로 수집 중단됨 — 데이터 더 쌓으면(특히 occ 50~70% 심각) 개선 여지. 45M은 폐기, 15M/240s·25M/180s·35M/120s가 안전 상한
+- ONNX export (데모 전제) 아직
+
+
 
 ## 완료된 작업 (2026-08-27 심야 — 재설계 스키마 본격 수집)
 
