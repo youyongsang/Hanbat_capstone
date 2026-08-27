@@ -35,20 +35,47 @@ MOVING_AVG_WINDOW = 5
 # 필요하면 실제 데이터 확인 후 이 값만 조정하면 된다.
 # ============================================================
 
+# ============================================================
+# 혼잡 라벨 재설계 (2026-08-27, docs/yongsang/congestion_label_redesign.md)
+#
+# 각 축을 외부 표준 문턱에 매핑(4 앵커: 경고→0.25 / 혼잡→0.5 /
+# 심각→0.75 / 완전→1.0, piecewise-linear, [0,1] clamp).
+# congestion_score = max(5개 축). "label 3 = 최소 한 축이 표준
+# 심각 문턱 돌파". 가중치 없음.
+#
+# jitter/loss는 victim 프로브(파이가 쏘는 경량 UDP 스트림)의 실측,
+# latency는 ping RTT. 모델 입력에서는 이 세 개를 뺀다(배포 시 없음).
+# ============================================================
+
+# (축, 경고, 혼잡, 심각, 완전) — 단위는 각 축 주석 참고
+ANCHORS = {
+    # channel airtime %  — Cisco/Aruba WLAN 설계 가이드 (>50% 경고, >75% 혼잡)
+    "occupancy": (40.0, 55.0, 75.0, 90.0),
+    # probe IPDV ms      — ITU-T Y.1541 Class 0/1 (≤50ms), RFC 4594 (~30ms)
+    "jitter": (20.0, 30.0, 50.0, 100.0),
+    # probe loss %       — Cisco Enterprise QoS (voice <1%, >5% 불가), ITU-T G.113
+    "loss": (0.5, 1.0, 5.0, 10.0),
+    # ping RTT ms        — ITU-T G.114 기반. 파이 홉 때문에 idle 70~125ms라 앵커 후하게.
+    #                      수집 토폴로지 바뀌면 재보정할 것.
+    "latency": (150.0, 250.0, 400.0, 700.0),
+    # retry ratio %      — WLAN 헬스 (Cisco/Ekahau/7signal: <10% 정상, >20% 불량)
+    "retry": (10.0, 15.0, 25.0, 40.0),
+}
+
+# throughput_score는 라벨 max에서 제외(label 2/3 변별력 없음).
+# CSV에 정보용으로만 남기며 이 상한으로 0~1 스케일.
 THROUGHPUT_MAX_MBPS = 150.0
-# 2026-08-22 실측(636행) 분포 기준 재보정: 이전 값(100 / 1.0)은
-# 시뮬레이터 데이터 기준이라 실제 AP 실측 retry/jitter 스케일과
-# 안 맞아서 거의 항상 1.0으로 clamp되고, 그 결과 label 2(혼잡)로
-# 66%가 쏠리는 문제가 있었다. p90 근처 값으로 다시 잡았다.
-# 2026-08-27: tx_retries/tx_failed는 "지난 폴링 이후 델타"라 폴링
-# 주기에 그대로 비례했다(4초 폴링 delta ≈ 1초 폴링 delta × 4).
-# 파이 유선 수집으로 폴링을 ~1초로 당기면서 retry 신호가 1/4로
-# 눌려 label 2/3가 안 나오는 문제가 드러남. → 초당 재전송률
-# (delta / poll_interval_s)로 정규화하고 상한도 "초당" 기준으로 바꿈.
-# 6250 = 기존 RETRY_FAILED_MAX(25000) / 기존 폴링 간격(~4초).
-# 새 데이터가 쌓이면 재보정할 것.
-RETRY_FAILED_MAX_PER_SEC = 6250.0
-JITTER_MAX_MS = 300.0
+
+# ============================================================
+# victim 프로브 (파이가 노트북에 쏘는 경량 UDP 스트림)
+# ============================================================
+
+PROBE_TARGET = "192.168.8.226"   # 노트북(무선). 파이→AP(유선)→노트북(무선 downlink)
+PROBE_PORT = 5203
+PROBE_RATE = "300k"
+PROBE_LEN = 200                  # bytes. 300k/200B ≈ 187pps ≈ VoIP급
+PROBE_TEST_S = 2                 # 짧은 테스트를 백그라운드 스레드가 연속 실행
+PROBE_STALE_S = 12              # 결과가 이보다 오래되면 축을 못 쓰는 것으로 간주
 
 # ============================================================
 # SSH
@@ -74,24 +101,29 @@ SSH_CMD = [
 
 CSV_COLUMNS = [
     "timestamp",
+    "scenario",
+    "poll_interval_s",
     "throughput_mbps",
     "channel_occupancy_percent",
     "channel_occupancy_method",
-    "latency_ms",
-    "jitter_ms",
-    "packet_loss_udp_percent",
-    "poll_interval_s",
-    "tx_retries_per_s",
-    "tx_failed_per_s",
+    "latency_ms",                # ping RTT avg (latency 축)
+    "probe_jitter_ms",           # victim 프로브 (jitter 축)
+    "probe_loss_pct",            # victim 프로브 (loss 축)
+    "probe_ok",                  # 프로브 결과가 신선한가 (1/0)
+    "packet_loss_udp_percent",   # 부하 iperf3 (레거시, 모델 제외)
+    "tx_retx_delta",             # tx retries + tx failed (지난 폴링 이후)
+    "tx_packets_delta",          # 지난 폴링 이후 성공 전송 프레임
+    "tx_retry_ratio",            # retx / (retx + packets)  (retry 축 + 모델 입력)
     "rssi_dbm",
     "connected_clients",
     "rssi_delta_db",
     "rssi_moving_avg_dbm",
-    "scenario",
-    "throughput_score",
+    "throughput_score",          # 정보용 (라벨 max에서 제외)
     "occupancy_score",
-    "retry_failed_score",
     "jitter_score",
+    "loss_score",
+    "latency_score",
+    "retry_score",
     "congestion_score",
     "label",
 ]
@@ -233,6 +265,95 @@ class APPoller:
                 pass
 
 
+class ProbeRunner:
+    """victim 프로브: 노트북에 경량 UDP 스트림을 짧게, 연속으로 쏘고
+    각 테스트의 서버 측정 jitter/loss를 캐시한다(APPoller와 같은 패턴).
+
+    한 번의 폴링과 결합하지 않고 독립 스레드로 돌아서, 메인 루프는
+    그냥 최신 캐시(get())를 읽는다. iperf3 3.x 어느 버전에서든 동작하도록
+    지속 스트림 파싱 대신 짧은 -t 테스트를 반복한다.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._latest = None  # (jitter_ms, loss_pct, wall_ts)
+        self._stopping = False
+        self._proc = None
+        self.runs = 0
+        self.failures = 0
+
+        self._thread = threading.Thread(
+            target=self._run, daemon=True
+        )
+        self._thread.start()
+
+    def _run(self):
+        cmd = [
+            "iperf3", "-u",
+            "-c", PROBE_TARGET,
+            "-p", str(PROBE_PORT),
+            "-b", PROBE_RATE,
+            "-l", str(PROBE_LEN),
+            "-t", str(PROBE_TEST_S),
+            "-J",
+        ]
+
+        while not self._stopping:
+            self.runs += 1
+            jitter = None
+            loss = None
+
+            try:
+                self._proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                )
+                out, _ = self._proc.communicate(
+                    timeout=PROBE_TEST_S + 6
+                )
+                data = json.loads(out)
+                summary = data.get("end", {}).get("sum", {})
+                if "jitter_ms" in summary:
+                    jitter = round(float(summary["jitter_ms"]), 3)
+                if "lost_percent" in summary:
+                    loss = round(float(summary["lost_percent"]), 3)
+            except Exception:
+                self.failures += 1
+                try:
+                    if self._proc is not None:
+                        self._proc.kill()
+                except Exception:
+                    pass
+
+            if jitter is not None or loss is not None:
+                with self._lock:
+                    self._latest = (jitter, loss, time.time())
+            else:
+                time.sleep(2)
+
+    def get(self):
+        """(jitter_ms, loss_pct, fresh) — fresh=False면 결과가 stale."""
+        with self._lock:
+            latest = self._latest
+
+        if latest is None:
+            return None, None, False
+
+        jitter, loss, wall_ts = latest
+        fresh = (time.time() - wall_ts) <= PROBE_STALE_S
+        return jitter, loss, fresh
+
+    def stop(self):
+        self._stopping = True
+        if self._proc is not None:
+            try:
+                self._proc.terminate()
+            except Exception:
+                pass
+
+
 def parse_ap_cycle(text):
     station_marker = APPoller.STATION_BEGIN
     survey_marker = APPoller.SURVEY_BEGIN
@@ -289,6 +410,7 @@ def parse_station_info(output):
                 "tx_bytes": 0,
                 "tx_retries": 0,
                 "tx_failed": 0,
+                "tx_packets": 0,
                 "signal_avg": None,
                 "tx_bitrate": 0.0,
                 "rx_bitrate": 0.0,
@@ -325,6 +447,14 @@ def parse_station_info(output):
         elif line.startswith("tx failed:"):
             try:
                 current["tx_failed"] = int(
+                    line.split(":", 1)[1].strip()
+                )
+            except ValueError:
+                pass
+
+        elif line.startswith("tx packets:"):
+            try:
+                current["tx_packets"] = int(
                     line.split(":", 1)[1].strip()
                 )
             except ValueError:
@@ -664,9 +794,10 @@ def calculate_station_deltas(
     tx_delta = 0
     retries_delta = 0
     failed_delta = 0
+    packets_delta = 0
 
     if not previous_stations:
-        return rx_delta, tx_delta, retries_delta, failed_delta
+        return rx_delta, tx_delta, retries_delta, failed_delta, packets_delta
 
     for mac, current in current_stations.items():
         previous = previous_stations.get(mac)
@@ -690,8 +821,12 @@ def calculate_station_deltas(
             0,
             current["tx_failed"] - previous["tx_failed"],
         )
+        packets_delta += max(
+            0,
+            current["tx_packets"] - previous["tx_packets"],
+        )
 
-    return rx_delta, tx_delta, retries_delta, failed_delta
+    return rx_delta, tx_delta, retries_delta, failed_delta, packets_delta
 
 
 # ============================================================
@@ -702,50 +837,64 @@ def clamp01(value):
     return max(0.0, min(1.0, value))
 
 
+def anchor_score(value, anchors):
+    """(경고, 혼잡, 심각, 완전) 4앵커에 piecewise-linear 매핑
+    → 0 / 0.25 / 0.5 / 0.75 / 1.0. [0,1] clamp.
+    value가 None이면 이 축을 못 쓰는 것 → 0.0 (max에 기여 안 함)."""
+    if value is None:
+        return 0.0
+
+    a_warn, a_cong, a_sev, a_full = anchors
+    knots = [
+        (0.0, 0.0),
+        (a_warn, 0.25),
+        (a_cong, 0.5),
+        (a_sev, 0.75),
+        (a_full, 1.0),
+    ]
+
+    if value <= knots[0][0]:
+        return 0.0
+    if value >= knots[-1][0]:
+        return 1.0
+
+    for (x0, y0), (x1, y1) in zip(knots, knots[1:]):
+        if value <= x1:
+            if x1 == x0:
+                return y1
+            return clamp01(
+                y0 + (y1 - y0) * (value - x0) / (x1 - x0)
+            )
+
+    return 1.0
+
+
 def calculate_scores(
     throughput,
     occupancy,
-    tx_retries_per_s,
-    tx_failed_per_s,
-    jitter,
+    latency_ms,
+    probe_jitter_ms,
+    probe_loss_pct,
+    retry_ratio_pct,
 ):
-    # 부하가 높을수록 혼잡도가 높아진다는 실험 목적의 점수.
-    throughput_score = clamp01(
-        throughput / THROUGHPUT_MAX_MBPS
-    )
+    """혼잡 라벨 재설계(2026-08-27): 각 축을 표준 문턱에 매핑한 뒤
+    congestion_score = max(5개 축). throughput은 정보용으로만 계산."""
+    throughput_score = clamp01(throughput / THROUGHPUT_MAX_MBPS)
 
-    occupancy_score = clamp01(
-        occupancy / 100.0
-    )
-
-    # 초당 재전송률 기준(폴링 주기 무관). throughput처럼 시간 정규화됨.
-    retry_failed_score = clamp01(
-        (
-            tx_retries_per_s
-            + tx_failed_per_s
-        )
-        / RETRY_FAILED_MAX_PER_SEC
-    )
-
-    jitter_score = clamp01(
-        jitter / JITTER_MAX_MS
-    )
-
-    # 2026-08-23 저녁 재보정: 기존 가중치(0.35/0.35/0.20/0.10)는
-    # throughput_score가 label 2와 3 사이를 거의 구분하지 못했다
-    # (실측 stress_load 평균: label2 0.665 vs label3 0.707 - 차이 미미).
-    # 반면 occupancy_score(0.449 -> 0.898)와 jitter_score(0.512 -> 0.802)는
-    # label 2/3 사이에 뚜렷한 차이를 보였다. throughput 비중을 낮추고
-    # occupancy/jitter 비중을 높여 실제 변별력에 맞게 재조정했다.
-    congestion_score = (
-        0.20 * throughput_score
-        + 0.45 * occupancy_score
-        + 0.20 * retry_failed_score
-        + 0.15 * jitter_score
-    )
+    occupancy_score = anchor_score(occupancy, ANCHORS["occupancy"])
+    jitter_score = anchor_score(probe_jitter_ms, ANCHORS["jitter"])
+    loss_score = anchor_score(probe_loss_pct, ANCHORS["loss"])
+    latency_score = anchor_score(latency_ms, ANCHORS["latency"])
+    retry_score = anchor_score(retry_ratio_pct, ANCHORS["retry"])
 
     congestion_score = round(
-        clamp01(congestion_score),
+        max(
+            occupancy_score,
+            jitter_score,
+            loss_score,
+            latency_score,
+            retry_score,
+        ),
         4,
     )
 
@@ -761,8 +910,10 @@ def calculate_scores(
     return (
         round(throughput_score, 4),
         round(occupancy_score, 4),
-        round(retry_failed_score, 4),
         round(jitter_score, 4),
+        round(loss_score, 4),
+        round(latency_score, 4),
+        round(retry_score, 4),
         congestion_score,
         label,
     )
@@ -874,6 +1025,7 @@ def main():
     sample = 0
 
     poller = APPoller()
+    probe = ProbeRunner()
     last_cycle_id = None
 
     try:
@@ -993,6 +1145,7 @@ def main():
                 tx_delta,
                 tx_retries_delta,
                 tx_failed_delta,
+                tx_packets_delta,
             ) = calculate_station_deltas(
                 previous_stations,
                 station,
@@ -1006,6 +1159,7 @@ def main():
 
             if elapsed_since_previous <= 0:
                 throughput = 0.0
+                poll_interval_s = 0.0
             else:
                 throughput = round(
                     (rx_delta + tx_delta)
@@ -1014,31 +1168,32 @@ def main():
                     / 1_000_000,
                     2,
                 )
+                poll_interval_s = round(elapsed_since_previous, 3)
 
             # ------------------------------------------------
-            # 6. Retry / Failed 를 "초당" 으로 정규화
-            #    (delta는 calculate_station_deltas에서 이미 계산됨).
-            #    폴링 주기가 바뀌어도 값이 안 흔들리게 elapsed로 나눔.
+            # 6. Retry ratio (재설계: 절대 개수 -> 비율)
+            #    retry_ratio = (retries + failed) / (retries + failed + packets)
+            #    폴링 주기 무관. WLAN 헬스 표준 문턱(10/15/25/40%)에 매핑.
             # ------------------------------------------------
 
-            if elapsed_since_previous and elapsed_since_previous > 0:
-                poll_interval_s = round(
-                    elapsed_since_previous, 3
-                )
-                tx_retries_per_s = round(
-                    tx_retries_delta
-                    / elapsed_since_previous,
-                    2,
-                )
-                tx_failed_per_s = round(
-                    tx_failed_delta
-                    / elapsed_since_previous,
-                    2,
+            tx_retx_delta = tx_retries_delta + tx_failed_delta
+            retry_denom = tx_retx_delta + tx_packets_delta
+
+            if retry_denom > 0:
+                tx_retry_ratio = round(
+                    tx_retx_delta / retry_denom, 4
                 )
             else:
-                poll_interval_s = 0.0
-                tx_retries_per_s = 0.0
-                tx_failed_per_s = 0.0
+                tx_retry_ratio = 0.0
+
+            # ------------------------------------------------
+            # 6b. victim 프로브 (jitter / loss 축)
+            # ------------------------------------------------
+
+            probe_jitter_ms, probe_loss_pct, probe_fresh = probe.get()
+            if not probe_fresh:
+                probe_jitter_ms = None
+                probe_loss_pct = None
 
             # ------------------------------------------------
             # 7. RSSI + delta + moving average
@@ -1070,16 +1225,19 @@ def main():
             (
                 throughput_score,
                 occupancy_score,
-                retry_failed_score,
                 jitter_score,
+                loss_score,
+                latency_score,
+                retry_score,
                 congestion_score,
                 label,
             ) = calculate_scores(
                 throughput,
                 occupancy,
-                tx_retries_per_s,
-                tx_failed_per_s,
-                jitter,
+                latency,
+                probe_jitter_ms,
+                probe_loss_pct,
+                tx_retry_ratio * 100.0,
             )
 
             # ------------------------------------------------
@@ -1088,28 +1246,41 @@ def main():
 
             save_csv([
                 timestamp,
+                scenario,
+                poll_interval_s,
                 round(throughput, 2),
                 round(occupancy, 2),
                 occupancy_method,
                 round(latency, 3),
-                round(jitter, 3),
+                (
+                    round(probe_jitter_ms, 3)
+                    if probe_jitter_ms is not None
+                    else ""
+                ),
+                (
+                    round(probe_loss_pct, 3)
+                    if probe_loss_pct is not None
+                    else ""
+                ),
+                1 if probe_fresh else 0,
                 (
                     round(udp_packet_loss, 2)
                     if udp_packet_loss is not None
                     else ""
                 ),
-                poll_interval_s,
-                tx_retries_per_s,
-                tx_failed_per_s,
+                int(tx_retx_delta),
+                int(tx_packets_delta),
+                tx_retry_ratio,
                 round(current_rssi, 2),
                 int(connected_clients),
                 round(rssi_delta, 2),
                 round(rssi_moving_avg, 2),
-                scenario,
                 throughput_score,
                 occupancy_score,
-                retry_failed_score,
                 jitter_score,
+                loss_score,
+                latency_score,
+                retry_score,
                 congestion_score,
                 label,
             ])
@@ -1134,63 +1305,41 @@ def main():
                 f"Occupancy Method   : {occupancy_method}"
             )
             print(
-                f"Latency            : {latency:.3f} ms"
-            )
-            print(
-                f"Jitter             : {jitter:.3f} ms"
-            )
-
-            if udp_packet_loss is not None:
-                print(
-                    f"UDP Loss (iperf3)  : "
-                    f"{udp_packet_loss:.2f} %"
-                )
-            else:
-                print(
-                    "UDP Loss (iperf3)  : N/A "
-                    "(new JSON result 없음)"
-                )
-
-            print(
                 f"Poll Interval      : {poll_interval_s:.2f} s"
             )
             print(
-                f"TX Retries/s       : {tx_retries_per_s:.1f}  "
-                f"(delta {tx_retries_delta})"
+                f"Latency (ping RTT) : {latency:.1f} ms"
+            )
+            _pj = (
+                f"{probe_jitter_ms:.2f} ms"
+                if probe_jitter_ms is not None
+                else "N/A"
+            )
+            _pl = (
+                f"{probe_loss_pct:.2f} %"
+                if probe_loss_pct is not None
+                else "N/A"
             )
             print(
-                f"TX Failed/s        : {tx_failed_per_s:.1f}  "
-                f"(delta {tx_failed_delta})"
+                f"Probe Jitter/Loss  : {_pj} / {_pl}"
+                f"  ({'fresh' if probe_fresh else 'STALE'})"
             )
             print(
-                f"RSSI               : {current_rssi:.1f} dBm"
+                f"Retry Ratio        : {tx_retry_ratio * 100:.1f} %  "
+                f"(retx {tx_retx_delta} / pkts {tx_packets_delta})"
             )
             print(
-                f"Connected Clients  : {connected_clients}"
+                f"RSSI / MovAvg      : {current_rssi:.1f} / "
+                f"{rssi_moving_avg:.1f} dBm   Clients {connected_clients}"
             )
             print(
-                f"RSSI Moving Avg    : "
-                f"{rssi_moving_avg:.1f} dBm"
+                f"Scores  occ={occupancy_score:.2f} "
+                f"jit={jitter_score:.2f} loss={loss_score:.2f} "
+                f"lat={latency_score:.2f} retry={retry_score:.2f}  "
+                f"(thr={throughput_score:.2f}, 라벨 제외)"
             )
             print(
-                f"Throughput Score   : "
-                f"{throughput_score:.4f}"
-            )
-            print(
-                f"Occupancy Score    : "
-                f"{occupancy_score:.4f}"
-            )
-            print(
-                f"Retry/Failed Score : "
-                f"{retry_failed_score:.4f}"
-            )
-            print(
-                f"Jitter Score       : "
-                f"{jitter_score:.4f}"
-            )
-            print(
-                f"Congestion Score   : "
-                f"{congestion_score:.4f}"
+                f"Congestion (max)   : {congestion_score:.4f}"
             )
             print(
                 f"Label              : {label}"
@@ -1231,10 +1380,14 @@ def main():
         print(
             f"AP 폴링 재연결 횟수 : {poller.reconnects}"
         )
+        print(
+            f"프로브 실행/실패    : {probe.runs} / {probe.failures}"
+        )
         print("--------------------------------")
 
     finally:
         poller.stop()
+        probe.stop()
 
 
 if __name__ == "__main__":

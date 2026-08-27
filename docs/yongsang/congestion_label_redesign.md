@@ -53,15 +53,22 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 ## 3. sub-score 표준 문턱
 
-각 축을 4개 앵커(경고→0.25 / 혼잡→0.5 / 심각→0.75 / 완전→1.0)로 piecewise-linear 매핑, [0,1] clamp.
+각 축을 4개 앵커(경고→0.25 / 혼잡→0.5 / 심각→0.75 / 완전→1.0)로 piecewise-linear 매핑, [0,1] clamp. **구현됨**: `collect_metrics.py`의 `ANCHORS` 딕셔너리 + `anchor_score()`.
 
 | 축 | 경고 (0.25) | 혼잡 (0.5) | 심각 (0.75) | 완전 (1.0) | 출처 |
 |---|---:|---:|---:|---:|---|
 | `occupancy_score` (채널 airtime %) | 40% | 55% | 75% | 90% | Cisco/Aruba WLAN 설계 가이드 (>50% 경고, >75% 혼잡), Ekahau 실무 기준 |
 | `jitter_score` (프로브 IPDV) | 20ms | 30ms | 50ms | 100ms | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms), RFC 4594 (텔레포니 ~30ms), Cisco (voice < 30ms) |
 | `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss < 1%, > 5% 사용 불가), ITU-T G.113 App.I (손실 손상), ITU-T Y.1541 |
-| `latency_score` (ping RTT) | 100ms | 150ms | 300ms | 500ms | ITU-T G.114 (편도 ≤150ms 양호, >400ms 불가 — RTT는 네트워크 왕복 예산 기준) |
+| `latency_score` (ping RTT) | 150ms | 250ms | 400ms | 700ms | ITU-T G.114 (편도 ≤150ms 양호, >400ms 불가). **파이 홉 때문에 idle RTT가 이미 70~125ms라 앵커를 후하게 잡음** — 수집 토폴로지 바뀌면 재보정 필요 |
 | `retry_score` (재전송 비율) | 10% | 15% | 25% | 40% | WLAN 헬스 모니터링 consensus (Cisco / Ekahau / 7signal: retry rate < 10% 정상, > 20% 불량) |
+
+**결정 (2026-08-27)**:
+- `latency` — 라벨 축 유지(지연은 QoS 핵심). 단 모델 입력에선 제외.
+- `retry` — `tx_failed`를 합침: `retry_ratio = (tx_retries + tx_failed) / (tx_retries + tx_failed + tx_packets)`. 별도 `tx_failed` 축 없음.
+- `connected_clients` — 모델 입력에 **추가 안 함**. 우리 데이터에선 2~3으로 변별력 없고 실배포(수십~수백)엔 일반화 안 됨.
+
+**구현 후 관찰 (2026-08-27, 프로브 없이 스키마 스모크)**: idle 상태에서 `tx_retry_ratio` ≈ 8% (retx 18 / packets 207). retry 경고 앵커(10%)에 이미 가까움 → **idle 베이스라인 측정 후 retry 앵커 상향 가능성**(예: 15/20/30/50%). 다음 하드웨어 세션에서 프로브 켜고 idle 30~60초 재보정.
 
 ### `throughput_score`는 라벨에서 제외
 
@@ -128,39 +135,42 @@ label = 0  if congestion_score < 0.25
 | `jitter_ms` (기존 ping mdev) | — | ❌ **제거** | 프로브 jitter로 대체되고, 라벨 축과 겹쳐 leakage |
 | `latency_ms` (ping RTT) | ✅ | ❌ **제거** | 라벨 축. 모델이 정답을 그대로 받는 꼴 (사용자 결정 2026-08-27) |
 | `channel_occupancy_percent` | ✅ | ✅ 유지 | 배포 시 AP 텔레메트리로 있음. 모델이 이걸로 shortcut하는 건 "맞는 shortcut"(occ 높으면 대개 혼잡). 중요한 건 occ 중간인데 프로브가 깨진 행 — 거기선 모델이 retry/RSSI/추세로 예측해야 함 |
-| `tx_retry_ratio` | ✅ | ✅ 유지 | 〃 배포 시 있음 |
+| `tx_retry_ratio` | ✅ | ✅ 유지 | 〃 배포 시 있음. `(retries+failed)/(retries+failed+packets)` |
 | `throughput_mbps` | ❌ | ✅ 유지 | 라벨엔 없지만 부하 지표로 모델엔 유용 |
-| `tx_failed_ratio` | ❌ | ✅ 유지 (또는 검토) | |
-| `connected_clients` | ❌ | ✅ **추가 검토** | station 수는 혼잡 선행지표. 현재 제외 중 |
+| `tx_failed` (별도) | — | ❌ | retry에 합침 (결정 2026-08-27) |
+| `connected_clients` | ❌ | ❌ | 우리 데이터 2~3으로 변별력 없음, 실배포엔 일반화 안 됨 (결정 2026-08-27) |
 | `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm` | ❌ | ✅ 유지 | |
 
-### 제안 모델 입력 (8개, `jitter_ms`/`latency_ms` 제거)
+### 확정 모델 입력 (6개) — 구현됨 (`ap_features.py`)
 
 ```
 throughput_mbps
 channel_occupancy_percent
 tx_retry_ratio
-tx_failed_ratio            # 또는 유지 검토
 rssi_dbm
 rssi_delta_db
 rssi_moving_avg_dbm
-connected_clients          # 추가 검토 (현재 제외 컬럼)
 ```
 
-모델의 일: `{occupancy, retry, throughput, clients, RSSI}`로 `max(occ, probe_jitter, probe_loss, latency, retry)` 라벨을 예측. occupancy·retry는 부분 신호로 갖지만, 못 보는 프로브 jitter/loss/latency를 추론해야 함 → 진짜 예측 문제.
+9개 → 6개. 제거: `latency_ms`, `jitter_ms`, `tx_failed` 별도 축, `connected_clients`.
+
+모델의 일: `{occupancy, retry_ratio, throughput, RSSI×3}`로 `max(occ, probe_jitter, probe_loss, latency, retry)` 라벨을 예측. occupancy·retry는 부분 신호로 갖지만, 못 보는 프로브 jitter/loss/latency를 추론해야 함 → 진짜 예측 문제.
+
+> **6개는 lean함**: 모델이 볼 게 적어짐 = 재설계 의도(정답 못 읽고 진짜 예측)지만, recall이 더 낮게 나올 수 있음 — 예상된 트레이드오프. RSSI 3개는 서로 상관이라 실질 신호는 ~4개.
 
 ## 6. 구현 순서
 
-1. **`collect_metrics.py`**
-   - 프로브 스레드: 파이가 `iperf3 -u -c <노트북> -p 5203 -b 300k -l 200 -t <길게> --forceflush -J` 지속 실행, JSON 스트림에서 구간별 jitter/loss 읽어 캐시
-   - `iw station dump`에서 `tx packets` 파싱 → `tx_retry_ratio`, `tx_failed_ratio`
-   - `calculate_scores()`: piecewise-linear 앵커 함수 5개 + `max` + label. `throughput_score` 라벨에서 제외
-   - CSV 컬럼: `probe_jitter_ms`, `probe_loss_pct` 추가. `jitter_ms`(ping) 유지할지 결정 — 진단용으로 두되 `channel_occupancy_method`처럼 model-excluded
-2. **`utils/ap_features.py`**: 모델 feature를 위 8개로. `latency_ms`/`jitter_ms` 제거
-3. **`prepare_ap_metrics_dataset.py`**: model_excluded_columns 갱신 (`probe_*`, `jitter_ms`, `latency_ms`, `poll_interval_s`, ...)
-4. **노트북**: `iperf3 -s -p 5203` 인스턴스 추가 (프로브 싱크)
-5. **`congestion_label_criteria.md`**: 이 설계로 전면 개정. 표준 출처 표 명시
-6. **재수집 → 재변환 → 재학습 → 평가**
+1. ✅ **`collect_metrics.py`** (2026-08-27 구현, Pi에서 스키마 스모크 통과)
+   - `ProbeRunner` 클래스: `iperf3 -u -c <노트북> -p 5203 -b 300k -l 200 -t 2 -J`를 짧게·연속 실행하는 백그라운드 스레드. 각 테스트의 서버 측정 jitter/loss를 캐시. `PROBE_STALE_S`(12초) 넘으면 stale → 축 미사용. 버전 robust하게 지속 스트림 파싱 대신 짧은 테스트 반복.
+   - `parse_station_info`에 `tx packets:` 추가, `calculate_station_deltas`가 `packets_delta` 반환. `tx_retry_ratio = (retries+failed) / (retries+failed+packets)`.
+   - `anchor_score()` + `ANCHORS` 딕셔너리. `calculate_scores()` = `max(occ, jitter, loss, latency, retry)`. `throughput_score`는 계산은 하되 max에서 제외.
+   - CSV 27컬럼 (`probe_jitter_ms`, `probe_loss_pct`, `probe_ok`, `tx_retx_delta`, `tx_packets_delta`, `tx_retry_ratio` + sub-score 6개). ping jitter는 제거(latency만 남김).
+   - `prepare_csv()` 가드가 옛 스키마 CSV에 append 거부 → 재설계는 **새 파일**로 수집.
+2. ✅ **`utils/ap_features.py`**: 모델 feature 6개.
+3. ✅ **`prepare_ap_metrics_dataset.py`**: `model_excluded_columns` 갱신.
+4. ⬜ **노트북**: `iperf3 -s -p 5203` 인스턴스 추가 (프로브 싱크). — 다음 하드웨어 세션
+5. ⬜ **`congestion_label_criteria.md`**: 이 설계로 개정 (지금은 상단 배너 + 이 문서 포인터만).
+6. ⬜ **retry 앵커 idle 재보정** (§3 관찰) → **재수집(새 파일) → 재변환 → 재학습 → 평가**. — 다음 하드웨어 세션
 
 ## 7. 기존 데이터 (`metrics_v2.csv` 5574행) 처리
 

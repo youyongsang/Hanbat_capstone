@@ -59,7 +59,7 @@
 
 ### 다음 세션 최우선
 - [ ] **2.4GHz에서 label 3 데이터 수집에 집중** (밴드는 2.4 유지 결정, 5GHz 전환·스티어링은 보류). 파이 유선 수집(폴링 1.1초, 5분이면 ~270행)으로 60/60·75/75 반복. **종료 즉시 프로세스 kill** (이번에 또 77분·42분 방치함)
-- [ ] **혼잡 라벨 재설계 착수** — 설계 확정됨: `docs/yongsang/congestion_label_redesign.md` (표준 문턱 + victim 프로브 + `max` 조합, 모델 입력에서 jitter/latency 제거). 구현 순서 §6 참고. 기존 5574행은 레거시 처리(프로브·retry비율 없어 완전 relabel 불가)
+- [ ] **혼잡 라벨 재설계 — 하드웨어 세션 필요분** — 코드는 구현됨(`congestion_label_redesign.md` §6: `collect_metrics.py` ProbeRunner + 표준 문턱 앵커 + `max`, `ap_features.py` 6 feature, prepare 갱신, Pi 스키마 스모크 통과). 남은 것: ① 노트북에 `iperf3 -s -p 5203` 프로브 싱크 ② idle 30~60초로 retry 앵커 재보정(idle에 이미 retry_ratio 8%) ③ 새 파일로 재수집 → 재변환 → 재학습 → 평가. 기존 5574행은 레거시(프로브·tx_packets 없어 완전 relabel 불가)
 - [ ] **`RETRY_FAILED_MAX_PER_SEC` 재보정** — 지금 6250은 옛 값에서 역산한 것. 파이 유선 수집으로 60/60·75/75 5~7분 제대로 돌려서 label 3 순간의 실제 재전송률(per_s) 분포 보고 조정
 - [ ] 파이 수집 데이터의 latency 베이스라인이 노트북과 다름 — 파이 데이터를 메인 학습셋에 섞을지, 파이 전용으로 재학습할지 결정 (실배포는 파이가 collector니 파이 측정값이 "진짜")
 - [ ] ONNX export (데모 파이프라인 전제)
