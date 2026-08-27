@@ -12,17 +12,17 @@ AP_FEATURE_COLUMNS: Tuple[str, ...] = (
     "rssi_dbm",
     "rssi_delta_db",
     "rssi_moving_avg_dbm",
-    "sta_tx_bitrate_min",
-    "sta_tx_bitrate_mean",
 )
 
-# 2026-08-27 심야: sta_tx_bitrate_min / _mean 추가 (6 -> 8 feature).
-#   iw station dump의 station별 "tx bitrate"(PHY rate). rate control이
-#   간섭·경합에 물러나면 여기부터 떨어지는데 채널 전체 occupancy엔 안 보임.
-#   min = 가장 굶는 station(capture effect / victim 프록시). 재학습 결과
-#   occ 60~72%에서 label 2 vs 3이 나머지 6 feature로는 완전히 구별 불가였음
-#   (ap_v2_redesign_threshold_comparison.txt). 이 feature 있는 데이터는
-#   metrics_v2_pi_redesign.csv엔 없음 — 새로 수집해야 함.
+# 2026-08-28 진단: sta_tx_bitrate_min/_mean 를 feature 후보로 추가했다가 뺌.
+#   `collect_metrics.py`는 CSV에 계속 기록(정보용)하지만 모델 입력엔 안 씀.
+#   diag_25 런(146행)에서: min 은 트래픽 없는 유휴 station 하나가 MCS 0(6.5
+#   Mbit/s)에 물려 모든 행을 지배 → 상수. mean 은 throughput을 그대로 따라가
+#   (모델이 이미 가진 신호) occ 55~75% 어려운 구간에선 L3가 오히려 높음.
+#   그 구간 L3는 latency 0 + loss 14% = failure=max — 채널 쪽엔 진짜 지문이
+#   없음. 결론: 이 feature로는 6-feature 모델의 한계(occ 55~75% L2 vs L3)를
+#   못 메움. 개선하려면 "이번 폴링에 패킷 보낸 station만" 같은 재정의 필요.
+#   상세: project/results/yongsang/ap_v2_redesign_threshold_comparison.txt
 #
 # 2026-08-27 혼잡 라벨 재설계 (docs/yongsang/congestion_label_redesign.md):
 #   - latency_ms / jitter_ms 를 모델 입력에서 제거. jitter/loss는 victim

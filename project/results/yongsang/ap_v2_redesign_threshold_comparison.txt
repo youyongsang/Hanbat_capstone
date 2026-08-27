@@ -33,3 +33,21 @@ occ >= 80%              55.3%     100.0%  71.2%  (21/0/17)
   - occ<75 심각 15창 중 6창(대부분 occ 73% 경계)만 정탐, 9창은 label 1~2로 과소
   - test에 label 0/1 & 고occupancy 창이 없어 '오탐 0'은 데이터 한계지 강한 주장 아님
   - label 1 recall 70% — 경고/정상 경계는 여전히 약함
+
+================================================================
+2026-08-28 진단: sta_tx_bitrate feature 시도 → 실패
+================================================================
+가설: iw station dump의 station별 tx bitrate(PHY rate)가 rate control
+후퇴를 잡아내 occ 55~75%의 label 2 vs 3을 가를 것.
+
+diag_25 런 (146행, 8-feature 스키마):
+  sta_tx_bitrate_min : L1/L2/L3 전부 median 6.5 (범위 6~6) — 상수.
+    트래픽 없는 유휴 station(-30dBm, MCS 0)이 min을 매 행 지배.
+  sta_tx_bitrate_mean: L1 24 / L2 33 / L3 35 — throughput을 그대로 추종.
+    occ 55~75%만: L2 mean 29 (thr 78) vs L3 mean 51 (thr 97) — L3가 오히려
+    높음 (폰이 세게 밀어 rate 높음). victim 건강과 반대.
+  그 구간 L3는 latency 0 + probe loss 14% = failure=max. 채널 쪽 지문 없음.
+
+결론: 채널 텔레메트리로 못 잡는 잔차는 in-band victim 프로브 없이 원리상
+탐지 불가. 6-feature 모델(test 85.5% / L3 recall 76% / F1 0.81)이 최종.
+sta_tx_bitrate_*는 CSV엔 계속 기록(정보용), 모델 입력엔 미사용.
