@@ -14,14 +14,11 @@ AP_FEATURE_COLUMNS: Tuple[str, ...] = (
     "rssi_moving_avg_dbm",
 )
 
-# 2026-08-28 진단: sta_tx_bitrate_min/_mean 를 feature 후보로 추가했다가 뺌.
-#   `collect_metrics.py`는 CSV에 계속 기록(정보용)하지만 모델 입력엔 안 씀.
-#   diag_25 런(146행)에서: min 은 트래픽 없는 유휴 station 하나가 MCS 0(6.5
-#   Mbit/s)에 물려 모든 행을 지배 → 상수. mean 은 throughput을 그대로 따라가
-#   (모델이 이미 가진 신호) occ 55~75% 어려운 구간에선 L3가 오히려 높음.
-#   그 구간 L3는 latency 0 + loss 14% = failure=max — 채널 쪽엔 진짜 지문이
-#   없음. 결론: 이 feature로는 6-feature 모델의 한계(occ 55~75% L2 vs L3)를
-#   못 메움. 개선하려면 "이번 폴링에 패킷 보낸 station만" 같은 재정의 필요.
+# 2026-08-28: sta_tx_bitrate_min/_mean — 모델 입력 아님(정보용 CSV 컬럼).
+#   1차 정의(전체 station min)는 diag_25 런에서 트래픽 없는 유휴 station이
+#   MCS 0(6.5)에 물려 상수 → 무신호. 2차 정의(이번 폴링에 실제 송신한
+#   station만)로 바꿈. 다음 램프형 수집에서 escalation 창에 rate-collapse
+#   지문이 있는지 재검토 예정 — 있으면 그때 feature로 승격.
 #   상세: project/results/yongsang/ap_v2_redesign_threshold_comparison.txt
 #
 # 2026-08-27 혼잡 라벨 재설계 (docs/yongsang/congestion_label_redesign.md):

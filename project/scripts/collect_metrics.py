@@ -513,7 +513,7 @@ def parse_station_info(output):
     return stations
 
 
-def summarize_stations(stations):
+def summarize_stations(stations, previous_stations=None):
     signal_values = [
         s["signal_avg"]
         for s in stations.values()
@@ -530,15 +530,27 @@ def summarize_stations(stations):
     # rate control이 간섭·경합에 물러나면 여기부터 떨어진다 — 채널 전체
     # occupancy엔 안 보이는 신호. min = 가장 굶는 station(= victim 프록시),
     # capture effect(강한 폰이 채널 독점, 약한 쪽 저MCS)가 여기 드러난다.
-    # 0.0은 "미보고"라 제외.
-    tx_rates = [
-        s.get("tx_bitrate", 0.0)
-        for s in stations.values()
-        if s.get("tx_bitrate", 0.0) > 0.0
-    ]
-    if tx_rates:
-        sta_tx_bitrate_min = min(tx_rates)
-        sta_tx_bitrate_mean = sum(tx_rates) / len(tx_rates)
+    #
+    # 2026-08-28: "이번 폴링에 실제로 송신한 station"만 대상. 연결만 되고
+    # 트래픽 없는 station은 rate가 MCS 0 바닥에 stale하게 물려 있어서
+    # (diag_25 런에서 min이 상수 6.5) 신호를 죽인다. tx_packets가 증가한
+    # station만 본다. 활성 station이 없으면(무부하) 0.0.
+    active_rates = []
+    for mac, s in stations.items():
+        rate = s.get("tx_bitrate", 0.0)
+        if rate <= 0.0:
+            continue
+        prev = (previous_stations or {}).get(mac)
+        sent = (
+            prev is not None
+            and s.get("tx_packets", 0) > prev.get("tx_packets", 0)
+        )
+        if sent:
+            active_rates.append(rate)
+
+    if active_rates:
+        sta_tx_bitrate_min = min(active_rates)
+        sta_tx_bitrate_mean = sum(active_rates) / len(active_rates)
     else:
         sta_tx_bitrate_min = 0.0
         sta_tx_bitrate_mean = 0.0
@@ -1161,7 +1173,7 @@ def main():
                 connected_clients,
                 sta_tx_bitrate_min,
                 sta_tx_bitrate_mean,
-            ) = summarize_stations(station)
+            ) = summarize_stations(station, previous_stations)
 
             # ------------------------------------------------
             # 2. Channel Occupancy
