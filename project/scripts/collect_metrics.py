@@ -6,6 +6,7 @@ import platform
 import re
 import subprocess
 import sys
+import threading
 import time
 from collections import deque
 
@@ -51,6 +52,9 @@ SSH_CMD = [
     "-o", "HostKeyAlgorithms=+ssh-rsa",
     "-o", "PubkeyAcceptedAlgorithms=+ssh-rsa",
     "-o", "ConnectTimeout=5",
+    # 지속 연결이 끊겼는지 빨리 감지하기 위한 옵션(폴러 전용).
+    "-o", "ServerAliveInterval=5",
+    "-o", "ServerAliveCountMax=3",
     "-o", "BatchMode=yes",
     f"root@{AP_IP}",
 ]
@@ -101,37 +105,137 @@ def run_command(command, timeout=10):
         return ""
 
 
-def run_ap_command(command, timeout=10):
-    return run_command(
-        SSH_CMD + [command],
-        timeout=timeout,
-    )
-
-
 # ============================================================
-# AP station + survey를 한 번의 SSH 연결로 수집
+# AP station + survey — 지속 SSH 세션 하나로 폴링
+#
+# 기존에는 루프마다(약 0.5~1초 간격) 새 SSH 프로세스를 띄워
+# TCP+SSH 핸드셰이크를 반복했다. 이 관리 트래픽이 측정 대상과
+# 같은 무선 채널을 그대로 타고 가서, 채널이 혼잡할수록 SSH
+# 핸드셰이크 자체도 같이 느려지는 자기참조적 지연(폴링 지연
+# 스파이크 최대 156초, 2026-08-26 새벽에는 완전 크래시까지
+# 재현됨 — docs/yongsang/ap_crash_analysis.md 참고)의 유력한
+# 원인이었다. 대신 원격에서 무한루프를 SSH 세션 하나로 계속
+# 돌리고 표준출력을 스트리밍으로 읽어, 핸드셰이크를 세션당
+# 1회로 줄인다. 연결이 끊기면 백그라운드 스레드가 자동으로
+# 재연결을 시도한다.
 # ============================================================
 
-def get_ap_metrics():
-    command = (
-        f"echo '__STATION_BEGIN__'; "
+class APPoller:
+    STATION_BEGIN = "__STATION_BEGIN__"
+    SURVEY_BEGIN = "__SURVEY_BEGIN__"
+    CYCLE_END = "__CYCLE_END__"
+
+    REMOTE_LOOP_CMD = (
+        f"while true; do "
+        f"echo '{STATION_BEGIN}'; "
         f"iw dev {INTERFACE} station dump; "
-        f"echo '__SURVEY_BEGIN__'; "
-        f"iw dev {INTERFACE} survey dump"
+        f"echo '{SURVEY_BEGIN}'; "
+        f"iw dev {INTERFACE} survey dump; "
+        f"echo '{CYCLE_END}'; "
+        f"sleep 0.5; "
+        f"done"
     )
 
-    output = run_ap_command(command, timeout=10)
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._latest = None  # (cycle_id, text)
+        self._next_id = 0
+        self._stopping = False
+        self._proc = None
+        self.reconnects = 0
 
-    if not output:
-        return None, None
+        self._thread = threading.Thread(
+            target=self._run, daemon=True
+        )
+        self._thread.start()
 
-    station_marker = "__STATION_BEGIN__"
-    survey_marker = "__SURVEY_BEGIN__"
+    def _run(self):
+        first_attempt = True
 
-    if station_marker not in output or survey_marker not in output:
-        return None, None
+        while not self._stopping:
+            if not first_attempt:
+                self.reconnects += 1
+                time.sleep(2)
+            first_attempt = False
 
-    station_text = output.split(station_marker, 1)[1]
+            try:
+                self._proc = subprocess.Popen(
+                    SSH_CMD + [self.REMOTE_LOOP_CMD],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    bufsize=1,
+                )
+            except Exception:
+                continue
+
+            buf = []
+
+            try:
+                for line in self._proc.stdout:
+                    line = line.rstrip("\n")
+
+                    if line == self.CYCLE_END:
+                        text = "\n".join(buf)
+                        buf = []
+
+                        with self._lock:
+                            self._next_id += 1
+                            self._latest = (
+                                self._next_id,
+                                text,
+                            )
+
+                        continue
+
+                    buf.append(line)
+            except Exception:
+                pass
+
+            try:
+                self._proc.terminate()
+            except Exception:
+                pass
+
+    def wait_for_new_cycle(
+        self, last_id, poll_interval=0.2, max_wait=2.0
+    ):
+        start = time.time()
+
+        while True:
+            with self._lock:
+                if (
+                    self._latest is not None
+                    and self._latest[0] != last_id
+                ):
+                    return self._latest
+
+            if time.time() - start > max_wait:
+                return None
+
+            time.sleep(poll_interval)
+
+    def stop(self):
+        self._stopping = True
+
+        if self._proc is not None:
+            try:
+                self._proc.terminate()
+            except Exception:
+                pass
+
+
+def parse_ap_cycle(text):
+    station_marker = APPoller.STATION_BEGIN
+    survey_marker = APPoller.SURVEY_BEGIN
+
+    if (
+        station_marker not in text
+        or survey_marker not in text
+    ):
+        return None, (None, None)
+
+    station_text = text.split(station_marker, 1)[1]
     station_text, survey_text = station_text.split(
         survey_marker, 1
     )
@@ -757,6 +861,9 @@ def main():
 
     sample = 0
 
+    poller = APPoller()
+    last_cycle_id = None
+
     try:
         while True:
             loop_start = time.time()
@@ -766,16 +873,33 @@ def main():
             )
 
             # ------------------------------------------------
-            # 1. AP Station + Survey
+            # 1. AP Station + Survey (지속 SSH 세션에서 폴링)
             # ------------------------------------------------
 
-            station, survey = get_ap_metrics()
+            cycle = poller.wait_for_new_cycle(
+                last_cycle_id
+            )
+
+            if cycle is None:
+                print(
+                    "AP 폴링 대기 중입니다 "
+                    "(SSH 세션 재연결 중이거나 응답 없음, "
+                    f"재연결 {poller.reconnects}회)..."
+                )
+                continue
+
+            cycle_id, cycle_text = cycle
+            last_cycle_id = cycle_id
+
+            station, survey = parse_ap_cycle(
+                cycle_text
+            )
 
             if station is None:
                 print(
                     "현재 연결된 Wi-Fi Station이 없습니다."
                 )
-                time.sleep(1)
+                time.sleep(0.2)
                 continue
 
             current_active, current_busy = survey
@@ -1066,7 +1190,13 @@ def main():
         print("--------------------------------")
         print("지표 수집 종료")
         print(f"CSV 파일 : {CSV_FILE}")
+        print(
+            f"AP 폴링 재연결 횟수 : {poller.reconnects}"
+        )
         print("--------------------------------")
+
+    finally:
+        poller.stop()
 
 
 if __name__ == "__main__":
