@@ -31,15 +31,49 @@
 ### 한계 진단 + tx_bitrate 시도 (2026-08-28) — 실패, 6-feature 모델이 최종
 - **정확한 문제**: occ 60~72%에서 label 2 vs 3 창의 6 feature 평균이 **완전히 동일**(occ 66/65, thr 66/66, retry 0.30/0.30, rssi -35/-34). 라벨 차이는 프로브 축(jitter/loss/latency)에서만 나오는데 프로브는 입력 아님 → 그 구간 일부는 **원리상 학습 불가**. 나머지는 학습 가능(LSTM은 throughput 붕괴한 심각은 잡음, 높은 throughput+moderate occ 심각은 label 2로 과소).
 - **retry_ratio가 프록시 실패**: 이 RF-험한 2.4GHz는 부하만 걸리면 retry ~0.30 고정, L2/L3 구분 못 함.
-- **`sta_tx_bitrate` feature 추가 시도 → 뺌** (커밋 `dbfe148` 추가 → `f634777` 되돌림): `iw station dump`의 station별 tx bitrate. diag_25 런(146행): `min`은 유휴 station(MCS 0, 6.5Mbit/s)이 매 행 지배 → 상수. `mean`은 throughput 추종, 어려운 구간에선 오히려 L3가 높음. **collect_metrics.py는 두 컬럼을 CSV에 계속 기록(정보용), 모델 입력엔 미사용.** 개선하려면 "이번 폴링에 패킷 보낸 station만"으로 재정의 필요.
-- **결론**: 6-feature 모델(`ap_metrics_v2_redesign`, test 85.5% / L3 recall 76% / F1 0.81 vs occupancy 문턱)이 **최종 결과**. 못 잡는 잔차는 "채널에 지문 안 남기는 QoS 붕괴 — in-band 프로브 없이 원리상 불가"로 서술.
+- **`sta_tx_bitrate` feature 추가 시도 → 뺌** (커밋 `dbfe148` → `f634777` 되돌림 → `f7f1373` 재정의): `iw station dump`의 station별 tx bitrate. 1차 정의(전체 station min)는 diag_25 런에서 유휴 station(MCS 0, 6.5Mbit/s)이 매 행 지배 → 상수. `f7f1373`에서 **"이번 폴링에 실제 송신한 station만"으로 재정의**(유휴 배제). **collect_metrics.py는 두 컬럼을 CSV에 계속 기록(정보용), 모델 입력엔 미사용** — 다음 램프형 수집에서 escalation 창에 rate-collapse 지문 있는지 재검토 후 승격 여부 결정. 실기기 미검증(문법만).
+- **6-feature 모델 결론**: `ap_metrics_v2_redesign` test 85.5% / L3 recall 76% / F1 0.81 vs occupancy 문턱. 점 분류로는 이게 최종.
 
-### 남은 것
-- label 1 recall 70% — 정상/경고 경계 약함 (occ 50~70% 데이터 더 쌓으면 marginal 개선, occ<75 심각 잔차엔 무의미)
-- AP 크래시 상한: 45M 폐기, **15M/240s · 25M/180s · 35M/120s** 안전. AP load average가 idle에도 ~1.5로 높음(작은 라우터 한계)
-- ONNX export (데모 전제) 아직
-- `congestion_label_redesign.md` HTML 버전 (보류됨)
-- 밴드 스티어링 확장 (팀 결정 대기)
+### forecasting 평가 (커밋 `6331831`, `project/scripts/forecast_eval_redesign.py`)
+윈도우 target을 k폴링 뒤 라벨로 두고 재학습. 폴링 ~1~2s → k=3은 ~3~6s 앞.
+- **전체 정확도로는 LSTM이 persistence("5초 뒤도 같음")를 못 이김** (k=3: 69.6% vs 80%).
+- **escalation 창(지금 심각 아닌데 k폴링 뒤 심각): k=3에서 LSTM 8/12=67%, occupancy 문턱·persistence는 0%(원리상).** occ·retry 상승 + RSSI 불안정화 추세로 선 넘기 전 감지. 대가는 precision 43%. 유용 지평선 짧음(k=5는 36%).
+- **재포지셔닝**: LSTM = "더 나은 분류기"가 아니라 **"심각 전이 3~6초 조기경보기"**. band steering이 QoS 붕괴 전에 조치하려면 이게 정확히 필요한 것. 단 escalation 표본 12~14창으로 작음 → 데이터 더 필요.
+
+---
+
+## 내일 할 일 (2026-08-28)
+
+### 0. 시작 전
+- AP 밤새 7번 크래시 + load average ~1.5 → **AP 전원 뽑았다 꽂아 신선한 상태로 시작**
+- 노트북 `GL-SFT1200-a08` 고정 확인 (`netsh wlan set profileparameter name="SK_0600_5G" connectionmode=manual` 이미 적용, 재부팅 후 로밍하면 다시)
+- 노트북에 iperf3 서버 3개: `5201`/`5202` 부하, `5203` 프로브
+- 파이 collector는 `~/ap_collect/collect_metrics.py` (f7f1373 반영됨, `CSV_FILE=metrics_v2_pi_redesign.csv`)
+- **이전 relabeled 데이터는 그대로** (`metrics_v2_pi_redesign_relabeled.csv` 1614행). 새 수집분을 새 파일 `metrics_v2_pi_redesign2.csv`에 모으고, 나중에 합치거나 별도 학습
+
+### 1. 램프형 부하 수집 (핵심 — escalation 창 확보 목적)
+blast-UDP는 순식간에 포화로 튀어 1→2→3 전이가 안 생김. **서서히 오르는 부하**가 필요.
+- **계단식**: 폰 A/B를 `10M(60s) → 20M(60s) → 30M(60s) → 40M(60s)` 순차 실행 (또는 두 폰 시차 30~60s). 각 시나리오 240s.
+- **또는 무릎 근처**: 합계 ~40~50M(폰당 20~25M)로 240s — 상태가 2/3 경계를 자연스럽게 오르내림
+- **5~6런, occ 50~75% 집중, escalation 창 40~60개 목표**
+- 안전 상한: 15M/240s·25M/180s·35M/120s. 45M 금지. 런 사이 AP 60~90s 쿨다운. 종료 즉시 collector kill
+- 콘솔에 `Sta tx rate min/avg`가 무부하 0 / 부하 시 실제값 뜨는지 확인 (f7f1373 검증)
+
+### 2. 재평가
+- `remeasure_redesign.py`로 새 파일 relabel (스코어링은 그대로)
+- `forecast_eval_redesign.py` 재실행 → escalation recall이 60~70% 유지되는지 확인
+  - 유지 → "조기경보기" 서사 확정 (논문 결과)
+  - persistence 수준으로 무너짐 → 정직하게 "분류는 문턱과 동급, 기여 = 라벨 재설계 + Early Exit"
+- `sta_tx_bitrate_min` (active 정의)이 escalation 창에서 rate-collapse 보이는지 → 보이면 7번째 feature로 승격 후 재학습
+
+### 3. (2번이 잘 되면) 6-feature 모델 재학습
+- 합친 데이터로 `prepare_ap_metrics_dataset.py` → `train_ap_early_exit.py --class-weight-power 1.0` → `evaluate_ap_early_exit.py`
+- threshold_comparison 분석 스크립트 재실행 (occ<75 L3 recall)
+
+### 나중 (내일 아닐 수도)
+- ONNX export (데모 전제)
+- `congestion_label_redesign.md` HTML
+- 밴드 스티어링 확장 (팀 결정)
 
 
 
