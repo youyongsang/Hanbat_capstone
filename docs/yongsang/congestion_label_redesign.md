@@ -55,20 +55,38 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 각 축을 4개 앵커(경고→0.25 / 혼잡→0.5 / 심각→0.75 / 완전→1.0)로 piecewise-linear 매핑, [0,1] clamp. **구현됨**: `collect_metrics.py`의 `ANCHORS` 딕셔너리 + `anchor_score()`.
 
+**라벨 축 (4개)** — `congestion_score = max(이 4개)`:
+
 | 축 | 경고 (0.25) | 혼잡 (0.5) | 심각 (0.75) | 완전 (1.0) | 출처 |
 |---|---:|---:|---:|---:|---|
 | `occupancy_score` (채널 airtime %) | 40% | 55% | 75% | 90% | Cisco/Aruba WLAN 설계 가이드 (>50% 경고, >75% 혼잡), Ekahau 실무 기준 |
 | `jitter_score` (프로브 IPDV) | 20ms | 30ms | 50ms | 100ms | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms), RFC 4594 (텔레포니 ~30ms), Cisco (voice < 30ms) |
-| `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss < 1%, > 5% 사용 불가), ITU-T G.113 App.I (손실 손상), ITU-T Y.1541 |
-| `latency_score` (ping RTT) | 150ms | 250ms | 400ms | 700ms | ITU-T G.114 (편도 ≤150ms 양호, >400ms 불가). **파이 홉 때문에 idle RTT가 이미 70~125ms라 앵커를 후하게 잡음** — 수집 토폴로지 바뀌면 재보정 필요 |
-| `retry_score` (재전송 비율) | 10% | 15% | 25% | 40% | WLAN 헬스 모니터링 consensus (Cisco / Ekahau / 7signal: retry rate < 10% 정상, > 20% 불량) |
+| `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss < 1%, > 5% 사용 불가), ITU-T G.113 App.I, ITU-T Y.1541 |
+| `latency_score` (ping RTT, 노트북 대상) | 30ms | 60ms | 150ms | 400ms | ITU-T G.114 (편도 150/400) + 실시간 WiFi 실무. **v4 idle RTT med 3ms** (2026-08-27 노트북 대상 + Windows ICMP 허용). 부하 시 RTT 범위 측정 후 재보정(provisional) |
 
-**결정 (2026-08-27)**:
-- `latency` — 라벨 축 유지(지연은 QoS 핵심). 단 모델 입력에선 제외.
-- `retry` — `tx_failed`를 합침: `retry_ratio = (tx_retries + tx_failed) / (tx_retries + tx_failed + tx_packets)`. 별도 `tx_failed` 축 없음.
-- `connected_clients` — 모델 입력에 **추가 안 함**. 우리 데이터에선 2~3으로 변별력 없고 실배포(수십~수백)엔 일반화 안 됨.
+**라벨 축 아님 (정보용 컬럼 + 모델 입력)**:
 
-**구현 후 관찰 (2026-08-27, 프로브 없이 스키마 스모크)**: idle 상태에서 `tx_retry_ratio` ≈ 8% (retx 18 / packets 207). retry 경고 앵커(10%)에 이미 가까움 → **idle 베이스라인 측정 후 retry 앵커 상향 가능성**(예: 15/20/30/50%). 다음 하드웨어 세션에서 프로브 켜고 idle 30~60초 재보정.
+| 축 | 값 | 왜 라벨 축이 아닌가 |
+|---|---|---|
+| `retry_score` (재전송 비율, 앵커 10/15/25/40%) | `(tx_retries + tx_failed) / (retries + failed + tx_packets)`, 최근 5폴링 rolling | **v4 베이스라인 (2026-08-27)**: 이 2.4GHz AP는 RF가 열악해서 **idle에도 retry_ratio가 med 18% / p90 36%**인데(자는 폰·S26 백그라운드 버스트) victim 프로브는 완벽(jitter med 1ms, loss 0%). retry는 jitter/loss를 유발하는 *원인*이지 QoS 피해의 독립 증거가 아니다. 재전송이 victim을 해치면 프로브가 잡는다. → 라벨에서 제외, `tx_retry_ratio`는 **모델 입력 feature로 유지**(모델이 "재전송 많다 → victim 곧 깨질 것" 추론) |
+| `throughput_score` (상한 150Mbps) | `throughput_mbps / 150` | label 2/3 변별력 없음 (0.665→0.707). 채널이 빠르게 도는 것 자체는 혼잡 아님. 모델 입력으론 유지 |
+
+### 결정 (2026-08-27)
+- `latency` — 라벨 축 **유지**(지연은 QoS 핵심, Y.1541/G.1010이 지연·지터를 별개 축으로 다룸). 모델 입력에선 제외.
+- `retry` — **라벨 축에서 제외** (위 v4 근거). 모델 입력으론 유지. `tx_failed`는 retry 비율에 합침(별도 축 없음).
+- `connected_clients` — 모델 입력에 **추가 안 함** (우리 데이터 2~3으로 변별력 없음).
+
+### 구현 후 캘리브레이션 (2026-08-27, 프로브 켜고 idle 5회 반복)
+
+| 축 | idle 실측 | 조치 |
+|---|---|---|
+| jitter / loss (프로브) | jitter med 1ms/max 3.5ms, loss 0% | 그대로. Y.1541 앵커에 여유 많음 |
+| occupancy | med 17%, 가끔 100% 스파이크(`instantaneous_fallback` 경로가 survey 카운터 리셋 시 뱉음) | **3-폴링 median으로 스코어·CSV 값 안정화** (`occ_history`). 앵커 그대로 |
+| latency (v6) | med 5ms인데 가끔 146~298ms 단일 폴링 스파이크(노트북 wifi 순간 저하) | **3-폴링 median** (`lat_history`) |
+| latency | **v1~v3**: 폰(191) ping이 절전 때문에 31~295ms로 요동 → **노트북 대상으로 변경**. 노트북은 Windows 방화벽이 ICMP 차단 → **inbound ICMP 허용 규칙 추가** → v4 idle RTT med 3ms 깨끗 | `SERVER_IP = 192.168.8.226`, 앵커 30/60/150/400 |
+| retry | **버그**: 이 AP는 `tx retries`/`tx failed`를 라디오 전체 카운터로 보고(모든 station 동일값) → station별로 더하니 station 수만큼 뻥튀기 → **수정**(단일 delta). 그래도 idle 18~36% → **라벨 축에서 제외** | rolling(5폴링) + min 표본 50, 라디오 전체 단일 delta |
+
+> **주의**: 기존 `metrics_v2.csv` 5574행의 `tx_retries_delta`/`tx_failed_delta`도 이 3× 버그를 갖고 있다(station 수만큼 뻥튀기). 재설계 데이터와 별개로 레거시 취급하는 또 하나의 이유.
 
 ### `throughput_score`는 라벨에서 제외
 

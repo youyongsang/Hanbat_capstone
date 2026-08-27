@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import time
+from statistics import median
 from collections import deque
 
 IS_WINDOWS = platform.system() == "Windows"
@@ -17,7 +18,11 @@ IS_WINDOWS = platform.system() == "Windows"
 # ============================================================
 
 AP_IP = "192.168.8.1"
-SERVER_IP = "192.168.8.191"
+# latency 측정 대상. 2026-08-27: 폰(191)은 ICMP 절전/디프라이어리티제이션
+# 때문에 idle RTT가 31~295ms로 요동쳐서 latency 축이 못 쓸 수준이었다.
+# 노트북은 ICMP에 즉시·일정하게 응답한다. Pi→AP(유선)→노트북(무선
+# downlink) 경로라 혼잡 시 RTT가 오르는 신호는 그대로 유지된다.
+SERVER_IP = "192.168.8.226"
 INTERFACE = "wlan0"
 
 CSV_FILE = "metrics_v2.csv"
@@ -55,9 +60,10 @@ ANCHORS = {
     "jitter": (20.0, 30.0, 50.0, 100.0),
     # probe loss %       — Cisco Enterprise QoS (voice <1%, >5% 불가), ITU-T G.113
     "loss": (0.5, 1.0, 5.0, 10.0),
-    # ping RTT ms        — ITU-T G.114 기반. 파이 홉 때문에 idle 70~125ms라 앵커 후하게.
-    #                      수집 토폴로지 바뀌면 재보정할 것.
-    "latency": (150.0, 250.0, 400.0, 700.0),
+    # ping RTT ms        — 노트북 대상(2026-08-27 방화벽 ICMP 허용). idle RTT ~2ms.
+    #                      ITU-T G.114(편도 150/400) + 실시간 WiFi 실무 기준.
+    #                      부하 시 RTT 범위 측정 후 재보정할 것(provisional).
+    "latency": (30.0, 60.0, 150.0, 400.0),
     # retry ratio %      — WLAN 헬스 (Cisco/Ekahau/7signal: <10% 정상, >20% 불량)
     "retry": (10.0, 15.0, 25.0, 40.0),
 }
@@ -790,14 +796,17 @@ def calculate_station_deltas(
     # 폴링 한 번은 델타 0으로 건너뛴다. 그래야 재등장 시 station의
     # 전체 누적 카운터가 한 폴링 주기 증가분으로 잘못 계산되는
     # 것을 막을 수 있다.
+    # 주의: 이 AP(GL-SFT1200)는 `tx retries` / `tx failed`를 station별이
+    # 아니라 라디오 전체 카운터로 보고한다(모든 station이 같은 값). 그래서
+    # station마다 더하면 delta가 station 수만큼 뻥튀기된다. retries/failed는
+    # station 하나에서만 읽어 단일 delta로 계산하고, 나머지(rx/tx bytes,
+    # tx packets)만 station별로 합산한다.
     rx_delta = 0
     tx_delta = 0
-    retries_delta = 0
-    failed_delta = 0
     packets_delta = 0
 
     if not previous_stations:
-        return rx_delta, tx_delta, retries_delta, failed_delta, packets_delta
+        return rx_delta, tx_delta, 0, 0, packets_delta
 
     for mac, current in current_stations.items():
         previous = previous_stations.get(mac)
@@ -806,25 +815,41 @@ def calculate_station_deltas(
             continue
 
         rx_delta += max(
-            0,
-            current["rx_bytes"] - previous["rx_bytes"],
+            0, current["rx_bytes"] - previous["rx_bytes"]
         )
         tx_delta += max(
-            0,
-            current["tx_bytes"] - previous["tx_bytes"],
-        )
-        retries_delta += max(
-            0,
-            current["tx_retries"] - previous["tx_retries"],
-        )
-        failed_delta += max(
-            0,
-            current["tx_failed"] - previous["tx_failed"],
+            0, current["tx_bytes"] - previous["tx_bytes"]
         )
         packets_delta += max(
-            0,
-            current["tx_packets"] - previous["tx_packets"],
+            0, current["tx_packets"] - previous["tx_packets"]
         )
+
+    # 라디오 전체 retries/failed: 현재/이전 모두에 존재하는 station 중
+    # 최대값으로 단일 delta (모두 같은 값이라 어느 것을 써도 되지만,
+    # 재등장 station의 stale 값을 피하려고 max).
+    def _radio(stations, key):
+        vals = [s[key] for s in stations.values() if s.get(key)]
+        return max(vals) if vals else 0
+
+    common = set(previous_stations) & set(current_stations)
+    if common:
+        cur_retx = _radio(
+            {m: current_stations[m] for m in common}, "tx_retries"
+        )
+        prev_retx = _radio(
+            {m: previous_stations[m] for m in common}, "tx_retries"
+        )
+        cur_fail = _radio(
+            {m: current_stations[m] for m in common}, "tx_failed"
+        )
+        prev_fail = _radio(
+            {m: previous_stations[m] for m in common}, "tx_failed"
+        )
+        retries_delta = max(0, cur_retx - prev_retx)
+        failed_delta = max(0, cur_fail - prev_fail)
+    else:
+        retries_delta = 0
+        failed_delta = 0
 
     return rx_delta, tx_delta, retries_delta, failed_delta, packets_delta
 
@@ -878,14 +903,24 @@ def calculate_scores(
     retry_ratio_pct,
 ):
     """혼잡 라벨 재설계(2026-08-27): 각 축을 표준 문턱에 매핑한 뒤
-    congestion_score = max(5개 축). throughput은 정보용으로만 계산."""
+    congestion_score = max(라벨 축).
+
+    라벨 축 = occupancy + jitter(프로브) + loss(프로브) + latency(ping). 4축.
+
+    retry는 라벨 축에서 뺐다(2026-08-27 v4 베이스라인): 이 2.4GHz AP는
+    RF가 열악해서 idle에도 retry_ratio가 18~36%인데(자는 폰·백그라운드
+    버스트) victim 프로브는 완벽(jitter 1ms, loss 0%). retry는 jitter/loss를
+    유발하는 원인이지 QoS 피해의 독립 증거가 아니다. retry_ratio는 모델
+    입력 feature로만 유지(모델이 "재전송 많다 → victim 곧 깨질 것" 추론).
+    throughput_score도 정보용으로만(label 2/3 변별력 없음).
+    """
     throughput_score = clamp01(throughput / THROUGHPUT_MAX_MBPS)
 
     occupancy_score = anchor_score(occupancy, ANCHORS["occupancy"])
     jitter_score = anchor_score(probe_jitter_ms, ANCHORS["jitter"])
     loss_score = anchor_score(probe_loss_pct, ANCHORS["loss"])
     latency_score = anchor_score(latency_ms, ANCHORS["latency"])
-    retry_score = anchor_score(retry_ratio_pct, ANCHORS["retry"])
+    retry_score = anchor_score(retry_ratio_pct, ANCHORS["retry"])  # 정보용
 
     congestion_score = round(
         max(
@@ -893,7 +928,6 @@ def calculate_scores(
             jitter_score,
             loss_score,
             latency_score,
-            retry_score,
         ),
         4,
     )
@@ -1022,6 +1056,16 @@ def main():
         maxlen=MOVING_AVG_WINDOW
     )
 
+    # retry ratio를 폴링 단위로 계산하면 idle에서 표본이 작아(프레임
+    # 수십개) 비율이 0~60%로 요동친다. 최근 몇 폴링을 rolling sum 해서
+    # 안정화한다.
+    retx_history = deque(maxlen=MOVING_AVG_WINDOW)
+    pkts_history = deque(maxlen=MOVING_AVG_WINDOW)
+
+    # 단일 폴링 스파이크 제거용 3-폴링 median
+    occ_history = deque(maxlen=3)
+    lat_history = deque(maxlen=3)
+
     sample = 0
 
     poller = APPoller()
@@ -1077,7 +1121,7 @@ def main():
             # ------------------------------------------------
 
             (
-                occupancy,
+                occupancy_raw,
                 occupancy_method,
             ) = calculate_channel_occupancy(
                 previous_active,
@@ -1091,10 +1135,23 @@ def main():
             # ------------------------------------------------
 
             (
-                latency,
+                latency_raw,
                 jitter,
                 ping_packet_loss,
             ) = get_ping_metrics()
+
+            # ------------------------------------------------
+            # 2b/3b. occupancy·latency 단일 폴링 스파이크 제거
+            #   occupancy: instantaneous_fallback 경로가 가끔 100%를
+            #     뱉음(survey 카운터 리셋/이상 read). latency: 노트북
+            #     wifi가 가끔 순간적으로 나빠져 RTT 스파이크.
+            #   3-폴링 median으로 스코어·CSV에 쓰는 값을 안정화한다.
+            # ------------------------------------------------
+
+            occ_history.append(occupancy_raw)
+            lat_history.append(latency_raw)
+            occupancy = median(occ_history)
+            latency = median(lat_history)
 
             # ------------------------------------------------
             # 4. UDP Loss
@@ -1171,19 +1228,24 @@ def main():
                 poll_interval_s = round(elapsed_since_previous, 3)
 
             # ------------------------------------------------
-            # 6. Retry ratio (재설계: 절대 개수 -> 비율)
-            #    retry_ratio = (retries + failed) / (retries + failed + packets)
+            # 6. Retry ratio (재설계: 절대 개수 -> 비율, rolling)
+            #    retry_ratio = Σretx / (Σretx + Σpkts)  (최근 N 폴링)
             #    폴링 주기 무관. WLAN 헬스 표준 문턱(10/15/25/40%)에 매핑.
             # ------------------------------------------------
 
             tx_retx_delta = tx_retries_delta + tx_failed_delta
-            retry_denom = tx_retx_delta + tx_packets_delta
+            retx_history.append(tx_retx_delta)
+            pkts_history.append(tx_packets_delta)
 
-            if retry_denom > 0:
+            retx_sum = sum(retx_history)
+            retry_denom = retx_sum + sum(pkts_history)
+
+            if retry_denom >= 50:
                 tx_retry_ratio = round(
-                    tx_retx_delta / retry_denom, 4
+                    retx_sum / retry_denom, 4
                 )
             else:
+                # 표본이 너무 작으면(idle 초반) 비율이 무의미
                 tx_retry_ratio = 0.0
 
             # ------------------------------------------------
