@@ -1,7 +1,70 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-27 (yongsang 세션 — Claude Code와 함께 진행, 8/26 밤 세션 이어서)
+최종 업데이트: 2026-08-27 저녁 (yongsang 세션 — 집에서 파이+AP 실기기 연결, Claude Code와 진행)
 
-## 완료된 작업 (2026-08-27 세션, Claude Code와 진행)
+## 완료된 작업 (2026-08-27 저녁 세션 — 집, 파이+AP 실기기)
+
+### AP 상태 확인 + 발견: 지금까지 모든 데이터가 2.4GHz였음
+- 세션 시작 시 AP 크래시 상태(80/80 10분 크래시에서 자가재부팅 안 됨) → 물리 재부팅 후 정상. 이후 세션 중 400초 소패킷 런 끝에서 한 번 라디오 순간 리셋(SSID는 유지, 자가재부팅) 있었으나 완전 크래시 아님
+- **SSID `GL-SFT1200-a08` = radio0 = 2.4GHz(채널 1, HT40)**. 폰 3대 다 여기 붙어 있음. 5GHz(`GL-SFT1200-a08-5G`, 채널 40, VHT80)는 아무도 안 씀. **즉 `ap_metrics_v2`의 모든 데이터가 2.4GHz다.** (앞선 문서 논의에서 "5GHz 유지"라고 적은 건 착오 — 실제로는 계속 2.4GHz였음. 관련 문서는 이번에 정정 못 함, 다음에 손봐야 함)
+- AP wireless/network 설정 백업: `uci export` 결과를 scratchpad에 저장. LAN 포트는 vlan1(포트 1,2), WAN은 포트 0. 파이가 LAN 포트에 유선 연결되어 `192.168.8.109`
+
+### 파이 유선 수집 세팅 완료 — 유선 관리채널 실동작 확인
+- **파이(`CapsTone`, `192.168.8.109` eth0 유선 / `192.168.45.31` wlan0 집공유기)**. onnxruntime 1.26 + numpy 이미 설치돼 있음
+- 파이→AP SSH: 노트북의 `~/.ssh/id_rsa_ap` 키를 파이로 복사 + 파이 `~/.ssh/config`에 Host 블록(HostKeyAlgorithms/PubkeyAcceptedAlgorithms +ssh-rsa). 파이에서 `ssh ap "..."` 무패스워드 동작 확인 (eth0 유선 경로, 무선 채널 안 탐)
+- `collect_metrics.py`를 파이 `~/ap_collect/`에 복사 (stdlib만 써서 그대로 돌아감. `CSV_FILE`만 `metrics_v2_pi.csv`로 바꿈, 파이 데이터는 latency 베이스라인이 달라서 메인 CSV와 분리)
+- **주의**: `packet_loss_udp_percent`는 파이에서 N/A (로컬 iperf3 JSON 없음) — 모델 입력 아니라 무방
+
+### 폴링 속도: 4초 → 3.3초 → 1.1초
+| | 노트북 방식 | 파이 + APPoller | 파이 + `ping -c 2` |
+|---|---|---|---|
+| 행당 간격 | ~4초 | ~3.3초 | **~1.1초** |
+| SSH 폴링 | 매번 새 접속 0.5~1초+, 혼잡 시 최대 156초 스톨 | 지속 세션 캐시에서 즉시(~0) | 동일 |
+| latency 측정(`ping`) | `-c 4` ~3초 (병목) | `-c 4` ~3초 (병목) | `-c 2` ~1초 |
+
+- `collect_metrics.py`의 Linux 핑을 `-c 4` → `-c 2`로 변경 (jitter는 여전히 mdev, 2샘플이면 약한 추정). Windows 핑(`-n 4`)은 그대로 둠 — 파이가 앞으로 collector라 Linux 경로만 손봄
+- **폴링 안정성 검증 성공**: 파이 유선 수집으로 소패킷 부하 런(280초 목표, 실제로는 종료 지연으로 42분·2414행 수집) 동안 **평균 1.14초, 5초 넘는 갭 0건**. 노트북 방식의 156초 스톨 같은 게 전혀 없음. 유선 관리채널 + APPoller 효과 실측 확인
+- 이 런 데이터(`metrics_v2_pi_run1.csv`)는 학습에 안 씀 — latency 베이스라인 mismatch(파이 eth0→AP→폰 홉 추가로 idle에도 70~125ms) + old 스키마로 수집됨(poll_interval_s 없음, 1초 해상도 timestamp라 역산 불가)
+
+### `tx_retries_delta` → `tx_retries_per_s` — 폴링 주기 의존성 버그 수정 (정석)
+폴링을 ~1초로 당기니 label이 1에 갇히는 게 관측됨. 원인: `tx_retries_delta`/`tx_failed_delta`는 "지난 폴링 이후 재전송 수" = 델타값인데 **시간으로 안 나눠져 있어서** 폴링 주기에 그대로 비례(4초 폴링 delta ≈ 1초 폴링 delta × 4). `RETRY_FAILED_MAX=25000`이 4초 폴링 기준이라 1초 폴링에선 `retry_failed_score`가 1/4로 눌림. (throughput은 이미 `/elapsed`로 나눠져 있어서 무관)
+
+- **`collect_metrics.py`**: ① CSV에 `poll_interval_s` 컬럼 추가 ② `tx_retries_delta`/`tx_failed_delta` → **`tx_retries_per_s`/`tx_failed_per_s`** (= delta ÷ poll_interval_s) ③ `RETRY_FAILED_MAX` → `RETRY_FAILED_MAX_PER_SEC = 6250` (= 25000 ÷ 4초, 새 데이터로 재보정 예정) ④ `calculate_scores` 시그니처·콘솔 출력 갱신
+- **`utils/ap_features.py`**: 9개 feature 중 5·6번 이름 변경
+- **신규 `remeasure_metrics_v2.py`**: raw feature에서 4개 sub-score를 처음부터 재계산(공식이 바뀔 때용). `relabel_metrics_v2.py`(가중치만 재조합)의 상위 버전
+- **`prepare_ap_metrics_dataset.py`**: `model_excluded_columns`에 `poll_interval_s` 추가 (feature 선택은 `AP_FEATURE_COLUMNS` 명시 참조라 자동 반영됨)
+
+### 기존 데이터 in-place 마이그레이션 (데이터 안 버림)
+- **정크 정리**: `combo_smallpkt_l250_s21_s26`(노트북 수집)이 종료 지연으로 77분·1137행 수집됨(실부하는 앞 ~6분뿐). 16:55:00 이후 runaway idle 1053행 삭제 → 84행만 남김(label 1×10/2×71/3×3). `metrics_v2.csv` 5490→5574행 상태로 정리
+- `remeasure_metrics_v2.py` 실행: 폴링 간격은 timestamp 차이로 역산(1초 해상도, ~4초 폴링은 ±25%, 스톨 뒤 행은 실제 간격으로 나눠서 오히려 부풀려진 값 교정). raw feature에서 sub-score·congestion_score·label 전부 재계산
+- **label 분포: {0:3195, 1:1087, 2:1207, 3:85} → {0:3208, 1:1328, 2:982, 3:56}** — raw label 3이 85→56으로 줄었음. 없어진 ~29개는 폴링 스톨로 retry_delta가 부풀려져서 문턱을 넘었던 것들 (정직한 수치). CSV 컬럼: `tx_retries_delta`/`tx_failed_delta` 제거, `poll_interval_s`/`tx_retries_per_s`/`tx_failed_per_s` 추가 (`.bak` 백업됨, scratchpad에 `metrics_v2_premigration_5574.csv`도)
+
+### 재변환 + 재학습 + 평가
+- `prepare_ap_metrics_dataset.py` 재변환: train 3560 / val 763 / **test 764**, label 3 **train 37 / val 8 / test 8** (8/26 새벽 재학습 때 test 11 → 8로 감소, 마이그레이션이 아티팩트 label 3 제거한 결과)
+- `train_ap_early_exit.py --class-weight-power 1.0` 재학습 (best val balanced acc **80.7%**, epoch 50)
+- 평가 (`ap_v2_eval_report.txt`):
+
+  | | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
+  |---|---:|---:|---:|---:|---:|
+  | Fixed θ | **91.2%** | 97.7% | 88.0% | 78.9% | **12.5% (1/8)** |
+  | Dynamic θ | **91.2%** | 97.3% | 88.5% | 79.7% | **12.5% (1/8)** |
+
+- **전체 정확도는 역대 최고**(직전 최고 89.6%, 8/26 새벽 87.2%). retry feature가 폴링 노이즈 안 타게 되면서 전반적으로 더 잘 보정된 것으로 보임
+- **Label 3 recall은 54.5%(6/11) → 12.5%(1/8)로 급락** — 마이그레이션이 폴링 아티팩트 label 3을 제거해서 test 표본이 11→8로 줄었고, 8개 중 1개 차이가 12.5%p라 소표본 노이즈가 극심. 숫자 자체보다 "이제 깨끗한 파이프라인으로 label 3을 다시 쌓아야 한다"가 요점
+- Exit 분포(fixed θ): Exit1 46.5%(98.6%) / Exit2 36.9%(91.1%) / Exit3 16.6%(70.9%)
+
+### 소패킷 실측 관찰 — "핵심 검증 질문"이 실측 수치로 확인됨
+- 소패킷 25M/25M(`-l 250`)은 **occupancy 55~69%에서 retry 폭증**(retry_failed_score 1.0)한, 정확히 "retry 주도" 혼잡을 만들어냄 → **label 2 대량 확보**
+- 근데 label 3에 도달한 순간은 **여전히 전부 occupancy=100%**. 수치상 폰이 throughput을 못 올리는 한(≈0.3) retry·jitter 다 맥스여도 occupancy 66%면 congestion_score가 ~0.71에서 막힘 → **가중치를 안 바꾸면 "occupancy 아닌 label 3"은 물리적으로 안 나옴** (occ 0.45 비중). 팀 결정 대기 (occ 비중↓ / 문턱↓ / "occupancy-only 분류기 대비 우위"로 서사 전환)
+- **새 관찰**: 소패킷 고PPS는 bps가 아니라 프레임 수로 AP를 압박하는 별개 스트레스 벡터 — 25/25(60/60보다 저부하)인데도 400초에서 라디오 리셋. 다음엔 250~300초로
+
+### 다음 세션 최우선
+- [ ] **2.4GHz에서 label 3 데이터 수집에 집중** (밴드는 2.4 유지 결정, 5GHz 전환·스티어링은 보류). 파이 유선 수집(폴링 1.1초, 5분이면 ~270행)으로 60/60·75/75 반복. **종료 즉시 프로세스 kill** (이번에 또 77분·42분 방치함)
+- [ ] **혼잡 라벨 재설계 착수** — 설계 확정됨: `docs/yongsang/congestion_label_redesign.md` (표준 문턱 + victim 프로브 + `max` 조합, 모델 입력에서 jitter/latency 제거). 구현 순서 §6 참고. 기존 5574행은 레거시 처리(프로브·retry비율 없어 완전 relabel 불가)
+- [ ] **`RETRY_FAILED_MAX_PER_SEC` 재보정** — 지금 6250은 옛 값에서 역산한 것. 파이 유선 수집으로 60/60·75/75 5~7분 제대로 돌려서 label 3 순간의 실제 재전송률(per_s) 분포 보고 조정
+- [ ] 파이 수집 데이터의 latency 베이스라인이 노트북과 다름 — 파이 데이터를 메인 학습셋에 섞을지, 파이 전용으로 재학습할지 결정 (실배포는 파이가 collector니 파이 측정값이 "진짜")
+- [ ] ONNX export (데모 파이프라인 전제)
+- [ ] (검토) 밴드 스티어링 시스템으로 주제 확장할지 팀 결정 — 상세는 위 "향후 시스템 구상"
+- [ ] (이월) 유선 관리채널은 파이 eth0로 사실상 완성 — AP 서브넷 분리(방법 2)는 불필요 확인됨
 
 ### 실시간 폴링 지연 문제(8/26 밤 세션 설계 메모) — 지속 SSH 세션으로 전환하는 코드 조치, 실기기 미검증
 8/26 밤 세션에서 "설계 메모, 코드 변경 없음"으로 남겨뒀던 문제를 이어서 코드로 구현. 근본 원인은 `collect_metrics.py`가 매 루프(~0.5~1초)마다 새 SSH 프로세스를 띄워 TCP+SSH 핸드셰이크를 반복하고, 이 관리 트래픽이 측정 대상과 같은 무선 채널을 타서 혼잡할수록 SSH도 같이 느려지는 자기참조적 구조였던 것.
@@ -25,6 +88,87 @@
 - [ ] **`APPoller` 실기기 검증** — 지속 SSH 연결이 정상적으로 station/survey를 스트리밍하는지, 콤보 부하 중 폴링 지연 스파이크가 실제로 줄어드는지, AP가 죽었을 때 재연결 루프가 폭주하지 않는지 확인. 문제 있으면 되돌릴 수 있도록 검증 전엔 기존 방식(루프당 새 SSH)으로 수집된 데이터와 섞어 비교하지 말 것
 - [ ] **유선 관리채널 분리, 방법 2(AP 서브넷 분리)부터 시도** — 라즈베리 파이 준비(모델 확인: 이더넷 포트 유무, WiFi로 60~100Mbps대 수신 가능한지), Opal `/etc/config/network` 백업 후 LAN 포트를 별도 서브넷으로 분리, 파이 eth0(관리)/wlan0(iperf3 수신) 라우팅이 자연스럽게 나뉘는지 확인. 안 되면 방법 1(static host route)로 폴백
 - [ ] (이전 세션에서 이월) AP 물리 재부팅 상태 확인, 75/75 반복, 재라벨링/재변환/재학습 반영 등 — 아래 8/26 밤 세션 항목 계속 유효
+- [ ] **[데이터 안 늘리고 가능] occupancy 의존도 진단** — 현재 test label 3 정답/오답을 `channel_occupancy_percent` 구간별로 쪼개기(전부 90%+인가?), congestion_score 주도 sub-score별 recall, occupancy feature 뺀 ablation 학습. 목적: 모델이 "occupancy≈100→label 3" 지름길만 쓰는지 확인. 상세는 `project/README_AP_V2.md` "핵심 검증 질문"
+- [ ] **`-b ??M` 대안 부하 방법 시도** — 아래 "부하 생성 방법 대안 — 실험 즉시 참고용" 치트시트 순서대로. 5GHz/80MHz 유지, 소패킷 UDP(PPS↑) → 동일 채널 간섭원(RF↓). 크래시 천장(80/80·500초) 때문에 부하를 더 키우는 대신 airtime·재전송을 올리는 방향. 2.4GHz 전환은 배포 regime과 안 맞아 안 함. **목적 = occupancy가 아니라 retry/jitter가 주도하는 label 2/3 샘플 확보**
+
+### 부하 생성 방법 대안 — 실험 즉시 참고용 (2026-08-27 논의, 미실험)
+
+**왜 하나 (핵심 검증 질문)**: "기기 많아서"가 아니라 경합·간섭·재전송으로 생긴 혼잡 — 즉 **occupancy만으로는 안 잡히는 혼잡** — 을 조기종료 LSTM이 얼마나 정확히 잡는가가 이 프로젝트의 진짜 질문. 그런데 지금 label 3 샘플이 거의 다 occupancy=100% 순간이라 모델이 "occupancy≈100→label 3" 지름길만 학습했을 수 있음. 그래서 필요한 건 **occupancy가 아니라 retry/jitter가 주도하는 label 2/3 샘플**. (상세: `project/README_AP_V2.md` "핵심 검증 질문")
+
+**목표(부하 방법)**: 위 샘플을 만드는 건 **높은 PPS·airtime + 열악한 RF 환경**이다("낮은 throughput"이 목적 아님). lab은 RF가 깨끗해서 재전송이 안 생김 — 공장은 금속·다중경로·밀집 AP로 낮은 부하에서도 retry가 터짐. **5GHz/80MHz는 그대로 두고** (a) 프레임을 잘게 쪼개 PPS↑ (b) 동일 채널 간섭원으로 RF↓. 2.4GHz 전환은 배포 regime과 안 맞아 **안 함**. Opal 소비자 AP 한계는 감안(더 나은 AP가 정공법). 상세는 `docs/yongsang/ap_crash_analysis.md` "부하 생성 방법 대안" 섹션.
+
+**시작 전 (매번)**
+- [ ] 두 폰 AP 와이파이 재연결 + `ping -n 5 192.168.8.191` / `...103` 확인 (capture effect 방지)
+- [ ] `ssh 192.168.8.1 "uptime"` 로 AP 살아있는지 + 재부팅 직후인지 확인
+- [ ] iperf3 서버 폰별 기동: `iperf3 -s -p 5201`(191) / `iperf3 -s -p 5202`(S26)
+
+**1단계 — 소패킷 UDP (5GHz/80MHz 그대로, AP 설정 무변경, 먼저 이것부터)**
+```
+# 각 폰에서 (또는 원격 실행), 대칭으로:
+iperf3 -u -c 192.168.8.226 -p 5201 -l 250 -b 25M -t 300
+iperf3 -u -c 192.168.8.226 -p 5202 -l 250 -b 25M -t 300
+```
+- `-l`은 200~400에서 조정. 서버 출력의 실제 pps/throughput 보고 폰 CPU 병목이면 `-l` 키우기
+- 시나리오명: `combo_smallpkt_l250_s21_s26` (기존 60/60·75/75와 안 섞기)
+- 관찰 포인트: 낮은 합계 throughput인데 occupancy 100% 찍히는지, retry/jitter 동반되는지
+- 근거: 소패킷 = 산업 주기 트래픽(PROFINET/EtherNet-IP/OPC-UA/MQTT/측위/PTT)의 지배적 패턴 → 대용량 blast보다 오히려 현실적
+
+**2단계 — 동일 채널 간섭원 (1단계에 겹치기, 실제 다중 AP 공장 모사)**
+- 측정 안 쓰는 3번째 기기(여분 폰/노트북)로 같은 채널에서 유튜브 4K 재생 또는 별도 `iperf3`
+- 여유되면 두 번째 AP를 같은 채널에서 방송 = co-channel interference 그 자체
+- 이 기기는 congestion_score feature에 안 들어감(`connected_clients`는 제외 컬럼) → 라벨 오염 없음
+- 시나리오명: `combo_smallpkt_cochannel_s21_s26`
+
+**3단계 (여유 시) — RSSI 약화 / 낮은 MCS**
+- 폰을 AP에서 멀리 두거나 금속판 뒤에 배치 → 매 프레임 on-air 시간↑ → retry↑ (regime 크게 안 바꿈)
+
+**종료 시**
+- [ ] "끝" 즉시 iperf3 서버/수집기 프로세스 종료 (유휴 방치 금지)
+- [ ] 간섭원 기기도 정지
+- [ ] `prepare_ap_metrics_dataset.py` 재변환 전에 새 시나리오가 기존 데이터와 섞여도 되는지 팀 확인(분포 shift — scaler 재적합됨)
+
+### 향후 데모 구상 — 부하 제어 + 실시간 혼잡도 대시보드 (2026-08-27 논의, 미착수)
+
+**목적**: 노트북 웹 화면의 버튼을 누르면 클라이언트 폰에 부하 명령이 가고, 파이가 AP를 실측 + ONNX Early Exit LSTM 추론해서, 노트북 웹 화면에 혼잡 레벨(0~3)이 실시간으로 변동하는 걸 눈으로 보는 데모.
+
+**구성 (4-노드)**
+- **브라우저(노트북)** — 대시보드: 부하 제어판(폰별 rate/패킷크기/시간, 간섭원 on/off) + 실시간 표시(혼잡 게이지 · 9 feature 스파크라인 · congestion_score · Exit 단계/추론 지연)
+- **노트북 백엔드(FastAPI/Flask)** — 대시보드 서빙 + 부하 명령 중계 + `iperf3 -s`(5201/5202) 싱크 + 파이 스트림을 브라우저로 중계(단일 origin)
+- **폰 191 / S26 (Termux)** — 부하 에이전트. 노트북이 SSH exec 또는 HTTP 에이전트(`POST /load`)로 `iperf3 -c` 기동. `termux-wake-lock` + 배터리 최적화 예외 필수
+- **라즈베리 파이** — `APPoller`(AP 유선 SSH 폴링) → 롤링 윈도우(10) → ONNX 추론 → SSE/WebSocket로 초당 1회 push. **추론은 파이에서**(엣지 서사)
+
+**신규 작업 = `ap_metrics_v2` 모델 ONNX export 하나** (1차 `export_onnx_ap.py` 재활용). 나머지는 조립.
+
+**전제조건 / 제약**
+- 유선 관리채널 필수 — 무선 폴링이면 혼잡 최고조(데모 하이라이트)에 스트림이 멈춤(과거 156초 스톨·완전 크래시)
+- 부하 프리셋을 안전 범위로 하드코딩 — ≤75/75, ≤420초, 80/80 금지, 소패킷 위주. "전체 정지" 버튼 상시 + 쿨다운. AP 크래시 = 데모 중 물리 재부팅
+- 게이지는 윈도우 10샘플 채우는 ~10초 지연 후 반응("warming up" 표시)
+- 폰 IP 재접속 시 변동 → hostname 또는 pull 모델
+- 재학습/재라벨링 시 ONNX와 scaler 동기 유지
+
+**API 명세**: `docs/yongsang/demo_api_spec.md` (+ `.html`/아티팩트) — 브라우저↔백엔드(REST+SSE), 백엔드↔폰(부하 에이전트), 파이↔백엔드(추론 스트림), 공유 스키마, 안전 제약.
+
+### 향후 시스템 구상 — 혼잡 감지 기반 밴드 스티어링 (2026-08-27 논의, 미착수)
+
+**개념**: LSTM이 2.4GHz 혼잡을 판단하면 파이가 AP에 명령해서 클라이언트를 5GHz로 전환 → 혼잡 해소. 분류기(센서) → 판단(혼잡) → 액추에이터(밴드 전환) → **측정 가능한 결과**(전환 후 지연/손실 감소)의 닫힌 루프. "단순 분류" 대비 훨씬 방어하기 좋은 주제.
+
+**신규성 프레이밍(중요)**: 밴드 스티어링 자체는 소비자/기업 AP 표준 기능이지만 대부분 **정적 휴리스틱**(신호 세기, 클라이언트 수). 차별점 = **학습 기반 + 반응형 + 조기 감지** — occupancy 문턱 방식보다 나은 타이밍에 전환한다는 걸 downstream 지표로 증명. 앞서 계속 신경 쓰던 "occupancy-only 분류기 대비 LSTM 우위"가 여기서 구체적 수치로 나옴.
+
+**구현 경로**
+- 파이 → AP 명령 경로: **이번 세션에 유선 SSH로 이미 완성**
+- 클라이언트를 5GHz로: OpenWrt `dawn` 패키지(802.11k/v/r) 또는 수동 `hostapd_cli bss_tm_req <mac> ...`(802.11v BTM). S26 지원, 191 확인 필요. 안 되면 2.4 SSID deauth + TX power 낮추기로 재접속 유도
+- 파이가 모델·정책·액추에이션 다 함(최저 지연, 단일 결정점). 백엔드는 관찰 + 수동 오버라이드
+
+**전제 / 제약**
+- 양 밴드 **같은 SSID**로 방송해야 seamless 로밍 (지금은 `-a08` / `-a08-5G` 따로 → 통합 필요)
+- Opal 5GHz 채널 40 → 집 공유기 `SK_0600_5G`와 충돌, 36/149로 이동
+- 이상적으로는 **두 밴드 다 혼잡 데이터** 필요(5GHz도 언제 나쁜지 알아야). 데모 수준이면 "5GHz는 항상 여유" 가정 가능
+- 스티어링 플랩 방지 — 쿨다운 + 히스테리시스 + 분당 최대 전환 수
+- Opal 불안정성이 발목 잡을 수 있음
+
+**실험 설계(캡스톤용)**: 같은 부하에서 3-way 비교 — ① 스티어링 없음(baseline) ② occupancy 문턱 스티어링(static) ③ LSTM label≥2/3 스티어링(proposed). victim flow의 throughput/loss/latency 회복 속도, 오탐(불필요 전환) 비교.
+
+**현재 방침(2026-08-27)**: **일단 2.4GHz 데이터 수집에 집중.** 스티어링은 데이터·모델·데모 파이프라인이 갖춰진 뒤. 밴드는 2.4GHz 유지(기존 5574행 그대로 살림), 5GHz 전환 논의는 보류. API 명세엔 `POST /api/steer` / `POST /steer` 를 미리 넣어둠(`docs/yongsang/demo_api_spec.md` §9).
 
 ## 완료된 작업 (2026-08-26 밤 세션, Claude Code와 진행, 저녁 세션 이어서)
 

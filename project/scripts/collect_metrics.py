@@ -40,7 +40,14 @@ THROUGHPUT_MAX_MBPS = 150.0
 # 시뮬레이터 데이터 기준이라 실제 AP 실측 retry/jitter 스케일과
 # 안 맞아서 거의 항상 1.0으로 clamp되고, 그 결과 label 2(혼잡)로
 # 66%가 쏠리는 문제가 있었다. p90 근처 값으로 다시 잡았다.
-RETRY_FAILED_MAX = 25000.0
+# 2026-08-27: tx_retries/tx_failed는 "지난 폴링 이후 델타"라 폴링
+# 주기에 그대로 비례했다(4초 폴링 delta ≈ 1초 폴링 delta × 4).
+# 파이 유선 수집으로 폴링을 ~1초로 당기면서 retry 신호가 1/4로
+# 눌려 label 2/3가 안 나오는 문제가 드러남. → 초당 재전송률
+# (delta / poll_interval_s)로 정규화하고 상한도 "초당" 기준으로 바꿈.
+# 6250 = 기존 RETRY_FAILED_MAX(25000) / 기존 폴링 간격(~4초).
+# 새 데이터가 쌓이면 재보정할 것.
+RETRY_FAILED_MAX_PER_SEC = 6250.0
 JITTER_MAX_MS = 300.0
 
 # ============================================================
@@ -73,8 +80,9 @@ CSV_COLUMNS = [
     "latency_ms",
     "jitter_ms",
     "packet_loss_udp_percent",
-    "tx_retries_delta",
-    "tx_failed_delta",
+    "poll_interval_s",
+    "tx_retries_per_s",
+    "tx_failed_per_s",
     "rssi_dbm",
     "connected_clients",
     "rssi_delta_db",
@@ -496,7 +504,10 @@ def get_ping_metrics():
     if IS_WINDOWS:
         command = ["ping", "-n", "4", "-w", "1000", SERVER_IP]
     else:
-        command = ["ping", "-c", "4", "-W", "1", SERVER_IP]
+        # 2026-08-27: 파이 유선 수집 도입하면서 폴링 주기를 줄이려고
+        # -c 4 -> -c 2 로 축소(핑 4번이 행당 ~3초 병목이었음).
+        # jitter는 여전히 mdev를 쓴다(2 샘플이면 |rtt1-rtt2|/2 수준).
+        command = ["ping", "-c", "2", "-W", "1", SERVER_IP]
 
     output = run_command(command, timeout=8)
 
@@ -694,8 +705,8 @@ def clamp01(value):
 def calculate_scores(
     throughput,
     occupancy,
-    tx_retries_delta,
-    tx_failed_delta,
+    tx_retries_per_s,
+    tx_failed_per_s,
     jitter,
 ):
     # 부하가 높을수록 혼잡도가 높아진다는 실험 목적의 점수.
@@ -707,12 +718,13 @@ def calculate_scores(
         occupancy / 100.0
     )
 
+    # 초당 재전송률 기준(폴링 주기 무관). throughput처럼 시간 정규화됨.
     retry_failed_score = clamp01(
         (
-            tx_retries_delta
-            + tx_failed_delta
+            tx_retries_per_s
+            + tx_failed_per_s
         )
-        / RETRY_FAILED_MAX
+        / RETRY_FAILED_MAX_PER_SEC
     )
 
     jitter_score = clamp01(
@@ -1004,9 +1016,29 @@ def main():
                 )
 
             # ------------------------------------------------
-            # 6. (Retry / Failed delta는 위 calculate_station_deltas
-            #    에서 station별로 이미 계산됨)
+            # 6. Retry / Failed 를 "초당" 으로 정규화
+            #    (delta는 calculate_station_deltas에서 이미 계산됨).
+            #    폴링 주기가 바뀌어도 값이 안 흔들리게 elapsed로 나눔.
             # ------------------------------------------------
+
+            if elapsed_since_previous and elapsed_since_previous > 0:
+                poll_interval_s = round(
+                    elapsed_since_previous, 3
+                )
+                tx_retries_per_s = round(
+                    tx_retries_delta
+                    / elapsed_since_previous,
+                    2,
+                )
+                tx_failed_per_s = round(
+                    tx_failed_delta
+                    / elapsed_since_previous,
+                    2,
+                )
+            else:
+                poll_interval_s = 0.0
+                tx_retries_per_s = 0.0
+                tx_failed_per_s = 0.0
 
             # ------------------------------------------------
             # 7. RSSI + delta + moving average
@@ -1045,8 +1077,8 @@ def main():
             ) = calculate_scores(
                 throughput,
                 occupancy,
-                tx_retries_delta,
-                tx_failed_delta,
+                tx_retries_per_s,
+                tx_failed_per_s,
                 jitter,
             )
 
@@ -1066,8 +1098,9 @@ def main():
                     if udp_packet_loss is not None
                     else ""
                 ),
-                int(tx_retries_delta),
-                int(tx_failed_delta),
+                poll_interval_s,
+                tx_retries_per_s,
+                tx_failed_per_s,
                 round(current_rssi, 2),
                 int(connected_clients),
                 round(rssi_delta, 2),
@@ -1119,10 +1152,15 @@ def main():
                 )
 
             print(
-                f"TX Retries(delta)  : {tx_retries_delta}"
+                f"Poll Interval      : {poll_interval_s:.2f} s"
             )
             print(
-                f"TX Failed(delta)   : {tx_failed_delta}"
+                f"TX Retries/s       : {tx_retries_per_s:.1f}  "
+                f"(delta {tx_retries_delta})"
+            )
+            print(
+                f"TX Failed/s        : {tx_failed_per_s:.1f}  "
+                f"(delta {tx_failed_delta})"
             )
             print(
                 f"RSSI               : {current_rssi:.1f} dBm"

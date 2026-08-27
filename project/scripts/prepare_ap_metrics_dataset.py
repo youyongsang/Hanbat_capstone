@@ -218,6 +218,7 @@ def write_outputs(
                 "scenario",
                 "channel_occupancy_method",
                 "packet_loss_udp_percent",
+                "poll_interval_s",
                 "connected_clients",
                 "throughput_score",
                 "occupancy_score",

@@ -31,7 +31,8 @@
 ```text
 project/scripts/metrics_v2.csv          원본 raw 수집 CSV (누적, 계속 자람)
 project/scripts/collect_metrics.py      라이브 수집 스크립트 (congestion_score 계산도 여기서)
-project/scripts/relabel_metrics_v2.py   가중치가 바뀔 때 raw CSV를 재수집 없이 재라벨링
+project/scripts/relabel_metrics_v2.py   가중치가 바뀔 때 sub-score 재조합만 (재수집 불필요)
+project/scripts/remeasure_metrics_v2.py sub-score 공식이 바뀔 때 raw feature에서 전부 재계산 (2026-08-27 retry per-s 마이그레이션에 사용)
 project/scripts/prepare_ap_metrics_dataset.py  windowed train/val/test 변환
 project/scripts/train_ap_early_exit.py
 project/scripts/evaluate_ap_early_exit.py
@@ -56,24 +57,28 @@ throughput_mbps
 channel_occupancy_percent
 latency_ms
 jitter_ms
-tx_retries_delta
-tx_failed_delta
+tx_retries_per_s
+tx_failed_per_s
 rssi_dbm
 rssi_delta_db
 rssi_moving_avg_dbm
 ```
 
-`timestamp`, `scenario`, `channel_occupancy_method`, `packet_loss_udp_percent`, `connected_clients`, `congestion_score`, `label`은 모델 입력에서 제외한다(각각 시간 정보, 메타데이터, 낮은 변별력, 라벨 생성 중간값, 정답이기 때문). 정규화는 train split의 min-max 기준이며 `scaler_params.json`을 val/test 및 실시간 추론에도 동일하게 써야 한다.
+**2026-08-27 변경**: `tx_retries_delta`/`tx_failed_delta` → **`tx_retries_per_s`/`tx_failed_per_s`**. 델타값(지난 폴링 이후 재전송 수)이 폴링 주기에 그대로 비례해서(4초 폴링 = 1초 폴링 × 4), 파이 유선 수집으로 폴링을 ~1초로 당기자 retry 신호가 1/4로 눌려 label 2/3가 안 나오는 문제가 드러났다. 이제 `delta / poll_interval_s`로 정규화한다(throughput과 동일 방식). 기존 `metrics_v2.csv`는 `remeasure_metrics_v2.py`로 마이그레이션됨(폴링 간격은 timestamp 차이로 역산, 근사치 — 상세는 아래 "알려진 한계").
+
+`timestamp`, `scenario`, `channel_occupancy_method`, `packet_loss_udp_percent`, `poll_interval_s`, `connected_clients`, `congestion_score`, `label`은 모델 입력에서 제외한다(각각 시간 정보, 메타데이터, 낮은 변별력, 폴링 타이밍, 라벨 생성 중간값, 정답이기 때문). 정규화는 train split의 min-max 기준이며 `scaler_params.json`을 val/test 및 실시간 추론에도 동일하게 써야 한다.
 
 ### congestion_score 계산식
 
 ```text
 congestion_score = 0.20 * throughput_score + 0.45 * occupancy_score + 0.20 * retry_failed_score + 0.15 * jitter_score
+
+retry_failed_score = clamp01( (tx_retries_per_s + tx_failed_per_s) / RETRY_FAILED_MAX_PER_SEC )   # RETRY_FAILED_MAX_PER_SEC = 6250 (= 옛 25000 / 옛 폴링간격 ~4초)
 ```
 
 label 경계: `<0.25`→0, `0.25~0.50`→1, `0.50~0.75`→2, `≥0.75`→3.
 
-가중치를 바꾼 이유: 실측 stress_load 구간에서 label 2와 3의 sub-score 평균을 비교해보니 `throughput_score`(0.665→0.707)는 거의 차이가 없었던 반면 `occupancy_score`(0.449→0.898)와 `jitter_score`(0.512→0.802)는 뚜렷한 차이를 보였다. throughput은 정상/경고를 가르는 덴 유용하지만 혼잡/심각을 가르는 덴 기여가 거의 없었으므로, occupancy·jitter 비중을 높이고 throughput 비중을 낮췄다.
+가중치(0.20/0.45/0.20/0.15)를 바꾼 이유: 실측 stress_load 구간에서 label 2와 3의 sub-score 평균을 비교해보니 `throughput_score`(0.665→0.707)는 거의 차이가 없었던 반면 `occupancy_score`(0.449→0.898)와 `jitter_score`(0.512→0.802)는 뚜렷한 차이를 보였다. throughput은 정상/경고를 가르는 덴 유용하지만 혼잡/심각을 가르는 덴 기여가 거의 없었으므로, occupancy·jitter 비중을 높이고 throughput 비중을 낮췄다.
 
 ### class weight power = 1.0
 
@@ -89,13 +94,17 @@ label 경계: `<0.25`→0, `0.25~0.50`→1, `0.50~0.75`→2, `≥0.75`→3.
 
 ### 최신 라벨 분포 및 평가 결과
 
-정확한 최신 수치는 `.work-log/current.md`를 확인한다(세션마다 갱신됨). 2026-08-26 새벽 세션 기준 `metrics_v2.csv` 3981행(data rows 3980), 최근 평가는 전체 정확도 87.2%(fixed)/87.4%(dynamic, 직전 최고 89.6%보다 소폭 하락), Label 3 recall 54.5%(test 11개 중 6개, 역대 최고) — test label 3이 11개로 늘어 두 자릿수 중반 목표에 계속 가까워지는 중.
+정확한 최신 수치는 `.work-log/current.md`를 확인한다(세션마다 갱신됨).
+
+- **최신 raw 데이터(2026-08-27 저녁, `tx_retries_per_s` 마이그레이션 후)**: `metrics_v2.csv` data rows 5574, 라벨 분포 0:3208 / 1:1328 / 2:982 / **3:56**. 마이그레이션으로 raw label 3이 85→56으로 줄었음(폴링 스톨로 부풀려진 ~29개 제거). 8/26 저녁~밤 수집분은 이미 포함됨.
+- **최신 모델 평가(2026-08-27 저녁 재학습, 5574행, best val balanced acc 80.7%)**: windowed test 764샘플(test label 3 8개)로 전체 정확도 **91.2%(fixed/dynamic 동일, 역대 최고)**, Label 0 97%대 / Label 1 88% / Label 2 79% / **Label 3 recall 12.5%(1/8) — 급락**. label 3 급락은 마이그레이션이 test 표본을 11→8로 줄여서 1개 차이가 12.5%p인 소표본 노이즈. 전체 정확도가 최고인 건 retry feature가 폴링 노이즈를 안 타게 된 효과. **다음: 파이 유선 수집으로 label 3 다시 쌓기.**
 
 ### 알려진 한계
 
 - Label 3(심각) 샘플이 여전히 얇다 — recall이 실행마다 크게 흔들린다.
 - Label 2/3 트레이드오프가 절벽형이라 class weight power 중간값 튜닝이 잘 안 먹힌다.
-- AP(Opal) 장비가 특정 조건에서 반복적으로 크래시한다. 2026-08-24 저녁 세션 기준 **"다중 station(2대 이상 동시 부하)"이 핵심 변수**라는 쪽으로 무게가 실려 있다 — S26/191 각각 단독으로는 40~150Mbps까지 전부 크래시 없이 완주했지만, 191+S26 동시 부하 조합에서는 부하 크기와 무관하게 불안정성이 나타났다. 재부팅 후 스위핑 결과 **191=60M/S26=60M(2분 내외, 이후 5~7분까지 확장 검증됨)이 안정성·label 3 생성력 둘 다에서 스위트스팟**이었고, 80M/80M이나 10분 이상 장시간 콤보는 오히려 더 불안정했다(완전 크래시는 아니지만 SSH가 최대 156초까지 끊기는 증상). 2026-08-26 새벽 세션에서 **500초로 늘렸다가 진짜 완전 크래시(ping 100% loss, SSH 완전 타임아웃, 물리 재부팅 필요)를 재현**해서 60/60의 안전 구간이 대략 300~420초까지라는 것도 확인됨. "191 개별 하드웨어 문제"였다는 이전 가설은 191의 다단계 연속 생존으로 반증됨. 상세·최신 상황은 `docs/yongsang/ap_crash_analysis.md`와 `.work-log/current.md` 참고.
+- AP(Opal) 장비가 특정 조건에서 반복적으로 크래시한다. **2026-08-27 세션 기준 최신 가설: "몇 대가 붙었는가"보다 "각 폰이 AP 와이파이에 제대로·대칭적으로 붙어있는가"가 핵심 변수** — S26/191 각각 단독으로는 40~150Mbps까지 전부 크래시 없이 완주했고, 191+S26 콤보도 **시작 전 두 폰 와이파이를 재연결하면** 120초·5~7분 모두 크래시 없이 완주했다. 신호가 강한 S26이 채널을 독점하고 신호가 약한 191이 굶는 비대칭(Wi-Fi capture effect)이 반복 관측됨(191 RSSI 열세 추정). 부하 스위트스팟은 **191=60M/S26=60M(2~7분)**이 기준선이고 8/26 밤에 **75M/75M 대칭**이 label 3 생성 후보로 추가됨(재현성 불완전, 3회 합산 label 3 5개). **상한은 확실: 80M/80M은 10분 시도에서 완전 크래시(물리 재부팅), 60/60도 500초 넘기면 완전 크래시** — 안전 구간 대략 300~420초. "191 개별 하드웨어 문제"였다는 이전 가설은 191의 다단계 연속 생존으로 반증됨. 상세·최신 상황은 `docs/yongsang/ap_crash_analysis.md`와 `.work-log/current.md` 참고.
+- 실시간 폴링 자기참조 지연: `collect_metrics.py`가 매 루프마다 새 SSH를 띄우던 걸 2026-08-27 세션에 지속 SSH 세션(`APPoller` 클래스)으로 전환했다 — 문법 검사만 됨, **실기기 미검증**. 관리 트래픽이 여전히 같은 무선 채널을 탄다는 근본 구조는 그대로라, 유선 관리채널 분리(collector를 라즈베리 파이로, Opal LAN 포트를 별도 서브넷으로)를 다음 세션 실행 대상으로 설계 확정함.
 - ONNX/INT8/Raspberry Pi 배포 파이프라인이 아직 이 라인에는 없다. 1차의 `export_onnx_ap.py`/`prepare_pi_bundle_ap.py`(`yongsang` 브랜치에 있음)를 새 경로로 재사용할지 별도 스크립트를 만들지 미정.
 
 ### 재현 명령어

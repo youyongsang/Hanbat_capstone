@@ -757,17 +757,18 @@ congestion_score =
     </div>
 
     <table class="subscore-table">
-      <caption>sub-score 정의 (1차·2차 공통)</caption>
+      <caption>sub-score 정의</caption>
       <thead>
         <tr><th>sub-score</th><th>계산</th><th class="num">상한</th></tr>
       </thead>
       <tbody>
         <tr><td><code>throughput_score</code></td><td><code>throughput_mbps / MAX</code></td><td class="num">150 Mbps</td></tr>
         <tr><td><code>occupancy_score</code></td><td><code>channel_occupancy_percent / 100</code></td><td class="num">100%</td></tr>
-        <tr><td><code>retry_failed_score</code></td><td><code>(tx_retries+tx_failed) / MAX</code></td><td class="num">25,000</td></tr>
+        <tr><td><code>retry_failed_score</code></td><td><code>(tx_retries_per_s + tx_failed_per_s) / MAX</code></td><td class="num">6,250 /초</td></tr>
         <tr><td><code>jitter_score</code></td><td><code>jitter_ms / MAX</code></td><td class="num">300 ms</td></tr>
       </tbody>
     </table>
+    <div class="callout"><span>2026-08-27</span><span><b>retry_failed_score 정규화 방식 변경 (2차만).</b> 원래 <code>tx_retries_delta</code>(지난 폴링 이후 재전송 수)를 그대로 25,000으로 나눴는데, 이 델타값이 폴링 주기에 비례해서 흔들렸다(4초 폴링 = 1초 폴링 × 4). 파이 유선 수집으로 폴링을 ~1초로 당기자 retry 신호가 1/4로 눌려 label 2/3가 안 나오는 문제가 드러남 → <b>초당 재전송률</b>(<code>delta / poll_interval_s</code>)로 정규화, 상한도 초당 기준(<code>6,250 = 25,000 ÷ 옛 폴링 간격 ~4초</code>). 기존 데이터는 <code class="mono">remeasure_metrics_v2.py</code>로 마이그레이션(폴링 간격은 timestamp 차이로 역산, 근사치). 1차(<code>ap_cleaned_strict</code>)는 archived라 옛 방식 그대로.</span></div>
   </section>
 
   <section id="evidence">

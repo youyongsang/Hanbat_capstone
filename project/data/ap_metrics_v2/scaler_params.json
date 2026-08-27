@@ -13,19 +13,19 @@
   },
   "jitter_ms": {
     "min": 0.0,
-    "max": 912.0
+    "max": 934.0
   },
-  "tx_retries_delta": {
+  "tx_retries_per_s": {
     "min": 0.0,
-    "max": 66870.0
+    "max": 5941.8
   },
-  "tx_failed_delta": {
+  "tx_failed_per_s": {
     "min": 0.0,
-    "max": 78012.0
+    "max": 6271.8
   },
   "rssi_dbm": {
     "min": -65.0,
-    "max": -30.67
+    "max": -27.0
   },
   "rssi_delta_db": {
     "min": -16.0,
@@ -33,6 +33,6 @@
   },
   "rssi_moving_avg_dbm": {
     "min": -64.3,
-    "max": -31.2
+    "max": -30.53
   }
 }

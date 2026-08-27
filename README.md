@@ -19,7 +19,7 @@
 
 본 프로젝트는 AP(무선 공유기) 트래픽 혼잡 상태를 LSTM 기반 시계열 모델로 분류하고, Early Exit 구조를 적용해 엣지 장비에서도 빠르게 추론할 수 있도록 설계한 시스템이다. 혼잡 라벨은 4단계(0 정상 / 1 경고 / 2 혼잡 / 3 심각)이며, `congestion_score`(throughput·occupancy·retry·jitter 가중합)로 산출한다.
 
-입력 feature는 9개다: `throughput_mbps`, `channel_occupancy_percent`, `latency_ms`, `jitter_ms`, `tx_retries_delta`, `tx_failed_delta`, `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm`.
+입력 feature는 9개다: `throughput_mbps`, `channel_occupancy_percent`, `latency_ms`, `jitter_ms`, `tx_retries_per_s`, `tx_failed_per_s`, `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm`.
 
 자세한 라벨 기준, 데이터 계보, 재현 명령어는 `project/README_AP_V2.md`와 `CLAUDE.md`를 참고한다.
 

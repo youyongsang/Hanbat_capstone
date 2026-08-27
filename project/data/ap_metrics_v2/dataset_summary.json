@@ -1,8 +1,8 @@
 {
   "source": {
     "input_file": "project\\scripts\\metrics_v2.csv",
-    "raw_rows": 3981,
-    "prepared_rows": 3946,
+    "raw_rows": 5574,
+    "prepared_rows": 5525,
     "dropped_first_row_per_scenario": true,
     "stride": 1
   },
@@ -11,8 +11,8 @@
     "channel_occupancy_percent",
     "latency_ms",
     "jitter_ms",
-    "tx_retries_delta",
-    "tx_failed_delta",
+    "tx_retries_per_s",
+    "tx_failed_per_s",
     "rssi_dbm",
     "rssi_delta_db",
     "rssi_moving_avg_dbm"
@@ -39,19 +39,19 @@
     },
     "jitter_ms": {
       "min": 0.0,
-      "max": 912.0
+      "max": 934.0
     },
-    "tx_retries_delta": {
+    "tx_retries_per_s": {
       "min": 0.0,
-      "max": 66870.0
+      "max": 5941.8
     },
-    "tx_failed_delta": {
+    "tx_failed_per_s": {
       "min": 0.0,
-      "max": 78012.0
+      "max": 6271.8
     },
     "rssi_dbm": {
       "min": -65.0,
-      "max": -30.67
+      "max": -27.0
     },
     "rssi_delta_db": {
       "min": -16.0,
@@ -59,17 +59,18 @@
     },
     "rssi_moving_avg_dbm": {
       "min": -64.3,
-      "max": -31.2
+      "max": -30.53
     }
   },
   "preprocessing": {
     "dropped_first_row_per_scenario": true,
-    "occupancy_outlier_fixes": 221,
+    "occupancy_outlier_fixes": 270,
     "model_excluded_columns": [
       "timestamp",
       "scenario",
       "channel_occupancy_method",
       "packet_loss_udp_percent",
+      "poll_interval_s",
       "connected_clients",
       "throughput_score",
       "occupancy_score",
@@ -80,36 +81,36 @@
   },
   "splits": {
     "train": {
-      "rows": 25430,
-      "samples": 2543,
-      "shape": "(2543, 10, 9)",
+      "rows": 35600,
+      "samples": 3560,
+      "shape": "(3560, 10, 9)",
       "label_distribution": {
-        "0:정상": 1260,
-        "1:경고": 608,
-        "2:혼잡": 626,
-        "3:심각": 49
+        "0:정상": 2053,
+        "1:경고": 850,
+        "2:혼잡": 620,
+        "3:심각": 37
       }
     },
     "val": {
-      "rows": 5440,
-      "samples": 544,
-      "shape": "(544, 10, 9)",
+      "rows": 7630,
+      "samples": 763,
+      "shape": "(763, 10, 9)",
       "label_distribution": {
-        "0:정상": 270,
-        "1:경고": 130,
-        "2:혼잡": 134,
-        "3:심각": 10
+        "0:정상": 440,
+        "1:경고": 182,
+        "2:혼잡": 133,
+        "3:심각": 8
       }
     },
     "test": {
-      "rows": 5470,
-      "samples": 547,
-      "shape": "(547, 10, 9)",
+      "rows": 7640,
+      "samples": 764,
+      "shape": "(764, 10, 9)",
       "label_distribution": {
-        "0:정상": 270,
-        "1:경고": 131,
-        "2:혼잡": 135,
-        "3:심각": 11
+        "0:정상": 440,
+        "1:경고": 183,
+        "2:혼잡": 133,
+        "3:심각": 8
       }
     }
   }

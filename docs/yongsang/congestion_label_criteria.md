@@ -2,6 +2,8 @@
 
 AP 트래픽 혼잡을 4단계로 분류하는 `congestion_score` 계산식과 라벨 경계를 정리한다. 1차(`ap_cleaned_strict`)와 2차(`ap_metrics_v2`)는 가중치가 다르므로 반드시 구분해서 읽는다. 두 라인의 전체 배경은 `CLAUDE.md`의 "데이터 계보" 섹션, 2차 상세는 `project/README_AP_V2.md`를 참고한다.
 
+> **2026-08-27**: 아래 2차 정의(weighted-sum, occupancy 0.45)는 label 3이 occupancy 포화에서만 나오는 순환논리 문제가 실측으로 확인됐다. **표준 문턱 + victim 프로브 + `max` 조합**으로 재설계하는 제안은 `docs/yongsang/congestion_label_redesign.md`. 재설계가 구현되면 이 문서는 그에 맞춰 개정한다.
+
 ## 4단계 라벨
 
 | Label | 이름 | congestion_score 범위 |
@@ -28,8 +30,10 @@ sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이�
 |---|---|---:|
 | `throughput_score` | `throughput_mbps / THROUGHPUT_MAX_MBPS` | 150 Mbps |
 | `occupancy_score` | `channel_occupancy_percent / 100.0` | 100% |
-| `retry_failed_score` | `(tx_retries_delta + tx_failed_delta) / RETRY_FAILED_MAX` | 25,000 |
+| `retry_failed_score` | `(tx_retries_per_s + tx_failed_per_s) / RETRY_FAILED_MAX_PER_SEC` | 6,250 /초 |
 | `jitter_score` | `jitter_ms / JITTER_MAX_MS` | 300 ms |
+
+> **2026-08-27 (2차만 해당)**: `retry_failed_score`가 `tx_retries_delta`(지난 폴링 이후 재전송 수)를 그대로 썼는데, 이 델타값이 폴링 주기에 비례해서(4초 폴링 = 1초 폴링 × 4) 흔들렸다. 파이 유선 수집으로 폴링을 ~1초로 당기자 retry 신호가 1/4로 눌려 label 2/3가 안 나오는 문제가 드러남. → **초당 재전송률**(`delta / poll_interval_s`)로 정규화, 상한도 "초당" 기준(`RETRY_FAILED_MAX_PER_SEC = 6,250` = 옛 25,000 ÷ 옛 폴링 간격 ~4초). 기존 `metrics_v2.csv`는 `remeasure_metrics_v2.py`로 마이그레이션(폴링 간격은 timestamp 차이로 역산, 근사치). 1차(`ap_cleaned_strict`)는 archived라 그대로 둔다.
 
 ### 가중치(w_t, w_o, w_r, w_j) — 1차 vs 2차
 

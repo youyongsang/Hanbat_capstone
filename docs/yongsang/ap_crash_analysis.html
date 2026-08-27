@@ -229,15 +229,15 @@
 <main>
 
   <header class="page-head">
-    <p class="eyebrow">AP 크래시 원인 분석 — 2026-08-23 밤 ~ 2026-08-25 새벽</p>
+    <p class="eyebrow">AP 크래시 원인 분석 — 2026-08-23 밤 ~ 2026-08-27</p>
     <h1>AP 크래시 원인 분석</h1>
-    <p>label 3(심각) 데이터를 더 모으려고 여러 부하 조합을 시도하며 관찰한 GL.iNet Opal(GL-SFT1200) 크래시 패턴을 정리한다. 가설을 네 번 정정했다.</p>
-    <div class="thesis">최신 결론(8/25 새벽): 하루 종일 가설이 두 번 더 뒤집혔다. "191 폰 개별 문제"라고 봤던 게 오후 세션에서 <b>191이 5단계(40~150Mbps) 연속 생존하며 반증</b>됐고, 대신 <b>"몇 대가 동시에 붙어있는가"(다중 station)가 다시 핵심 변수</b>로 재확정됐다. 저녁~새벽 세션에서 콤보 부하를 스위핑한 결과 <b>191=60M/S26=60M을 5~7분간 돌리는 게 안정성·label 3 생성력 둘 다의 스위트스팟</b>임을 확인했다(단일 실행에서 label 3 5개 확보, congestion 0.9632로 역대 최고 경신) — 그 위(80/80)나 너무 짧거나(2분) 너무 길면(10분+) 완전 크래시는 아니어도 SSH가 최대 156초까지 끊기는 심한 지연을 유발했다.</div>
+    <p>label 3(심각) 데이터를 더 모으려고 여러 부하 조합을 시도하며 관찰한 GL.iNet Opal(GL-SFT1200) 크래시 패턴을 정리한다. 가설을 다섯 번 정정했다.</p>
+    <div class="thesis">최신 결론(8/27): 한때 <b>"몇 대가 동시에 붙어있는가"(다중 station)</b>가 핵심 변수로 재확정됐으나, 8/26 저녁~밤 세션에서 <b>같은 콤보 조합이 어떤 날은 크래시하고 어떤 날은 5~7분씩 깨끗하게 완주</b>했고 그 차이가 "시작 전 두 폰의 와이파이를 재연결했는가"와 강하게 상관됐다. 그래서 실제 변수는 <b>개별 폰의 와이파이 연결 상태 / Wi-Fi capture effect</b>(신호가 강한 S26이 채널을 독점, 신호가 약한 191이 굶는 비대칭)로 재해석됐다. 스위트스팟은 <b>191=60M/S26=60M(2~7분)</b>이 기준선이고 <b>75M/75M 대칭</b>도 label 3 후보로 떠올랐다(재현성 불완전). 상한은 확실하다 — <b>80/80은 10분에서 완전 크래시, 60/60도 500초를 넘기면 완전 크래시</b>(안전 구간 대략 300~420초). 8/27 세션엔 실기기 없이 SSH 폴링 자기참조 지연을 <b>지속 SSH 세션(<code class="mono">APPoller</code>)으로 전환</b>하는 코드 조치를 했다(미검증).</div>
   </header>
 
   <section id="hypotheses">
     <h2><span class="step">01</span> 가설의 변화</h2>
-    <p class="lede">두 번 정정했다. 매번 반례가 나와서 다음 가설로 넘어갔다.</p>
+    <p class="lede">다섯 번 정정했다. 매번 반례가 나와서 다음 가설로 넘어갔다.</p>
 
     <div class="hyp-list">
       <div class="hyp-row rejected">
@@ -268,11 +268,18 @@
           <p>같은 조건(station 수·목적지·전송률)에서 S26은 안정적이었기에 유력해 보였다. 하지만 오후 세션에서 191을 40M→70M→100M→120M→150M 다섯 단계 연속으로 돌려도 크래시가 한 번도 안 났다 — 오히려 label 3을 S26보다 훨씬 잘 만들어냈다. 이 5단계 연속 생존 자체가 "191 개별 문제" 결론과 정면으로 배치되어 반증에 가깝게 뒤집혔다.</p>
         </div>
       </div>
+      <div class="hyp-row rejected">
+        <div class="hyp-status">약화</div>
+        <div class="hyp-body">
+          <b>5차 — 다시 "몇 대가 동시에 붙어있는가"(다중 station)가 핵심 변수</b>
+          <p>S26/191 둘 다 단독으로는 40~150Mbps까지 완주했지만 191+S26 동시 부하에서만 불안정성이 나타났다. → 그런데 8/26 저녁~밤 세션에서 <b>같은 콤보 조합이 어떤 날은 크래시하고 어떤 날은 5~7분씩 깨끗하게 완주</b>했고, 그 차이가 "두 폰의 와이파이를 시작 전에 재연결했는가"와 강하게 상관됐다. 아래 §07~§11 참고.</p>
+        </div>
+      </div>
       <div class="hyp-row current">
         <div class="hyp-status">현재</div>
         <div class="hyp-body">
-          <b>5차 — 다시 "몇 대가 동시에 붙어있는가"(다중 station)가 핵심 변수</b>
-          <p>S26/191 둘 다 단독으로는 40~150Mbps까지 전 구간 크래시 없이 완주했지만, <b>191+S26을 동시에 붙이면 부하 크기와 무관하게 불안정성이 나타난다</b>. 저녁~밤 세션에서 콤보 부하를 스위핑한 결과 191=60M/S26=60M(2분 내외)이 스위트스팟이었고, 그 위(80/80)나 장시간(10분)은 SSH가 최대 156초까지 끊기는 심한 지연을 유발했다(완전 크래시까지 간 적도 1회). 아래 §06~§08 참고.</p>
+          <b>6차 — 개별 폰의 와이파이 연결 상태 / Wi-Fi capture effect</b>
+          <p>콤보 불안정성의 실제 변수는 "몇 대인가"보다 <b>각 폰이 AP 와이파이에 제대로·대칭적으로 붙어있는가</b>로 보인다. 신호가 강한 S26이 채널을 거의 독점하고 신호가 약한 191이 굶는 비대칭(capture effect)이 반복 관측됨 — 191은 ping 지연이 S26보다 계속 크고 불안정했다(RSSI 열세 추정). 여기에 "부하가 80/80 이상이거나 500초 이상 길면 그와 무관하게 완전 크래시"라는 상한 조건이 겹친다. 아래 §09~§11 참고.</p>
         </div>
       </div>
     </div>
@@ -555,22 +562,126 @@
     <div class="callout"><span>→</span><span><b>콤보 실험의 재현성은 부하 크기보다 "두 폰이 실제로 동시에 부하를 걸었는가"에 더 좌우된다.</b> 폰 와이파이가 불안정하거나 시작 타이밍이 몇 분 어긋나면, 콤보를 시도해도 사실상 단독 부하가 되어 label 3이 안 나온다.</span></div>
   </section>
 
+  <section id="crash-500">
+    <h2><span class="step">09</span> 추가 검증 (8/26 새벽) — 500초로 늘렸다가 진짜 완전 크래시, 안전 구간 상한 확인</h2>
+    <p class="lede">이 노트북에서 iperf3 서버와 <code class="mono">collect_metrics.py</code>를 직접 기동/종료하며 60/60 콤보를 5회(rep6~rep10) 반복했다.</p>
+    <div class="callout"><span>→</span><span>rep6~rep9(300초 목표, 실제 4~6분대)는 전부 완주 — AP 크래시 없음, SSH 정상. label 3은 회당 1~4개로 여전히 흔들림(rep6 3 · rep7 3 · rep8 1 · rep9 4).</span></div>
+    <div class="callout warn" style="margin-top:0.9rem"><span>→</span><span><b>rep10에서 지속시간을 500초로 늘려봤다가 진짜 완전 크래시가 재현됨</b>: throughput이 84.86Mbps에서 급격히 붕괴 → retry_delta 10,935→33,288→39,060으로 폭주 → latency/jitter 0으로 죽음 → SSH 완전 타임아웃(ping 100% loss, 자연 복구 안 됨, 물리 재부팅 필요). 8행에서 중단. <b>60/60 스위트스팟의 안전 구간은 무한정이 아니라 대략 300~420초까지</b>로 보인다.</span></div>
+  </section>
+
+  <section id="evening">
+    <h2><span class="step">10</span> 추가 검증 (8/26 저녁) — AP 재부팅 후 콤보 3회, 이번엔 AP보다 191 폰이 더 자주 죽음</h2>
+    <p class="lede">rep10 완전 크래시로 종료됐던 AP를 물리 재부팅(uptime 8분)하고 재개.</p>
+
+    <div class="config-grid">
+      <div class="config-card bad">
+        <div class="outcome-tag">완전 크래시</div>
+        <div class="cfg-title">rep11 · 60/60 · 300초 목표</div>
+        <div class="cfg-detail">재부팅 직후 첫 시도인데도 다시 완전 크래시 · retry_delta 87,033/90,567 폭주 후 ping 100% 손실 · "재부팅 후 몇 번째 시도인가"(누적 피로) 변수 재부상</div>
+      </div>
+      <div class="config-card bad">
+        <div class="outcome-tag">191만 이탈</div>
+        <div class="cfg-title">120s_rep1 · 60/60</div>
+        <div class="cfg-detail">실부하 27초 만에 191만 이탈(connected_clients 3→2) · <b>AP 자체는 끝까지 정상</b> — AP 크래시가 아니라 191 폰 문제</div>
+      </div>
+      <div class="config-card bad">
+        <div class="outcome-tag">191 단독도 19초</div>
+        <div class="cfg-title">s21_60m_test_120s_v2 · 191 단독</div>
+        <div class="cfg-detail">S26 없이 191 혼자도 실부하 19초만 잡히고 유휴 복귀 · AP는 uptime 38분 연속 정상 · 191이 콤보든 단독이든 짧게 죽는 패턴 반복</div>
+      </div>
+    </div>
+    <div class="callout"><span>→</span><span>세 시도 다 label 3 0개. 오늘은 순수하게 크래시/불안정성 재현 및 원인 분리에 그침 — <b>이 세션의 불안정성은 AP가 아니라 191 폰 쪽</b>이었다.</span></div>
+  </section>
+
+  <section id="night">
+    <h2><span class="step">11</span> 추가 검증 (8/26 밤) — 75/75 대칭이 새 스위트스팟 후보, 80/80 10분은 완전 크래시</h2>
+    <p class="lede">191/S26 둘 다 세션 시작 시 와이파이를 재연결한 뒤 진행. 이번엔 120초·5분 콤보 모두 크래시 없이 완주 — 저녁 세션의 반복 불안정성이 개별 폰 와이파이 연결 상태에 크게 좌우된다는 가설이 강해졌다.</p>
+
+    <div class="config-grid">
+      <div class="config-card ok">
+        <div class="outcome-tag">완주 · label3 3</div>
+        <div class="cfg-title">60/60 · 5분(rep12)</div>
+        <div class="cfg-detail">crash 없음, AP uptime 유지 · congestion 0.7826/0.8870/0.7659, 셋 다 occupancy 100% 포화 순간 · raw label 3 73→76</div>
+      </div>
+      <div class="config-card ok highlight">
+        <div class="outcome-tag">완주 · label3 3</div>
+        <div class="cfg-title">75/75 대칭 · 120초(v2)</div>
+        <div class="cfg-detail">22행 소표본에도 label 3 3개(congestion 0.8353/0.7765/0.7745) · 최고 결합 처리량 127.72Mbps · 75/85 비대칭(직전)은 0개였음</div>
+      </div>
+      <div class="config-card bad">
+        <div class="outcome-tag">재현성 불완전</div>
+        <div class="cfg-title">75/75 · rep2 / 7분 rep3</div>
+        <div class="cfg-detail">rep2는 0/23, rep3(7분)은 2개 · 3회 합산 label 3 5개 — 60/60보다 나은 편이나 rep2처럼 완전히 0도 있음 · <b>단 3회 모두 크래시 없이 완주</b></div>
+      </div>
+      <div class="config-card bad">
+        <div class="outcome-tag">완전 크래시</div>
+        <div class="cfg-title">80/80 · 10분</div>
+        <div class="cfg-detail">실부하 약 4분 만에 AP 완전 응답 불능(ping 100% 손실, SSH 불가, 갑자기 끊김) · 물리 재부팅 필요 · 75가 안전 상한, 80은 위험 구간</div>
+      </div>
+    </div>
+    <div class="callout warn" style="margin-top:1.4rem"><span>→</span><span><b>Wi-Fi capture effect 가설 부상</b>: 7분 콤보에서 191이 "0으로 뜬다"고 보고됐지만 수집기 집계 throughput은 정상(최고 93.39Mbps)이었음 — 완전 스톨이 아니라 <b>S26이 채널을 거의 독점하고 191이 굶는 비대칭 현상</b>. 191은 단독일 땐 정상 작동하다 S26과 동시 경쟁이 붙는 순간부터 죽는 패턴이 재현됨(191 RSSI 열세 추정).</span></div>
+    <div class="callout" style="margin-top:0.9rem"><span>→</span><span><b>부하는 75/75까지가 안전 상한</b>, 80/80 이상 또는 500초 이상은 지양. 콤보 시작 전 두 폰 와이파이 재연결이 사실상 선행 조건이다.</span></div>
+  </section>
+
+  <section id="poller">
+    <h2><span class="step">12</span> 추가 조치 (8/27) — SSH 폴링 자기참조 지연을 지속 세션으로 전환(코드, 미검증)</h2>
+    <p class="lede">근본 원인: <code class="mono">collect_metrics.py</code>가 매 루프(0.5~1초)마다 새 SSH 프로세스를 띄워 TCP+SSH 핸드셰이크를 반복했고, 이 관리 트래픽이 측정 대상과 같은 무선 채널을 타서 채널이 혼잡할수록 SSH도 같이 느려지는 자기참조 구조였다.</p>
+    <div class="callout"><span>→</span><span><b>변경</b>: <code class="mono">get_ap_metrics()</code>(루프마다 새 SSH) → <code class="mono">APPoller</code> 클래스. 원격에서 <code class="mono">iw station/survey dump</code>를 무한루프로 도는 셸 명령 하나를 SSH 세션 <b>1개</b>로 띄우고, 백그라운드 스레드가 표준출력을 스트리밍으로 읽어 사이클 단위로 캐시한다. 메인 루프는 캐시에서 새 사이클을 기다리기만 해서(로컬 sleep, 네트워크 호출 없음) 더 이상 느려진 SSH 응답에 동기적으로 블록되지 않는다. 연결 끊기면 자동 재연결. CSV 스키마·스코어링 로직은 변경 없음.</span></div>
+    <div class="callout warn" style="margin-top:0.9rem"><span>→</span><span><b>아직 실기기 미검증</b>(문법 검사만). 다음 AP 세션에서 정상 스트리밍·폴링 지연 감소·재연결 루프 안정성을 확인할 것. <b>관리 트래픽이 여전히 같은 무선 채널을 탄다는 근본 구조는 그대로</b>다 — 완전한 해결책으로 유선 관리채널 분리(collector를 라즈베리 파이로, Opal LAN 포트를 별도 서브넷으로)를 다음 세션 실행 대상으로 설계 확정함.</span></div>
+  </section>
+
   <section id="next">
-    <h2><span class="step">09</span> 다음 검증 방향</h2>
+    <h2><span class="step">13</span> 다음 검증 방향</h2>
     <ol class="next-steps">
       <li style="opacity:0.55"><b>~~다른 폰으로 교체해서 재현 여부 확인~~ — 완료</b><span>S26으로 재검증 완료, 40Mbps대에서는 재현 안 됨.</span></li>
       <li style="opacity:0.55"><b>~~S26/191 단독으로 70~150Mbps까지 단계적으로 올리기~~ — 완료</b><span>둘 다 단독으로는 150Mbps까지 안정적, "191 개별 문제" 반증 (§06).</span></li>
-      <li style="opacity:0.55"><b>~~AP 재부팅 후 콤보를 반복해서 크래시 재현성 확인~~ — 완료</b><span>191=60M/S26=60M(5~7분)이 스위트스팟임을 확인 (§07~§08).</span></li>
-      <li><b>다음 세션 최우선: 60/60(5~7분)을 반복해서 label 3 표본을 두 자릿수 중반(15~20개)까지 늘리기</b><span>test label 3 5~6개 → 9개로 증가 중, 지금까지 효율이 가장 좋은 조합.</span></li>
-      <li><b>"끝났어" 보고를 받으면 iperf3 서버/수집기 프로세스를 즉시 종료하기</b><span>새벽 세션에서 두 번이나 방치돼서 유휴 시간이 raw CSV에 몇십 분~1시간씩 섞여 들어감.</span></li>
-      <li><b>콤보 시작 전 두 폰의 와이파이 상태를 먼저 확인하는 절차 넣기</b><span>접속 실패·타이밍 어긋남으로 실험이 무효화되는 사례가 반복됨 (§08).</span></li>
-      <li><b>채널폭 제한(2.4GHz 또는 5GHz 20MHz)과 병행</b><span>낮은 전송률로도 점유율을 쉽게 포화시켜, 송신 부담을 줄이면서 label 3을 노려본다.</span></li>
+      <li style="opacity:0.55"><b>~~AP 재부팅 후 콤보를 반복해서 크래시 재현성 확인~~ — 완료</b><span>191=60M/S26=60M(2~7분)이 기준 스위트스팟, 8/26 밤에 75/75 대칭이 후보로 추가됨. 80/80·500초 이상은 완전 크래시로 확정 (§09~§11).</span></li>
+      <li><b>다음 세션 최우선: AP 물리 재부팅(80/80 10분 크래시로 필요) 후 60/60 또는 75/75를 300~420초 구간으로 반복해 test label 3을 15~20개까지 늘리기</b><span>raw label 3 81개(8/26 밤). 재라벨링·재변환·재학습은 8/26 새벽 이후 미실시라 최신 raw는 아직 모델 미반영. 60/60 vs 75/75 재현성 비교도 계속.</span></li>
+      <li><b>콤보 시작 전 두 폰 와이파이 재연결/ping 확인을 고정 절차로</b><span>capture effect 때문에 191이 실질적으로 빠지면 콤보가 사실상 단독 부하가 됨. 191 RSSI 개선(AP에 더 가깝게 배치)도 검토 (§11).</span></li>
+      <li><b>지속 SSH 세션(<code class="mono">APPoller</code>)을 실기기로 검증</b><span>정상 스트리밍·폴링 지연 감소·재연결 루프 안정성 확인 (§12).</span></li>
+      <li><b>유선 관리채널 분리 실행 (8/27 설계 확정, 방법 2부터)</b><span>collector를 노트북→라즈베리 파이(headless)로. 폰↔AP 무선(부하) / AP→파이 iperf3 수신 무선 유지 필수 / 파이→AP SSH만 유선. Opal <code class="mono">/etc/config/network</code>에서 LAN 포트를 별도 서브넷으로 분리, 안 되면 static host route로 폴백.</span></li>
+      <li><b>"끝났어" 보고를 받으면 iperf3 서버/수집기 프로세스를 즉시 종료하기</b><span>여러 세션에서 방치돼서 유휴 시간이 raw CSV에 몇십 분~1시간씩 섞여 들어감.</span></li>
+      <li><b><code class="mono">-b ??M</code> 대안 부하 방법 시도 (아래 §14)</b><span>크래시 천장(80/80·500초) 때문에 부하를 더 키우는 대신, 소패킷 UDP·20MHz/2.4GHz로 낮은 throughput에서 label 3을 노린다.</span></li>
       <li><b>호중에게 이 분석 공유</b><span>펌웨어 업데이트 여부나 대체 장비 확보 가능성 문의.</span></li>
     </ol>
   </section>
 
+  <section id="loadmethods">
+    <h2><span class="step">14</span> 부하 생성 방법 대안 — 소패킷 + RF 환경 열화 (2026-08-27 논의, 미실험)</h2>
+    <p class="lede"><b>연결되는 상위 질문</b>: 이 프로젝트가 답해야 하는 건 "occupancy만으로는 안 잡히는 혼잡(경합·간섭·재전송 주도)을 조기종료 LSTM이 얼마나 정확히 잡는가"다(<code>README_AP_V2.md</code> "핵심 검증 질문"). 현재 label 3 샘플이 거의 다 occupancy=100% 순간이라 모델이 지름길만 학습했을 수 있다 — 아래 방법들의 목적은 <b>occupancy가 아니라 retry/jitter가 주도하는 label 2/3 샘플을 확보</b>하는 것이다.</p>
+    <p class="lede">현재 부하는 "다중 기기 × <code class="mono">iperf3 -u -b ??M</code>(기본 ~1470B UDP 프레임)"뿐이다. 한계: (1) occupancy는 100%까지 포화되는데 retry/jitter가 같은 순간에 안 터져서 label 3이 문턱을 못 넘는다, (2) 부하를 키우면 AP가 크래시한다(80/80·500초 확정).</p>
+    <p class="lede"><b>핵심 재해석</b>: 목표는 "낮은 throughput"이 아니라 <b>높은 PPS·airtime + 열악한 RF 환경</b>이다. 실험실은 RF가 깨끗해서 재전송이 안 생기는데, 실제 공장은 금속·다중경로·용접 EMI·밀집 AP 때문에 훨씬 낮은 부하에서도 retry/jitter가 터진다 — lab에서 label 3이 안 나오는 근본 이유다. 따라서 (a) 프레임을 잘게 쪼개 PPS↑, (b) RF 환경을 의도적으로 나쁘게 만든다. <b>채널 크리플(2.4GHz 강제 등)은 배포 regime과 안 맞아 지양.</b> throughput_mbps가 낮아지는 건 무해(§07 — throughput_score는 label 2/3 변별력 없음).</p>
+    <div class="callout warn"><span>!</span><span><b>Opal은 소비자용 AP다.</b> 크래시 천장(80/80·500초)은 물리 법칙이 아니라 GL-SFT1200의 한계다. <i>현실적인</i> 데이터가 목적이면 더 나은 산업/기업용 AP 확보(호중 문의)가 정공법이고, 아래 방법들은 그 사이 label 3 표본을 보충하는 augmentation이다.</span></div>
+
+    <div class="config-grid">
+      <div class="config-card ok">
+        <div class="outcome-tag">5GHz/80MHz 유지 · AP 무변경</div>
+        <div class="cfg-title">1. 소패킷 UDP 플러드</div>
+        <div class="cfg-detail"><code class="mono">iperf3 -u -c &lt;ip&gt; -l 250 -b 25M -t 300</code> · 프레임당 고정 오버헤드(프리앰블·DIFS·백오프·SIFS·ACK) 때문에 250B는 1470B 대비 airtime 5~6배. <b>소패킷 = 산업 주기 트래픽</b>(PROFINET/EtherNet-IP I/O, OPC-UA, MQTT, 측위, PTT)의 지배적 패턴 — 대용량 blast보다 오히려 현실적. <code class="mono">-l</code>은 200~400에서 조정(너무 작으면 폰 CPU가 PPS 병목)</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">실제 공장 다중 AP 모사</div>
+        <div class="cfg-title">2. 동일 채널 간섭원</div>
+        <div class="cfg-detail">측정 안 쓰는 기기(여분 폰/노트북/두 번째 AP)로 같은 채널 점유 — 유튜브 4K, 별도 iperf3, 또는 두 번째 AP 방송. <b>co-channel interference 그 자체</b> = lab에 없는 열악한 RF 환경. congestion_score feature에 안 들어감(connected_clients는 제외 컬럼) → 라벨 오염 없음</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">regime 덜 바꿈</div>
+        <div class="cfg-title">3. 낮은 MCS / RSSI 약화</div>
+        <div class="cfg-detail">기기를 AP에서 멀리·금속판 뒤에 두거나 <code class="mono">iw</code>로 레이트 낮게 고정 → 매 프레임 on-air 시간↑ → 점유율·충돌·재전송↑ (거리·장애물 모사)</div>
+      </div>
+      <div class="config-card ok">
+        <div class="outcome-tag">"산업 무선" 서사 부합</div>
+        <div class="cfg-title">4. 애플리케이션 실측형</div>
+        <div class="cfg-detail">VoIP류(20ms마다 초소형 RTP): 몇 Mbps로 airtime 포화 · BitTorrent 대용량 다운로드 2~3대 · 다중 4K 스트리밍. pktgen/trafgen/MGEN은 Pi(Linux)에서만, 파이 무선 송신 미검증</div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:1.4rem"><span>보류</span><span><b>채널폭 20MHz / 2.4GHz 전환</b> — 2.4GHz는 밴드가 바뀌면 용량·간섭·feature 분포가 통째로 달라지고 공장 고대역 앱(머신비전·영상 감시)은 5GHz라 <b>하지 않는다</b>. 20MHz(5GHz 유지)는 다중 AP 채널 재사용 목적으로 산업에서도 쓰지만 80MHz와 분포가 달라지니 <b>배포 타깃 AP의 채널폭을 먼저 확정한 뒤 일관되게</b> — 지금은 보류.</span></div>
+    <div class="callout warn" style="margin-top:0.9rem"><span>→</span><span><b>데이터 관리 주의</b>: 패킷 크기·RF 조건을 바꾸면 <code class="mono">throughput_mbps</code>·<code class="mono">channel_occupancy_percent</code>·<code class="mono">tx_retries_delta</code> 범위가 달라진다 → scaler 재적합, 기존 데이터와 한 학습셋에 섞는 게 타당한지 팀 논의 필요. 새 <code class="mono">scenario</code> 이름으로 구분 수집(<code class="mono">combo_smallpkt_l250_s21_s26</code>, <code class="mono">combo_smallpkt_cochannel_s21_s26</code>). 소패킷만 / 간섭원만 각각 단독 baseline을 먼저 잡을 것. 실험 즉시 참고용 치트시트는 <code>.work-log/current.md</code>.</span></div>
+  </section>
+
   <footer class="page-foot">
-    <span>작성 2026-08-24 새벽 · 2026-08-25 새벽 세션(60/60을 5~7분으로 돌리는 게 최적임을 확인, congestion 0.9632로 최고치 경신) 반영해 갱신</span>
+    <span>작성 2026-08-24 새벽 · 2026-08-27 세션까지 반영해 갱신(8/26 새벽 500초 완전 크래시, 8/26 저녁 191 폰 불안정, 8/26 밤 75/75 후보·80/80 크래시·capture effect 가설, 8/27 APPoller 전환, 소패킷·20MHz 부하 방법 대안 §14)</span>
     <span>세션별 상세 타임라인: <code>.work-log/current.md</code> · 2차 데이터 라인 전체: <code>project/README_AP_V2.md</code></span>
   </footer>
 

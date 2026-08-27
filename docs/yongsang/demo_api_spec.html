@@ -1,0 +1,654 @@
+<title>혼잡 데모 API 명세</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #f4f7f7;
+    --panel:        #fdfdfc;
+    --panel-2:      #eef3f3;
+    --ink:          #10161a;
+    --ink-2:        #46535a;
+    --ink-mute:     #798890;
+    --rule:         #dde5e6;
+    --rule-strong:  #c6d1d2;
+    --accent:       #0e7c74;
+    --accent-soft:  #e2f1ef;
+
+    --get:     #2f6fb0;
+    --post:    #2c9950;
+    --del:     #c8483b;
+    --stream:  #7a58c4;
+
+    --get-bg:    #e6eff8;
+    --post-bg:   #e4f4e9;
+    --del-bg:    #fbe9e7;
+    --stream-bg: #efe9fa;
+
+    --shadow: 0 1px 2px rgba(16,22,26,0.04), 0 10px 26px -14px rgba(16,22,26,0.14);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:        #0c1113;
+      --panel:        #161d1f;
+      --panel-2:      #1c2528;
+      --ink:          #eef3f3;
+      --ink-2:        #b3c0c2;
+      --ink-mute:     #7f8e92;
+      --rule:         #263133;
+      --rule-strong:  #354244;
+      --accent:       #3fb0a4;
+      --accent-soft:  #14322f;
+
+      --get:     #6ba8de;
+      --post:    #5cc47f;
+      --del:     #e8756a;
+      --stream:  #a98ae0;
+
+      --get-bg:    #17242f;
+      --post-bg:   #16281d;
+      --del-bg:    #2c1a18;
+      --stream-bg: #221c31;
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 30px -16px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:        #0c1113;
+    --panel:        #161d1f;
+    --panel-2:      #1c2528;
+    --ink:          #eef3f3;
+    --ink-2:        #b3c0c2;
+    --ink-mute:     #7f8e92;
+    --rule:         #263133;
+    --rule-strong:  #354244;
+    --accent:       #3fb0a4;
+    --accent-soft:  #14322f;
+
+    --get:     #6ba8de;
+    --post:    #5cc47f;
+    --del:     #e8756a;
+    --stream:  #a98ae0;
+
+    --get-bg:    #17242f;
+    --post-bg:   #16281d;
+    --del-bg:    #2c1a18;
+    --stream-bg: #221c31;
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 30px -16px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Malgun Gothic", system-ui, -apple-system, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 4rem 1.6rem 6rem; }
+
+  /* ---- header ---- */
+  header { margin-bottom: 3rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 0.85rem;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 1.4rem + 1.8vw, 2.45rem);
+    font-weight: 700; letter-spacing: -0.015em; line-height: 1.15;
+    margin: 0 0 0.8rem; text-wrap: balance;
+  }
+  header .sub { color: var(--ink-2); font-size: 1.02rem; margin: 0; max-width: 60ch; }
+  .status-note {
+    margin-top: 1.3rem; padding: 0.85rem 1.1rem;
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    border-radius: 5px; font-size: 0.9rem; color: var(--ink-2);
+  }
+
+  /* ---- diagram ---- */
+  .diagram {
+    margin: 2rem 0 0;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 1.5rem 1.3rem 1.2rem; box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; min-width: 620px; width: 100%; height: auto; }
+  .diagram .cap { margin: 0.9rem 0 0; font-size: 0.78rem; color: var(--ink-mute); }
+
+  /* ---- sections ---- */
+  section { margin-top: 3.6rem; }
+  section > h2 {
+    font-size: 1.15rem; font-weight: 700; margin: 0 0 0.3rem;
+    display: flex; align-items: baseline; gap: 0.6rem;
+    padding-bottom: 0.5rem; border-bottom: 2px solid var(--rule-strong);
+  }
+  section > h2 .n {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.8rem;
+    color: var(--accent); font-weight: 600;
+  }
+  section > .lede { color: var(--ink-2); max-width: 64ch; margin: 1rem 0 1.5rem; }
+  h3 {
+    font-size: 0.96rem; font-weight: 600; margin: 2rem 0 0.7rem;
+    color: var(--ink);
+  }
+  h3 .mono { font-size: 0.9rem; }
+  p { margin: 0.7rem 0; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
+  a:hover { border-color: var(--accent); }
+
+  /* ---- endpoint list ---- */
+  .endpoints {
+    display: flex; flex-direction: column; gap: 1px;
+    background: var(--rule); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden;
+    margin: 1.2rem 0;
+  }
+  .ep {
+    background: var(--panel); padding: 0.8rem 1.05rem;
+    display: grid; grid-template-columns: 74px 1fr; gap: 0.9rem; align-items: baseline;
+  }
+  .verb {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.03em; text-align: center;
+    padding: 0.22rem 0; border-radius: 4px; height: fit-content;
+  }
+  .verb.get    { background: var(--get-bg);    color: var(--get); }
+  .verb.post   { background: var(--post-bg);   color: var(--post); }
+  .verb.delete { background: var(--del-bg);    color: var(--del); }
+  .verb.sse    { background: var(--stream-bg); color: var(--stream); }
+  .ep .path { font-family: "IBM Plex Mono", monospace; font-size: 0.86rem; color: var(--ink); font-weight: 500; }
+  .ep .desc { display: block; margin-top: 0.15rem; font-size: 0.85rem; color: var(--ink-mute); font-family: "IBM Plex Sans KR", sans-serif; }
+
+  /* ---- code ---- */
+  pre {
+    background: var(--panel-2); border: 1px solid var(--rule); border-radius: 7px;
+    padding: 0.95rem 1.05rem; margin: 0.9rem 0; overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; line-height: 1.55;
+    color: var(--ink);
+  }
+  pre .c { color: var(--ink-mute); }
+  code:not(pre code) {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.86em;
+    background: var(--panel-2); border: 1px solid var(--rule);
+    padding: 0.05rem 0.32rem; border-radius: 4px;
+  }
+
+  /* ---- tables ---- */
+  .tbl-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.86rem; min-width: 420px; }
+  th, td {
+    text-align: left; padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--rule); vertical-align: top;
+  }
+  thead th {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-mute); font-weight: 600; border-bottom: 1.5px solid var(--rule-strong);
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  td .mono, td code { font-size: 0.82rem; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* ---- callouts ---- */
+  .note {
+    display: flex; gap: 0.75rem; margin: 1.2rem 0;
+    background: var(--panel); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 5px;
+    padding: 0.9rem 1.1rem; font-size: 0.88rem; color: var(--ink-2);
+  }
+  .note.warn { border-left-color: var(--del); }
+  .note b { color: var(--ink); }
+  .note .mk { flex: none; font-weight: 700; color: var(--accent); font-family: "IBM Plex Mono", monospace; }
+  .note.warn .mk { color: var(--del); }
+
+  /* ---- steps ---- */
+  ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 1.3rem 0; }
+  ol.steps li {
+    counter-increment: s; position: relative; padding: 0 0 1.05rem 2.6rem;
+    font-size: 0.92rem; color: var(--ink-2);
+  }
+  ol.steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0;
+    width: 1.7rem; height: 1.7rem; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps li:not(:last-child)::after {
+    content: ""; position: absolute; left: calc(0.85rem - 1px); top: 1.9rem; bottom: 0.15rem;
+    width: 1.5px; background: var(--rule-strong);
+  }
+  ol.steps li b { color: var(--ink); }
+
+  ul.tight { margin: 0.8rem 0; padding-left: 1.2rem; }
+  ul.tight li { margin: 0.35rem 0; font-size: 0.9rem; color: var(--ink-2); }
+
+  footer {
+    margin-top: 4.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: 0.82rem; color: var(--ink-mute);
+  }
+  footer ul { padding-left: 1.1rem; margin: 0.5rem 0 0; }
+  footer li { margin: 0.28rem 0; }
+  footer code { font-size: 0.9em; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media (max-width: 560px) {
+    .ep { grid-template-columns: 1fr; gap: 0.35rem; }
+    .verb { justify-self: start; padding: 0.22rem 0.6rem; }
+  }
+</style>
+
+<main>
+
+  <header>
+    <p class="eyebrow">AP 혼잡 데모 · 설계 문서 · 2026-08-27</p>
+    <h1>혼잡 데모 API 명세</h1>
+    <p class="sub">웹 버튼으로 폰에 부하를 걸고, 파이가 AP를 실측·추론해, 노트북 화면에서 혼잡 레벨이 실시간으로 오르내리는 걸 보는 데모. 그 네 노드 사이의 API 규격.</p>
+    <div class="status-note"><b>미착수 상태의 설계 문서</b>다. 구현하면서 갱신한다. 신규 구현 부담의 대부분은 <span class="mono">ap_metrics_v2</span> 모델 ONNX export 하나이고, 나머지는 조립이다.</div>
+  </header>
+
+  <section id="overview">
+    <h2><span class="n">1</span> 시스템 개요</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 640 250" role="img" aria-label="4-노드 데모 구성도: 브라우저, 노트북 백엔드, 폰, 라즈베리 파이">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--ink-mute)"/>
+          </marker>
+        </defs>
+        <!-- browser -->
+        <rect x="18" y="20" width="180" height="56" rx="8" fill="var(--panel-2)" stroke="var(--rule-strong)"/>
+        <text x="108" y="44" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans KR, sans-serif" font-size="13" font-weight="600">브라우저 (노트북)</text>
+        <text x="108" y="62" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">대시보드 · 게이지 · 제어판</text>
+        <!-- backend -->
+        <rect x="18" y="118" width="180" height="70" rx="8" fill="var(--panel-2)" stroke="var(--accent)"/>
+        <text x="108" y="142" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans KR, sans-serif" font-size="13" font-weight="600">노트북 백엔드</text>
+        <text x="108" y="160" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">FastAPI · 부하 중계</text>
+        <text x="108" y="175" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">iperf3 -s · 스트림 재방출</text>
+        <!-- phones -->
+        <rect x="300" y="16" width="150" height="64" rx="8" fill="var(--panel-2)" stroke="var(--rule-strong)"/>
+        <text x="375" y="40" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans KR, sans-serif" font-size="13" font-weight="600">폰 191 / S26</text>
+        <text x="375" y="58" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">Termux · iperf3 -c</text>
+        <text x="375" y="71" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">부하 에이전트</text>
+        <!-- pi -->
+        <rect x="300" y="120" width="150" height="70" rx="8" fill="var(--panel-2)" stroke="var(--accent)"/>
+        <text x="375" y="144" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans KR, sans-serif" font-size="13" font-weight="600">라즈베리 파이</text>
+        <text x="375" y="162" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">APPoller → 윈도우10</text>
+        <text x="375" y="177" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">→ ONNX 추론 → SSE</text>
+        <!-- ap -->
+        <rect x="520" y="120" width="102" height="70" rx="8" fill="var(--panel)" stroke="var(--rule-strong)" stroke-dasharray="4 3"/>
+        <text x="571" y="150" text-anchor="middle" fill="var(--ink-2)" font-family="IBM Plex Sans KR, sans-serif" font-size="12" font-weight="600">AP (Opal)</text>
+        <text x="571" y="167" text-anchor="middle" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="10">DUT</text>
+        <!-- edges -->
+        <line x1="108" y1="76" x2="108" y2="116" stroke="var(--ink-mute)" stroke-width="1.5" marker-start="url(#ar)" marker-end="url(#ar)"/>
+        <text x="116" y="100" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="9.5">REST + SSE</text>
+        <line x1="198" y1="140" x2="298" y2="52" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="208" y="86" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="9.5">SSH / HTTP 에이전트</text>
+        <line x1="298" y1="158" x2="200" y2="158" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="212" y="150" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="9.5">SSE (추론 스트림)</text>
+        <line x1="450" y1="155" x2="518" y2="155" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="486" y="145" text-anchor="middle" fill="var(--accent)" font-family="IBM Plex Mono, monospace" font-size="9.5">유선 SSH</text>
+        <path d="M375 80 C 375 100, 375 100, 375 118" stroke="var(--ink-mute)" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+        <text x="383" y="102" fill="var(--ink-mute)" font-family="IBM Plex Mono, monospace" font-size="9.5">무선 부하</text>
+        <line x1="470" y1="78" x2="530" y2="118" stroke="var(--ink-mute)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+      </svg>
+      <p class="cap">추론은 파이에서 수행한다(엣지 추론 서사). 파이↔AP 관리 채널은 반드시 유선 — 무선이면 혼잡 최고조에 스트림이 멈춘다.</p>
+    </div>
+  </section>
+
+  <section id="contracts">
+    <h2><span class="n">2</span> 공유 데이터 계약</h2>
+    <p class="lede">세 API 면이 공유하는 스키마. FeatureVector 순서의 정본은 <code>project/utils/ap_features.py</code>다.</p>
+
+    <h3>2.1 FeatureVector — 9개, 순서 고정</h3>
+    <pre>{
+  <span class="c">// ap_features.py AP_FEATURE_COLUMNS 와 이름·순서 정확히 일치</span>
+  "throughput_mbps": 43.2,
+  "channel_occupancy_percent": 88.0,
+  "latency_ms": 61.0,
+  "jitter_ms": 210.0,
+  "tx_retries_per_s": 2100.0,
+  "tx_failed_per_s": 47.0,
+  "rssi_dbm": -58.0,
+  "rssi_delta_db": -2.0,
+  "rssi_moving_avg_dbm": -57.1
+}</pre>
+
+    <h3>2.2 Label &amp; 2.3 SubScores</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="num">값</th><th>이름</th><th>congestion_score</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td>정상</td><td class="mono">&lt; 0.25</td></tr>
+        <tr><td class="num">1</td><td>경고</td><td class="mono">0.25 ~ 0.50</td></tr>
+        <tr><td class="num">2</td><td>혼잡</td><td class="mono">0.50 ~ 0.75</td></tr>
+        <tr><td class="num">3</td><td>심각</td><td class="mono">≥ 0.75</td></tr>
+      </tbody>
+    </table></div>
+    <pre>sub_scores: { "throughput": 0.18, "occupancy": 0.88, "retry_failed": 0.34, "jitter": 0.70 }
+<span class="c">congestion_score = 0.20·throughput + 0.45·occupancy + 0.20·retry_failed + 0.15·jitter</span></pre>
+
+    <h3>2.4 LoadProfile</h3>
+    <pre>{
+  "mode": "udp_smallpkt",   <span class="c">// "udp_smallpkt" | "udp_default" | "tcp"</span>
+  "rate_mbps": 25,          <span class="c">// 대상 폰 1대당</span>
+  "packet_bytes": 250,      <span class="c">// udp_* 모드에서만 (iperf3 -l)</span>
+  "duration_s": 300,
+  "parallel": 1             <span class="c">// iperf3 -P</span>
+}</pre>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>mode</th><th>iperf3 명령</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">udp_smallpkt</td><td class="mono">iperf3 -u -c &lt;server&gt; -p &lt;port&gt; -l &lt;packet_bytes&gt; -b &lt;rate&gt;M -t &lt;dur&gt; -P &lt;parallel&gt;</td></tr>
+        <tr><td class="mono">udp_default</td><td class="mono">iperf3 -u -c &lt;server&gt; -p &lt;port&gt; -b &lt;rate&gt;M -t &lt;dur&gt; -P &lt;parallel&gt;</td></tr>
+        <tr><td class="mono">tcp</td><td class="mono">iperf3 -c &lt;server&gt; -p &lt;port&gt; -t &lt;dur&gt; -P &lt;parallel&gt;</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>2.6 안전 상수 — API에 하드코딩</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>상수</th><th class="num">값</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">MAX_RATE_MBPS</td><td class="num">75</td><td>폰 1대당. 80/80은 완전 크래시 확정</td></tr>
+        <tr><td class="mono">MAX_DURATION_S</td><td class="num">420</td><td>60/60도 500초 넘기면 완전 크래시</td></tr>
+        <tr><td class="mono">COOLDOWN_S</td><td class="num">60</td><td>run 사이 AP 회복 여유</td></tr>
+        <tr><td>금지 조합</td><td class="num">—</td><td>합계 ≥ 160Mbps, 또는 두 폰 모두 ≥ 80</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note warn"><span class="mk">!</span><span>범위를 벗어난 요청은 <code>422</code>로 거부한다. 근거는 <code>docs/yongsang/ap_crash_analysis.md</code>. 프리셋은 전부 안전 범위 안에 있고, 자유 입력 프로필은 개발 모드에서만 노출한다.</span></div>
+  </section>
+
+  <section id="surface-1">
+    <h2><span class="n">3</span> 면 ① — 백엔드 REST + SSE</h2>
+    <p class="lede">브라우저 ↔ 노트북 백엔드. Base URL <code class="mono">http://&lt;노트북&gt;:8000</code>.</p>
+
+    <div class="endpoints">
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/</span><span class="desc">대시보드 HTML</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/api/health</span><span class="desc">시스템 상태 — 폰 · 파이 · AP · iperf3 서버</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/api/devices</span><span class="desc">부하 클라이언트 목록/상태</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/api/presets</span><span class="desc">안전 프리셋 목록</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/api/load</span><span class="desc">현재 실행 중인 부하</span></span></div>
+      <div class="ep"><span class="verb post">POST</span><span><span class="path">/api/load</span><span class="desc">부하 시작 — 프로필 또는 preset_id</span></span></div>
+      <div class="ep"><span class="verb delete">DEL</span><span><span class="path">/api/load</span><span class="desc">부하 정지 — 전체 또는 ?target=s21</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/api/steer</span><span class="desc">밴드 스티어링 상태 (§9, 미착수 시 501)</span></span></div>
+      <div class="ep"><span class="verb post">POST</span><span><span class="path">/api/steer</span><span class="desc">스티어링 mode 전환 또는 수동 steer (§9)</span></span></div>
+      <div class="ep"><span class="verb sse">SSE</span><span><span class="path">/api/stream</span><span class="desc">추론 프레임 + 부하 상태 + 스티어링 + 경보</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/api/history?n=120</span><span class="desc">최근 샘플 — 스파크라인 백필 (링버퍼, 영구 저장 안 함)</span></span></div>
+    </div>
+
+    <h3><span class="mono">POST /api/load</span></h3>
+    <pre><span class="c">// 프로필 직접 지정</span>
+{ "targets": ["s21", "s26"],
+  "profile": { "mode": "udp_smallpkt", "rate_mbps": 25, "packet_bytes": 250, "duration_s": 300 } }
+
+<span class="c">// 또는 프리셋</span>
+{ "preset_id": "smallpkt_25_250" }</pre>
+    <pre><span class="c">202 Accepted</span>
+{ "run_id": "r-20260827-140312",
+  "targets": ["s21", "s26"],
+  "profile": { "mode": "udp_smallpkt", "rate_mbps": 25, "packet_bytes": 250, "duration_s": 300 },
+  "started_at": "2026-08-27T14:03:12+09:00",
+  "expires_at": "2026-08-27T14:08:12+09:00" }</pre>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="num">code</th><th>error</th><th>상황</th></tr></thead>
+      <tbody>
+        <tr><td class="num">422</td><td class="mono">unsafe_profile</td><td>rate &gt; 75, duration &gt; 420, 금지 조합 (detail에 사유)</td></tr>
+        <tr><td class="num">409</td><td class="mono">already_running / cooldown</td><td>실행 중이거나 쿨다운 (retry_after_s)</td></tr>
+        <tr><td class="num">503</td><td class="mono">device_unreachable</td><td>대상 폰 무응답 (targets에 실패 목록)</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3><span class="mono">DELETE /api/load</span></h3>
+    <p><code>?target=</code> 없으면 전체 정지. 폰이 unreachable이어도 best-effort로 진행하고 <code>200</code>을 반환한다 — 데모 중 항상 멈출 수 있어야 한다.</p>
+    <pre>{ "stopped": ["s21", "s26"], "failed": [], "run_id": "r-20260827-140312" }</pre>
+
+    <h3><span class="mono">GET /api/stream</span> — SSE</h3>
+    <pre><span class="c">event: sample</span>   <span class="c">← 면 ③의 프레임을 그대로 재방출 (초당 1회)</span>
+data: { ...InferenceFrame... }
+
+<span class="c">event: load</span>     <span class="c">← 부하 상태 변화</span>
+data: { "run_id": "r-...", "state": "running", "targets": ["s21","s26"],
+        "elapsed_s": 42, "remaining_s": 258 }
+
+<span class="c">event: alert</span>    <span class="c">← 주의 필요</span>
+data: { "kind": "poll_stall", "detail": "AP SSH 폴링 8s 무응답",
+        "since": "2026-08-27T14:05:01+09:00" }</pre>
+    <p><code class="mono">alert.kind</code>: <code>ap_unreachable</code> · <code>poll_stall</code> · <code>device_lost</code> · <code>cooldown</code> · <code>auto_stopped</code>.</p>
+  </section>
+
+  <section id="surface-2">
+    <h2><span class="n">4</span> 면 ② — 부하 에이전트</h2>
+    <p class="lede">노트북 백엔드 → 폰. 두 방식 중 하나. <b>SSH exec가 폰 쪽 코드 0줄로 가장 간단</b>하고, HTTP 에이전트가 상태 조회·확장에 유리하다.</p>
+
+    <h3>4.A HTTP 에이전트 — <span class="mono">http://&lt;폰&gt;:8787</span></h3>
+    <div class="endpoints">
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/health</span><span class="desc">에이전트 · 환경 상태 (wake_lock, battery_exempt, iperf3)</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/load</span><span class="desc">현재 run 상태 (없으면 null)</span></span></div>
+      <div class="ep"><span class="verb post">POST</span><span><span class="path">/load</span><span class="desc">LoadProfile + {server, port} → iperf3 -c 기동</span></span></div>
+      <div class="ep"><span class="verb delete">DEL</span><span><span class="path">/load</span><span class="desc">현재 run 정지</span></span></div>
+    </div>
+    <pre><span class="c">POST /load</span>
+{ "server": "192.168.8.226", "port": 5201,
+  "mode": "udp_smallpkt", "rate_mbps": 25, "packet_bytes": 250, "duration_s": 300, "parallel": 1 }
+
+<span class="c">201 Created</span>
+{ "run_id": "s21-140312",
+  "cmd": "iperf3 -u -c 192.168.8.226 -p 5201 -l 250 -b 25M -t 300 -P 1",
+  "started_at": "2026-08-27T14:03:12+09:00" }</pre>
+    <ul class="tight">
+      <li>에이전트도 <code class="mono">MAX_RATE_MBPS</code> / <code class="mono">MAX_DURATION_S</code>를 자체 검증한다(백엔드 우회 방지). 범위 밖이면 <code>422</code>.</li>
+      <li><code class="mono">duration_s</code> 만료 시 프로세스가 스스로 종료되고 <code class="mono">GET /load</code>는 <code>null</code>.</li>
+      <li>스크립트 시작 시 <code class="mono">termux-wake-lock</code>. 배터리 최적화 예외는 수동 설정.</li>
+    </ul>
+
+    <h3>4.B SSH exec — 폰 쪽 코드 없음</h3>
+    <p>전제: Termux <code>openssh</code>, <code>sshd</code>(포트 8022) 상시, 노트북 공개키 등록, 노트북 <code>~/.ssh/config</code>에 <code>Host s21</code> / <code>Host s26</code>.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>동작</th><th>명령 (노트북에서)</th></tr></thead>
+      <tbody>
+        <tr><td>시작</td><td class="mono">ssh -o BatchMode=yes s21 'termux-wake-lock; nohup iperf3 -u -c 192.168.8.226 -p 5201 -l 250 -b 25M -t 300 &gt;/dev/null 2&gt;&amp;1 &amp; echo $!'</td></tr>
+        <tr><td>정지</td><td class="mono">ssh s21 'pkill -f "iperf3 -u -c"'</td></tr>
+        <tr><td>상태</td><td class="mono">ssh s21 'pgrep -af "iperf3 -u -c" || echo idle'</td></tr>
+      </tbody>
+    </table></div>
+    <p>백엔드는 반환된 PID를 <code class="mono">run_id</code>로 매핑해 관리한다.</p>
+  </section>
+
+  <section id="surface-3">
+    <h2><span class="n">5</span> 면 ③ — 추론 스트림</h2>
+    <p class="lede">파이 → 노트북 백엔드. Base URL <code class="mono">http://&lt;파이&gt;:9000</code> (유선 관리 서브넷). 브라우저는 이 API에 <b>직접 접근하지 않는다</b> — 백엔드가 <code>/api/stream</code>으로 중계한다.</p>
+
+    <div class="endpoints">
+      <div class="ep"><span class="verb sse">SSE</span><span><span class="path">/stream</span><span class="desc">초당 1회 sample 이벤트</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/meta</span><span class="desc">모델 · 스케일러 · 설정 메타</span></span></div>
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/health</span><span class="desc">AP 도달성 · 폴링 지연 · 재연결</span></span></div>
+    </div>
+
+    <h3><span class="mono">GET /stream</span> — sample 이벤트 (InferenceFrame, 핵심 페이로드)</h3>
+    <pre>{
+  "seq": 12841,
+  "ts": "2026-08-27T14:03:22.514+09:00",
+  "window_filled": true,
+  "features": { <span class="c">/* 2.1 FeatureVector 9개 */</span> },
+  "congestion_score": 0.78,
+  "sub_scores": { "throughput": 0.18, "occupancy": 0.88, "retry_failed": 0.34, "jitter": 0.70 },
+  "label": 3,
+  "label_name": "심각",
+  "early_exit": { "policy": "dynamic", "exit_taken": 1, "confidence": 0.991, "infer_ms": 0.87 },
+  "connected_clients": 3,
+  "ap_reachable": true,
+  "steer": { "mode": "proposed", "band": "2g", "recommend": "5g", "clients_on_5g": [], "last_steer": null }
+}</pre>
+    <ul class="tight">
+      <li><code class="mono">window_filled: false</code> — 스트림 시작 후 첫 10샘플(약 10초). <code>label</code>/<code>congestion_score</code>는 잠정값, 대시보드는 "warming up" 표시.</li>
+      <li><code class="mono">early_exit.exit_taken</code> ∈ {1, 2, 3}, <code class="mono">policy</code>는 <code>fixed</code> 또는 <code>dynamic</code>.</li>
+      <li><code class="mono">infer_ms</code> — 파이 온보드 추론 wall time. Early Exit 이득 시연용.</li>
+      <li><code class="mono">steer</code> — 밴드 스티어링 상태(§9). 스티어링을 안 쓰면 <code class="mono">"mode": "off"</code> 고정.</li>
+    </ul>
+
+    <h3><span class="mono">GET /meta</span></h3>
+    <pre>{
+  "model": { "arch": "APEarlyExitLSTM", "onnx": "ap_early_exit.onnx",
+             "checkpoint": "ap_early_exit_lstm_best.pth",
+             "trained_on_rows": 5574, "trained_at": "2026-08-27" },
+  "scaler": { "file": "scaler_params.json", "sha256": "…" },
+  "features": [ <span class="c">/* 9개 순서 */</span> ],
+  "window_size": 10,
+  "poll_interval_s": 1.0,
+  "labels": { "0": "정상", "1": "경고", "2": "혼잡", "3": "심각" },
+  "congestion_weights": { "throughput": 0.20, "occupancy": 0.45, "retry_failed": 0.20, "jitter": 0.15 },
+  "label_thresholds": [0.25, 0.50, 0.75]
+}</pre>
+    <div class="note warn"><span class="mk">!</span><span>대시보드는 시작 시 <code>/meta</code>를 1회 읽어 feature 순서·가중치·문턱을 표시에 쓴다. <b><code class="mono">scaler.sha256</code>이 학습 때와 다르면 결과를 신뢰하지 말 것</b> — 재라벨링/재변환 후 ONNX·scaler 동기가 안 맞는다는 신호다.</span></div>
+
+    <h3><span class="mono">GET /health</span></h3>
+    <pre>{ "ap_reachable": true, "poll_latency_ms": 34, "poll_stall": false,
+  "reconnects": 0, "last_sample_age_s": 0.4, "poller_uptime_s": 5123 }</pre>
+    <p><code class="mono">poll_stall: true</code>(폴링 응답이 임계치 초과, 기본 5s) 또는 <code class="mono">ap_reachable: false</code>면 백엔드가 <code>alert</code> 이벤트를 내보내고 진행 중인 부하 자동 중지를 제안한다.</p>
+  </section>
+
+  <section id="sequence">
+    <h2><span class="n">6</span> 데모 1회 실행 순서</h2>
+    <ol class="steps">
+      <li><b>파이 부팅</b> → <code class="mono">APPoller</code>가 유선 SSH로 AP 연결 → <code>/stream</code> 방송 시작(첫 10초 <code class="mono">window_filled: false</code>).</li>
+      <li><b>노트북 백엔드 기동</b> → <code class="mono">iperf3 -s -p 5201 / -p 5202</code> → <code>/api/stream</code>이 파이 <code>/stream</code> 구독 후 브라우저에 재방출.</li>
+      <li><b>브라우저에서 대시보드 열기</b> → <code>/meta</code> 1회 → <code class="mono">EventSource("/api/stream")</code> → 게이지·스파크라인 갱신 시작.</li>
+      <li><b>발표자가 프리셋 버튼 클릭</b> (예: "소패킷 25M") → <code class="mono">POST /api/load { "preset_id": "smallpkt_25_250" }</code>.</li>
+      <li>백엔드가 <b>안전 범위 검증</b> → 각 폰에 <code class="mono">POST /load</code> (또는 SSH exec).</li>
+      <li>폰들이 <code class="mono">iperf3 -u -c ...</code> 실행 → 채널 부하 상승.</li>
+      <li><b>약 10초 후</b> 파이 윈도우가 새 상태로 채워지며 <code class="mono">congestion_score</code>·<code class="mono">label</code> 상승 → 게이지 <code class="mono">1 → 2 → 3</code>.</li>
+      <li><b>(스티어링 모드, §9)</b> <code class="mono">label ≥ 2</code>가 <code class="mono">STEER_HOLD_S</code> 유지되면 파이가 victim에 <code class="mono">bss_tm_req</code> → 5GHz로 이동 → 2.4GHz occupancy·retry 하강 → 게이지 <code class="mono">3 → 1</code>. 대시보드에 "s26 → 5GHz" 배지 + victim flow 회복 그래프.</li>
+      <li><code class="mono">duration_s</code> 만료 또는 <b>"전체 정지"</b> → <code class="mono">DELETE /api/load</code> → 폰 부하 종료 → 게이지 하강. 스티어링은 <code class="mono">COOLDOWN_S</code> 후 2.4GHz 복귀(또는 수동).</li>
+      <li><code class="mono">COOLDOWN_S</code> 후 다음 프리셋.</li>
+    </ol>
+  </section>
+
+  <section id="ops">
+    <h2><span class="n">7</span> 안전 · 배포 · 비목표</h2>
+
+    <h3>안전</h3>
+    <ul class="tight">
+      <li><code class="mono">POST /api/load</code> · <code class="mono">POST /load</code> 양쪽에서 안전 상수 검증(백엔드 우회 방지).</li>
+      <li><code class="mono">DELETE /api/load</code>는 항상 즉시 · best-effort. 폰 무응답이어도 <code>200</code>.</li>
+      <li>파이 <code>/health</code>의 <code class="mono">poll_stall</code> / <code class="mono">ap_reachable:false</code> → 백엔드 <code>alert</code> + 자동 중지 제안.</li>
+    </ul>
+
+    <h3>배포</h3>
+    <ul class="tight">
+      <li><b>LAN 전용</b>, 외부 노출 금지. 인증 없음 또는 <code class="mono">X-Demo-Token</code> 공유 헤더 1개.</li>
+      <li>포트: 백엔드 <code class="mono">8000</code>, 파이 <code class="mono">9000</code>, 폰 에이전트 <code class="mono">8787</code>, iperf3 <code class="mono">5201/5202</code>, Termux sshd <code class="mono">8022</code>.</li>
+      <li>CORS: 대시보드와 백엔드가 동일 origin이면 불필요. 브라우저→파이 직접 요청 없음(백엔드 중계).</li>
+      <li>파이는 유선 관리 서브넷에서만 <code class="mono">9000</code>을 listen. 무선 인터페이스로 노출 금지.</li>
+    </ul>
+
+    <h3>비목표</h3>
+    <ul class="tight">
+      <li>다중 동시 세션/발표자, 인증·권한·감사 로그.</li>
+      <li>부하 명령 큐잉(한 번에 한 run).</li>
+      <li>샘플 영구 저장(링버퍼만), 모바일 대시보드 레이아웃(노트북 화면 전제).</li>
+    </ul>
+  </section>
+
+  <section id="codes">
+    <h2><span class="n">8</span> HTTP 상태 코드 요약</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th class="num">code</th><th>의미</th><th>사용처</th></tr></thead>
+      <tbody>
+        <tr><td class="num">200</td><td>정상</td><td>GET 전반, <code class="mono">DELETE /api/load</code>, <code class="mono">POST /api/steer</code></td></tr>
+        <tr><td class="num">201</td><td>생성됨</td><td><code class="mono">POST /load</code> (에이전트)</td></tr>
+        <tr><td class="num">202</td><td>수락됨(비동기)</td><td><code class="mono">POST /api/load</code></td></tr>
+        <tr><td class="num">409</td><td>충돌</td><td>실행 중 / 쿨다운 / 스티어링 쿨다운</td></tr>
+        <tr><td class="num">422</td><td>검증 실패</td><td>안전 범위 밖 프로필, 알 수 없는 steer 대상</td></tr>
+        <tr><td class="num">501</td><td>미구현</td><td>스티어링 미착수 상태</td></tr>
+        <tr><td class="num">503</td><td>하위 노드 도달 불가</td><td>폰 / 파이 무응답</td></tr>
+        <tr><td class="num">504</td><td>상류 타임아웃</td><td>AP 폴링 스톨</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="steer">
+    <h2><span class="n">9</span> 밴드 스티어링 (실험 모드 · 미착수)</h2>
+    <p class="lede">혼잡 감지 결과를 <b>행동</b>으로 연결하는 확장. LSTM이 2.4GHz 혼잡을 판단하면 파이가 AP에 명령해서 victim 클라이언트를 5GHz로 옮긴다. 배경·신규성·실험 설계는 <code>.work-log/current.md</code> "향후 시스템 구상 — 혼잡 감지 기반 밴드 스티어링".</p>
+    <div class="note warn"><span class="mk">상태</span><span>2.4GHz 데이터 수집에 집중 중이라 <b>미착수</b>. 이 절은 API 자리만 잡아둔 것 — steer 엔드포인트는 <code>501</code>, <code class="mono">sample.steer.mode</code>는 <code>"off"</code>.</span></div>
+
+    <h3>9.1 SteerState (공유 계약)</h3>
+    <pre>{
+  "mode": "off",                 <span class="c">// "off" | "static" | "proposed" | "forced_2g" | "forced_5g"</span>
+  "band": "2g",                  <span class="c">// 현재 victim이 붙어있는 밴드</span>
+  "recommend": "5g",             <span class="c">// 정책이 권하는 밴드 (off면 항상 현재 밴드)</span>
+  "clients_on_5g": ["s26"],
+  "last_steer": { "ts": "...", "target": "s26", "from": "2g", "to": "5g",
+                  "trigger": "label&gt;=2 for 6s", "method": "bss_tm_req", "accepted": true },
+  "cooldown_until": "2026-08-27T14:06:40+09:00"
+}</pre>
+    <p><code class="mono">mode</code>가 실험의 독립 변수다:</p>
+    <ul class="tight">
+      <li><code>off</code> — 스티어링 안 함 (baseline)</li>
+      <li><code>static</code> — <code class="mono">occupancy &gt; STEER_OCC_THRESHOLD</code>가 <code class="mono">STEER_HOLD_S</code> 유지되면 전환 (문턱 방식 비교군)</li>
+      <li><code>proposed</code> — LSTM <code class="mono">label ≥ STEER_LABEL_THRESHOLD</code>가 <code class="mono">STEER_HOLD_S</code> 유지되면 전환 (제안 방식)</li>
+      <li><code>forced_2g</code> / <code>forced_5g</code> — 수동 고정 (데모용)</li>
+    </ul>
+
+    <h3>9.2 파이 (면 ③) · 9.3 백엔드 (면 ①)</h3>
+    <div class="endpoints">
+      <div class="ep"><span class="verb get">GET</span><span><span class="path">/steer</span> · <span class="path">/api/steer</span><span class="desc">현재 SteerState + 정책 파라미터</span></span></div>
+      <div class="ep"><span class="verb post">POST</span><span><span class="path">/steer</span> · <span class="path">/api/steer</span><span class="desc">{"mode":"proposed"} 또는 {"action":"steer","target":"s26","to":"5g"}</span></span></div>
+    </div>
+    <pre><span class="c">/meta 에 추가되는 정책 파라미터</span>
+"steer": {
+  "modes": ["off","static","proposed","forced_2g","forced_5g"],
+  "STEER_LABEL_THRESHOLD": 2, "STEER_OCC_THRESHOLD": 80,
+  "STEER_HOLD_S": 6, "STEER_COOLDOWN_S": 60, "STEER_MAX_PER_MIN": 3,
+  "method": "bss_tm_req",        <span class="c">// "bss_tm_req"(802.11v) | "dawn" | "deauth"(폴백)</span>
+  "victim": "s26",
+  "bands": { "2g": "GL-SFT1200-a08", "5g": "GL-SFT1200-a08" }   <span class="c">// 같은 SSID 필수</span>
+}</pre>
+    <ul class="tight">
+      <li>파이가 <b>모델·정책·액추에이션을 다 한다</b>(최저 지연, 단일 결정점). 액추에이터 = 파이→AP 유선 SSH로 <code class="mono">hostapd_cli bss_tm_req &lt;mac&gt; pref=1 neighbor=&lt;5g_bssid&gt;,...</code>. 안 먹으면 <code class="mono">dawn</code> ubus 또는 2.4 deauth 폴백.</li>
+      <li>플랩 방지: <code class="mono">STEER_COOLDOWN_S</code> + <code class="mono">STEER_MAX_PER_MIN</code> + <code class="mono">STEER_HOLD_S</code>.</li>
+      <li><code>/api/stream</code>에 <code class="mono">steer</code> 이벤트 추가(상태 변화 시). 대시보드: mode 선택 + 밴드 배지 + <code class="mono">last_steer</code> 타임라인 + victim flow 회복 그래프.</li>
+    </ul>
+
+    <h3>9.4 실험 모드 (캡스톤 측정)</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>mode</th><th>측정</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">off</td><td>victim flow throughput/loss/latency 시계열 (회복 안 됨/느림)</td></tr>
+        <tr><td class="mono">static</td><td>occupancy 문턱 전환 — 전환 시각, 오탐 횟수, 회복 속도</td></tr>
+        <tr><td class="mono">proposed</td><td>LSTM 전환 — <b>더 일찍 감지? 오탐 적음? 회복 빠름?</b></td></tr>
+      </tbody>
+    </table></div>
+    <p>이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(<code>README_AP_V2.md</code> "핵심 검증 질문").</p>
+
+    <h3>9.5 전제 (미착수 이유)</h3>
+    <ul class="tight">
+      <li>양 밴드 <b>같은 SSID</b> 방송 필요 (지금은 <code>-a08</code> / <code>-a08-5G</code> 따로).</li>
+      <li>Opal 5GHz 채널 40 → 집 공유기와 충돌, 36/149로 이동.</li>
+      <li>이상적으로 <b>5GHz 혼잡 데이터</b>도 필요. 데모 수준이면 "5GHz는 항상 여유" 가정.</li>
+      <li>191 폰의 802.11v 지원 미확인 (S26은 지원).</li>
+    </ul>
+  </section>
+
+  <footer>
+    작성 2026-08-27 · 미착수 설계 문서, 구현하며 갱신
+    <ul>
+      <li><code>.work-log/current.md</code> — "향후 데모 구상", "향후 시스템 구상 — 밴드 스티어링", 세션별 진행</li>
+      <li><code>docs/yongsang/ap_crash_analysis.md</code> — 안전 부하 범위 · 부하 생성 방법 대안의 근거</li>
+      <li><code>project/README_AP_V2.md</code> — 모델 · feature · congestion_score 정의, "핵심 검증 질문"</li>
+      <li><code>project/utils/ap_features.py</code> — FeatureVector 순서의 정본 (<code>tx_retries_per_s</code>/<code>tx_failed_per_s</code>, 2026-08-27~)</li>
+    </ul>
+  </footer>
+
+</main>
