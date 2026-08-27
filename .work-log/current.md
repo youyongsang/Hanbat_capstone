@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-27 심야 (yongsang 세션 — 재설계 스키마 데이터 1614행 → 재학습 완료, label 3 recall 76%, LSTM이 occupancy 문턱 F1 능가)
+최종 업데이트: 2026-08-28 새벽 (yongsang 세션 — 재설계 6-feature 모델 확정: test 85.5% / L3 recall 76% / occupancy 문턱 F1 능가. tx_bitrate feature 시도했다 실패)
 
 ## 완료 (2026-08-27 심야 — 재설계 스키마 재학습 + occupancy 문턱 비교)
 
@@ -28,12 +28,18 @@
 - occupancy 문턱은 트레이드오프에 갇힘: 낮추면 recall↑ FP↑(label 2를 심각이라 함), 높이면 FP 0이지만 심각의 40~45% 놓침. **LSTM은 recall 76% + precision 85% 동시** — retry/RSSI/throughput/추세로 "occ 70% + victim 정상"과 "occ 70% + victim 붕괴"를 구분.
 - **참 label 3 & occ<75% (15창, occupancy 문턱이 원리상 못 잡음)**: LSTM 6/15 정탐(대부분 occ 73% 경계), 9창은 label 1~2로 과소, **정상이라 한 건 0건**. occ≥75 문턱은 0/15.
 
-### 남은 것 / 한계
-- occ 47~67%의 진짜 어려운 심각 케이스는 LSTM도 label 2로 과소평가 — 이 구간 데이터가 얇음(load_15c/20에서 소수)
-- label 1 recall 70% — 정상/경고 경계 약함
-- test에 "label 0/1 & 고occupancy" 창이 없어 "오탐 0"은 데이터 한계
-- AP 크래시로 수집 중단됨 — 데이터 더 쌓으면(특히 occ 50~70% 심각) 개선 여지. 45M은 폐기, 15M/240s·25M/180s·35M/120s가 안전 상한
+### 한계 진단 + tx_bitrate 시도 (2026-08-28) — 실패, 6-feature 모델이 최종
+- **정확한 문제**: occ 60~72%에서 label 2 vs 3 창의 6 feature 평균이 **완전히 동일**(occ 66/65, thr 66/66, retry 0.30/0.30, rssi -35/-34). 라벨 차이는 프로브 축(jitter/loss/latency)에서만 나오는데 프로브는 입력 아님 → 그 구간 일부는 **원리상 학습 불가**. 나머지는 학습 가능(LSTM은 throughput 붕괴한 심각은 잡음, 높은 throughput+moderate occ 심각은 label 2로 과소).
+- **retry_ratio가 프록시 실패**: 이 RF-험한 2.4GHz는 부하만 걸리면 retry ~0.30 고정, L2/L3 구분 못 함.
+- **`sta_tx_bitrate` feature 추가 시도 → 뺌** (커밋 `dbfe148` 추가 → `f634777` 되돌림): `iw station dump`의 station별 tx bitrate. diag_25 런(146행): `min`은 유휴 station(MCS 0, 6.5Mbit/s)이 매 행 지배 → 상수. `mean`은 throughput 추종, 어려운 구간에선 오히려 L3가 높음. **collect_metrics.py는 두 컬럼을 CSV에 계속 기록(정보용), 모델 입력엔 미사용.** 개선하려면 "이번 폴링에 패킷 보낸 station만"으로 재정의 필요.
+- **결론**: 6-feature 모델(`ap_metrics_v2_redesign`, test 85.5% / L3 recall 76% / F1 0.81 vs occupancy 문턱)이 **최종 결과**. 못 잡는 잔차는 "채널에 지문 안 남기는 QoS 붕괴 — in-band 프로브 없이 원리상 불가"로 서술.
+
+### 남은 것
+- label 1 recall 70% — 정상/경고 경계 약함 (occ 50~70% 데이터 더 쌓으면 marginal 개선, occ<75 심각 잔차엔 무의미)
+- AP 크래시 상한: 45M 폐기, **15M/240s · 25M/180s · 35M/120s** 안전. AP load average가 idle에도 ~1.5로 높음(작은 라우터 한계)
 - ONNX export (데모 전제) 아직
+- `congestion_label_redesign.md` HTML 버전 (보류됨)
+- 밴드 스티어링 확장 (팀 결정 대기)
 
 
 
