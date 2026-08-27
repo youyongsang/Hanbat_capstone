@@ -64,7 +64,7 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 | `occupancy_score` (채널 airtime %) | 40% | 55% | 75% | 90% | Cisco/Aruba WLAN 설계 가이드 (>50% 경고, >75% 혼잡), Ekahau 실무 기준 |
 | `jitter_score` (프로브 IPDV) | 20ms | 30ms | 50ms | 100ms | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms), RFC 4594 (텔레포니 ~30ms), Cisco (voice < 30ms) |
 | `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss < 1%, > 5% 사용 불가), ITU-T G.113 App.I, ITU-T Y.1541 |
-| `latency_score` (ping RTT, 노트북 대상) | 30ms | 60ms | 150ms | 400ms | ITU-T G.114 (편도 150/400) + 실시간 WiFi 실무. **v4 idle RTT med 3ms** (2026-08-27 노트북 대상 + Windows ICMP 허용). 부하 시 RTT 범위 측정 후 재보정(provisional) |
+| `latency_score` (ping **편도 추정** = RTT/2) | 30ms | 60ms | 150ms | 400ms | ITU-T G.114 (편도 150/400). **앵커는 편도 규격이고 ping은 RTT를 재므로 `calculate_scores`가 `latency_ms/2`를 넣는다** (2026-08-27 밤: RTT 생값 → 편도 앵커라 RTT 150ms(≈편도 75ms)가 "심각"으로 채점, label 3 79% 과다 → 수정. 부하행 label 3 111→85, label 2 28→54). idle RTT med ~2ms |
 
 **라벨 축 아님 (정보용 컬럼 + 모델 입력)**:
 

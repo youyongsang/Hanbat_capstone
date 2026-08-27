@@ -60,9 +60,10 @@ ANCHORS = {
     "jitter": (20.0, 30.0, 50.0, 100.0),
     # probe loss %       — Cisco Enterprise QoS (voice <1%, >5% 불가), ITU-T G.113
     "loss": (0.5, 1.0, 5.0, 10.0),
-    # ping RTT ms        — 노트북 대상(2026-08-27 방화벽 ICMP 허용). idle RTT ~2ms.
-    #                      ITU-T G.114(편도 150/400) + 실시간 WiFi 실무 기준.
-    #                      부하 시 RTT 범위 측정 후 재보정할 것(provisional).
+    # 편도(one-way) ms   — ITU-T G.114. ping은 RTT를 재므로 calculate_scores에서
+    #                      latency_ms/2 를 편도 추정치로 넣는다(2026-08-27 밤:
+    #                      RTT 생값을 편도 앵커에 넣어 label 3 과다 발생 → 수정).
+    #                      노트북 대상(방화벽 ICMP 허용). idle RTT ~2ms.
     "latency": (30.0, 60.0, 150.0, 400.0),
     # retry ratio %      — WLAN 헬스 (Cisco/Ekahau/7signal: <10% 정상, >20% 불량)
     "retry": (10.0, 15.0, 25.0, 40.0),
@@ -926,7 +927,9 @@ def calculate_scores(
     occupancy_score = anchor_score(occupancy, ANCHORS["occupancy"])
     jitter_score = anchor_score(probe_jitter_ms, ANCHORS["jitter"])
     loss_score = anchor_score(probe_loss_pct, ANCHORS["loss"])
-    latency_score = anchor_score(latency_ms, ANCHORS["latency"])
+    # ANCHORS["latency"]는 G.114 편도 값. ping은 RTT라 절반을 편도 추정치로.
+    latency_oneway = latency_ms / 2.0 if latency_ms else latency_ms
+    latency_score = anchor_score(latency_oneway, ANCHORS["latency"])
     retry_score = anchor_score(retry_ratio_pct, ANCHORS["retry"])  # 정보용
 
     # 실패=max: 채널이 실제로 바쁜데(caller가 판단) victim 경로가 완전히
