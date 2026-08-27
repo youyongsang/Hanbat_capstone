@@ -2,7 +2,7 @@
 
 `ap_metrics_v2`의 `congestion_score`/`label` 정의를 근거 기반으로 다시 세운다. `congestion_label_criteria.md`의 옛(weighted-sum) 정의를 대체한다.
 
-**상태 (2026-08-27)**: `collect_metrics.py`·`ap_features.py`·`prepare_ap_metrics_dataset.py` 구현 완료, Pi에서 idle(v6: 77/77 label 0) + 60/60 부하(label 0~3 전 범위, occupancy 포화 아닌 데서 label 3 확인) 캘리브레이션 완료. **남은 것: 여러 시나리오 재수집(새 파일) → 재변환 → 재학습 → 평가.** 기존 5574행은 레거시(프로브·tx_packets 없음 + retry 3× 버그).
+**상태 (2026-08-27 밤)**: `collect_metrics.py`·`ap_features.py`·`prepare_ap_metrics_dataset.py` 구현 완료. Pi 캘리브레이션: idle(v6: 77/77 label 0) + 60/60·소패킷·45/45 부하 — **occupancy 포화 아닌 occ 60~72%에서 latency/loss 주도 label 3 확인**(45/45 런 22행). "실패=max" 채점 추가(§4) — victim 경로가 죽으면 occupancy 단독으로 안 되돌아감. **남은 것: 여러 시나리오 재수집(새 파일, 누적) → 재변환 → 재학습 → 평가.** 기존 5574행은 레거시(프로브·tx_packets 없음 + retry 3× 버그).
 
 ## 0. 한 줄 요약
 
@@ -147,6 +147,22 @@ label = 0  if congestion_score < 0.25
 
 지금은 `max`로 시작한다.
 
+### 실패 = max (2026-08-27, 45/45 런에서 확인)
+
+프로브·ping의 타겟(노트북)이 같은 무선 다운링크를 타기 때문에, 채널이 심하게 포화되면 **프로브 스트림이 완료 불가 / ping 무응답**이 된다. 이때 원래 코드는 두 축을 `None → score 0.0`으로 처리했고, 라벨이 조용히 occupancy 단독으로 되돌아갔다 (재설계 목적 훼손 — occ 60~72%에서 victim이 완전히 죽은 행이 label 2로 떨어짐).
+
+수정: **채널이 실제로 바쁜 상태에서 victim 경로가 완전히 죽으면 해당 축을 1.0으로 본다.**
+
+```
+channel_active = throughput ≥ 3 Mbps  OR  occupancy ≥ 40%
+ping_hard_fail  = channel_active AND  latency(3-폴링 median) == 0     → latency_score = 1.0
+probe_hard_fail = channel_active AND  프로브가 한 번은 됐었음(ever_ok) AND 지금 stale → loss_score = 1.0
+```
+
+- **왜 AP 다운이 아니라 채널 포화로 보나**: 이 판정에 도달했다는 건 유선 SSH로 AP 텔레메트리(`iw station/survey`)를 방금 정상 파싱했다는 뜻. AP는 살아있고 무선 채널만 막힌 것.
+- **idle 안전장치**: `channel_active` 게이트. 무부하에 ping/프로브가 실패하는 건 셋업 문제(방화벽·로밍)지 혼잡이 아님 → override 안 함. `ever_ok` 게이트로 "프로브 서버 미기동" 케이스도 배제.
+- **45/45 런 재처리 결과**: occ<75% label 3이 11 → 22행으로. 전부 `2→3` 전이(0/1→3 없음), 전부 부하 구간(throughput 27~142 Mbps), idle 행 라벨 변화 0. → CSV에서 `probe_ok==0 & loss_score==1.0` / `latency_ms==0 & latency_score==1.0`으로 override 행 식별 가능(별도 컬럼 없음).
+
 ## 5. 모델 입력 feature 재정의
 
 ### 문제: 라벨이 결정론적 규칙이면 LSTM이 왜 필요한가
@@ -194,7 +210,8 @@ rssi_moving_avg_dbm
 1. ✅ **`collect_metrics.py`** (2026-08-27 구현, Pi에서 스키마 스모크 통과)
    - `ProbeRunner` 클래스: `iperf3 -u -c <노트북> -p 5203 -b 300k -l 200 -t 2 -J`를 짧게·연속 실행하는 백그라운드 스레드. 각 테스트의 서버 측정 jitter/loss를 캐시. `PROBE_STALE_S`(12초) 넘으면 stale → 축 미사용. 버전 robust하게 지속 스트림 파싱 대신 짧은 테스트 반복.
    - `parse_station_info`에 `tx packets:` 추가, `calculate_station_deltas`가 `packets_delta` 반환. `tx_retry_ratio = (retries+failed) / (retries+failed+packets)`.
-   - `anchor_score()` + `ANCHORS` 딕셔너리. `calculate_scores()` = `max(occ, jitter, loss, latency, retry)`. `throughput_score`는 계산은 하되 max에서 제외.
+   - `anchor_score()` + `ANCHORS` 딕셔너리. `calculate_scores()` = `max(occ, jitter, loss, latency)` (retry는 캘리브레이션에서 제외). `throughput_score`는 계산은 하되 max에서 제외.
+   - **실패 = max** (2026-08-27, §4): `channel_active`(throughput≥3 or occ≥40)에서 ping 무응답 → `latency_score=1.0`, 프로브(ever_ok 후) stale → `loss_score=1.0`. `ProbeRunner.get()`이 4번째 값 `ever_ok` 반환.
    - CSV 27컬럼 (`probe_jitter_ms`, `probe_loss_pct`, `probe_ok`, `tx_retx_delta`, `tx_packets_delta`, `tx_retry_ratio` + sub-score 6개). ping jitter는 제거(latency만 남김).
    - `prepare_csv()` 가드가 옛 스키마 CSV에 append 거부 → 재설계는 **새 파일**로 수집.
 2. ✅ **`utils/ap_features.py`**: 모델 feature 6개.
@@ -215,7 +232,8 @@ rssi_moving_avg_dbm
 
 ## 8. 열린 항목 / 리스크
 
-- **latency 축이 약함**: 프로브가 아니라 ping이고, 파이→AP(유선)→폰(무선)→왕복이라 idle 베이스라인이 이미 70~125ms. 셋업별 캘리브레이션 필요할 수 있음. 최악의 경우 latency 축을 라벨에서 빼고 jitter+loss만.
+- **latency 축**: ping 타겟을 폰→노트북으로 바꾼 뒤 idle RTT ~2ms로 깨끗해짐(폰은 전력절약으로 31~295ms 노이즈였음). 45/45 런에서 부하 시 50~250ms(스파이크 814ms)로 잘 반응. 단 노트북이 로밍하면 타겟이 사라지므로 수집 중 노트북을 Opal에 고정 필수(집 공유기 프로필 수동 연결).
+- **프로브 생존율**: 45/45 부하 중 `probe_ok` 26/75. 나머지는 "실패=max"로 커버되지만, 프로브가 더 자주 살아남게 하려면 `PROBE_RATE`/`PROBE_LEN`/재시도 간격 튜닝 여지.
 - **표준 문턱의 출처 정밀화**: 위 표의 앵커 값은 "consensus 근처"로 잡은 것. 실제 인용 시 정확한 문서·조항 확인 필요 (Y.1541 표 X, G.114 §Y, Cisco 문서 버전 등).
 - **occupancy·retry가 라벨 축이자 모델 입력** — leakage 논란 여지. "배포 시 available하니 정당" 논리로 방어하되, occ만으로 label 3 되는 행이 여전히 많으면 occ의 심각 앵커를 올리거나(90%) occ를 라벨에서 빼는 것도 검토.
 - **`max`의 단순화** (§4) — 여러 축 어중간한 경우. E-model이 정석이지만 무거움.

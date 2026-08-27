@@ -340,16 +340,21 @@ class ProbeRunner:
                 time.sleep(2)
 
     def get(self):
-        """(jitter_ms, loss_pct, fresh) — fresh=False면 결과가 stale."""
+        """(jitter_ms, loss_pct, fresh, ever_ok).
+
+        fresh=False면 결과가 stale(프로브 테스트가 연속 실패 중이거나 아직
+        한 번도 못 돎). ever_ok=True면 이 세션에서 프로브가 최소 한 번은
+        정상 완료한 적이 있음 — "되다가 죽음"과 "처음부터 안 됨(서버 미기동
+        등)"을 구분하는 데 쓴다."""
         with self._lock:
             latest = self._latest
 
         if latest is None:
-            return None, None, False
+            return None, None, False, False
 
         jitter, loss, wall_ts = latest
         fresh = (time.time() - wall_ts) <= PROBE_STALE_S
-        return jitter, loss, fresh
+        return jitter, loss, fresh, True
 
     def stop(self):
         self._stopping = True
@@ -901,6 +906,8 @@ def calculate_scores(
     probe_jitter_ms,
     probe_loss_pct,
     retry_ratio_pct,
+    ping_hard_fail=False,
+    probe_hard_fail=False,
 ):
     """혼잡 라벨 재설계(2026-08-27): 각 축을 표준 문턱에 매핑한 뒤
     congestion_score = max(라벨 축).
@@ -921,6 +928,16 @@ def calculate_scores(
     loss_score = anchor_score(probe_loss_pct, ANCHORS["loss"])
     latency_score = anchor_score(latency_ms, ANCHORS["latency"])
     retry_score = anchor_score(retry_ratio_pct, ANCHORS["retry"])  # 정보용
+
+    # 실패=max: 채널이 실제로 바쁜데(caller가 판단) victim 경로가 완전히
+    # 죽은 경우 — ping이 응답 0 / 프로브 스트림이 완료 불가 — 는 "증거 없음"이
+    # 아니라 "실시간 흐름이 완전히 깨짐" = 해당 축 최악(1.0)으로 본다.
+    # AP 텔레메트리(유선)는 이 지점에서 이미 정상 파싱됐으므로 "AP 다운"이
+    # 아니라 "무선 채널 포화"가 원인이다. 상세: congestion_label_redesign.md
+    if ping_hard_fail:
+        latency_score = 1.0
+    if probe_hard_fail:
+        loss_score = 1.0
 
     congestion_score = round(
         max(
@@ -1252,10 +1269,30 @@ def main():
             # 6b. victim 프로브 (jitter / loss 축)
             # ------------------------------------------------
 
-            probe_jitter_ms, probe_loss_pct, probe_fresh = probe.get()
+            probe_jitter_ms, probe_loss_pct, probe_fresh, probe_ever_ok = (
+                probe.get()
+            )
             if not probe_fresh:
                 probe_jitter_ms = None
                 probe_loss_pct = None
+
+            # ------------------------------------------------
+            # 6c. 실패=max 판정 (victim 경로 완전 붕괴)
+            #   channel_active: 실제로 트래픽이 흐르는 중 (throughput 또는
+            #     occupancy 기준). idle에 ping/프로브가 실패하는 건 셋업
+            #     문제지 혼잡이 아니므로 override 안 함.
+            #   ping_hard_fail: 3-폴링 median latency가 0 = 연속 무응답.
+            #   probe_hard_fail: 프로브가 되다가(ever_ok) 죽어서 stale.
+            #     한 번도 못 돈 경우(서버 미기동 등)는 override 안 함.
+            # ------------------------------------------------
+
+            channel_active = (throughput >= 3.0) or (occupancy >= 40.0)
+            ping_hard_fail = channel_active and (latency == 0.0)
+            probe_hard_fail = (
+                channel_active
+                and probe_ever_ok
+                and not probe_fresh
+            )
 
             # ------------------------------------------------
             # 7. RSSI + delta + moving average
@@ -1300,6 +1337,8 @@ def main():
                 probe_jitter_ms,
                 probe_loss_pct,
                 tx_retry_ratio * 100.0,
+                ping_hard_fail=ping_hard_fail,
+                probe_hard_fail=probe_hard_fail,
             )
 
             # ------------------------------------------------
@@ -1371,6 +1410,7 @@ def main():
             )
             print(
                 f"Latency (ping RTT) : {latency:.1f} ms"
+                f"{'  [HARD-FAIL -> lat=1.0]' if ping_hard_fail else ''}"
             )
             _pj = (
                 f"{probe_jitter_ms:.2f} ms"
@@ -1385,6 +1425,7 @@ def main():
             print(
                 f"Probe Jitter/Loss  : {_pj} / {_pl}"
                 f"  ({'fresh' if probe_fresh else 'STALE'})"
+                f"{'  [HARD-FAIL -> loss=1.0]' if probe_hard_fail else ''}"
             )
             print(
                 f"Retry Ratio        : {tx_retry_ratio * 100:.1f} %  "
