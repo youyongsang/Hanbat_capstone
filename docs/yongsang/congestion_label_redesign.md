@@ -228,3 +228,24 @@ rssi_moving_avg_dbm
 - `project/README_AP_V2.md` — "핵심 검증 질문"
 - `.work-log/current.md` — 2026-08-27 저녁 세션 (문제 발견 경위)
 - ITU-T G.114, G.107, G.113, Y.1541 · RFC 4594 · Cisco Enterprise QoS Design Guide
+
+### 소패킷 25/25 부하 캘리브레이션 (2026-08-27, 180초 완주)
+
+폰이 제대로 뿜음(각 20~35Mbps). 55 load rows(occ>35%):
+
+| 축 | 부하 시 | 
+|---|---|
+| occupancy | med 77% / max 90% (소패킷이 airtime 포화) |
+| latency | med 146ms / max 247ms |
+| probe jitter | med 10ms / max 11ms — Y.1541 앵커(20ms) 안 넘음. 이 셋업에선 매우 조용한 축 |
+| probe loss | med 0.3% / p90 4.3% / max 8.2% |
+
+load labels 2×7 / 3×48, 주도 occ 42 / lat 9 / loss 4.
+
+**두 런 종합**: label 3 셋이 다양해짐 —
+- 60/60 → latency·loss 주도, occupancy **60~73%**(포화 아님)
+- 소패킷 → occupancy 주도, occ 72~90%
+
+occupancy-only 문턱(≥75%)이면 60/60의 occ 60~73% label 3을 놓친다 → **재설계가 "occupancy 외 혼잡" 라벨 데이터를 실제로 생성함**(핵심 검증 질문의 실증 기반).
+
+**남은 이슈**: (1) jitter 축이 이 셋업에선 거의 안 뜸(표준 유지하되 기여 낮음), (2) 부하 중 ping이 가끔 2~3연속 실패해 `latency_ms=0` 행이 생김(median으로 대부분 커버). (3) 표본이 아직 얇음 — 여러 시나리오로 본격 수집 필요.
