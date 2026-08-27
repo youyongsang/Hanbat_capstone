@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-27 저녁 (yongsang 세션 — 집에서 파이+AP 실기기 연결, Claude Code와 진행)
+최종 업데이트: 2026-08-27 밤 (yongsang 세션 — 집에서 파이+AP 실기기, 혼잡 라벨 재설계 코드 구현 + idle/부하 캘리브레이션까지 완료)
 
 ## 완료된 작업 (2026-08-27 저녁 세션 — 집, 파이+AP 실기기)
 
@@ -57,10 +57,20 @@
 - 근데 label 3에 도달한 순간은 **여전히 전부 occupancy=100%**. 수치상 폰이 throughput을 못 올리는 한(≈0.3) retry·jitter 다 맥스여도 occupancy 66%면 congestion_score가 ~0.71에서 막힘 → **가중치를 안 바꾸면 "occupancy 아닌 label 3"은 물리적으로 안 나옴** (occ 0.45 비중). 팀 결정 대기 (occ 비중↓ / 문턱↓ / "occupancy-only 분류기 대비 우위"로 서사 전환)
 - **새 관찰**: 소패킷 고PPS는 bps가 아니라 프레임 수로 AP를 압박하는 별개 스트레스 벡터 — 25/25(60/60보다 저부하)인데도 400초에서 라디오 리셋. 다음엔 250~300초로
 
+### 혼잡 라벨 재설계 — 코드 구현 + 캘리브레이션 완료 (프로브·표준 문턱·max)
+- **코드 구현 완료** (커밋 `ec109d0`, `013df75`): `collect_metrics.py`에 `ProbeRunner`(백그라운드 300kbps UDP victim 프로브, `iperf3 -c 192.168.8.226 -p 5203`), `anchor_score()`(표준 문턱 4-앵커 piecewise-linear), `calculate_scores`가 `max(occupancy, jitter, loss, latency)` — retry는 계산하되 max에서 제외. `ap_features.py` 9→6 feature(latency/jitter/connected_clients 제거, `tx_retry_ratio` 도입). `prepare_ap_metrics_dataset.py` 제외 컬럼 갱신. 새 스키마라 `prepare_csv()` 가드가 옛 CSV append 거부 → **새 파일 `metrics_v2_pi_redesign.csv`로 수집**
+- **idle 캘리브레이션 완료** (커밋 `3e0780a`): 파이 무부하 수집, v6 앵커에서 idle 77/77이 label 0, congestion_score max 0.17. retry는 idle에서도 retry_ratio 18~36%라 (RF 험한 2.4GHz 채널) — **retry를 라벨 축에서 뺌** (사용자 결정 "retry 빼고 가자"), 모델 feature로는 유지
+- **부하 캘리브레이션 완료** (커밋 `ee6c776` 60/60, `8f93c2d` 소패킷):
+  - 60/60 런: 폰이 60M씩 못 실어 채널은 ~36초만 혼잡했지만, 그 구간에서 **occupancy 60~73%(포화 아님)인데 label 3** — latency 140~291ms / loss 7.4% 주도
+  - 소패킷 25/25 런(`-l 250`, 180초, 완전 크래시 없음): occ med 77 / max 90, label 3 48행 중 41행이 occupancy 주도 · 9행 latency · 4행 loss
+  - **핵심 검증 결과**: 재설계 라벨은 occupancy 포화가 아닌 상태(60~73%)에서도 latency/loss로 label 3을 만든다 → occupancy-only 문턱(≥75%)이면 놓치는 행이 실측으로 존재 → "LSTM이 occupancy 문턱을 이긴다"의 경험적 근거 확보
+- 상세: `docs/yongsang/congestion_label_redesign.md` (idle/60-60/소패킷 캘리브레이션 표 포함)
+
 ### 다음 세션 최우선
-- [ ] **2.4GHz에서 label 3 데이터 수집에 집중** (밴드는 2.4 유지 결정, 5GHz 전환·스티어링은 보류). 파이 유선 수집(폴링 1.1초, 5분이면 ~270행)으로 60/60·75/75 반복. **종료 즉시 프로세스 kill** (이번에 또 77분·42분 방치함)
-- [ ] **혼잡 라벨 재설계 — 하드웨어 세션 필요분** — 코드는 구현됨(`congestion_label_redesign.md` §6: `collect_metrics.py` ProbeRunner + 표준 문턱 앵커 + `max`, `ap_features.py` 6 feature, prepare 갱신, Pi 스키마 스모크 통과). 남은 것: ① 노트북에 `iperf3 -s -p 5203` 프로브 싱크 ② idle 30~60초로 retry 앵커 재보정(idle에 이미 retry_ratio 8%) ③ 새 파일로 재수집 → 재변환 → 재학습 → 평가. 기존 5574행은 레거시(프로브·tx_packets 없어 완전 relabel 불가)
-- [ ] **`RETRY_FAILED_MAX_PER_SEC` 재보정** — 지금 6250은 옛 값에서 역산한 것. 파이 유선 수집으로 60/60·75/75 5~7분 제대로 돌려서 label 3 순간의 실제 재전송률(per_s) 분포 보고 조정
+- [ ] **본격 다중 시나리오 수집 (재설계 스키마)** — 캘리브레이션은 끝. 이제 학습셋용으로 `metrics_v2_pi_redesign.csv`에 **누적**(매번 rm 하지 말 것) 수집: 노트북에 iperf3 서버 3개(5201/5202 부하, 5203 프로브) 띄우고 폰 60/60·75/75·소패킷·idle을 시나리오별로 3~5분씩. 종료 즉시 프로세스 kill
+- [ ] **재변환 → 재학습 → 평가** — `prepare_ap_metrics_dataset.py`로 windowed 변환(6 feature) → `train_ap_early_exit.py --class-weight-power 1.0` → 평가. **occupancy 60~73% label 3 행의 recall**을 집중 확인 (occupancy 문턱 대비 우위 지표)
+- [ ] `congestion_label_redesign.md` HTML 버전 (사용자: "html는 후술로 넘어가고" — 보류됨)
+- [ ] **retry 앵커(10/15/25/40%) 검토** — 라벨 축에선 뺐지만 정보 컬럼으로 남아있음. idle retry_ratio가 18~36%라 앵커가 idle에서도 warn을 넘음 — 정보성 컬럼이라 무해하나 문서에 명시
 - [ ] 파이 수집 데이터의 latency 베이스라인이 노트북과 다름 — 파이 데이터를 메인 학습셋에 섞을지, 파이 전용으로 재학습할지 결정 (실배포는 파이가 collector니 파이 측정값이 "진짜")
 - [ ] ONNX export (데모 파이프라인 전제)
 - [ ] (검토) 밴드 스티어링 시스템으로 주제 확장할지 팀 결정 — 상세는 위 "향후 시스템 구상"
