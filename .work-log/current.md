@@ -1,5 +1,45 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-27 밤 (yongsang 세션 — 집에서 파이+AP 실기기, 혼잡 라벨 재설계 코드 구현 + idle/부하 캘리브레이션까지 완료)
+최종 업데이트: 2026-08-27 심야 (yongsang 세션 — 재설계 스키마로 다중 시나리오 데이터 1390행 수집, latency RTT/2 + failure=max 수정)
+
+## 완료된 작업 (2026-08-27 심야 — 재설계 스키마 본격 수집)
+
+### 라벨 채점 수정 2건 (커밋 `13c22a4`, `2ee7eea`)
+1. **failure = max** (`13c22a4`): 채널 포화로 victim 프로브·ping이 완전히 죽으면 축을 0이 아니라 **1.0**으로. `channel_active`(throughput≥3 or occ≥40) 게이트 + 프로브 `ever_ok` 게이트로 idle 오탐/서버 미기동 배제. 이 코드 경로 = 유선 AP 텔레메트리 정상 = AP 다운 아니라 채널 포화. 45/45 런 재처리: occ<75% label 3이 11→22.
+2. **latency RTT/2** (`2ee7eea`): `ANCHORS["latency"]`(30/60/150/400)는 G.114 **편도** 값인데 ping은 RTT라, RTT 150ms(≈편도 75ms, 경미)를 "심각"으로 채점 → label 3이 부하행의 79% 과다 발생. `calculate_scores`가 `latency_ms/2`를 편도 추정치로 넣도록. 재처리: 부하행 label 3 111→85, label 2 28→54.
+   - 사용자 지적("심각이 너무 잘 뜨는 거 아니야?")에서 나온 수정. occupancy/loss/jitter 앵커는 표준값이라 안 건드림.
+
+### 재설계 스키마 데이터 수집 (`metrics_v2_pi_redesign.csv`, 파이 유선)
+- 이전 캘리브레이션 데이터는 `metrics_v2_pi_redesign_calib_0827.csv`로 아카이브(파이). 새 파일로 시작.
+- 노트북 Opal 고정(`SK_0600_5G` 프로필 수동 연결로) + 서버 3개(5201/5202 부하, 5203 프로브). 파이가 collector.
+- **유효 1390행** (dud `load_45` 제외 — 폰이 부하 안 실어서 occ>35 9행뿐):
+
+  | 시나리오 | 행 | L0 | L1 | L2 | L3 |
+  |---|---|---|---|---|---|
+  | idle | 75 | 75 | — | — | — |
+  | load_15 (120s) | 175 | 88 | 29 | 50 | 8 |
+  | load_15b (240s) | 238 | 55 | 75 | 79 | 29 |
+  | load_15c (300s) | 231 | 27 | 67 | 86 | 51 |
+  | load_25 (120s) | 169 | 88 | 4 | 39 | 38 |
+  | load_35 (120s) | 261 | 197 | 1 | 15 | 48 |
+  | load_45b (120s) | 241 | 171 | 4 | 18 | 48 |
+  | **합계** | **1390** | 701 | 180 | 287 | 222 |
+
+- **L3 222개 중 occ<75%가 108개** — occupancy 문턱이 못 잡는 심각. 재설계 목표 달성 근거.
+- 부하 세기 → 라벨 그라데이션 명확: load_15은 L1/L2 위주, load_35/45는 L3 위주.
+- **주의: CSV에 저장된 `label` 컬럼은 스코어링 혼재** (latency RTT/2 수정 전후, failure=max 전후). 학습 전 `remeasure_redesign.py`(미작성)로 전체 재계산 필요. 위 표 수치는 재계산 후 기준.
+
+### AP 크래시 재확인 — 45M은 매번, 15M도 5분이면 크래시
+- **45M×2: 2/2 크래시** (120초 안팎). load_45b는 크래시 전 70행 확보하긴 함. **45M 이상 부하는 폐기 결정** — 리스크 대비 이득 없음(L3는 25/35에서 충분).
+- **15M×2: 4분(240s) 안정, 5분(300s) 크래시.** load_15c 5분 런 끝에 크래시(데이터는 231행 다 건짐, 폴링 갭 없음).
+- **20M×2: 240초 시도 → ~2분경 크래시** (2026-08-27 심야 마지막 런). AP 100% 손실 + 노트북이 SK_0600으로 로밍(수동 설정했는데도). load_20 데이터는 파이 SD에 일부 남았을 것 — 다음 세션 회수.
+- 크래시 후 대부분 자가 복구됨(1~2분 뒤 ping 정상). 물리 재부팅 필요는 이번 세션엔 없었음.
+- **결론: 240초/15M가 안전 상한. 25M은 180초, 35M은 120초까지.**
+
+### 다음 세션 (재개 지점)
+1. 파이 접속 회복 → `metrics_v2_pi_redesign.csv`에서 load_20 잔여 행 확인, 필요시 1~2런 더 (load_25b 180s, load_35b 120s)로 ~1800행
+2. **`remeasure_redesign.py` 작성** — `metrics_v2_pi_redesign.csv` 전체를 현재 `calculate_scores`(RTT/2 + failure=max)로 sub-score·label 재계산. dud `load_45` 시나리오 제외. (로직은 이번 세션 scratchpad 분석 스크립트에 있음: `probe_ever_ok` per-scenario 추적 + `channel_active` 게이트)
+3. `prepare_ap_metrics_dataset.py` → windowed 6-feature 변환
+4. `train_ap_early_exit.py --class-weight-power 1.0` → 평가, **occ<75% L3 recall** 집중 확인 (occupancy 문턱 대비 우위 지표)
 
 ## 완료된 작업 (2026-08-27 저녁 세션 — 집, 파이+AP 실기기)
 
