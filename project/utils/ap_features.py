@@ -12,8 +12,18 @@ AP_FEATURE_COLUMNS: Tuple[str, ...] = (
     "rssi_dbm",
     "rssi_delta_db",
     "rssi_moving_avg_dbm",
+    "sta_tx_bitrate_min",
+    "sta_tx_bitrate_mean",
 )
 
+# 2026-08-27 심야: sta_tx_bitrate_min / _mean 추가 (6 -> 8 feature).
+#   iw station dump의 station별 "tx bitrate"(PHY rate). rate control이
+#   간섭·경합에 물러나면 여기부터 떨어지는데 채널 전체 occupancy엔 안 보임.
+#   min = 가장 굶는 station(capture effect / victim 프록시). 재학습 결과
+#   occ 60~72%에서 label 2 vs 3이 나머지 6 feature로는 완전히 구별 불가였음
+#   (ap_v2_redesign_threshold_comparison.txt). 이 feature 있는 데이터는
+#   metrics_v2_pi_redesign.csv엔 없음 — 새로 수집해야 함.
+#
 # 2026-08-27 혼잡 라벨 재설계 (docs/yongsang/congestion_label_redesign.md):
 #   - latency_ms / jitter_ms 를 모델 입력에서 제거. jitter/loss는 victim
 #     프로브 실측, latency는 ping RTT — 라벨 축이자 배포 시점엔 없는 측정.

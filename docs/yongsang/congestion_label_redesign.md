@@ -188,7 +188,7 @@ probe_hard_fail = channel_active AND  프로브가 한 번은 됐었음(ever_ok)
 | `connected_clients` | ❌ | ❌ | 우리 데이터 2~3으로 변별력 없음, 실배포엔 일반화 안 됨 (결정 2026-08-27) |
 | `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm` | ❌ | ✅ 유지 | |
 
-### 확정 모델 입력 (6개) — 구현됨 (`ap_features.py`)
+### 확정 모델 입력 (8개) — 구현됨 (`ap_features.py`)
 
 ```
 throughput_mbps
@@ -197,13 +197,17 @@ tx_retry_ratio
 rssi_dbm
 rssi_delta_db
 rssi_moving_avg_dbm
+sta_tx_bitrate_min      ← 2026-08-27 심야 추가
+sta_tx_bitrate_mean     ← 2026-08-27 심야 추가
 ```
 
-9개 → 6개. 제거: `latency_ms`, `jitter_ms`, `tx_failed` 별도 축, `connected_clients`.
+제거: `latency_ms`, `jitter_ms`, `tx_failed` 별도 축, `connected_clients`.
 
-모델의 일: `{occupancy, retry_ratio, throughput, RSSI×3}`로 `max(occ, probe_jitter, probe_loss, latency, retry)` 라벨을 예측. occupancy·retry는 부분 신호로 갖지만, 못 보는 프로브 jitter/loss/latency를 추론해야 함 → 진짜 예측 문제.
+**`sta_tx_bitrate_*` 추가 이유 (2026-08-27 심야 재학습 후)**: 6-feature 모델 평가에서 occ 60~72% 구간의 label 2 vs 3이 나머지 6 feature로는 **평균이 완전히 동일**했다(occ 66/65, throughput 66/66, retry 0.30/0.30, rssi -35/-34). 라벨 차이는 오직 프로브 축에서 나오는데 프로브는 입력이 아니라서 **원리상 학습 불가**. `iw station dump`의 station별 `tx bitrate`(PHY rate)는 rate control이 간섭·경합에 물러날 때 떨어지고 채널 전체 occupancy엔 안 보이는 신호 — `collect_metrics.py`가 이미 파싱하던 걸 `summarize_stations`가 버리고 있었다. `min` = 가장 굶는 station(capture effect / victim 프록시). 상세: `project/results/yongsang/ap_v2_redesign_threshold_comparison.txt`.
 
-> **6개는 lean함**: 모델이 볼 게 적어짐 = 재설계 의도(정답 못 읽고 진짜 예측)지만, recall이 더 낮게 나올 수 있음 — 예상된 트레이드오프. RSSI 3개는 서로 상관이라 실질 신호는 ~4개.
+> **주의**: `sta_tx_bitrate_*`가 있는 데이터는 `metrics_v2_pi_redesign.csv`(1614행)엔 **없다**. 이 feature로 학습하려면 새 스키마로 재수집해야 함. 6-feature 모델(`ap_metrics_v2_redesign`, test 85.5% / label3 76%)은 그대로 baseline으로 유지.
+
+모델의 일: `{occupancy, retry_ratio, throughput, RSSI×3, sta_tx_rate×2}`로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제.
 
 ## 6. 구현 순서
 

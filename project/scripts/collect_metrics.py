@@ -125,6 +125,8 @@ CSV_COLUMNS = [
     "connected_clients",
     "rssi_delta_db",
     "rssi_moving_avg_dbm",
+    "sta_tx_bitrate_min",        # 가장 굶는 station PHY rate (모델 입력, victim 프록시)
+    "sta_tx_bitrate_mean",       # station 평균 PHY rate (모델 입력)
     "throughput_score",          # 정보용 (라벨 max에서 제외)
     "occupancy_score",
     "jitter_score",
@@ -524,7 +526,29 @@ def summarize_stations(stations):
         else 0.0
     )
 
-    return signal_avg, len(stations)
+    # station별 PHY tx rate (iw station dump의 "tx bitrate").
+    # rate control이 간섭·경합에 물러나면 여기부터 떨어진다 — 채널 전체
+    # occupancy엔 안 보이는 신호. min = 가장 굶는 station(= victim 프록시),
+    # capture effect(강한 폰이 채널 독점, 약한 쪽 저MCS)가 여기 드러난다.
+    # 0.0은 "미보고"라 제외.
+    tx_rates = [
+        s.get("tx_bitrate", 0.0)
+        for s in stations.values()
+        if s.get("tx_bitrate", 0.0) > 0.0
+    ]
+    if tx_rates:
+        sta_tx_bitrate_min = min(tx_rates)
+        sta_tx_bitrate_mean = sum(tx_rates) / len(tx_rates)
+    else:
+        sta_tx_bitrate_min = 0.0
+        sta_tx_bitrate_mean = 0.0
+
+    return (
+        signal_avg,
+        len(stations),
+        sta_tx_bitrate_min,
+        sta_tx_bitrate_mean,
+    )
 
 
 # ============================================================
@@ -1132,9 +1156,12 @@ def main():
 
             current_active, current_busy = survey
 
-            signal_avg, connected_clients = (
-                summarize_stations(station)
-            )
+            (
+                signal_avg,
+                connected_clients,
+                sta_tx_bitrate_min,
+                sta_tx_bitrate_mean,
+            ) = summarize_stations(station)
 
             # ------------------------------------------------
             # 2. Channel Occupancy
@@ -1379,6 +1406,8 @@ def main():
                 int(connected_clients),
                 round(rssi_delta, 2),
                 round(rssi_moving_avg, 2),
+                round(sta_tx_bitrate_min, 1),
+                round(sta_tx_bitrate_mean, 1),
                 throughput_score,
                 occupancy_score,
                 jitter_score,
@@ -1437,6 +1466,10 @@ def main():
             print(
                 f"RSSI / MovAvg      : {current_rssi:.1f} / "
                 f"{rssi_moving_avg:.1f} dBm   Clients {connected_clients}"
+            )
+            print(
+                f"Sta tx rate min/avg: {sta_tx_bitrate_min:.0f} / "
+                f"{sta_tx_bitrate_mean:.0f} Mbit/s"
             )
             print(
                 f"Scores  occ={occupancy_score:.2f} "
