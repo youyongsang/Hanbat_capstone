@@ -1,6 +1,8 @@
-# 혼잡 라벨 재설계 — 표준 문턱 + victim 프로브 (2026-08-27 설계, 미착수)
+# 혼잡 라벨 재설계 — 표준 문턱 + victim 프로브 (2026-08-27)
 
-`ap_metrics_v2`의 `congestion_score`/`label` 정의를 근거 기반으로 다시 세운다. 현재 살아있는 정의는 `congestion_label_criteria.md`, 이 문서는 **그걸 대체할 제안**이다.
+`ap_metrics_v2`의 `congestion_score`/`label` 정의를 근거 기반으로 다시 세운다. `congestion_label_criteria.md`의 옛(weighted-sum) 정의를 대체한다.
+
+**상태 (2026-08-27)**: `collect_metrics.py`·`ap_features.py`·`prepare_ap_metrics_dataset.py` 구현 완료, Pi에서 idle(v6: 77/77 label 0) + 60/60 부하(label 0~3 전 범위, occupancy 포화 아닌 데서 label 3 확인) 캘리브레이션 완료. **남은 것: 여러 시나리오 재수집(새 파일) → 재변환 → 재학습 → 평가.** 기존 5574행은 레거시(프로브·tx_packets 없음 + retry 3× 버그).
 
 ## 0. 한 줄 요약
 
@@ -78,15 +80,27 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 ### 구현 후 캘리브레이션 (2026-08-27, 프로브 켜고 idle 5회 반복)
 
-| 축 | idle 실측 | 조치 |
-|---|---|---|
-| jitter / loss (프로브) | jitter med 1ms/max 3.5ms, loss 0% | 그대로. Y.1541 앵커에 여유 많음 |
-| occupancy | med 17%, 가끔 100% 스파이크(`instantaneous_fallback` 경로가 survey 카운터 리셋 시 뱉음) | **3-폴링 median으로 스코어·CSV 값 안정화** (`occ_history`). 앵커 그대로 |
-| latency (v6) | med 5ms인데 가끔 146~298ms 단일 폴링 스파이크(노트북 wifi 순간 저하) | **3-폴링 median** (`lat_history`) |
-| latency | **v1~v3**: 폰(191) ping이 절전 때문에 31~295ms로 요동 → **노트북 대상으로 변경**. 노트북은 Windows 방화벽이 ICMP 차단 → **inbound ICMP 허용 규칙 추가** → v4 idle RTT med 3ms 깨끗 | `SERVER_IP = 192.168.8.226`, 앵커 30/60/150/400 |
-| retry | **버그**: 이 AP는 `tx retries`/`tx failed`를 라디오 전체 카운터로 보고(모든 station 동일값) → station별로 더하니 station 수만큼 뻥튀기 → **수정**(단일 delta). 그래도 idle 18~36% → **라벨 축에서 제외** | rolling(5폴링) + min 표본 50, 라디오 전체 단일 delta |
+| 축 | idle 실측 → 조치 |
+|---|---|
+| jitter / loss (프로브) | jitter med 1ms/max 3.5ms, loss 0% → 그대로. Y.1541 앵커에 여유 많음 |
+| occupancy | med 17%, 가끔 100% 스파이크(`instantaneous_fallback` 경로가 survey 카운터 리셋 시 뱉음) → **3-폴링 median** (`occ_history`), 앵커 그대로 |
+| latency | **v1~v3**: 폰(191) ping이 절전 때문에 31~295ms로 요동 → **노트북 대상으로 변경**(`SERVER_IP = 192.168.8.226`). 노트북은 Windows 방화벽이 ICMP 차단 → **inbound ICMP 허용 규칙 추가**. **v6**: 가끔 146~298ms 단일 폴링 스파이크 → **3-폴링 median** (`lat_history`). idle RTT med 3ms 깨끗, 앵커 30/60/150/400 |
+| retry | **버그**: 이 AP는 `tx retries`/`tx failed`를 라디오 전체 카운터로 보고(모든 station 동일값) → station별로 더하니 station 수만큼 뻥튀기 → **수정**(단일 delta). 그래도 idle 18~36% → **라벨 축에서 제외**. rolling(5폴링) + min 표본 50 |
 
 > **주의**: 기존 `metrics_v2.csv` 5574행의 `tx_retries_delta`/`tx_failed_delta`도 이 3× 버그를 갖고 있다(station 수만큼 뻥튀기). 재설계 데이터와 별개로 레거시 취급하는 또 하나의 이유.
+
+**v6 idle 결과**: 77/77 행 label 0, `congestion_score` max 0.17.
+
+### 부하 캘리브레이션 (2026-08-27, 60/60 200초 — 172초에 Opal 크래시, 168초분 확보)
+
+| 축 | idle → 60/60 부하 | 판정 |
+|---|---|---|
+| occupancy | 17% → med 63% / max 87% | 앵커 OK, label 2~3 잘 뜸 |
+| latency | 3ms → med 53ms / p90 186ms / max 291ms | 앵커 OK. 부하 중 ping이 몇 번 실패해 lat=0 행 있음(median으로 대부분 커버) |
+| probe jitter | 1.5ms → med 6ms / max 19ms | Y.1541 앵커(20/30/50/100)를 60/60론 못 넘음. 표준 그대로 — 더 센 경합(소패킷·다중 station)에서 오를 것 |
+| probe loss | 0% → med 0.27% / max 7.4% | 앵커 OK, label 3 뜸 |
+
+**성과**: label 3 행들이 occupancy 60~73%(포화 아님)에서 latency(140~291ms)·loss(7.4%) 주도로 나옴. occupancy-only 문턱(≥75%)이면 놓쳤을 케이스 → **"occupancy 문턱 대비 LSTM 우위"의 실증 기반**. 부하 라벨 분포 0×8 / 1×1 / 2×12 / 3×9.
 
 ### `throughput_score`는 라벨에서 제외
 
@@ -106,12 +120,11 @@ tx_retry_ratio = tx_retries_delta / (tx_packets_delta + tx_retries_delta)
 
 ```
 congestion_score = max(
-    occupancy_score,
-    jitter_score,      # 프로브
-    loss_score,        # 프로브
-    latency_score,     # ping RTT
-    retry_score        # 비율
-)
+    occupancy_score,   # 채널 airtime
+    jitter_score,      # 프로브 IPDV
+    loss_score,        # 프로브 패킷 손실
+    latency_score,     # ping RTT (노트북)
+)   # retry는 캘리브레이션에서 제외됨 (§3)
 
 label = 0  if congestion_score < 0.25
         1  if < 0.50
@@ -121,8 +134,8 @@ label = 0  if congestion_score < 0.25
 
 ### 의미
 
-> **label 3 (심각) = 최소 한 개 QoS 축이 발표된 심각 문턱을 넘었다.**
-> occupancy ≥ 75% (WLAN 가이드) **OR** 프로브 jitter ≥ 50ms (Y.1541) **OR** 프로브 loss ≥ 5% (Cisco) **OR** ping RTT ≥ 300ms (G.114) **OR** retry 비율 ≥ 25% (WLAN 헬스)
+> **label 3 (심각) = 최소 한 개 축이 발표된 심각 문턱을 넘었다.**
+> occupancy ≥ 75% (WLAN 가이드) **OR** 프로브 jitter ≥ 50ms (Y.1541) **OR** 프로브 loss ≥ 5% (Cisco QoS) **OR** ping RTT ≥ 150ms (G.114)
 
 심사 방어: "이 라벨 왜 이렇게?" → "각 축을 국제 표준 문턱에 매핑하고, 하나라도 넘으면 심각으로 봤다. 가중치는 없다."
 
