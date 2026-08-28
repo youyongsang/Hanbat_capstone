@@ -105,7 +105,7 @@ label 경계: `<0.25`→0, `0.25~0.50`→1, `0.50~0.75`→2, `≥0.75`→3.
 - Label 2/3 트레이드오프가 절벽형이라 class weight power 중간값 튜닝이 잘 안 먹힌다.
 - AP(Opal) 장비가 특정 조건에서 반복적으로 크래시한다. **2026-08-27 세션 기준 최신 가설: "몇 대가 붙었는가"보다 "각 폰이 AP 와이파이에 제대로·대칭적으로 붙어있는가"가 핵심 변수** — S26/191 각각 단독으로는 40~150Mbps까지 전부 크래시 없이 완주했고, 191+S26 콤보도 **시작 전 두 폰 와이파이를 재연결하면** 120초·5~7분 모두 크래시 없이 완주했다. 신호가 강한 S26이 채널을 독점하고 신호가 약한 191이 굶는 비대칭(Wi-Fi capture effect)이 반복 관측됨(191 RSSI 열세 추정). 부하 스위트스팟은 **191=60M/S26=60M(2~7분)**이 기준선이고 8/26 밤에 **75M/75M 대칭**이 label 3 생성 후보로 추가됨(재현성 불완전, 3회 합산 label 3 5개). **상한은 확실: 80M/80M은 10분 시도에서 완전 크래시(물리 재부팅), 60/60도 500초 넘기면 완전 크래시** — 안전 구간 대략 300~420초. "191 개별 하드웨어 문제"였다는 이전 가설은 191의 다단계 연속 생존으로 반증됨. 상세·최신 상황은 `docs/yongsang/ap_crash_analysis.md`와 `.work-log/current.md` 참고.
 - 실시간 폴링 자기참조 지연: `collect_metrics.py`가 매 루프마다 새 SSH를 띄우던 걸 2026-08-27 세션에 지속 SSH 세션(`APPoller` 클래스)으로 전환했다 — 문법 검사만 됨, **실기기 미검증**. 관리 트래픽이 여전히 같은 무선 채널을 탄다는 근본 구조는 그대로라, 유선 관리채널 분리(collector를 라즈베리 파이로, Opal LAN 포트를 별도 서브넷으로)를 다음 세션 실행 대상으로 설계 확정함.
-- **(2026-08-28 갱신) ONNX/Raspberry Pi 배포 파이프라인 생김** — `ap_metrics_v2_redesign2`(본수집 2차, label 3 202개) 기준으로 `project/scripts/export_onnx_ap_unified.py`(권장) + `project/deploy/raspberry_pi_ap_v2/`로 실제 Pi 실측까지 완료했다. staged(세션 3개 분리) 첫 시도는 Pi에서 baseline보다 오히려 느렸는데(세션 호출 오버헤드가 작은 모델의 skip 이득보다 큼), `torch.jit.script`로 entropy 분기를 ONNX `If` 노드로 내보내는 단일 그래프 재설계 후 baseline 대비 **40% 빠름**을 실측으로 확인했다(1학기 4-feature 자료에도 같은 staged>baseline 패턴이 있었음을 교차검증). 상세: `docs/yongsang/onnx_early_exit_redesign.md`, `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`. INT8 양자화는 아직 없음.
+- **(2026-08-28 갱신) ONNX/Raspberry Pi 배포 파이프라인 생김, INT8까지 완료** — `ap_metrics_v2_redesign2`(본수집 2차, label 3 202개) 기준으로 실제 Pi 실측까지 완료했다. staged(세션 3개 분리) 첫 시도는 baseline보다 느렸는데(세션 호출 오버헤드), `torch.jit.script`+ONNX `If` 노드로 단일 그래프 재설계(`export_onnx_ap_unified.py`) 후 baseline 대비 **-40%**. 이 unified 그래프를 그대로 양자화하면 ONNX 양자화 도구가 `If` 서브그래프 안의 LSTM을 건너뛰어(도구 한계) 속도 이득이 없었는데, staged(flat) 그래프로 먼저 양자화한 뒤 손수 재조립(`export_onnx_ap_unified_int8_v2.py`)하는 방식으로 우회해 **최종 baseline 대비 -67%**까지 확인했다(1학기 4-feature 자료로 두 현상 모두 교차검증). 상세: `docs/yongsang/onnx_early_exit_redesign.md`, `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`.
 
 ### 재현 명령어
 
@@ -153,7 +153,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 3. `docs/yongsang/congestion_label_criteria.md` — congestion_score 계산식과 라벨 경계 정리(1차/2차 비교 포함, 역사적 맥락용).
 4. `.work-log/current.md` — 세션별 최신 진행 상황. 이 문서(CLAUDE.md)보다 최신 세부사항은 여기서 확인한다.
 5. `project/utils/ap_features.py`, `project/utils/ap_dataloader.py`, `project/models/ap_early_exit_lstm.py` — 실제 코드 흐름. 58% 근처의 낮은 정확도가 나오면 이 파일들의 feature 순서, scaler, checkpoint 경로를 먼저 점검한다.
-6. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포를 staged(세션 3개)에서 단일 그래프(If 노드)로 재설계한 기록. Pi latency 주장을 쓸 때는 이 문서의 결론(단일 그래프 기준)을 따른다, staged 수치를 최종 결과로 인용하지 않는다.
+6. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포를 staged(세션 3개)에서 단일 그래프(If 노드)로, 다시 INT8(staged로 양자화 후 재조립)까지 재설계한 기록. Pi latency 주장을 쓸 때는 이 문서의 최종 결론(unified INT8, baseline 대비 -67%)을 따른다 — staged나 fp32-only 수치를 최종 결과로 인용하지 않는다.
 
 ## Claude에게 중요한 해석 기준
 

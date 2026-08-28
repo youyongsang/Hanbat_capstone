@@ -83,20 +83,65 @@ PyTorch의 `infer_batch_stepwise()`(참조 구현) 대비 ONNX 출력을 test 31
 
 논문·보고서에는 이 **단일 그래프(If 노드) 결과를 "Proposed"** 로 쓴다. staged 결과는 삭제하지 않고 "왜 단순히 세션을 나누는 방식이 아니라 단일 그래프 설계가 필요했는가"를 보여주는 동기/반례로 남긴다(데이터 정직성 원칙 — 실패한 시도도 기록에서 지우지 않는다).
 
-## 후속: INT8 양자화 — 정확도 유지, 속도 이득 없음
+## 후속 1차: INT8 양자화 시도 — "속도 이득 없음" (오판)
 
 단일 그래프가 baseline보다 40% 빠르다는 걸 확인한 김에, INT8 동적 양자화(`onnxruntime.quantization.quantize_dynamic`, `LSTM`·`MatMul`·`Gemm` 포함)까지 시도했다(`project/scripts/export_onnx_ap_unified_int8.py`).
 
-- **정확도**: fp32 unified 대비 test 310창 전체 **0 mismatch**(예측·exit_point 둘 다) — 손실 없음.
-- **속도**: fixed 1.204ms / dynamic 1.193ms — fp32 unified(1.183ms/1.190ms)와 **오차 범위 내 동일, 이득 없음**. 파일 크기도 오히려 fp32보다 살짝 컸다(양자화 메타데이터 오버헤드가 모델이 작아서 압축 이득을 상쇄).
+- **정확도**: fp32 unified 대비 test 310창 전체 **0 mismatch** — 손실 없음.
+- **속도**: fixed 1.204ms / dynamic 1.193ms — fp32 unified(1.183ms/1.190ms)와 **오차 범위 내 동일, 이득 없음**.
 
-같은 교훈이 반복됐다 — 이 모델 크기(`hidden_size=128`)에서는 "이론상 더 가벼운 연산"이 고정 오버헤드에 묻힌다. **최종 배포 구성은 단일 그래프 + fp32**로 확정했다. INT8은 정확도를 안 깎으니 손해는 아니지만, 이 규모에서 굳이 도입할 이유도 없다. 더 큰 모델이나 여러 AP를 동시에 추론하는 시나리오라면 다시 유효할 수 있다.
+"이 모델 크기(`hidden_size=128`)에서는 이론상 더 가벼운 연산이 고정 오버헤드에 묻힌다"는 staged→unified 때와 같은 교훈이 반복된 것으로 보고 **여기서 결론을 냈었다.** — 틀린 결론이었다.
+
+## 후속 2차: "1학기 땐 됐었는데?" — 재확인 질문에서 원인을 다시 찾음
+
+사용자가 1학기(4-feature) INT8 결과를 근거로 이 결론에 의문을 제기했다: 1학기 Pi 실측은 baseline 1.530ms → INT8 0.914ms(**-40%**), staged fixed 2.089ms → INT8 1.297ms(**-38%**)로 **실제로 크게 빨라졌었다.** 같은 도구(`quantize_dynamic`)를 쓰는데 왜 이번엔 이득이 없었을까?
+
+ONNX 그래프를 재귀적으로 순회해서 op 종류를 직접 세어봤다:
+
+```python
+def walk(graph, counter, depth=0):
+    for n in graph.node:
+        counter[(depth, n.op_type)] += 1
+        for attr in n.attribute:
+            if attr.type == onnx.AttributeProto.GRAPH:
+                walk(attr.g, counter, depth + 1)  # If 노드의 서브그래프까지 재귀
+```
+
+결과: **unified(If 포함) 그래프를 양자화하면 LSTM 3개가 전부 원래 `LSTM`(float) 그대로였다** — 제일 작은 `classifier1`의 `Gemm` 하나만 `MatMulInteger`로 바뀌어 있었다. 반면 `ap_early_exit_fixed_stage1.onnx`(제어 흐름이 없는 flat 그래프) 하나만 따로 양자화하니 LSTM이 정상적으로 `DynamicQuantizeLSTM`(진짜 int8 연산)으로 바뀌었다.
+
+**진짜 원인**: "모델이 작아서 양자화가 안 먹힌다"가 아니라, **ONNX Runtime의 동적 양자화 도구가 `If`(제어 흐름) 노드가 있는 그래프에서는 LSTM 변환을 조용히 건너뛴다**는 도구상의 한계였다. 1학기 때 실제로 빨라졌던 이유는 그때 그래프에 애초에 `If` 노드가 없었기 때문(staged 방식 = 단순 분리 = 매 stage가 flat 그래프)이다.
+
+## 후속 3차: 양자화된 조각을 손수 재조립 — 두 마리 토끼를 다 잡음
+
+세션 호출 오버헤드(1차 문제)를 피하려고 만든 단일 그래프가, 이번엔 양자화 도구의 발목을 잡은 셈이다. 해법은 순서를 바꾸는 것 — **양자화가 먹히는 flat 상태로 먼저 각 stage를 양자화한 뒤, 그 결과물을 If 노드로 손수 감싼다.**
+
+`project/scripts/export_onnx_ap_unified_int8_v2.py` (신규):
+
+1. `ap_early_exit_{fixed,dynamic}_stage{1,2,3}.onnx`(staged, flat) 각각을 독립적으로 양자화 → LSTM 3개 다 `DynamicQuantizeLSTM`으로 정상 변환됨(확인 완료).
+2. `onnx.helper`로 3개 조각을 직접 조립 — entropy/threshold/If 배선(`Softmax→+eps→Log→Mul→ReduceSum→Neg→Gather(0)→Less(theta)→Cast→If`)을 fp32 unified 그래프와 동일하게 재현. 각 stage 내부 텐서 이름은 이름 충돌 방지를 위해 prefix를 붙이되, 경계 텐서(`input`/`hidden1`/`hidden2`/`exit1`/`exit2`/`exit3`)는 stage export 관례상 이미 이름이 일치해서 그대로 이어붙임. Dynamic θ는 occupancy 변화량 기반 임계값 조정 로직(`Slice→Gather→Sub→Abs→Greater→Where`)도 같은 방식으로 그래프에 재현.
+
+### 검증 및 결과
+
+PyTorch 참조 구현 대비 test 310창 중 **309개 정확히 일치**(fixed·dynamic 각각 1개만 경계값 근처 엔트로피 오차 — int8 양자화 노이즈 수준, 정확도는 fp32와 동일).
+
+| 방법 | avg 지연 | vs baseline | vs unified fp32 |
+|---|---:|---:|---:|
+| Baseline | 1.966ms | — | |
+| 통합 fp32 Fixed θ | 1.183ms | -40% | |
+| 통합 int8 1차(LSTM 미양자화) | 1.204ms | -39% | +2%(이득 없음) |
+| **통합 int8 v2 Fixed θ (LSTM 진짜 양자화)** | **0.641ms** | **-67%** | **-46%** |
+| **통합 int8 v2 Dynamic θ (LSTM 진짜 양자화)** | **0.679ms** | **-65%** | **-43%** |
+
+exit별 지연(fixed θ v2): exit1 0.288ms(baseline 대비 -85%) / exit2 0.569ms(-71%) / exit3 0.832ms(-58%) — 모든 exit point에서 baseline은 물론 fp32 unified보다도 크게 빠르다.
+
+**최종 결론**: 1학기 자료가 실제로 보여줬던 int8 이득이 이번에도 재현 가능했다 — 그래프 구조(If 노드) 때문에 막혀 있었을 뿐이다. **최종 배포 구성은 "단일 그래프 + INT8(stage별 양자화 후 재조립)"**로 확정한다. fp32 unified(1.18ms)는 안전한 대안으로, 1차 int8 시도(1.20ms, LSTM 미양자화)는 실패 사례로 기록에 남긴다 — 사용자가 1학기 결과를 근거로 재확인 질문을 하지 않았다면 이 오판을 그대로 최종 결론으로 남길 뻔했다.
 
 ## 관련 파일
 
 - `project/scripts/export_onnx_ap.py` — staged export (참고/역사 기록용으로 유지, 배포엔 unified 사용 권장)
-- `project/scripts/export_onnx_ap_unified.py` — **단일 그래프 export (권장, fp32 최종 배포)**
-- `project/scripts/export_onnx_ap_unified_int8.py` — INT8 동적 양자화(정확도 유지, 속도 이득 없어 채택 안 함)
+- `project/scripts/export_onnx_ap_unified.py` — 단일 그래프 export, fp32(안전한 대안)
+- `project/scripts/export_onnx_ap_unified_int8.py` — INT8 1차 시도(unified 그래프를 그대로 양자화 — LSTM이 안 바뀌는 실패 사례로 기록, 채택 안 함)
+- `project/scripts/export_onnx_ap_unified_int8_v2.py` — **INT8 최종(권장, 최종 배포)**: staged로 먼저 양자화 후 손수 재조립
 - `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified.onnx`
 - `project/deploy/raspberry_pi_ap_v2/inference_pi_ap.py` — staged 추론 러너
 - `project/deploy/raspberry_pi_ap_v2/bench_unified.py` — 단일 그래프 벤치마크 러너
