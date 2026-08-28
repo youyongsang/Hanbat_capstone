@@ -1,5 +1,11 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-28 밤 (yongsang 세션 — 191/S26 SSH 원격제어 완성 → 프로브 서버 누락 발견/수정 → 본수집 완주, `metrics_v2_pi_redesign2.csv` 2115행, **label 3 202개 목표 달성**. 다음: 재라벨링→재변환→재학습)
+최종 업데이트: 2026-08-28 밤 세션 마무리 (yongsang) — 아래 "세션 마무리 요약"과 "다음 세션 최우선"부터 확인.
+
+## 세션 마무리 요약 (2026-08-28 밤, yongsang)
+
+하루 종일 이어진 긴 세션. 순서대로: **① 본수집** — 191/S26 폰 SSH 원격제어 구축 → `ramp_load_remote.sh` 실기기 검증 → step 프로파일 반복 수집(AP 크래시 2회·프로브 서버 누락 사고 극복) → `metrics_v2_pi_redesign2.csv` 2115행, **label 3 202개** 목표 달성. **② 재학습/평가** — `ap_metrics_v2_redesign2` 재변환·재학습(val balanced acc 85.4%), occupancy 문턱 대비 우위 재확인(F1 58.2% vs 44.0%), forecasting 조기경보 재현(k=3 61.5%/k=5 45.5%, 표본 커져도 안정). **③ ONNX/Pi 배포 재설계** — staged(세션 3개)가 baseline보다 느린 문제 발견 → 단일 그래프(If 노드)로 재설계해 baseline 대비 -40% → INT8 순진하게 적용하면 이득 없음(오판) → 사용자가 1학기 자료로 재확인 질문 → 원인 재진단(양자화 도구가 If 서브그래프의 LSTM을 건너뜀) → staged로 먼저 양자화 후 재조립하는 방식으로 **최종 baseline 대비 -67%**(0.64~0.68ms) 확보. **④ Baseline/SDN-style 비교** — 이 브랜치에 처음 구현, 공정 비교(class-weight 통일) 후 Pi 배포까지 — SDN이 속도·recall 우위처럼 보였으나 precision까지 보면 F1은 막상막하(EE 근소 우위)임을 재조사로 확인.
+
+**핵심 교훈**: 이번 세션 세 번의 "성급한 결론"(ONNX int8 1차, SDN이 이겼다는 1차 판단, docs 최신화 누락)이 전부 사용자의 재확인 질문으로 바로잡혔음 — 결과를 정직하게 기록하고 원인을 끝까지 추적하는 패턴이 잘 작동했다.
 
 ## 체크포인트 (2026-08-28 밤) — 본수집 완료, label 3 202개
 
@@ -113,9 +119,12 @@
 1. `sta_tx_bitrate_min/mean`이 이번 대량 데이터에서 escalation 지문을 보이는지 재검토(8/28 새벽 세션엔 diag_25 146행으로만 봐서 결론 보류 상태였음)
 2. `ramp_load.sh`에 `termux-wake-lock` 추가는 여전히 미반영 상태(이번엔 배터리 최적화 제외로 화면 꺼짐 문제 자체는 해결됨, 급하지 않음)
 3. (검토) 밴드 스티어링 시스템으로 주제 확장할지 팀 결정 — 상세는 `.work-log/current.md` "향후 시스템 구상" 섹션(8/27 논의)
-4. ~~SDN-style이 우리 모델을 이긴 이유 후속 조사~~ — **완료, 결론 정정됨**(아래 참고). EE의 exit별 loss 가중치를 SDN 스타일(뒤쪽에 더 강하게)로 바꿔 재학습해보는 건 검토만 하고 미실행 — 다음 후속 과제로 남김
+4. **EE의 exit별 loss 가중치를 SDN 스타일(0.15/0.30/0.55, 뒤쪽 exit에 더 강하게)로 바꿔 재학습해보기** — "왜 SDN이 이겼나" 재조사에서 나온 가설(SDN이 exit3 심각 탐지를 더 잘 학습함)의 검증되지 않은 다음 단계. 지금 EE는 균등 가중치(0.3/0.3/0.4)
+5. 데모 대시보드 구축 (설계는 돼있음, `docs/yongsang/demo_api_spec.md`) — 아직 미착수
+6. ~~SDN-style이 우리 모델을 이긴 이유 후속 조사~~ — **완료, 결론 정정됨**(아래 참고)
+7. ~~Baseline/SDN-style 비교표~~ — **완료**(아래 참고)
 
-### Baseline/SDN-style 비교표 + Pi 배포 완료 — SDN-style이 정직하게 더 나음 (같은 세션, 후속)
+### Baseline/SDN-style 비교표 + Pi 배포 완료 — 1차 판단(SDN이 더 낫다) 재조사로 정정됨 (같은 세션, 후속)
 1학기엔 없었던 `ap_metrics_v2_redesign2` 기준 Baseline LSTM/SDN-style Early Exit을 이 브랜치에 새로 구현(`models/baseline_lstm.py`, `models/sdn_lstm.py`, `models/ap_baseline_lstm.py`, `models/ap_sdn_lstm.py` — yongsang 브랜치 원본을 `git show`로 참고해 6-feature용 재작성). **1학기와 달리 Baseline/SDN도 Proposed와 동일하게 class-weight-power=1.0으로 학습**(아키텍처만 통제 변수로 비교하기 위함). 학습(`train_ap_baseline_lstm.py`, `train_ap_sdn.py`) → 평가(`evaluate_ap_baseline_lstm.py`, `evaluate_ap_sdn.py`) → 비교표(`generate_ap_comparison.py`) → 사용자 요청으로 Baseline/SDN도 Pi ONNX 배포(`export_onnx_ap_baseline.py`, `export_onnx_ap_sdn.py` + `export_onnx_ap_sdn_unified_int8.py` — SDN도 Early Exit과 같은 "staged 양자화 후 If 노드 재조립" 기법 재사용, 종료조건만 confidence>=threshold로 교체).
 
 **최종 Pi 실측(INT8, 5회 반복 평균)**:
