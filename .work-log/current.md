@@ -113,6 +113,27 @@
 1. `sta_tx_bitrate_min/mean`이 이번 대량 데이터에서 escalation 지문을 보이는지 재검토(8/28 새벽 세션엔 diag_25 146행으로만 봐서 결론 보류 상태였음)
 2. `ramp_load.sh`에 `termux-wake-lock` 추가는 여전히 미반영 상태(이번엔 배터리 최적화 제외로 화면 꺼짐 문제 자체는 해결됨, 급하지 않음)
 3. (검토) 밴드 스티어링 시스템으로 주제 확장할지 팀 결정 — 상세는 `.work-log/current.md` "향후 시스템 구상" 섹션(8/27 논의)
+4. ~~SDN-style이 우리 모델을 이긴 이유 후속 조사~~ — **완료, 결론 정정됨**(아래 참고). EE의 exit별 loss 가중치를 SDN 스타일(뒤쪽에 더 강하게)로 바꿔 재학습해보는 건 검토만 하고 미실행 — 다음 후속 과제로 남김
+
+### Baseline/SDN-style 비교표 + Pi 배포 완료 — SDN-style이 정직하게 더 나음 (같은 세션, 후속)
+1학기엔 없었던 `ap_metrics_v2_redesign2` 기준 Baseline LSTM/SDN-style Early Exit을 이 브랜치에 새로 구현(`models/baseline_lstm.py`, `models/sdn_lstm.py`, `models/ap_baseline_lstm.py`, `models/ap_sdn_lstm.py` — yongsang 브랜치 원본을 `git show`로 참고해 6-feature용 재작성). **1학기와 달리 Baseline/SDN도 Proposed와 동일하게 class-weight-power=1.0으로 학습**(아키텍처만 통제 변수로 비교하기 위함). 학습(`train_ap_baseline_lstm.py`, `train_ap_sdn.py`) → 평가(`evaluate_ap_baseline_lstm.py`, `evaluate_ap_sdn.py`) → 비교표(`generate_ap_comparison.py`) → 사용자 요청으로 Baseline/SDN도 Pi ONNX 배포(`export_onnx_ap_baseline.py`, `export_onnx_ap_sdn.py` + `export_onnx_ap_sdn_unified_int8.py` — SDN도 Early Exit과 같은 "staged 양자화 후 If 노드 재조립" 기법 재사용, 종료조건만 confidence>=threshold로 교체).
+
+**최종 Pi 실측(INT8, 5회 반복 평균)**:
+
+| 모델 | Pi INT8(ms) | 정확도 | Label 3 |
+|---|---:|---:|---:|
+| Baseline(EE 없음) | 0.765 | 89.4% | 48.4% |
+| **SDN-style** | **0.600** | 86.8% | **64.5%** |
+| Proposed Fixed θ | 0.641 | 88.4% | 51.6% |
+| Proposed Dynamic θ | 0.679 | 89.0% | 51.6% |
+
+**1차 결론(속도·recall만 봄)**: SDN-style이 Pi 실측에서 더 빠르고(0.600ms) Label 3 recall도 더 높다(64.5%) — 이대로 두면 "SDN이 이겼다"로 오독될 수 있어 재조사함.
+
+### "왜 SDN이 이겼나" 재조사 — threshold 문제 아님, recall/precision 트레이드오프였음
+- **threshold sweep(val로 튜닝)**: SDN(T=0.80~0.99)·EE(theta=0.15~0.4/0.3~0.7) 둘 다 배포값이 이미 val 기준 plateau 안 — 튜닝 부족이 원인 아님
+- **precision까지 본 재평가**: SDN recall 64.5%/precision 46.5%/**F1 54.1%** vs EE recall 51.6%/precision 66.7%/**F1 58.2%** — **F1은 오히려 EE가 근소 우위**. SDN은 recall을 챙기려고 precision(과잉탐지)을 크게 희생한 것 — recall 숫자만 보고 "SDN이 이겼다"고 한 건 성급했음
+- **true label-3(31창) exit별 분해**: EE는 exit2로 가면 100% 정답(10/10)인데 exit3까지 넘어가는 비중이 SDN보다 큼(21 vs 16)and exit3 심각 탐지력이 낮음(6/21=29%) — SDN의 loss 가중치(0.15/0.30/0.55, 뒤쪽 exit에 더 강함)가 exit3 심각 학습에 유리했을 가능성. EE도 SDN 스타일 가중치로 재학습해보는 건 검토만 함(미실행, 후속 과제)
+- **정정된 최종 결론**: 속도는 SDN이 확실히 앞섬(0.600ms vs 0.641ms). 정확도는 recall만 보면 SDN 우위처럼 보이지만 precision까지 고려한 F1은 막상막하(EE 근소 우위) — "SDN이 전면적으로 낫다"는 부정확하고 "SDN은 recall-precision 트레이드오프를 다르게 잡았고 속도가 더 빠르다"가 정확함. 상세: `project/results/yongsang/ap_model_comparison_redesign2.txt`
 4. ~~Early Exit 세션 구조 재설계~~ — **완료**(같은 세션에 이어서 진행, 아래 "단일 그래프 재설계 성공" 섹션 참고). baseline 대비 40% 빠른 통합 그래프 확보
 5. ~~INT8 양자화~~ — **완료, 1차 결론 정정됨**(같은 세션에 이어서 진행, 아래 참고). 최종적으로 unified fp32보다 추가 43~46% 빠른 int8 확보
 
