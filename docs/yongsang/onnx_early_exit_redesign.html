@@ -1,0 +1,669 @@
+<title>ONNX Early Exit 재설계</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #f5f7fa;
+    --panel:        #fcfcfb;
+    --panel-raise:  #ffffff;
+    --ink:          #12151b;
+    --ink-2:        #4b5566;
+    --ink-mute:     #7c8494;
+    --rule:         #e2e6ec;
+    --rule-strong:  #c9d0da;
+    --accent:       #2a78d6;
+    --accent-2:     #eb6834;
+    --accent-ink:   #ffffff;
+    --good:         #0ca30c;
+    --warning:      #fab219;
+    --serious:      #ec835a;
+    --critical:     #d03b3b;
+    --shadow:       0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:        #0e1116;
+      --panel:        #1a1a19;
+      --panel-raise:  #20242c;
+      --ink:          #f3f5f8;
+      --ink-2:        #b8c0cc;
+      --ink-mute:     #8890a0;
+      --rule:         #242a33;
+      --rule-strong:  #333b47;
+      --accent:       #3987e5;
+      --accent-2:     #d95926;
+      --accent-ink:   #0e1116;
+      --shadow:       0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:        #0e1116;
+    --panel:        #1a1a19;
+    --panel-raise:  #20242c;
+    --ink:          #f3f5f8;
+    --ink-2:        #b8c0cc;
+    --ink-mute:     #8890a0;
+    --rule:         #242a33;
+    --rule-strong:  #333b47;
+    --accent:       #3987e5;
+    --accent-2:     #d95926;
+    --accent-ink:   #0e1116;
+    --shadow:       0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 4rem 1.75rem 6rem;
+  }
+
+  header.page-head {
+    max-width: 700px;
+    margin-bottom: 3.25rem;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 1.5rem + 1.6vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.18;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+  }
+
+  .page-head p {
+    color: var(--ink-2);
+    font-size: 1.05rem;
+    margin: 0 0 0;
+    max-width: 64ch;
+  }
+
+  .gen-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.4rem;
+    flex-wrap: wrap;
+  }
+  .gen-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    font-size: 0.82rem;
+    color: var(--ink-2);
+  }
+  .gen-badge b { color: var(--ink); font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+  .gen-badge.bad { border-color: var(--critical); }
+  .gen-badge.bad b { color: var(--critical); }
+  .gen-badge.good { border-color: var(--good); }
+  .gen-badge.good b { color: var(--good); }
+
+  section { margin-top: 3.5rem; }
+
+  section > h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  section > h2 .step {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+  section > .lede {
+    color: var(--ink-2);
+    max-width: 68ch;
+    margin: 0 0 1.5rem;
+  }
+
+  /* ---- architecture diagram ---- */
+
+  .arch-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+  @media (max-width: 640px) { .arch-wrap { grid-template-columns: 1fr; } }
+
+  .arch-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.3rem 1.3rem 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .arch-card.bad { border-top: 3px solid var(--critical); }
+  .arch-card.good { border-top: 3px solid var(--good); }
+
+  .arch-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 0.9rem;
+  }
+  .arch-card.bad .arch-label { color: var(--critical); }
+  .arch-card.good .arch-label { color: var(--good); }
+
+  .arch-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .arch-call {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--panel-raise);
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.83rem;
+  }
+  .arch-call .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--ink-mute);
+    width: 1.4rem;
+    flex: none;
+  }
+  .arch-call .body { flex: 1; }
+  .arch-call .body b { display: block; color: var(--ink); }
+  .arch-call .body small { color: var(--ink-mute); font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; }
+  .arch-card.bad .arch-call { border-color: color-mix(in oklab, var(--critical) 35%, var(--rule-strong)); }
+  .arch-card.good .arch-call { border-color: color-mix(in oklab, var(--good) 35%, var(--rule-strong)); }
+
+  .arch-tax {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--critical);
+    padding-left: 2rem;
+  }
+
+  .arch-foot {
+    margin-top: 1rem;
+    font-size: 0.83rem;
+    color: var(--ink-2);
+  }
+  .arch-foot b { color: var(--ink); }
+
+  /* ---- latency bar chart ---- */
+
+  .bar-chart {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.5rem 1.6rem 1.3rem;
+    box-shadow: var(--shadow);
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 90px;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .bar-row:first-of-type { border-top: none; }
+  .bar-name {
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .bar-name small {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--ink-mute);
+    margin-top: 0.1rem;
+  }
+  .bar-track {
+    position: relative;
+    height: 22px;
+    background: var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    border-radius: 4px;
+    background: var(--ink-mute);
+  }
+  .bar-row.win .bar-fill { background: var(--good); }
+  .bar-row.lose .bar-fill { background: var(--critical); }
+  .bar-row.base .bar-fill { background: var(--ink-mute); }
+  .bar-val {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+    text-align: right;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .bar-val small { display:block; font-weight: 400; color: var(--ink-mute); font-size: 0.72rem; }
+
+  .bar-axis {
+    display: grid;
+    grid-template-columns: 160px 1fr 90px;
+    gap: 1rem;
+    margin-top: 0.4rem;
+  }
+  .bar-axis-track { position: relative; height: 1rem; }
+  .bar-axis-track span {
+    position: absolute;
+    transform: translateX(-50%);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--ink-mute);
+  }
+  .bar-axis-track span:first-child { transform: translateX(0); }
+
+  /* ---- exit breakdown mini table ---- */
+
+  .exit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 1.4rem;
+  }
+  .exit-table caption {
+    text-align: left;
+    font-size: 0.86rem;
+    color: var(--ink-2);
+    margin-bottom: 0.6rem;
+  }
+  .exit-table th, .exit-table td {
+    text-align: right;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", monospace;
+  }
+  .exit-table th:first-child, .exit-table td:first-child {
+    text-align: left;
+    font-family: inherit;
+  }
+  .exit-table th {
+    font-weight: 600;
+    color: var(--ink-mute);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-family: "IBM Plex Sans KR", sans-serif;
+  }
+  .exit-table td.win { color: var(--good); font-weight: 700; }
+  .exit-table td.lose { color: var(--critical); font-weight: 700; }
+
+  /* ---- code block ---- */
+
+  pre.code {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin: 1.2rem 0 0;
+  }
+  pre.code .kw { color: #7fb3f0; }
+  pre.code .cm { color: #7c8494; font-style: italic; }
+
+  /* ---- callout ---- */
+
+  .callout {
+    display: flex;
+    gap: 0.85rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    margin-top: 1.4rem;
+  }
+  .callout b { color: var(--ink); }
+  .callout.win { border-left-color: var(--good); }
+  .callout.lose { border-left-color: var(--critical); }
+
+  /* ---- cross-check table ---- */
+
+  .cross-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .cross-table th, .cross-table td {
+    padding: 0.75rem 0.9rem;
+    text-align: right;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cross-table th:first-child, .cross-table td:first-child { text-align: left; }
+  .cross-table thead th {
+    background: var(--paper);
+    font-weight: 600;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-mute);
+  }
+  .cross-table td { font-family: "IBM Plex Mono", monospace; }
+  .cross-table td:first-child, .cross-table th:first-child { font-family: inherit; }
+  .cross-table tbody tr:last-child td { border-bottom: none; }
+
+  /* ---- timeline ---- */
+
+  .timeline {
+    position: relative;
+    padding-left: 1.6rem;
+    border-left: 2px solid var(--rule-strong);
+  }
+  .tl-step {
+    position: relative;
+    padding-bottom: 1.6rem;
+  }
+  .tl-step:last-child { padding-bottom: 0; }
+  .tl-step::before {
+    content: "";
+    position: absolute;
+    left: -1.95rem;
+    top: 0.25rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--paper);
+  }
+  .tl-step h3 {
+    font-size: 0.92rem;
+    margin: 0 0 0.3rem;
+    color: var(--ink);
+  }
+  .tl-step p {
+    margin: 0;
+    font-size: 0.87rem;
+    color: var(--ink-2);
+  }
+
+  footer.page-foot {
+    margin-top: 4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.82rem;
+    color: var(--ink-mute);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  footer.page-foot code {
+    font-family: "IBM Plex Mono", monospace;
+    background: var(--panel);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">Raspberry Pi 배포 — Capstone 2026</p>
+    <h1>ONNX Early Exit 재설계: 세션 3개에서 그래프 1개로</h1>
+    <p>Early Exit LSTM을 Raspberry Pi에 처음 배포했을 때 "레이어를 skip하는 최적화"가 오히려 <b>느려지는</b> 결과가 나왔다. 왜 그랬는지, 어떻게 고쳤는지, 실측으로 어떻게 검증했는지의 기록.</p>
+    <div class="gen-badges">
+      <span class="gen-badge bad">1차 시도(staged) <b>baseline 대비 +19%</b></span>
+      <span class="gen-badge good">2차 시도(unified) <b>baseline 대비 −40%</b></span>
+    </div>
+  </header>
+
+  <section id="problem">
+    <h2><span class="step">01</span> 문제: Early Exit이 오히려 느렸다</h2>
+    <p class="lede">모델을 stage1/2/3 세 개의 독립된 ONNX 그래프로 쪼개고, 앞 stage의 entropy가 낮으면 뒤 stage를 아예 실행하지 않는 방식(<code class="mono">staged</code>)으로 첫 배포를 했다. Raspberry Pi 실측 결과:</p>
+
+    <div class="bar-chart">
+      <div class="bar-row base">
+        <div class="bar-name">Baseline<small>전체 그래프 1회, 매번 3-exit 다 계산</small></div>
+        <div class="bar-track"><div class="bar-fill" style="width:84.1%"></div></div>
+        <div class="bar-val">1.966<small>ms</small></div>
+      </div>
+      <div class="bar-row lose">
+        <div class="bar-name">Fixed θ (staged)<small>세션 최대 3개 순차 호출</small></div>
+        <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+        <div class="bar-val">2.337<small>ms · +19%</small></div>
+      </div>
+      <div class="bar-row lose">
+        <div class="bar-name">Dynamic θ (staged)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:93.7%"></div></div>
+        <div class="bar-val">2.189<small>ms · +11%</small></div>
+      </div>
+      <div class="bar-axis">
+        <div></div>
+        <div class="bar-axis-track">
+          <span style="left:0%">0ms</span>
+          <span style="left:42.8%">1.0ms</span>
+          <span style="left:85.6%">2.0ms</span>
+          <span style="left:100%">2.34ms</span>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+    <table class="exit-table">
+      <caption>staged fixed θ — exit point별 지연 분해</caption>
+      <thead><tr><th>exit</th><th class="num">비율</th><th class="num">평균 지연</th><th class="num">baseline 대비</th></tr></thead>
+      <tbody>
+        <tr><td>exit 1</td><td>29.7%</td><td>0.966ms</td><td class="win">−51%</td></tr>
+        <tr><td>exit 2</td><td>11.6%</td><td>2.067ms</td><td>+5%</td></tr>
+        <tr><td>exit 3</td><td>58.7%</td><td>3.083ms</td><td class="lose">+57%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout"><span>→</span><span>exit1로 빠지는 샘플은 확실히 빠르다(<b>−51%</b>) — Early Exit 자체의 이득은 실재한다. 그런데 exit3까지 가는 샘플(이 test set은 라벨이 어려워서 58.7%나 됐다)은 baseline보다 <b>+57%</b> 느렸다. 세 개로 쪼갠 게 발목을 잡았다.</span></div>
+  </section>
+
+  <section id="cause">
+    <h2><span class="step">02</span> 원인: LSTM 재계산이 아니라 세션 호출 오버헤드</h2>
+    <p class="lede">"작은 모델일수록 손해가 클 것"이라는 직관은 맞았다 — 다만 이유는 레이어를 다시 계산해서가 아니다. staged 방식은 <b>중복 계산을 하지 않는다</b>(stage2는 stage1의 hidden state를 이어받는다). 진짜 비용은 <code class="mono">InferenceSession.run()</code>을 여러 번 호출할 때마다 붙는 고정 오버헤드(스레드 동기화·Python-C++ 경계·텐서 할당)다. 이 모델은 <code class="mono">hidden_size=128</code>로 작아서, skip해서 아끼는 연산량보다 그 호출 비용이 더 크다.</p>
+
+    <div class="arch-wrap">
+      <div class="arch-card bad">
+        <div class="arch-label">1차 — staged (세션 3개)</div>
+        <div class="arch-flow">
+          <div class="arch-call"><span class="n">①</span><div class="body"><b>session1.run()</b><small>lstm1 + classifier1</small></div></div>
+          <div class="arch-tax">+ 세션 호출 오버헤드</div>
+          <div class="arch-call"><span class="n">②</span><div class="body"><b>session2.run()</b><small>lstm2 + classifier2</small></div></div>
+          <div class="arch-tax">+ 세션 호출 오버헤드</div>
+          <div class="arch-call"><span class="n">③</span><div class="body"><b>session3.run()</b><small>lstm3 + classifier3</small></div></div>
+          <div class="arch-tax">+ 세션 호출 오버헤드</div>
+        </div>
+        <div class="arch-foot">exit3까지 가면 세션 호출을 <b>3번</b> — 오버헤드도 3번.</div>
+      </div>
+      <div class="arch-card good">
+        <div class="arch-label">2차 — unified (세션 1개)</div>
+        <div class="arch-flow">
+          <div class="arch-call"><span class="n">①</span><div class="body"><b>session.run()</b><small>lstm1 → If(entropy&lt;θ₁) → lstm2 → If(entropy&lt;θ₂) → lstm3</small></div></div>
+        </div>
+        <div class="arch-foot">exit3까지 가도 세션 호출은 <b>1번</b> — 그래프 내부에서 조건부로 skip.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="fix">
+    <h2><span class="step">03</span> 해결: torch.jit.script → ONNX If 노드</h2>
+    <p class="lede"><code class="mono">torch.onnx.export</code>의 레거시 경로는 파이썬 <code class="mono">if</code>문을 그대로 트레이싱하면 데이터 의존적 분기를 못 잡는다(한 번 실행된 경로만 그래프에 굳는다). <code class="mono">torch.jit.script</code>로 먼저 스크립팅하면 entropy 비교 <code class="mono">if</code>가 실제 제어 흐름으로 컴파일되고, 그 결과를 export하면 ONNX <code class="mono">If</code> 연산자로 나온다.</p>
+
+    <pre class="code"><span class="cm"># project/scripts/export_onnx_ap_unified.py</span>
+<span class="kw">class</span> UnifiedEarlyExitFixed(nn.Module):
+    <span class="kw">def</span> forward(self, x: Tensor) -&gt; tuple[Tensor, Tensor]:
+        out1, _ = self.lstm1(x)
+        logits1 = self.classifier1(out1[:, -1, :])
+        e1 = self._entropy(logits1)[0]
+        <span class="kw">if</span> float(e1.item()) &lt; self.theta_1:
+            <span class="kw">return</span> logits1, torch.tensor(1, dtype=torch.int64)
+        out2, _ = self.lstm2(out1)
+        <span class="cm">#  ... theta_2 조건도 같은 방식으로 이어짐</span>
+
+<span class="cm"># 스크립팅 → export 순서가 핵심</span>
+scripted = torch.jit.script(wrapped)
+torch.onnx.export(scripted, dummy_input, onnx_path, ...)</pre>
+
+    <p class="lede" style="margin-top:1.4rem;">제약은 하나 — <b>batch_size=1 전제</b>다. 분기가 "이 한 샘플의 entropy"로 결정되니 배치 안에서 샘플마다 다른 exit을 타는 배치 추론에는 안 맞는다. 실시간 엣지 추론(윈도우 하나씩 순차 처리)이 목표라 문제없다. Dynamic θ 버전은 최근 occupancy 변화량으로 임계값을 조정하는 로직까지 같은 그래프 안에 스크립팅했다.</p>
+
+    <div class="callout win"><span>✓</span><span><b>검증</b>: PyTorch 참조 구현(<code class="mono">infer_batch_stepwise</code>) 대비 test 310창 전체에서 예측 라벨·exit_point <b>100% 일치</b>(fixed·dynamic 둘 다 미스매치 0건).</span></div>
+  </section>
+
+  <section id="result">
+    <h2><span class="step">04</span> 재측정: baseline 대비 40% 빠름</h2>
+    <p class="lede">같은 Pi, 같은 test set, 같은 방법론(샘플당 5회 반복, warmup 10회 제외)으로 다시 쟀다.</p>
+
+    <div class="bar-chart">
+      <div class="bar-row base">
+        <div class="bar-name">Baseline</div>
+        <div class="bar-track"><div class="bar-fill" style="width:84.1%"></div></div>
+        <div class="bar-val">1.966<small>ms</small></div>
+      </div>
+      <div class="bar-row lose">
+        <div class="bar-name">Staged Fixed θ</div>
+        <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+        <div class="bar-val">2.337<small>ms</small></div>
+      </div>
+      <div class="bar-row lose">
+        <div class="bar-name">Staged Dynamic θ</div>
+        <div class="bar-track"><div class="bar-fill" style="width:93.7%"></div></div>
+        <div class="bar-val">2.189<small>ms</small></div>
+      </div>
+      <div class="bar-row win">
+        <div class="bar-name">Unified Fixed θ<small>If 노드, 세션 1개</small></div>
+        <div class="bar-track"><div class="bar-fill" style="width:50.6%"></div></div>
+        <div class="bar-val">1.183<small>ms · −40%</small></div>
+      </div>
+      <div class="bar-row win">
+        <div class="bar-name">Unified Dynamic θ<small>If 노드, 세션 1개</small></div>
+        <div class="bar-track"><div class="bar-fill" style="width:50.9%"></div></div>
+        <div class="bar-val">1.190<small>ms · −39%</small></div>
+      </div>
+      <div class="bar-axis">
+        <div></div>
+        <div class="bar-axis-track">
+          <span style="left:0%">0ms</span>
+          <span style="left:42.8%">1.0ms</span>
+          <span style="left:85.6%">2.0ms</span>
+          <span style="left:100%">2.34ms</span>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+    <table class="exit-table">
+      <caption>unified fixed θ — exit point별 지연 분해 (baseline 1.966ms와 비교)</caption>
+      <thead><tr><th>exit</th><th class="num">비율</th><th class="num">평균 지연</th><th class="num">baseline 대비</th></tr></thead>
+      <tbody>
+        <tr><td>exit 1</td><td>29.7%</td><td>0.373ms</td><td class="win">−81%</td></tr>
+        <tr><td>exit 2</td><td>11.6%</td><td>1.033ms</td><td class="win">−47%</td></tr>
+        <tr><td>exit 3</td><td>58.7%</td><td>1.621ms</td><td class="win">−18%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout win"><span>→</span><span><b>exit3(전체 계산)조차 baseline보다 빠르다.</b> baseline은 매번 3개 분류기 출력을 전부 계산하는데, unified 그래프는 If 분기 안에서 실제로 필요한 만큼만 계산하기 때문이다. 재실행해도 1.183ms / 1.187ms로 오차 범위 내 재현됨.</span></div>
+  </section>
+
+  <section id="crosscheck">
+    <h2><span class="step">05</span> 1학기 자료와 교차검증</h2>
+    <p class="lede">이 현상이 오늘 데이터의 우연인지 확인하려고 1학기(4-feature, 실제 Pi 하드웨어 실측)를 다시 봤다. 같은 패턴이 이미 있었다 — 모델 세대·feature 개수와 무관한 구조적 문제라는 뜻이다.</p>
+
+    <table class="cross-table">
+      <thead><tr><th>방법</th><th>1학기 (4-feature)</th><th>오늘 (6-feature)</th></tr></thead>
+      <tbody>
+        <tr><td>Baseline</td><td>1.530ms</td><td>1.966ms</td></tr>
+        <tr><td>Staged Fixed θ</td><td>2.089ms (+37%)</td><td>2.337ms (+19%)</td></tr>
+        <tr><td>Staged Dynamic θ</td><td>1.989ms (+30%)</td><td>2.189ms (+11%)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout"><span>⚠</span><span>1학기의 별도 <code class="mono">comparison_summary.txt</code>는 반대 결론(Early Exit이 근소 우위)을 냈는데, PC 타이밍으로 보이는 수치였다. 실제 Pi 실측끼리(<code class="mono">pi_fp32_analysis.txt</code> vs <code class="mono">pi_*_staged_fp32_analysis.txt</code>) 직접 대조한 기록은 이번이 처음이었다 — <b>latency 주장은 반드시 실기기 실측 기준이어야 한다</b>는 교훈.</span></div>
+  </section>
+
+  <section id="timeline">
+    <h2><span class="step">06</span> 진행 순서</h2>
+    <div class="timeline">
+      <div class="tl-step">
+        <h3>staged export + Pi 배포</h3>
+        <p>1학기 방식을 6-feature 모델에 재적용. baseline보다 느린 결과 확인.</p>
+      </div>
+      <div class="tl-step">
+        <h3>exit별 분해로 원인 특정</h3>
+        <p>exit1은 빠른데 exit3는 느림 → 세션 호출 오버헤드가 원인이라는 가설.</p>
+      </div>
+      <div class="tl-step">
+        <h3>1학기 자료 교차검증</h3>
+        <p>같은 패턴이 4-feature 모델에도 있었음을 확인 — 구조적 문제로 확정.</p>
+      </div>
+      <div class="tl-step">
+        <h3>torch.jit.script + ONNX If 노드로 재설계</h3>
+        <p>세션 1개, 그래프 내부 조건부 실행. PyTorch 참조 대비 100% 일치 검증.</p>
+      </div>
+      <div class="tl-step">
+        <h3>재측정 — baseline 대비 40% 개선</h3>
+        <p>모든 exit point에서 baseline을 이김. exit3(전체 계산)도 예외 아님.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="conclusion">
+    <h2><span class="step">07</span> 결론</h2>
+    <p class="lede">"Early Exit이 이 정도로 작은 LSTM에서는 latency를 못 줄인다"는 처음 결론은 <b>staged(세션 분리) 배포 아키텍처에 국한된 이야기</b>였다. 원인을 없애자 Early Exit의 latency 이득이 실측으로 확인됐다 — 문제는 모델이나 Early Exit 개념이 아니라 배포 방식이었다.</p>
+    <div class="callout win"><span>✓</span><span>논문·보고서에는 이 <b>단일 그래프(If 노드) 결과를 최종안</b>으로 쓴다. staged 결과는 지우지 않고 "왜 단순 분리가 아니라 단일 그래프 설계가 필요했는가"를 보여주는 동기/반례로 남긴다.</span></div>
+  </section>
+
+  <footer class="page-foot">
+    <span>작성 2026-08-28 · 데이터 기준 <code>ap_metrics_v2_redesign2</code> test 310창, Raspberry Pi(<code>capstone@CapsTone</code>) 실측</span>
+    <span>스크립트: <code>project/scripts/export_onnx_ap_unified.py</code> · 벤치마크: <code>project/deploy/raspberry_pi_ap_v2/bench_unified.py</code> · 전체 기록: <code>project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt</code></span>
+    <span>1학기(4-feature) 자료는 <code>project/results/hojung/</code> — 모델 세대가 달라 수치를 직접 우열 비교하지 않되, 구조적 패턴(staged&gt;baseline) 재현은 교차검증으로 인용한다.</span>
+  </footer>
+
+</main>

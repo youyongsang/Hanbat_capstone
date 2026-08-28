@@ -1,5 +1,187 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-28 새벽 (yongsang 세션 — 재설계 6-feature 모델 확정: test 85.5% / L3 recall 76% / occupancy 문턱 F1 능가. tx_bitrate feature 시도했다 실패)
+최종 업데이트: 2026-08-28 밤 (yongsang 세션 — 191/S26 SSH 원격제어 완성 → 프로브 서버 누락 발견/수정 → 본수집 완주, `metrics_v2_pi_redesign2.csv` 2115행, **label 3 202개 목표 달성**. 다음: 재라벨링→재변환→재학습)
+
+## 체크포인트 (2026-08-28 밤) — 본수집 완료, label 3 202개
+
+191/S26 폰 SSH 원격제어 셋업 완성 → `ramp_load_remote.sh` 실기기 검증 → 초기 두 런은 노트북 iperf3 프로브 서버(5203) 누락으로 무효(archived) → 5203 기동 후 재시작, step 프로파일 10회 반복(AP 크래시 2회·폰 개별 죽음 여러 번 겪으며 진행) 끝에 label 3 202개 확보하고 마무리. 상세는 바로 아래 "본수집 완료" 섹션과 "다음 세션 최우선" 참고.
+
+## 체크포인트 (2026-08-28 오후, 2회차) — congestion_label_criteria.html을 .md 수정에 맞춰 동기화
+
+`docs/yongsang/congestion_label_criteria.md`에 반영했던 3건의 "(archived — 2026-08-28 확인)" 주석(§03 weighted-sum 공식이 더 이상 코드에 없음 / retry가 congestion_score에서 완전히 빠짐 / label 3 표본 수치가 2026-08-23 스냅샷)을 `.html` 쌍둥이 파일에도 동일하게 반영 — 헤더 아래 요약 callout 1개, §03 lede 한 줄, retry 정규화 callout 옆에 archived callout 1개, footer 한 줄 추가. 기존 `.callout` 스타일 재사용(새 디자인 시스템 도입 안 함). 게시된 아티팩트("혼잡 라벨 분류 기준", 2026-08-23 이후 미갱신 상태였음) 재게시는 자동 승인 분류기에 막혀 **보류** — 사용자 승인 필요.
+
+## 체크포인트 (2026-08-28 오후, 1회차) — 상태 검증 + 문서 오류 수정
+
+### 상태 검증 (와이파이 일시 끊김 → 재연결 후)
+아티팩트 실시간 watch 연결이 끊겼다가(재연결 시도 소진) 와이파이 복구 후 확인 요청 받음. 점검 결과 **끊김으로 인한 데이터 손실 없음**:
+- `.work-log/current.md`, `~/.ssh/config`(s21/s26 항목), `project/scripts/ramp_load.sh`, `ramp_load_remote.sh` 전부 로컬 파일이라 무관하게 그대로 있었음
+- 아티팩트(폰 SSH 런북, AP 혼잡 탐지 콘솔) 둘 다 내용 그대로 정상 게시 상태 확인 (끊김은 실시간 알림 채널에만 영향, 콘텐츠 자체는 서버에 이미 반영돼 있었음)
+- 두 아티팩트 watch 재설정 완료
+
+### `docs/yongsang/congestion_label_criteria.md` 오류 3건 발견 → 수정 완료
+사용자 요청으로 감사(audit) 진행, 코드(`collect_metrics.py`)와 대조해서 확인:
+1. **존재하지 않는 코드 참조**: 문서가 "sub-score는 `calculate_scores()`에서 계산"이라고 했지만, 그 함수는 이미 재설계(max/anchor 방식)로 완전히 다시 쓰였음. `RETRY_FAILED_MAX_PER_SEC`·`JITTER_MAX_MS` 상수는 코드에서 **아예 삭제됨**(grep으로 확인, 검색 결과 0건) — "superseded" 배너만으로는 부족했고 구체적 참조가 틀려 있었음.
+2. **retry 축 변화 축소 서술**: 원문은 "정규화 방식만 바뀜"으로 읽혔지만 실제로는 재설계에서 retry를 congestion_score(라벨 축)에서 **완전히 제외**함(지금은 `tx_retry_ratio`로 모델 입력 feature용으로만 유지, `max()`엔 안 들어감).
+3. **날짜 없는 스냅샷 수치**: "label 3 표본 test 5개"가 2026-08-23 시점 값인데 날짜 표시가 없어 현재 상태처럼 보임 — 실제 최신(재설계 기준)은 test label 3 38개.
+→ 세 곳 모두 "(archived — 2026-08-28 확인)" 인라인 주석으로 수정, 최신 수치가 있는 문서(`congestion_label_redesign.md`, `.work-log/current.md`, `ap_v2_redesign_threshold_comparison.txt`)로 포인터 추가. 원본 수치·서술은 "그 시점 기록"으로 보존(삭제 안 함).
+
+### 다음 세션 최우선 (그대로 유지, 위 "진행 중" 섹션 참고)
+191폰 SSH 셋업 → 두 폰 IP 재확인 → 연결 검증 → ramp_load 실기기 테스트 → 본수집. 상세는 바로 아래 "진행 중 (2026-08-28 오후 — 램프형 부하 스크립트 + 폰 SSH 원격제어 셋업)" 섹션.
+
+## 진행 중 (2026-08-28 오후 — 램프형 부하 스크립트 + 폰 SSH 원격제어 셋업)
+
+### 배경
+어젯밤 계획(위 "내일 할 일" 참고)대로 escalation 창 확보용 램프형 부하 수집을 준비하다가, "폰 원격제어를 어차피 나중에(데모용) 해야 하니 지금 하자"는 사용자 결정으로 SSH 기반 원격제어를 먼저 구축하는 쪽으로 방향 전환. `docs/yongsang/demo_api_spec.md` §4.B에 이미 설계돼 있던 "SSH exec (폰 쪽 코드 없음)" 컨벤션(`Host s21`=191/5201, `Host s26`=S26/5202, Termux sshd 8022)을 그대로 구현.
+
+### 신규 스크립트
+- **`project/scripts/ramp_load.sh`**: 폰(Termux) 로컬 실행용. `profile step`(계단식 10M→20M→30M→40M, 60초씩, 총 240초) / `profile knee`(무릎근처 22M 고정 240초) 두 프로파일. Ctrl-C 시 trap으로 현재 iperf3만 즉시 정리. **실기기 미검증**(문법 미확인 수준, 아직 한 번도 실행 안 해봄).
+- **`project/scripts/ramp_load_remote.sh`**: 노트북에서 두 폰에 `ramp_load.sh`를 scp로 배포하고 SSH로 동시 실행/동시 정지(Ctrl-C 하나로 양쪽 다 pkill)하는 오케스트레이터. `ramp_load.sh`를 대체하지 않고 그 위에서 원격 실행만 대신함.
+
+### 노트북 쪽 SSH 셋업 (완료)
+- 폰 전용 키페어 `~/.ssh/id_ed25519_phones` 생성(패스프레이즈 없음, AP 전용 `id_rsa_ap`와 분리)
+- `~/.ssh/config`에 `Host s21`(HostName 192.168.8.191, Port 8022) / `Host s26`(HostName 192.168.8.103, Port 8022) 추가. **레포 밖 개인 설정이라 git에는 안 잡힘** — 새 환경에서 이어가려면 이 섹션 참고해서 재생성 필요
+- 공개키(`ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINM51EQYNdMlGZFCDpSI2+6R9YZWL0b61+zwIBeSfvAS phone-control@ap-testbed`)는 각 폰 `~/.ssh/authorized_keys`에 등록 필요
+
+### 폰 쪽 셋업 — 191/S26 둘 다 완료
+- **S26**: `pkg install openssh` → `sshd` 기동 → `mkdir ~/.ssh && chmod 700` → 공개키 `authorized_keys`에 등록·`chmod 600` → `whoami` = `u0_a579` (노트북 config에 반영 완료)
+- S26 IP 확인은 **보류**: 세팅 시점에 폰이 AP 와이파이가 아니라 LTE 데이터 상태였음. Termux `ip addr show wlan0`은 최신 안드로이드의 netlink 권한 제약으로 `Permission denied` (Wi-Fi 연결 상태와 무관한 Termux 자체 제약). AP 와이파이에 실제로 붙었을 때 안드로이드 설정 UI(Wi-Fi → 네트워크 상세)로 확인하는 게 더 간단 — 그때 `192.168.8.103`과 다르면 config 갱신 필요
+- **191**: 같은 순서로 완료. `whoami` = `u0_a29` (노트북 config `Host s21` User 반영 완료). `ssh s21 echo ok` 검증 성공(`192.168.8.191:8022`, known_hosts 등록됨) — **191 SSH 연결 확인 끝**
+
+`ssh s21 echo ok` / `ssh s26 echo ok` **둘 다 검증 완료** — 노트북→폰 SSH 원격제어 셋업 끝.
+
+### `ramp_load_remote.sh` 실기기 테스트 (knee 프로파일, timeout 65s) — 성공, S26에 iperf3 사전 설치 필요했음
+- 노트북 iperf3 서버 5201/5202 기동 → 두 폰 ping 확인(0% 손실) → `timeout -s INT 65 bash ramp_load_remote.sh knee` 실행
+- **1차 시도 실패**: S26 Termux에 iperf3 자체가 설치 안 되어 있어서 `iperf3: command not found`로 즉시 중단. `ssh s26 "pkg install -y iperf3"`로 설치(3.21, 83KB) 후 해결
+- **2차 시도 성공**: 두 폰 다 정상 동작, 22M 부하로 ~68~69초(timeout 65s + 정리 오버헤드) 실행 후 SIGINT로 정상 종료. 원격 배포(`scp`)·동시 실행·Ctrl-C 시 양쪽 `pkill` 정리까지 스크립트 설계대로 작동 확인
+- **관찰**: 22M×2(합계 44M)에서 loss가 시간이 갈수록 커짐 — 초반 10~20초는 1~10%대, 후반엔 191 평균 ~35%(피크 71%) / S26 평균 ~35~37%(피크 79%). knee 프로파일이 실제로 채널을 압박하고 있다는 신호(escalation 창 확보 목적엔 긍정적)
+- 테스트 후 AP 정상(ping 0% 손실, 1~15ms) — 크래시 없음. 두 폰 다 잔여 iperf3/ramp_load 프로세스 없이 정리됨(직접 확인). 노트북 iperf3 서버도 테스트 직후 종료함(`taskkill`)
+- 스크립트 출력 관련 사소한 이슈: `sed "s/^/[호스트] /"` 프리픽스가 SSH 세션 버퍼링 때문에 실시간으로 안 뜨고 몰려서 나오는 경우가 있음(기능엔 문제없음, 로그 가독성만 영향)
+
+### 본수집 1차 세션 시작 (`metrics_v2_pi_redesign2.csv`, step 프로파일)
+파이(`capstone@192.168.8.109`, 사용자가 직접 SSH 접속)에서 `python3 collect_metrics.py step_run1` 기동 확인 후, 노트북에서 iperf3 서버(5201/5202) 띄우고 `ramp_load_remote.sh step` 실행.
+
+- **1차 시도(19:33)**: 191(s21)은 4단계(10/20/30/40M×60s) 전부 클린하게 완주. **S26(s26)은 10M 스텝 중 14초쯤부터 데이터가 0바이트로 끊김**(56~76초 잠깐 재개 후 재차 끊김, TCP/UDP 세션 자체는 안 죽음) — 원격 SSH 실행 중 폰 화면이 꺼지면서 백그라운드 스로틀링된 것으로 진단(사용자 확인: "화면이 한번 꺼지긴 했었어"). 근본 원인: `ramp_load.sh`에 `termux-wake-lock` 등 절전 방지 코드가 아예 없었음(코드 확인 완료, 아직 미수정 — 대신 폰 쪽 설정으로 우회)
+- **조치**: 사용자가 191/S26 둘 다 Termux 배터리 최적화 제외 + 화면 유지 설정 후 재시도
+- **2차 시도(19:39~19:43, 성공)**: 두 폰 다 240초 전 구간 클린하게 완주, 중단 없음. **로드가 오르면서 loss가 뚜렷하게 escalation**: 10M 단계 0% → 20M 단계 61~70% → 30M 단계 93~94% → 40M 단계 96~97%(양쪽 폰 비슷한 패턴). AP는 종료 후 정상(ping 0% 손실, 1~9ms) — 크래시 없음
+- **의의**: 이게 정확히 원했던 escalation 창 패턴(occupancy/loss가 부하에 따라 단계적으로 오름) — `metrics_v2_pi_redesign2.csv`의 `step_run1` 시나리오에 label 0→1→2→3 전이가 담겼을 가능성 높음. 파이 콘솔에서 라벨 확인 필요(아직 미확인 — 파이는 사용자가 직접 보고 있음)
+
+### 치명적 실수 발견 + 정정: 노트북 iperf3 프로브 서버(5203) 안 켜서 두 런(904~994행) 전부 프로브 축 없이 라벨링됨
+2차 step 런 후 사용자가 파이 콘솔의 "프로브 실행/실패 : 35 / 35"(100% 실패)를 캡처해서 질문 → 원인 추적.
+
+- **원인**: `collect_metrics.py`의 victim 프로브는 노트북 `192.168.8.226:5203`으로 붙는데(`PROBE_TARGET`/`PROBE_PORT`), Claude가 iperf3 서버를 **5201/5202만 띄우고 5203을 빼먹음**. 이번 세션 전체(1차+2차 step 런) 동안 프로브가 단 한 번도 성공 못 함
+- **영향**: `probe_ever_ok`가 계속 False라 `probe_hard_fail` 오버라이드(loss=1.0)가 발동 안 하고, `anchor_score(None,...)`가 0.0을 반환 — 즉 `congestion_score = max(occupancy, jitter=0, loss=0, latency)`로, **이 재설계의 핵심(occupancy 문턱은 못 잡는데 jitter/loss로 잡히는 심각)이 이번 세션 데이터엔 전혀 반영 안 됨**. 라벨이 틀렸다기보다 과소평가 방향(프로브가 있었으면 더 심각으로 잡혔을 케이스를 못 잡음). 이미 지난 시간대라 재계산으로 못 살림(그 순간 실제 jitter/loss를 측정 못 했으므로)
+- **조치**: 5203 서버 기동 확인(`netstat`으로 LISTENING 확인). 기존 `metrics_v2_pi_redesign2.csv`(994행)는 `metrics_v2_pi_redesign2_probefail_archived_20260828_1958.csv`로 백업(삭제 안 함) 후, 원본 파일은 헤더만 남기고 초기화. 사용자 확인: "지금까지 쌓인건 지우자"
+- **교훈**: 앞으로 iperf3 서버 기동 시 반드시 **5201(191 부하) / 5202(S26 부하) / 5203(victim 프로브)** 세 개 다 확인할 것. 콘솔의 "프로브 실행/실패" 카운터를 런 시작 직후 한 번 확인하는 습관 필요(0/0이면 아직 프로브 스레드가 못 돌았다는 뜻이라 이상 없음, 실패율이 100%면 서버 미기동 의심)
+
+### 4차 step 런 도중 AP 크래시(자가 재부팅) — 3차까지 프로브 정상 데이터 254행 확보한 상태
+3차 런 성공 후(프로브 정상, 254행: label 0:43/1:88/2:90/**3:33**) 4차 런 시작. 약 150초 지점(20M~30M 단계 근처)에서 사용자가 "크래시 났어" 보고, 노트북 와이파이 자체도 순간 끊김(`ping 192.168.8.226` 대상 못 찾음) 관측.
+
+- **확인 결과**: `ssh 192.168.8.1 uptime` → **7분**(load average 1.47) — AP가 실제로 크래시 후 자가 재부팅한 것으로 확인. 두 폰은 ping 정상 복귀(0% 손실), `ramp_load_remote.sh` 백그라운드 태스크는 SSH 세션이 끊긴 채 멈춰있어서 `TaskStop`으로 강제 종료
+- **폰 잔여 프로세스 정리**: `pkill -f iperf3` 등을 ssh로 보낼 때 **명령어 문자열 자체에 "iperf3"가 포함**돼서 pkill이 자기 자신(그 SSH 세션의 셸)까지 죽여버리는 부작용 발견 — 확인 메시지 없이 연결이 끊겨서 처음엔 실패로 보였지만, 재확인(`pgrep`)해보니 실제로는 정리가 잘 됐음. `ramp_load_remote.sh`의 cleanup trap에도 같은 패턴이 있으나 결과적으로 문제없이 동작(참고 기록만)
+- **이번 세션 프로브-정상 데이터 요약**: `metrics_v2_pi_redesign2.csv` 254행(3차까지) — label 0:43/1:88/2:90/**3:33**. 목표(label 3 최소 200개)까지 아직 한참 남음
+- **다음 재개 시 주의**: AP가 막 재부팅됐으니 충분히 쿨다운(수 분) 후 재시도 권장. 4번째 런처럼 30M/40M 단계에서 크래시 위험이 있다는 기존 안전 상한(45M 금지, 300~420s 상한)이 이번에도 재확인됨 — step 프로파일 자체가 40M까지 올라가는 구조라 크래시 위험을 안고 가는 것, 필요하면 knee(고정 22M)로 바꿔서 안정성 우선하는 것도 고려
+
+### 본수집 완료 — label 3 목표(200개) 달성, `metrics_v2_pi_redesign2.csv` 2115행
+프로브 정상화(위 참고) 이후 step 프로파일을 총 6회(`step_run1`~`step_run6`, 사용자가 재시작할 때마다 이름이 늘어남 — 시나리오명은 모델 입력에서 제외되니 무해) 반복. AP 크래시(자가 재부팅) 2회, 191/S26 개별 폰 죽음 3~4회 겪었지만 그때마다 AP uptime으로 실제 크래시 여부 확인 후 정리하고 재개하는 패턴으로 진행.
+
+- **최종 라벨 분포**: 0:689 / 1:449 / 2:775 / **3:202** (총 2115행)
+- **시나리오별**: step_run1 275 / step_run2 345 / step_run3 151 / step_run4 455 / step_run5 599 / step_run6 290
+- **세션 중 확인된 크래시 패턴**: step 프로파일이 30~40M 단계로 올라갈 때 AP가 크래시하는 경우가 반복 관측(uptime 리셋으로 확인, 2회) — 기존 안전 상한(45M 금지, 300~420s)과 별개로 **step 프로파일 자체가 크래시를 유발하는 빈도가 꽤 높다는 것**이 이번 세션에서 재확인됨. 그럼에도 AP는 매번 자가복구했고 파이 유선 관리채널 덕에 데이터 손실은 없었음(폴링이 크래시 직전까지 계속 잡힘 — 오히려 label 3이 크래시 직전 구간에 몰려서 나옴)
+- **정리 완료**: 파이 수집기 종료(대화 중 자연 종료됨, 확인함), 노트북 iperf3 서버 3개(5201/5202/5203) 전부 kill, 두 폰 잔여 프로세스 없음
+
+### 재라벨링 → 재변환 → 재학습 → 평가 → occupancy 문턱 비교 완료 (2026-08-28 밤)
+- `remeasure_redesign.py`: **0 labels changed**(프로브가 라이브 수집 내내 정상 작동했다는 검증). occ>35% 부하행 1423개 중 label 3 201개, 그중 **occ<75%가 128개(64%)** — 이전(15/38=39%)보다 "occupancy로는 원리상 못 잡는 심각" 비중이 훨씬 높은 데이터
+- `prepare_ap_metrics_dataset.py` → `project/data/ap_metrics_v2_redesign2`(기존 `ap_metrics_v2_redesign`와 별도 디렉토리, 병합 안 함): train 1437 / val 308 / test 310(label 3 31개)
+- `train_ap_early_exit.py --class-weight-power 1.0` → `project/checkpoints/ap_v2_redesign2/`, best val balanced acc **85.4%**(이전 82.6%보다 개선)
+- 평가(`ap_v2_redesign2_eval_report.txt`): fixed θ test 88.4% (Label0 97.9%/L1 89.6%/L2 89.7%/**L3 51.6%**), dynamic θ 89.0%(L3 동일 51.6%)
+- **L3 recall이 이전(76.3%)보다 낮아진 이유 확인**: 이번 test set은 label 3 중 occ<75%(어려운 케이스) 비중이 훨씬 높아서(위 참고) — 데이터가 더 어려워진 것이지 모델 퇴보가 아님
+- **occupancy 문턱 비교**(`ap_v2_redesign2_threshold_comparison.txt`, scratchpad 분석 스크립트로 생성):
+
+  | 방법 | recall | precision | F1 |
+  |---|---:|---:|---:|
+  | LSTM | 51.6% | 66.7% | **58.2%** |
+  | occ≥65% | 48.4% | 34.1% | 40.0% |
+  | occ≥70% | 35.5% | 57.9% | 44.0% |
+  | occ≥75% | 25.8% | 100% | 41.0% |
+  | occ≥80% | 22.6% | 100% | 36.8% |
+
+  → **LSTM이 F1에서 모든 occupancy 문턱을 여전히 이김**(58.2% vs 최고 44.0%). 참 label3&occ<75%(23창, 이전 15창에서 증가) 중 LSTM 8/23(35%) 탐지, occ≥75 문턱은 정의상 0/23 — LSTM 고유 가치 재확인
+
+### 다음 세션 최우선
+- **이전 세션 데이터(1614행, 8/27)와 병합은 안 하기로 결정** — 별개 수집 세션이라 굳이 섞을 이유 없음(사용자 판단, 2026-08-28). `ap_metrics_v2_redesign`(1614행, 이전)과 `ap_metrics_v2_redesign2`(2115행, 이번)는 각자 별도 데이터셋/체크포인트로 유지
+- **더 많은 데이터가 만능은 아님(사용자 질문에 대한 결론)**: occ 60~72% 구간의 label 2/3은 6-feature 평균이 사실상 동일해서(8/27 진단) 데이터量을 늘려도 못 뚫는 상한이 있음. recall 추정치 노이즈는 줄겠지만 근본 해결책은 아님 — 아래 1번(forecasting)이 더 유망한 방향
+
+1. `sta_tx_bitrate_min/mean`이 이번 대량 데이터에서 escalation 지문을 보이는지 재검토(8/28 새벽 세션엔 diag_25 146행으로만 봐서 결론 보류 상태였음)
+2. `ramp_load.sh`에 `termux-wake-lock` 추가는 여전히 미반영 상태(이번엔 배터리 최적화 제외로 화면 꺼짐 문제 자체는 해결됨, 급하지 않음)
+3. (검토) 밴드 스티어링 시스템으로 주제 확장할지 팀 결정 — 상세는 `.work-log/current.md` "향후 시스템 구상" 섹션(8/27 논의)
+4. ~~Early Exit 세션 구조 재설계~~ — **완료**(같은 세션에 이어서 진행, 아래 "단일 그래프 재설계 성공" 섹션 참고). baseline 대비 40% 빠른 통합 그래프 확보
+5. INT8 양자화 — 이제 통합 그래프(세션 1개) 기준으로 검증할 것(staged 기준으로 하면 다시 오버헤드에 묻힐 위험)
+
+### Raspberry Pi 실기기 지연 측정 완료 (2026-08-28 밤) — Early Exit이 이번엔 baseline보다 느림
+- **신규 `project/deploy/raspberry_pi_ap_v2/`**: 1학기 `project/deploy/raspberry_pi/inference_pi.py`(4-feature)를 이 브랜치의 6-feature 모델용으로 재작성(`inference_pi_ap.py`, repo import 없이 독립 실행). ONNX 8개 + `ap_metrics_v2_redesign2/test.csv`를 파이(`~/ap_pi_v2/`)에 배포
+- 측정: baseline(항상 전체 그래프 1회), fixed θ(staged), dynamic θ(staged) — 각 test 310창, 샘플당 5회 반복 평균
+
+  | 방법 | avg(ms) | exit1/2/3 비율 |
+  |---|---:|---|
+  | Baseline(전체 그래프 1회) | **1.966** | 0/0/100% |
+  | Fixed θ (staged) | 2.337 | 29.7/11.6/58.7% |
+  | Dynamic θ (staged) | 2.189 | 30.0/22.3/47.7% |
+
+- **핵심 발견**: Early Exit이 이번 Pi 실측에서 **평균적으로 baseline보다 느림**. exit별로 쪼개보면 exit1(29.7%)은 baseline 대비 -51%(0.97ms)로 확실히 빠른데, exit3(58.7%)는 baseline 대비 **+57%**(3.08ms)로 오히려 느림 — staged 방식이 별도 ONNX 세션을 최대 3번 순차 호출하는 구조라 세션 호출당 고정 오버헤드가 붙는데, 이 모델(hidden_size=128)은 작아서 LSTM 연산량보다 오버헤드가 더 큼. 이번 test set은 라벨이 어려워서(L3 recall 51.6%) exit3 비율이 높아 가중평균이 나빠지는 조건이 갖춰짐
+- **결론**: 지금 구조(세션 3개 분리)는 "레이어를 실제로 skip할 수 있다"는 개념 검증에는 유효하지만, 이 배포 구성 그대로는 latency 우위를 주장할 수 없음. 상세: `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`
+- **1학기 결과(`project/results/hojung/`, 4-feature, 다른 모델 크기)와 직접 비교 금지** — CLAUDE.md 지침대로 별개 라인(수치 자체를 나란히 놓고 우열 비교하지 않는다는 뜻, 아래 구조적 패턴 교차검증과는 별개)
+
+### 1학기 자료와 교차검증 — "staged Early Exit이 baseline보다 느림" 현상이 1학기에도 이미 있었음
+사용자 질문("1학기 비교 자료 있어?")으로 `project/results/hojung/`(1학기 4-feature, origin/hojung에서 유지 중인 실제 Pi 실측)을 다시 확인.
+
+- `pi_fp32_analysis.txt`(baseline, 전체 그래프 1회): avg **1.530ms**, exit1/2/3 지연이 1.52/1.55/1.50ms로 거의 동일(=애초에 매번 전체 계산하고 사후에 exit 라벨만 붙인 것)
+- `pi_fixed_staged_fp32_analysis.txt`(staged): avg **2.089ms**(+37%), exit1 0.91ms / exit2 2.03ms / exit3 3.09ms
+- `pi_dynamic_staged_fp32_analysis.txt`(staged): avg **1.989ms**(+30%)
+- **오늘(6-feature) 결과와 방향이 정확히 일치** — baseline 1.966ms vs staged fixed 2.337ms(+19%)/dynamic 2.189ms(+11%). 모델 세대·feature 수와 무관하게 **이 배포 구조(ONNX 세션 3개 분리) 자체가 이 Pi+ONNX Runtime 조합에서 구조적으로 느리다**는 근거가 두 독립적인 실험에서 재현됨
+- **1학기 `comparison_summary.txt`(PC 기준으로 보이는 별도 파일)는 반대 결론**("LSTM Full vs Early Exit Dynamic: -0.16ms", Early Exit이 근소 우위) — PC 타이밍만 보고 "Early Exit이 이긴다"고 판단했을 가능성. 진짜 Pi 실측끼리(`pi_fp32_analysis.txt` vs `pi_*_staged_fp32_analysis.txt`) 직접 대조한 기록은 이번에 처음 확인함
+- **시사점**: 논문/보고서에서 "Early Exit이 지연을 줄인다"고 쓰려면 PC 타이밍이 아니라 반드시 실제 Pi 실측 기준이어야 하고, 지금 구조로는 그 주장이 성립 안 함 — 위 "ONNX If 연산자로 세션 통합" 재설계가 이 주장을 살리기 위한 전제조건
+
+### 단일 그래프(ONNX If 노드) 재설계 성공 — Early Exit이 baseline 대비 40% 빠름 (같은 세션, 후속)
+사용자 질문("시간 측면에선 baseline을 못 이기는 거 아냐? 모델이 작을수록 그 경향이 더할 것 같은데")에서 출발 — 정확한 직관이었음: 문제는 LSTM 재계산이 아니라 staged 구조가 세션을 최대 3번 호출하는 고정 오버헤드였고, 모델이 작을수록(hidden_size=128) 그 오버헤드 비중이 커짐.
+
+- **신규 `project/scripts/export_onnx_ap_unified.py`**: `torch.jit.script`로 entropy 기반 if/else 분기를 캡처 → `torch.onnx.export`가 ONNX `If` 노드로 내보냄. 세션 3개 대신 **세션 1개, 그래프 내부에서 조건부 실행**. batch_size=1 전제(실시간 단일 윈도우 추론용)
+- **정확도 검증**: PyTorch staged reference 대비 test 310창 전체에서 예측·exit_point **100% 일치**(fixed·dynamic 둘 다, 미스매치 0)
+- **Pi 재측정**:
+
+  | 방법 | avg(ms) | vs baseline |
+  |---|---:|---:|
+  | Baseline(전체 그래프 1회) | 1.966 | — |
+  | Staged Fixed(세션 3개) | 2.337 | +19% |
+  | Staged Dynamic(세션 3개) | 2.189 | +11% |
+  | **통합 Fixed(세션 1개, If)** | **1.183** | **-40%** |
+  | **통합 Dynamic(세션 1개, If)** | **1.190** | **-39%** |
+
+- exit3(전체 계산)조차 baseline보다 빠름(1.621ms vs 1.966ms) — baseline은 3개 분류기 출력을 매번 다 계산하는데 통합 그래프는 필요한 만큼만 계산하기 때문. 재실행해도 1.183ms/1.187ms로 재현됨
+- **결론 갱신**: "Early Exit이 이 모델 크기에서 latency를 못 줄인다"는 이전 결론은 staged(세션 3개) 구조에 국한된 얘기였음. 원인(세션 호출 오버헤드)을 없애자 Early Exit의 latency 이득이 실측으로 확인됨 — **논문/보고서엔 이 통합 그래프 결과를 "Proposed"로 쓸 것**, staged는 "왜 단순 분리가 아니라 단일 그래프가 필요했는가"의 동기/반례로 남김
+- 파일: `project/scripts/export_onnx_ap_unified.py`, `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified.onnx`, `project/deploy/raspberry_pi_ap_v2/bench_unified.py`, 상세 `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`(후속 섹션에 추가)
+- **INT8 양자화는 여전히 미실시** — 다음 후보(통합 그래프 기준으로 다시 검증 필요)
+
+### 문서화 + CLAUDE.md 갱신 (같은 세션, 마무리)
+- 신규 `docs/yongsang/onnx_early_exit_redesign.md` + `.html`(아티팩트로도 게시: "ONNX Early Exit 재설계") — staged→unified 재설계 전체 스토리(문제 발견, 원인 분석, 해결, 검증, 1학기 교차검증, 결론)를 정리
+- `CLAUDE.md` "알려진 한계"의 "ONNX/INT8/Raspberry Pi 배포 파이프라인이 아직 이 라인에는 없다" 항목이 이제 거짓이라 갱신, "Claude가 추가로 참고해야 할 파일" 목록에 새 문서 추가
+
+### ONNX export 완료 (2026-08-28 밤) — `ap_metrics_v2_redesign2` 6-feature Early Exit
+- **신규 `project/scripts/export_onnx_ap.py`**: 1학기 버전(`yongsang` 브랜치, 9-feature)을 이 브랜치의 6-feature 모델에 맞게 재작성(`git show yongsang:...`로 원본 참고, `models/baseline_lstm.py`가 이 브랜치엔 없어서 baseline export는 뺌 — Early Exit Fixed/Dynamic만)
+- `pip install onnx onnxruntime`(capstone 환경에 없어서 설치)
+- `project/checkpoints/ap_v2_redesign2/`에 8개 파일 생성: `ap_early_exit_{fixed,dynamic}.onnx`(전체 3-exit 그래프) + 각각의 `_stage{1,2,3}.onnx`(파이에서 단계별 실행 후 조기종료용으로 분리한 그래프)
+- **검증 완료**: PyTorch 출력과 ONNX 출력 오차 최대 2e-6(부동소수점 오차 수준), staged(1→2→3 순차 실행) 파이프라인도 full-graph와 완전히 동일한 결과
+- **다음**: 아직 PC(노트북)에서의 export/검증만 끝난 상태 — Raspberry Pi 실기기 배포·지연 측정은 미착수(위 "다음 세션 최우선" 4번)
+
+### forecasting 재평가 완료 (2026-08-28 밤) — escalation 조기경보 결과가 큰 표본에서도 재현됨
+`forecast_eval_redesign.py`의 CSV 경로를 `metrics_v2_pi_redesign2_relabeled.csv`(2115행)로 갱신 후 재실행. 결과: `project/results/yongsang/ap_v2_redesign2_forecast_eval.txt`
+
+| k | escalation 표본(이전→이번) | LSTM 탐지(이전→이번) |
+|---|---|---|
+| k=3 (~3~6s) | 12→13창 | 67%→61.5% |
+| k=5 (~5~10s) | 14→22창 | 36%→45.5% |
+
+- 표본이 커졌는데도(특히 k=5는 14→22창) 탐지율이 같은 자릿수로 재현 — "LSTM = 심각 전이 3~6초 조기경보기" 서사가 노이즈가 아니라 견고한 패턴이라는 근거 강화
+- occupancy 문턱/persistence는 escalation subset에서 구조적으로 0%(정의상 "아직 심각 아님"만 보고 판단) — LSTM만 추세(occ/retry 상승, RSSI 불안정화)로 선제 탐지
+- 전체 정확도는 이번에도 persistence가 LSTM을 이김(k=3: 69.9% vs 61.5%) — 지난 결론과 일치, LSTM의 가치는 일반 분류가 아니라 조기경보
 
 ## 완료 (2026-08-27 심야 — 재설계 스키마 재학습 + occupancy 문턱 비교)
 

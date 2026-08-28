@@ -1,0 +1,94 @@
+# ONNX Early Exit 배포 재설계 — staged(세션 3개) → 단일 그래프(If 노드)
+
+2026-08-28 밤 세션. `ap_metrics_v2_redesign2`(6-feature, 본수집 2115행) 모델을 처음 Raspberry Pi에 배포하면서 겪은 문제와 해결 과정을 기록한다.
+
+## 배경
+
+Early Exit LSTM은 학습 시 `EarlyExitLSTM.forward()`가 3개 exit(lstm1/2/3 각각 뒤에 분류기)의 로짓을 전부 반환하고, 추론 시엔 `infer_batch_stepwise()`가 앞 exit의 entropy가 임계값(θ) 아래면 뒤 레이어를 계산하지 않고 즉시 반환한다. 이 "레이어를 실제로 건너뛴다"는 동작을 파이 실기기에서도 재현하려면 ONNX로 내보낼 때 그 조건부 실행을 어떻게 표현할지가 문제였다.
+
+## 1차 시도: staged export (세션 3개로 분리)
+
+1학기(`yongsang` 브랜치, 4-feature) 때부터 써온 방식을 그대로 재사용했다(`project/scripts/export_onnx_ap.py`, `git show yongsang:project/scripts/export_onnx_ap.py`로 원본 참고해서 6-feature용으로 재작성). 모델을 stage1(lstm1+classifier1) / stage2(lstm2+classifier2) / stage3(lstm3+classifier3) 세 개의 독립된 ONNX 그래프로 쪼갠다. 파이 쪽 추론 스크립트(`project/deploy/raspberry_pi_ap_v2/inference_pi_ap.py`)가 stage1을 먼저 돌리고, entropy가 θ₁보다 크면 stage2를, θ₂보다 크면 stage3를 이어서 돌린다 — 뒤 stage를 아예 실행 안 하는 방식으로 "skip"을 구현한다.
+
+파이(Raspberry Pi, `capstone@192.168.8.109`, onnxruntime 1.26.0 CPU)에서 실측한 결과:
+
+| 방법 | avg 지연 | exit1/2/3 비율 |
+|---|---:|---|
+| Baseline(전체 그래프 1회, 매번 3개 exit 다 계산) | **1.966ms** | 0/0/100% |
+| Fixed θ (staged, 세션 최대 3개 순차 호출) | 2.337ms (**+19%**) | 29.7/11.6/58.7% |
+| Dynamic θ (staged) | 2.189ms (**+11%**) | 30.0/22.3/47.7% |
+
+**Early Exit이 baseline보다 느렸다.** exit point별로 쪼개보면 원인이 드러난다: exit1(29.7%)은 baseline보다 51% 빠르다(0.97ms) — Early Exit 자체의 이득은 진짜 있다. 그런데 exit3(58.7%, 이 test set은 라벨이 어려워서 얕은 exit로 안 끝나는 샘플이 많다)는 baseline보다 오히려 57% 느리다(3.08ms). staged 방식은 `ort.InferenceSession.run()`을 최대 3번 순차 호출하는데, 이 모델은 `hidden_size=128`로 작아서 LSTM 레이어 자체의 연산량보다 **세션 호출 1번당 붙는 고정 오버헤드**(스레드 동기화, Python-C++ 경계, 텐서 메모리 할당)가 더 크다. exit3까지 가는 샘플은 그 오버헤드를 3번 다 물어야 해서 밑지는 장사가 된다.
+
+### 1학기 자료와 교차검증
+
+이 현상이 오늘 데이터의 우연인지 확인하려고 1학기(4-feature) 실측(`project/results/hojung/`, 실제 Pi 하드웨어)을 다시 봤다. **같은 패턴이 이미 있었다:**
+
+| 방법 | 1학기(4-feature) avg | 오늘(6-feature) avg |
+|---|---:|---:|
+| Baseline | 1.530ms | 1.966ms |
+| Fixed θ (staged) | 2.089ms (+37%) | 2.337ms (+19%) |
+| Dynamic θ (staged) | 1.989ms (+30%) | 2.189ms (+11%) |
+
+모델 세대·feature 개수와 무관하게 방향이 똑같다 — staged 구조 자체가 이 Pi + ONNX Runtime + 이 정도로 작은 LSTM 조합에서 구조적으로 불리하다는 뜻이다. (1학기의 별도 `comparison_summary.txt`는 반대 결론을 냈는데, 그건 PC 타이밍으로 보이는 수치라 실제 Pi 실측끼리 직접 대조한 적은 이번이 처음이었다.)
+
+## 원인 재정리: LSTM 재계산이 아니라 세션 호출 오버헤드
+
+"LSTM은 레이어마다 다시 계산하니까 작은 모델일수록 불리한 거 아니냐"는 질문이 나왔는데, 정확히는 이렇다:
+
+- staged 방식은 **레이어를 중복 계산하지 않는다** — stage2는 stage1이 만든 hidden state를 입력으로 받아 이어서 계산할 뿐이다.
+- 진짜 비용은 **`InferenceSession.run()`을 여러 번 호출하는 고정비**다. 이 오버헤드는 모델 크기와 거의 무관하게 일정한데, skip해서 아끼는 실제 연산량(작은 LSTM 한 층)은 원래도 작다. "아끼는 양"은 작고 "치르는 세금"은 고정이니, 모델이 작을수록 손해가 두드러진다 — 라는 직관이 정확히 맞았다.
+
+## 2차 시도: 단일 그래프 + ONNX If 노드
+
+세션 호출을 여러 번 하지 않고, **조건부 실행 자체를 그래프 안으로** 넣으면 세금 없이 이득만 챙길 수 있다. `torch.onnx.export`의 레거시(TorchScript) 경로는 파이썬 `if`문을 그대로 트레이싱하면 데이터 의존적 분기를 못 잡지만(트레이싱은 한 번 실행한 경로만 굳혀버린다), **`torch.jit.script`로 스크립팅하면** entropy 비교 `if` 문이 실제 제어 흐름으로 컴파일되고, 그 스크립트를 ONNX로 export하면 `If` 연산자로 나온다.
+
+`project/scripts/export_onnx_ap_unified.py` (신규):
+
+```python
+class UnifiedEarlyExitFixed(nn.Module):
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        out1, _ = self.lstm1(x)
+        logits1 = self.classifier1(out1[:, -1, :])
+        e1 = self._entropy(logits1)[0]
+        if float(e1.item()) < self.theta_1:
+            return logits1, torch.tensor(1, dtype=torch.int64)
+        out2, _ = self.lstm2(out1)
+        ...  # theta_2 조건도 동일하게 if로
+```
+
+`torch.jit.script(module)` → `torch.onnx.export(scripted, ...)` 순서로 내보내면 그래프에 `If` 노드가 실제로 생긴다(`onnx.load()`로 top-level op 목록을 세보면 `If` 1개가 확인된다 — 두 번째 `if`는 첫 If의 서브그래프 안에 중첩되어 있다). Dynamic θ 버전(`UnifiedEarlyExitDynamic`)은 최근 occupancy 변화량으로 임계값을 조정하는 로직(`compute_dynamic_threshold`와 동일 공식)까지 같은 그래프 안에 스크립팅했다.
+
+제약: **batch_size=1 전제**다 — 조건 분기가 "이 한 샘플의 entropy"를 보고 결정되므로, 배치 안의 샘플마다 다른 exit을 타는 배치 추론에는 안 맞는다. 실시간 엣지 추론(윈도우 하나씩 순차 처리)이 목표라 문제없다.
+
+### 검증
+
+PyTorch의 `infer_batch_stepwise()`(참조 구현) 대비 ONNX 출력을 test 310창 전체에서 비교 — **예측 라벨·exit_point 100% 일치**(fixed·dynamic 둘 다 미스매치 0건).
+
+### 재측정 결과
+
+| 방법 | avg 지연 | vs baseline |
+|---|---:|---:|
+| Baseline | 1.966ms | — |
+| Staged Fixed θ | 2.337ms | +19% |
+| Staged Dynamic θ | 2.189ms | +11% |
+| **통합 Fixed θ (If 노드)** | **1.183ms** | **-40%** |
+| **통합 Dynamic θ (If 노드)** | **1.190ms** | **-39%** |
+
+통합 fixed θ의 exit별 지연: exit1 0.373ms / exit2 1.033ms / exit3 1.621ms — **exit3(모든 레이어 계산)조차 baseline(1.966ms)보다 빠르다.** baseline은 매번 3개 분류기 출력을 전부 계산하는데, 통합 그래프는 If 분기 안에서 실제로 필요한 만큼만 계산하기 때문이다. 재실행해도 1.183ms/1.187ms로 재현된다(오차 범위 내).
+
+## 결론
+
+"Early Exit이 이 정도로 작은 LSTM에서는 latency를 못 줄인다"는 처음 결론은 **staged(세션 분리) 배포 아키텍처에 국한된 이야기**였다. 원인(세션 호출 오버헤드)을 없애자 Early Exit의 latency 이득이 실측으로 확인됐다 — 문제는 모델이나 Early Exit 개념이 아니라 배포 방식이었다.
+
+논문·보고서에는 이 **단일 그래프(If 노드) 결과를 "Proposed"** 로 쓴다. staged 결과는 삭제하지 않고 "왜 단순히 세션을 나누는 방식이 아니라 단일 그래프 설계가 필요했는가"를 보여주는 동기/반례로 남긴다(데이터 정직성 원칙 — 실패한 시도도 기록에서 지우지 않는다).
+
+## 관련 파일
+
+- `project/scripts/export_onnx_ap.py` — staged export (참고/역사 기록용으로 유지, 배포엔 unified 사용 권장)
+- `project/scripts/export_onnx_ap_unified.py` — **단일 그래프 export (권장)**
+- `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified.onnx`
+- `project/deploy/raspberry_pi_ap_v2/inference_pi_ap.py` — staged 추론 러너
+- `project/deploy/raspberry_pi_ap_v2/bench_unified.py` — 단일 그래프 벤치마크 러너
+- `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt` — 전체 실측 원본 기록
+- `.work-log/current.md` (2026-08-28 밤 섹션) — 세션 타임라인

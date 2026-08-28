@@ -1,0 +1,78 @@
+Raspberry Pi 실기기 지연 비교 — ap_metrics_v2_redesign2 (6-feature, 2026-08-28 본수집)
+생성: 2026-08-28
+기기: Raspberry Pi (capstone@CapsTone, 192.168.8.109), onnxruntime 1.26.0, CPUExecutionProvider
+데이터: project/deploy/raspberry_pi_ap_v2/test.csv (test 310창, ap_metrics_v2_redesign2와 동일)
+모델: project/checkpoints/ap_v2_redesign2/ (fp32, INT8 양자화는 아직 미실시)
+측정: 샘플당 5회 반복 평균, warmup 10회 제외
+
+=== 전체 요약 ===
+방법                        avg(ms)  std(ms)  min(ms)  max(ms)   exit1%  exit2%  exit3%
+Baseline(항상 전체 그래프 1회)  1.966    0.012    1.949    2.091      0%      0%    100%
+Fixed θ (staged)               2.337    1.145    0.630    4.475     29.7%   11.6%   58.7%
+Dynamic θ (staged)              2.189    1.157    0.670    4.349     30.0%   22.3%   47.7%
+
+=== staged 모드 exit별 지연 분해 (fixed θ) ===
+exit_point   mean(ms)   std(ms)   count
+1            0.966      0.570     92   (baseline 대비 -51%)
+2            2.067      0.651     36   (baseline과 비슷)
+3            3.083      0.687    182   (baseline 대비 +57%)
+
+=== 해석: Early Exit이 이번 Pi 실측에선 평균적으로 baseline보다 느림 ===
+- exit1로 빠지는 샘플(29.7%)은 baseline보다 51% 빠름 — Early Exit의 latency
+  이득 자체는 실재함.
+- 하지만 exit2/exit3까지 가는 샘플은 별도 ONNX InferenceSession을 최대 3번
+  순차 호출하는 구조라, 세션 호출당 고정 오버헤드(스레드 동기화·Python-C++
+  경계·메모리 할당)가 매번 붙는다. 이 모델은 hidden_size=128로 작아서 LSTM
+  레이어 자체의 연산량보다 세션 호출 오버헤드가 더 크다 — 그래서 exit3는
+  baseline(그래프 1개, 세션 호출 1회로 전 레이어 계산)보다 오히려 57% 느림.
+- 이번 test set은 라벨 분포가 어려운 편이라(§ap_v2_redesign2_eval_report.txt
+  참고, L3 recall 51.6%) exit3 비율이 58.7%(fixed)/47.7%(dynamic)로 높다 —
+  가중 평균이 baseline보다 나빠지는 조건이 갖춰짐.
+- 결론: 이 모델 크기·이 test set 분포에서는 "그래프 1개, 매번 전체 계산"이
+  가장 빠르다. Early Exit이 지연 이득을 내려면 (a) exit1 rate를 실질적으로
+  올리거나(모델을 더 단순한 조기 신호에 민감하게 재조정) (b) staged 세션을
+  하나의 ONNX 그래프 안에서 조건부 실행(If 연산자)으로 합쳐 세션 호출
+  오버헤드를 없애는 재설계가 필요. 지금 구조(세션 3개 분리)는 개념 검증
+  (레이어를 실제로 skip할 수 있다는 것)에는 유효하지만, 이 배포 구성 그대로는
+  latency 승리를 주장할 수 없음 — 1학기 4-feature 모델(hidden_size 등 규모
+  다름, project/results/hojung/)의 결과와 직접 비교하지 말 것.
+- INT8 양자화는 이번 세션에 미실시 — 다음 단계 후보(연산량이 더 작아지면
+  오히려 세션 오버헤드 비중이 더 커질 수 있어 반드시 도움된다는 보장은 없음,
+  실측 필요).
+
+================================================================
+2026-08-28 (같은 세션, 후속): 단일 그래프(ONNX If 노드) 재설계 — 성공
+================================================================
+`project/scripts/export_onnx_ap_unified.py`: `torch.jit.script`로 entropy 기반
+조건 분기(if/else)를 캡처해서 `torch.onnx.export`가 ONNX `If` 노드를 내보내게
+함. staged처럼 별도 세션 3개가 아니라 **하나의 ONNX 그래프, 세션 호출 1번**으로
+early exit이 그래프 내부에서 일어남(batch_size=1 전제 — 실시간 단일 윈도우
+추론용, 배치 추론엔 안 맞음).
+
+정확도 검증: PyTorch staged reference(`infer_batch_stepwise`) 대비 test 310창
+전체에서 **예측/exit_point 100% 일치**(fixed·dynamic 둘 다, 미스매치 0건).
+
+=== 재측정 (같은 Pi, 같은 방법론) ===
+방법                              avg(ms)  vs baseline   exit1/2/3
+Baseline(전체 그래프 1회, 재확인)    1.966      —          0/0/100%
+Staged Fixed θ(세션 3개)            2.337     +19%        29.7/11.6/58.7%
+Staged Dynamic θ(세션 3개)          2.189     +11%        30.0/22.3/47.7%
+**통합 Fixed θ(세션 1개, If 노드)**  **1.183**  **-40%**   29.7/11.6/58.7%
+**통합 Dynamic θ(세션 1개, If 노드)** **1.190**  **-39%**   30.0/22.3/47.7%
+
+통합 fixed θ exit별 지연: exit1 0.373ms / exit2 1.033ms / exit3 1.621ms —
+**exit3(전체 계산)조차 baseline(1.966ms)보다 빠름**(그래프가 필요한 만큼만
+계산하고, baseline은 3개 분류기 출력을 매번 다 계산하기 때문). 재실행해도
+1.183ms/1.187ms로 재현됨(오차 범위 내).
+
+결론(갱신): "이 모델 크기에서는 Early Exit이 latency를 못 줄인다"는 위 결론은
+**staged(세션 3개) 구조에 한정된 얘기였고, 원인이었던 세션 호출 오버헤드를
+없애자(단일 그래프+If 노드) Early Exit이 baseline 대비 40% 빠르다는 걸
+실측으로 확인**. Early Exit 자체의 latency 가치는 정당했고, 문제는 배포
+아키텍처였다. 논문/보고서에는 이 통합 그래프 결과를 "Proposed"로 쓸 것 —
+staged 결과는 "왜 단순 분리가 아니라 단일 그래프 설계가 필요했는가"의
+반례/동기로 남겨둔다.
+
+파일: `project/scripts/export_onnx_ap_unified.py`,
+`project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified.onnx`,
+`project/deploy/raspberry_pi_ap_v2/bench_unified.py`

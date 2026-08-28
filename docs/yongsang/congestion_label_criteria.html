@@ -665,6 +665,7 @@
       <span class="gen-badge archived">1차 <b>ap_cleaned_strict</b> · archived</span>
       <span class="gen-badge active">2차 <b>ap_metrics_v2</b> · 진행 중</span>
     </div>
+    <div class="callout" style="margin-top:1.4rem;"><span>⚠</span><span><b>(archived — 2026-08-28 확인)</b> 이 페이지 §03~05가 설명하는 <b>weighted-sum</b> 공식(<code class="mono">calculate_scores()</code>)은 2026-08-23 시점 2차 구현이다. 그 이후 2차 자체가 <b>재설계</b>되어 지금 코드는 <code class="mono">max(anchor_score(throughput, occupancy, jitter, loss, latency))</code> 방식을 쓰고, retry는 congestion_score(라벨 축)에서 완전히 빠졌다(모델 입력 feature로만 유지). 최신 계산식·캘리브레이션은 <code class="mono">docs/yongsang/congestion_label_redesign.md</code>와 <code class="mono">.work-log/current.md</code>를 본다. 이 페이지는 그 이전 시점 구현을 기록으로 남겨둔 것이다.</span></div>
   </header>
 
   <section id="labels">
@@ -723,7 +724,7 @@
 
   <section id="formula">
     <h2><span class="step">03</span> congestion_score 계산식</h2>
-    <p class="lede">4개 sub-score를 가중합해서 만든다. 각 sub-score는 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이다.</p>
+    <p class="lede">4개 sub-score를 가중합해서 만든다. 각 sub-score는 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이다. <b>(archived — 2026-08-28 확인)</b> <code class="mono">calculate_scores()</code>는 이 weighted-sum을 더 이상 쓰지 않는다 — 재설계 이후 <code class="mono">max()</code> 방식이다.</p>
 
     <div class="formula-general">
 congestion_score =
@@ -769,6 +770,7 @@ congestion_score =
       </tbody>
     </table>
     <div class="callout"><span>2026-08-27</span><span><b>retry_failed_score 정규화 방식 변경 (2차만).</b> 원래 <code>tx_retries_delta</code>(지난 폴링 이후 재전송 수)를 그대로 25,000으로 나눴는데, 이 델타값이 폴링 주기에 비례해서 흔들렸다(4초 폴링 = 1초 폴링 × 4). 파이 유선 수집으로 폴링을 ~1초로 당기자 retry 신호가 1/4로 눌려 label 2/3가 안 나오는 문제가 드러남 → <b>초당 재전송률</b>(<code>delta / poll_interval_s</code>)로 정규화, 상한도 초당 기준(<code>6,250 = 25,000 ÷ 옛 폴링 간격 ~4초</code>). 기존 데이터는 <code class="mono">remeasure_metrics_v2.py</code>로 마이그레이션(폴링 간격은 timestamp 차이로 역산, 근사치). 1차(<code>ap_cleaned_strict</code>)는 archived라 옛 방식 그대로.</span></div>
+    <div class="callout"><span>⚠</span><span><b>(archived — 2026-08-28 확인)</b> 위는 "정규화 방식만 바뀜"으로 읽히지만, 그 다음 재설계에서 retry는 congestion_score(라벨 축) 자체에서 <b>완전히 빠졌다</b>. 지금 코드는 <code class="mono">retry_ratio_pct</code> 기반 <code class="mono">retry_score</code>를 계산은 하지만 <code class="mono">max()</code>에 넣지 않는다(정보/모델 feature용, <code class="mono">tx_retry_ratio</code>). <code class="mono">RETRY_FAILED_MAX_PER_SEC</code>·<code class="mono">JITTER_MAX_MS</code> 상수도 코드에서 삭제됐다 — 위 표는 2026-08-23 시점 구현의 기록이지 현재 코드 참조가 아니다.</span></div>
   </section>
 
   <section id="evidence">
@@ -954,8 +956,8 @@ congestion_score =
   </section>
 
   <footer class="page-foot">
-    <span>작성 2026-08-23 · 데이터 기준 <code>metrics_v2.csv</code> 1265행</span>
-    <span>전체 배경: <code>CLAUDE.md</code> "데이터 계보" · 1차 상세: <code>project/README_AP_STRICT.md</code> · 2차 상세: <code>project/README_AP_V2.md</code></span>
+    <span>작성 2026-08-23 · 데이터 기준 <code>metrics_v2.csv</code> 1265행 · §03~05 weighted-sum 공식은 (archived — 2026-08-28 확인)</span>
+    <span>전체 배경: <code>CLAUDE.md</code> "데이터 계보" · 1차 상세: <code>project/README_AP_STRICT.md</code> · 2차 상세: <code>project/README_AP_V2.md</code> · 최신 재설계: <code>docs/yongsang/congestion_label_redesign.md</code></span>
     <span>1차와 2차는 라벨 정의가 다르므로 정확도·분포를 같은 표에서 직접 비교하지 않는다.</span>
   </footer>
 

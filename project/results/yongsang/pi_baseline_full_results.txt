@@ -1,0 +1,19 @@
+Raspberry Pi ONNX inference summary (ap_metrics_v2_redesign2)
+model: ap_early_exit_fixed.onnx
+data: test.csv
+sample_count: 310
+avg_inference_ms: 1.965573
+std_inference_ms: 0.011851
+min_inference_ms: 1.949304
+max_inference_ms: 2.091490
+p50_inference_ms: 1.963724
+p95_inference_ms: 1.978581
+exit1_count: 0
+exit1_rate: 0.000000
+exit2_count: 0
+exit2_rate: 0.000000
+exit3_count: 310
+exit3_rate: 1.000000
+measurement_repeats: 5
+inference_mode: full
+dynamic_theta: 0
