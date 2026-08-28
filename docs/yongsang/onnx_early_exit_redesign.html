@@ -628,8 +628,41 @@ torch.onnx.export(scripted, dummy_input, onnx_path, ...)</pre>
     <div class="callout"><span>⚠</span><span>1학기의 별도 <code class="mono">comparison_summary.txt</code>는 반대 결론(Early Exit이 근소 우위)을 냈는데, PC 타이밍으로 보이는 수치였다. 실제 Pi 실측끼리(<code class="mono">pi_fp32_analysis.txt</code> vs <code class="mono">pi_*_staged_fp32_analysis.txt</code>) 직접 대조한 기록은 이번이 처음이었다 — <b>latency 주장은 반드시 실기기 실측 기준이어야 한다</b>는 교훈.</span></div>
   </section>
 
+  <section id="int8">
+    <h2><span class="step">06</span> 후속: INT8 양자화 — 정확도 유지, 속도 이득 없음</h2>
+    <p class="lede">단일 그래프가 baseline보다 40% 빠르다는 걸 확인한 김에, <code class="mono">onnxruntime.quantization.quantize_dynamic</code>으로 INT8 동적 양자화까지 시도했다(<code class="mono">LSTM</code>·<code class="mono">MatMul</code>·<code class="mono">Gemm</code> 포함).</p>
+
+    <div class="bar-chart">
+      <div class="bar-row win">
+        <div class="bar-name">통합 Fixed θ (fp32)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:50.6%"></div></div>
+        <div class="bar-val">1.183<small>ms</small></div>
+      </div>
+      <div class="bar-row win">
+        <div class="bar-name">통합 Fixed θ (INT8)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:51.5%"></div></div>
+        <div class="bar-val">1.204<small>ms · 동일</small></div>
+      </div>
+      <div class="bar-axis">
+        <div></div>
+        <div class="bar-axis-track">
+          <span style="left:0%">0ms</span>
+          <span style="left:42.8%">1.0ms</span>
+          <span style="left:85.6%">2.0ms</span>
+          <span style="left:100%">2.34ms</span>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+    <div class="callout win"><span>✓</span><span><b>정확도</b>: fp32 unified 대비 test 310창 전체 예측·exit_point <b>0 mismatch</b> — 손실 없음.</span></div>
+    <div class="callout"><span>≈</span><span><b>속도</b>: fixed 1.204ms / dynamic 1.193ms — fp32(1.183ms/1.190ms)와 오차 범위 내 동일, <b>이득 없음</b>. 파일 크기도 오히려 fp32보다 살짝 컸다(양자화 메타데이터 오버헤드가 모델이 작아서 압축 이득을 상쇄).</span></div>
+
+    <p class="lede" style="margin-top:1.2rem;">같은 교훈이 반복됐다 — 이 모델 크기(<code class="mono">hidden_size=128</code>)에서는 "이론상 더 가벼운 연산"이 고정 오버헤드에 묻힌다. <b>최종 배포 구성은 단일 그래프 + fp32</b>로 확정했다. INT8은 정확도를 안 깎으니 손해는 아니지만, 이 규모에서 굳이 도입할 이유도 없다.</p>
+  </section>
+
   <section id="timeline">
-    <h2><span class="step">06</span> 진행 순서</h2>
+    <h2><span class="step">07</span> 진행 순서</h2>
     <div class="timeline">
       <div class="tl-step">
         <h3>staged export + Pi 배포</h3>
@@ -651,11 +684,15 @@ torch.onnx.export(scripted, dummy_input, onnx_path, ...)</pre>
         <h3>재측정 — baseline 대비 40% 개선</h3>
         <p>모든 exit point에서 baseline을 이김. exit3(전체 계산)도 예외 아님.</p>
       </div>
+      <div class="tl-step">
+        <h3>INT8 양자화 시도 — 정확도 유지, 속도는 그대로</h3>
+        <p>모델이 작아서 양자화 이득이 고정 오버헤드에 다시 묻힘. 최종 배포는 단일 그래프 fp32로 확정.</p>
+      </div>
     </div>
   </section>
 
   <section id="conclusion">
-    <h2><span class="step">07</span> 결론</h2>
+    <h2><span class="step">08</span> 결론</h2>
     <p class="lede">"Early Exit이 이 정도로 작은 LSTM에서는 latency를 못 줄인다"는 처음 결론은 <b>staged(세션 분리) 배포 아키텍처에 국한된 이야기</b>였다. 원인을 없애자 Early Exit의 latency 이득이 실측으로 확인됐다 — 문제는 모델이나 Early Exit 개념이 아니라 배포 방식이었다.</p>
     <div class="callout win"><span>✓</span><span>논문·보고서에는 이 <b>단일 그래프(If 노드) 결과를 최종안</b>으로 쓴다. staged 결과는 지우지 않고 "왜 단순 분리가 아니라 단일 그래프 설계가 필요했는가"를 보여주는 동기/반례로 남긴다.</span></div>
   </section>

@@ -76,3 +76,36 @@ staged 결과는 "왜 단순 분리가 아니라 단일 그래프 설계가 필�
 파일: `project/scripts/export_onnx_ap_unified.py`,
 `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified.onnx`,
 `project/deploy/raspberry_pi_ap_v2/bench_unified.py`
+
+================================================================
+2026-08-28 (같은 세션, 후속 2): INT8 동적 양자화 — 정확도 유지, 속도 이득 없음
+================================================================
+`project/scripts/export_onnx_ap_unified_int8.py`: `onnxruntime.quantization.quantize_dynamic`
+(`weight_type=QInt8`, `op_types_to_quantize=["MatMul","Gemm","LSTM"]`)로 unified
+그래프(fixed/dynamic)를 INT8 동적 양자화.
+
+- **정확도**: fp32 unified 대비 test 310창 전체에서 예측·exit_point **0 mismatch**
+  (fixed 88.4%, dynamic 89.0% — fp32와 완전히 동일). 정확도 손실 없음.
+- **파일 크기**: 오히려 fp32보다 살짝 큼(1.374MB vs 1.365MB, fixed 기준) — 모델이
+  작아서 압축 이득보다 양자화 메타데이터(scale/zero-point, DequantizeLinear 노드)
+  오버헤드가 더 큼.
+- **Pi 재측정**: fixed 1.204ms / dynamic 1.193ms — **fp32 unified(1.183/1.190ms)와
+  오차 범위 내 동일, 속도 이득 없음.**
+
+=== 최종 요약표 (모든 배포 방식) ===
+방법                              avg(ms)  vs baseline   비고
+Baseline(전체 그래프 1회)            1.966      —
+Staged Fixed θ(세션 3개)             2.337     +19%       비권장
+Staged Dynamic θ(세션 3개)           2.189     +11%       비권장
+통합 Fixed θ(세션 1개, If, fp32)      1.183     -40%       **권장**
+통합 Dynamic θ(세션 1개, If, fp32)    1.190     -39%       **권장**
+통합 Fixed θ(세션 1개, If, INT8)      1.204     -39%       fp32와 동일, 이득 없음
+통합 Dynamic θ(세션 1개, If, INT8)    1.193     -39%       fp32와 동일, 이득 없음
+
+결론: 이 모델 크기(hidden_size=128)에서는 **단일 그래프 fp32가 최종 배포
+구성**이다. INT8은 정확도는 안 깎지만 속도도 안 준다 — 연산 자체가 이미
+너무 작아서(작은 GEMM/LSTM) int8 산술의 이득을 DequantizeLinear 오버헤드가
+상쇄하는 것으로 보인다. staged→unified 재설계 때와 같은 교훈: **이 모델
+크기에서는 "이론상 더 가벼운 연산"이 고정 오버헤드에 묻힌다.** 더 큰 모델
+(hidden_size 확대, 여러 AP 동시 추론 등)이면 다시 유효할 수 있음 — 지금
+규모에선 도입할 이유가 없다.

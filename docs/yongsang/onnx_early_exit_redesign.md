@@ -83,10 +83,20 @@ PyTorch의 `infer_batch_stepwise()`(참조 구현) 대비 ONNX 출력을 test 31
 
 논문·보고서에는 이 **단일 그래프(If 노드) 결과를 "Proposed"** 로 쓴다. staged 결과는 삭제하지 않고 "왜 단순히 세션을 나누는 방식이 아니라 단일 그래프 설계가 필요했는가"를 보여주는 동기/반례로 남긴다(데이터 정직성 원칙 — 실패한 시도도 기록에서 지우지 않는다).
 
+## 후속: INT8 양자화 — 정확도 유지, 속도 이득 없음
+
+단일 그래프가 baseline보다 40% 빠르다는 걸 확인한 김에, INT8 동적 양자화(`onnxruntime.quantization.quantize_dynamic`, `LSTM`·`MatMul`·`Gemm` 포함)까지 시도했다(`project/scripts/export_onnx_ap_unified_int8.py`).
+
+- **정확도**: fp32 unified 대비 test 310창 전체 **0 mismatch**(예측·exit_point 둘 다) — 손실 없음.
+- **속도**: fixed 1.204ms / dynamic 1.193ms — fp32 unified(1.183ms/1.190ms)와 **오차 범위 내 동일, 이득 없음**. 파일 크기도 오히려 fp32보다 살짝 컸다(양자화 메타데이터 오버헤드가 모델이 작아서 압축 이득을 상쇄).
+
+같은 교훈이 반복됐다 — 이 모델 크기(`hidden_size=128`)에서는 "이론상 더 가벼운 연산"이 고정 오버헤드에 묻힌다. **최종 배포 구성은 단일 그래프 + fp32**로 확정했다. INT8은 정확도를 안 깎으니 손해는 아니지만, 이 규모에서 굳이 도입할 이유도 없다. 더 큰 모델이나 여러 AP를 동시에 추론하는 시나리오라면 다시 유효할 수 있다.
+
 ## 관련 파일
 
 - `project/scripts/export_onnx_ap.py` — staged export (참고/역사 기록용으로 유지, 배포엔 unified 사용 권장)
-- `project/scripts/export_onnx_ap_unified.py` — **단일 그래프 export (권장)**
+- `project/scripts/export_onnx_ap_unified.py` — **단일 그래프 export (권장, fp32 최종 배포)**
+- `project/scripts/export_onnx_ap_unified_int8.py` — INT8 동적 양자화(정확도 유지, 속도 이득 없어 채택 안 함)
 - `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified.onnx`
 - `project/deploy/raspberry_pi_ap_v2/inference_pi_ap.py` — staged 추론 러너
 - `project/deploy/raspberry_pi_ap_v2/bench_unified.py` — 단일 그래프 벤치마크 러너

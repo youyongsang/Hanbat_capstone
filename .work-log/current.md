@@ -114,7 +114,14 @@
 2. `ramp_load.sh`에 `termux-wake-lock` 추가는 여전히 미반영 상태(이번엔 배터리 최적화 제외로 화면 꺼짐 문제 자체는 해결됨, 급하지 않음)
 3. (검토) 밴드 스티어링 시스템으로 주제 확장할지 팀 결정 — 상세는 `.work-log/current.md` "향후 시스템 구상" 섹션(8/27 논의)
 4. ~~Early Exit 세션 구조 재설계~~ — **완료**(같은 세션에 이어서 진행, 아래 "단일 그래프 재설계 성공" 섹션 참고). baseline 대비 40% 빠른 통합 그래프 확보
-5. INT8 양자화 — 이제 통합 그래프(세션 1개) 기준으로 검증할 것(staged 기준으로 하면 다시 오버헤드에 묻힐 위험)
+5. ~~INT8 양자화~~ — **완료**(같은 세션에 이어서 진행, 아래 참고). 정확도 유지되지만 속도 이득 없음 → 단일 그래프 fp32가 최종 배포 구성으로 확정
+
+### INT8 양자화 검증 완료 — 정확도 유지, 속도 이득 없음 (같은 세션, 후속)
+신규 `project/scripts/export_onnx_ap_unified_int8.py`(`onnxruntime.quantization.quantize_dynamic`, LSTM 포함 동적 양자화)로 unified 그래프(fixed/dynamic)를 INT8화.
+
+- **정확도**: fp32 unified 대비 test 310창 전체 **0 mismatch**(fixed 88.4%/dynamic 89.0%, fp32와 동일)
+- **Pi 재측정**: fixed 1.204ms / dynamic 1.193ms — **fp32 unified(1.183/1.190ms)와 사실상 동일, 속도 이득 없음**. 파일 크기도 오히려 fp32보다 살짝 큼(양자화 메타데이터 오버헤드가 모델이 작아서 압축 이득을 상쇄)
+- **결론**: `hidden_size=128` 규모에선 INT8이 정확도는 안 깎지만 속도도 안 준다 — staged→unified 재설계와 같은 교훈("이 모델 크기에서는 이론상 더 가벼운 연산이 고정 오버헤드에 묻힌다")이 다시 확인됨. **최종 배포 구성은 단일 그래프 fp32**로 확정. 상세: `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt` "INT8 동적 양자화" 섹션
 
 ### Raspberry Pi 실기기 지연 측정 완료 (2026-08-28 밤) — Early Exit이 이번엔 baseline보다 느림
 - **신규 `project/deploy/raspberry_pi_ap_v2/`**: 1학기 `project/deploy/raspberry_pi/inference_pi.py`(4-feature)를 이 브랜치의 6-feature 모델용으로 재작성(`inference_pi_ap.py`, repo import 없이 독립 실행). ONNX 8개 + `ap_metrics_v2_redesign2/test.csv`를 파이(`~/ap_pi_v2/`)에 배포
