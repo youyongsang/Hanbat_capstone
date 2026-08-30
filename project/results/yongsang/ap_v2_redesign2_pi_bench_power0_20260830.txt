@@ -72,3 +72,33 @@ Baseline: 5시드 test 평균 acc 92.0%±0.7% / L3 F1 66.1%±2.3% / L3 recall 54
   seed3 Pi INT8: 0.746 / 0.752ms (weight 값은 지연에 무관, Baseline은 항상 3층 — seed0의 0.739와 오차범위)
 SDN: 5시드 test 평균 acc 90.4%±0.7% / L3 F1 65.3%±2.5% / L3 recall 52.3%±3.2%
   val balanced acc 최고 = seed0 (88.2%) — 기존 배포 그대로, 재수출·재측정 불필요.
+model: ap_sdn_unified_int8.onnx
+sample_count: 310
+avg_inference_ms: 0.566250
+std_inference_ms: 0.229999
+min_inference_ms: 0.289392
+max_inference_ms: 0.910852
+p50_inference_ms: 0.575858
+p95_inference_ms: 0.866056
+exit1_rate: 36.13%  (n=112)
+exit2_rate: 32.90%  (n=102)
+exit3_rate: 30.97%  (n=96)
+exit1_avg_ms: 0.299199
+exit2_avg_ms: 0.582241
+exit3_avg_ms: 0.860819
+
+===========================================================================
+UPDATE 2026-08-30 (후속 2) — SDN 논문 충실 재구현
+===========================================================================
+SDN을 Kaya et al. (ICML 2019) 논문대로 재구현 — pooling internal classifier
+(alpha·maxpool + (1-alpha)·avgpool over timesteps → Linear), 커리큘럼 램프
+depth-weighted loss (max_coeffs=[0.15,0.30], 최종=1.0), val 캘리브레이션 T.
+백본·하이퍼파라미터는 EE와 동일(통제 변수).
+
+5시드 test 평균: acc 90.4%±1.4 / L3 F1 60.4%±8.1 / L3 recall 45.8%±8.8
+  — 옛 SDN-style(백본 공유, F1 65.3%±2.5) 대비 label3에서 뚜렷이 나쁘고 편차 2배.
+  원인: per-model threshold 캘리브레이션이 작은 val에서 불안정 (시드별 T 0.71~0.86).
+배포 = seed3 (val-best, val bal 87.8%, T=0.80): test 90.3%, L3 F1 65.3%, exit 36/33/31%
+  Pi INT8: 0.572 / 0.574ms (옛 SDN-style 0.534보다 +0.04 — pooling IC의 ReduceMax/Mean 오버헤드)
+  unified INT8: PyTorch 대비 pred 308/310·exit 307/310, INT8 정확도 91.0% / L3 F1 65.3%
+옛 SDN-style 체크포인트·리포트 → archived_sdn_style_20260830/ 및 *_style_archived_20260830.txt

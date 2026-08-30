@@ -1,5 +1,37 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 전체 승격 + Baseline·SDN 5시드 특성화 완료(7~8차)**. **5시드 평균 정확도: Baseline 92.0% / SDN 90.4% / EE 90.7% (전부 ±0.7, 사실상 동급).** Baseline 배포 체크포인트를 seed0→seed3으로 교체(val-best), ONNX 재수출·Pi 재측정 완료. Pi INT8: Baseline 0.746 / EE Fixed 0.540 / Dynamic 0.555 / SDN 0.534ms (전부 <1ms). 커밋 `a3f9bde`·`5ec1180`·`16f1bbf` 푸시 완료. 아티팩트 "Class-Weight-Power Zero" 재게시. 아래 "8차"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + 5시드 특성화 + SDN 논문 충실 재구현(7~9차)**. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). SDN을 Kaya et al.(ICML 2019) 논문대로 재구현(pooling IC + 램프 loss + 캘리브레이션 T, base 백본만 공유). 커밋 `a3f9bde`·`5ec1180`·`16f1bbf`·`821b55e` 푸시. 아티팩트 "Class-Weight-Power Zero" 재게시. 아래 "9차"부터 확인.
+
+## 9차 (2026-08-30 후속2) — SDN을 논문 충실 비교모델로 재구현
+
+### 배경
+"SDN이 Proposed와 백본 100% 동일 → 비교 모델로 성립 안 됨"을 사용자와 확인. SDN은 "기존 조기종료 LSTM 방법 vs 우리 방법 — 뭐가 다른가"의 통제 비교점이어야 하므로, **base 백본·하이퍼파라미터는 완전히 고정하고 SDN이 실제로 규정하는 3축만 논문대로**:
+
+Kaya et al. (Shallow-Deep Networks, ICML 2019) 공식 코드 확인:
+- **IC 구조**: `alpha·maxpool + (1-alpha)·avgpool → Linear` (공식은 spatial pooling, 여기선 timestep pooling). Proposed는 마지막 timestep→Linear.
+- **loss 가중**: `cur_coeffs = min(max_coeffs, 0.01 + epoch·max_coeffs/epochs)`, `max_coeffs=[0.15,0.30,...]` IC마다 +0.15, **최종 분류기는 항상 1.0**. Proposed는 고정 균등 0.3/0.3/0.4.
+- **threshold**: `early_exit_experiments.py`가 val에서 스윕. → `calibrate_confidence_threshold`: "full-network 정확도 −1% 이내 최소 비용 exit" 운영점. Proposed는 entropy θ 고정/변동.
+
+### 구현 (`models/sdn_lstm.py` 전면 재작성)
+- `SDNInternalClassifier` (pooling head), `sdn_loss_coeffs`(램프), `sdn_multi_exit_loss`(최종=1.0), `calibrate_confidence_threshold`(grid 0.50~0.99)
+- exit3 = base 네트워크 원래 헤드(마지막 timestep→Linear, BaselineLSTM과 동일) — "기존 네트워크에 IC 추가, 최종 헤드 유지"
+- `train_ap_sdn.py`: epoch별 램프 계수, 학습 후 val 캘리브레이션해서 T를 체크포인트에 저장
+- `export_onnx_ap_sdn.py`: staged 래퍼가 IC에 full seq 전달(pooling은 IC 내부)
+
+### 5시드 결과 (power=0.0)
+| | acc | L3 F1 | L3 recall | 캘리브레이션 T |
+|---|---:|---:|---:|---|
+| SDN 논문 충실 | 90.4%±1.4 | **60.4%±8.1** | 45.8%±8.8 | 0.71~0.86 (시드별 요동) |
+| (옛 SDN-style, archived) | 90.4%±0.7 | 65.3%±2.5 | 52.3%±3.2 | 0.85 고정 |
+| Proposed EE Fixed | 90.7%±0.7 | 64.5%±5.5 | 51.0%±6.6 | — |
+
+- **정확도는 동급, label3에서 논문 SDN이 뚜렷이 덜 안정**(F1 편차 2배) — per-model 캘리브레이션이 작은 val(308창)에서 취약.
+- 배포 = seed3 (val-best, T=0.80): test 90.3%, L3 F1 65.3%, exit 36/33/31%
+- ONNX 재수출: staged + unified int8 (PyTorch 대비 pred 308/310·exit 307/310, INT8 정확도 91.0%)
+- **Pi INT8 재측정: 0.572 / 0.574ms** (옛 SDN-style 0.534보다 +0.04 — pooling IC의 ReduceMax/Mean 오버헤드). Proposed(0.540)보다 -6% 느림.
+- 아카이빙: 옛 SDN-style 체크포인트 → `archived_sdn_style_20260830/`, 리포트 → `*_style_archived_20260830.txt`
+
+### 서사
+"SDN을 이겼다"가 아니라 **"기존 조기종료 방법(SDN)과 동급 정확도를 내면서, exit head가 더 가볍고(→ 더 빠름), 희소 클래스에서 더 안정적이며(→ per-model 캘리브레이션 불필요), 트래픽 적응형 임계값(Dynamic θ)을 쓸 수 있다"** — 우리 설계 선택의 효과를 보여주는 통제 비교.
 
 ## 8차 (2026-08-30 후속) — Baseline·SDN 5시드 특성화, Baseline 배포 seed 교체
 

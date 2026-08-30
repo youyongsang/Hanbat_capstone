@@ -38,12 +38,11 @@ class Stage1Wrapper(nn.Module):
     def __init__(self, model: APSDNLSTM) -> None:
         super().__init__()
         self.lstm = model.lstm1
-        self.dropout = model.dropout
-        self.classifier = model.exit_classifier1
+        self.classifier = model.exit_classifier1  # SDNInternalClassifier: pools internally
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         hidden_seq, _ = self.lstm(x)
-        logits = self.classifier(self.dropout(hidden_seq[:, -1, :]))
+        logits = self.classifier(hidden_seq)
         return hidden_seq, logits
 
 
@@ -51,12 +50,11 @@ class Stage2Wrapper(nn.Module):
     def __init__(self, model: APSDNLSTM) -> None:
         super().__init__()
         self.lstm = model.lstm2
-        self.dropout = model.dropout
-        self.classifier = model.exit_classifier2
+        self.classifier = model.exit_classifier2  # SDNInternalClassifier: pools internally
 
     def forward(self, hidden_seq: Tensor) -> tuple[Tensor, Tensor]:
         hidden_seq2, _ = self.lstm(hidden_seq)
-        logits = self.classifier(self.dropout(hidden_seq2[:, -1, :]))
+        logits = self.classifier(hidden_seq2)
         return hidden_seq2, logits
 
 
@@ -65,7 +63,7 @@ class Stage3Wrapper(nn.Module):
         super().__init__()
         self.lstm = model.lstm3
         self.dropout = model.dropout
-        self.classifier = model.exit_classifier3
+        self.classifier = model.exit_classifier3  # base network head: last timestep -> linear
 
     def forward(self, hidden_seq: Tensor) -> Tensor:
         hidden_seq3, _ = self.lstm(hidden_seq)

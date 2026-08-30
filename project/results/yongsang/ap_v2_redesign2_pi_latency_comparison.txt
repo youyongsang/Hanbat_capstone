@@ -1,4 +1,4 @@
-AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-30 갱신 3차 — class-weight-power=0.0 승격)
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-30 갱신 5차 — SDN 논문 충실 재구현)
 
 === 3차 재측정 (2026-08-30, class-weight-power=0.0, Pi INT8, test 310창, 5회 반복/샘플) ===
 
@@ -31,18 +31,33 @@ power=1.0은 exit3 도달률이 52%였는데 power=0.0은 19%(Fixed)/10%(Dynamic
 (라벨3 과보호가 없어지면서 뒤 exit로 미루는 경향이 줄었음). Pi 실측 exit 분포가 fp32 eval과
 정확히 일치(30.3/50.3/19.4 vs 30.0/50.6/19.4).
 
-해석 (4차 특성화 반영):
-- **4개 모델 전부 목표2(<1ms) 달성.** Baseline 0.75ms, 나머지 0.53~0.56ms.
-- **Proposed(EE)가 Baseline보다 -28% 빠름** (0.54 vs 0.75ms). power=1.0 라운드에선 거의 동률이었는데
-  power=0.0에서 EE의 exit3 도달률이 52%→19%로 줄며 격차가 벌어짐.
-- SDN(0.534) ≈ Proposed Fixed(0.540) — 속도 동률. 6μs 차이는 exit 게이트 연산(EE는 엔트로피
-  Softmax→Log→p·logp→sum→비교, SDN은 max-confidence Softmax→max→비교).
-- **정확도: 5시드 평균으로 Baseline 92.0% / SDN 90.4% / EE Fixed 90.7% — 셋이 ±0.7 안에서 근소차.**
-  Baseline이 약간 앞서지만 "확실한 우위"는 아님. Label3 F1은 셋 다 64~66%로 동률. 배포 단일
-  체크포인트(Baseline seed3 91.6% / SDN seed0 90.6% / EE seed4 90.6%)는 test draw 편차가 있으니
-  5시드 평균을 기준 수치로 인용하는 게 정직.
-- **발표 프레이밍**: Proposed의 가치 주장은 정확도(평균으로 Baseline과 사실상 동급)가 아니라
-  속도(-28%)·연산량(구조상 ~절반) + "간섭 감지에 EE 구조 최초 적용". 95% 목표는 세 모델 공통 과제.
+=== 5차 (2026-08-30 후속2) — SDN 논문 충실 재구현 ===
+
+기존 "SDN-style"은 Proposed와 백본이 100% 같아 "다른 모델과의 비교"가 아니라 "같은 모델 다른 규칙"
+이었음. Kaya et al. (Shallow-Deep Networks, ICML 2019) 논문/공식 코드대로 재구현:
+- **Internal Classifier**: `alpha·maxpool + (1-alpha)·avgpool` (timestep 전체, alpha 학습) → Linear.
+  (Proposed: 마지막 timestep → Linear)
+- **loss 가중**: 커리큘럼 램프 `cur = min(mc, 0.01 + epoch·mc/50)`, `mc = [0.15, 0.30]`, 최종 분류기 1.0.
+  (Proposed: 고정 균등 0.3/0.3/0.4)
+- **confidence threshold**: val에서 스윕해 "full-network 정확도 −1% 이내 최소 비용" 운영점 선택.
+  (Proposed: entropy θ 고정 또는 트래픽 변동 적응)
+- base 3층 LSTM·epochs·batch·lr·class-weight-power는 EE와 동일(통제 변수).
+
+| 모델 | Pi INT8(ms) | 5시드 정확도 | 5시드 L3 F1 | 배포(val-best) |
+|---|---:|---:|---:|---|
+| SDN (논문 충실)   | **0.572** | 90.4% ±1.4 | **60.4% ±8.1** | seed3 · T=0.80 · test 90.3% / L3 F1 65.3% |
+| Proposed EE Fixed | 0.540 | 90.7% ±0.7 | 64.5% ±5.5 | seed4 · test 90.6% / L3 F1 68.0% |
+
+해석 (5차 반영):
+- **4개 모델 전부 목표2(<1ms) 달성.** Baseline 0.75 / SDN 0.57 / Proposed 0.54~0.56ms.
+- **정확도는 셋이 겹침** (5시드 평균 Baseline 92.0 / SDN 90.4 / Proposed 90.7%). 갈리는 두 축:
+  1. **label3 안정성** — SDN 논문 충실은 F1 60.4%±**8.1**(편차 2배), 시드별 캘리브레이션 T가
+     0.71~0.86으로 요동. Proposed는 64.5%±5.5로 더 안정. 작은 val에서 per-model 캘리브레이션이 취약.
+  2. **속도** — SDN pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear보다 무거움
+     → 0.572 vs 0.540ms. Proposed가 -6%.
+- **발표 프레이밍**: "기존 조기종료 방법(SDN)과 동급 정확도 + 더 가벼운 exit head + 희소클래스에서
+  더 안정적 + 트래픽 적응형 임계값." "SDN을 이겼다"가 아니라 "우리 설계 선택의 효과".
+- Baseline은 정확도 근소 1위지만 EE 없음(항상 3층, 0.75ms). Proposed의 가치는 속도·연산량(구조상 ~절반).
 
 ------------------------------------------------------------------------
 아래는 2차(2026-08-29, class-weight-power=1.0) 시점 기록 — 보존용.

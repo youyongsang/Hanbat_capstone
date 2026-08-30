@@ -1,4 +1,4 @@
-"""Generate AP redesign2 model comparison summary (Baseline / SDN-style / Proposed Early Exit)."""
+"""Generate AP redesign2 model comparison summary (Baseline / SDN / Proposed Early Exit)."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ def benchmark_pc_time(
     x = torch.from_numpy(x_np)
 
     warmup = 20
-    repeats = 200
+    repeats = 30
 
     with torch.no_grad():
         for _ in range(warmup):
@@ -140,8 +140,8 @@ def main() -> None:
             "interpretation": "accuracy upper-bound baseline; no early stopping; real Pi INT8 latency 0.746ms (2026-08-30, power=0.0, 5-seed val-best); 5-seed mean acc 92.0%+-0.7%",
         },
         {
-            "model": "SDN-style Early Exit (trained)",
-            "paper_basis": "SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55), unweighted (class-weight-power=0.0) to match Proposed",
+            "model": "SDN (Kaya et al. 2019, adapted)",
+            "paper_basis": "SDN (Shallow-Deep Networks, ICML 2019) adapted to the shared 3-layer LSTM base: pooling internal classifiers, curriculum-ramped depth-weighted IC loss (max 0.15/0.30, final 1.0), val-calibrated confidence threshold. Backbone/hparams identical to Proposed (controlled).",
             "threshold_policy": f"max softmax confidence >= {sdn_model.confidence_threshold:.2f}",
             "test_accuracy": sdn["acc"],
             "label2_accuracy": sdn["l2"],
@@ -151,7 +151,7 @@ def main() -> None:
             "exit3_rate": sdn["e3"],
             "pc_measured_ms_per_sample": f"{sdn_ms:.4f}",
             "simulated_layer_time_ms": sdn["sim"],
-            "interpretation": "paper-policy baseline trained independently on AP 7-feature redesign2 data; confidence-only exit; real Pi INT8 latency 0.534ms (2026-08-30, power=0.0)",
+            "interpretation": "prior-art comparison: matches Proposed on overall accuracy (90.4%+-1.4 5-seed) but markedly less stable on label 3 (F1 60.4%+-8.1 vs Proposed 64.5%+-5.5) -- its per-model threshold calibration is unstable on a small val set. real Pi INT8 latency 0.572ms (pooling IC overhead vs Proposed 0.540ms).",
         },
         {
             "model": "Proposed Early Exit Fixed theta",
@@ -192,7 +192,7 @@ def main() -> None:
         writer.writerows(rows)
 
     lines = [
-        "AP redesign2 데이터 모델 비교표 (Baseline / SDN-style / Proposed Early Exit)",
+        "AP redesign2 데이터 모델 비교표 (Baseline / SDN / Proposed Early Exit)",
         f"데이터: {DATA_DIR.relative_to(PROJECT_ROOT.parent)} (test 310창, label 3 31개)",
         "모든 모델 class-weight-power=0.0으로 학습(2026-08-30 재스윕 — 클래스 가중치 없음이 정확도·label3 F1 둘 다 최고). 공정 비교를 위해 세 모델 동일 적용.",
         "",
@@ -211,13 +211,13 @@ def main() -> None:
             "",
             "해석:",
             "- Baseline LSTM은 정확도 상한선 기준이며 항상 3개 LSTM 계층을 모두 수행한다.",
-            f"- SDN-style Early Exit는 Early Exit 백본을 재사용하지 않고, SDN 논문의 loss 가중치(0.15/0.30/0.55)로 별도 학습한 백본에 고정 confidence threshold {sdn_model.confidence_threshold:.2f}를 적용한 결과이다.",
-            "- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일한 학습 방식(class-weight-power=0.0)으로 학습했다 — 아키텍처 차이만 비교하기 위해 훈련 방식은 통제 변수로 고정.",
+            f"- SDN(Kaya et al., ICML 2019)은 \"기존 조기종료 방법 vs 우리 방법\" 통제 비교를 위한 것. 3층 LSTM base·하이퍼파라미터는 Proposed와 완전 동일하게 고정하고, SDN이 실제로 규정하는 세 축만 논문대로 다르게 함: (1) pooling internal classifier, (2) 커리큘럼 램프 depth-weighted IC loss, (3) val 캘리브레이션된 confidence threshold(이 배포 체크포인트 T={sdn_model.confidence_threshold:.2f}). Proposed는 각각 last-timestep linear head / 균등 loss / entropy threshold(고정·변동).",
+            "- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일한 학습 방식(class-weight-power=0.0)으로 학습했다 — 훈련 방식(class-weight-power)은 통제 변수로 고정 — 이제 SDN은 아키텍처(IC·loss·threshold)도 논문대로 다름.",
             "- Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.",
-            "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다 — 2026-08-30(power=0.0) Pi INT8 실측: Baseline 0.746ms / SDN 0.534ms / Proposed Fixed 0.540ms / Dynamic 0.555ms(전부 목표2 <1ms 달성, EE가 Baseline보다 -27%). power=1.0 대비 EE가 0.64->0.54ms로 빨라짐 — exit3 도달률이 52%->19%로 줄어든 결과. 상세: project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt.",
-            "- 2026-08-30: class-weight-power 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도·label3 F1 둘 다 최고 → 기본값 1.0→0.0. 세 모델 전부 재학습·5시드 특성화, val balanced acc 최고를 배포(Baseline seed3 / SDN seed0 / EE seed4). 5시드 test 평균: Baseline 92.0%±0.7 / SDN 90.4%±0.7 / EE Fixed 90.7%±0.7.",
+            "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다 — 2026-08-30(power=0.0) Pi INT8 실측: Baseline 0.746ms / SDN 0.572ms / Proposed Fixed 0.540ms / Dynamic 0.555ms(전부 목표2 <1ms 달성, EE가 Baseline보다 -28%). power=1.0 대비 EE가 0.64->0.54ms로 빨라짐 — exit3 도달률이 52%->19%로 줄어든 결과. 상세: project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt.",
+            "- 2026-08-30: class-weight-power 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도·label3 F1 둘 다 최고 → 기본값 1.0→0.0. 세 모델 전부 재학습·5시드 특성화, val balanced acc 최고를 배포(Baseline seed3 / SDN seed3 / EE seed4). 5시드 test 평균: Baseline 92.0%±0.7 / SDN(논문 충실) 90.4%±1.4 / EE Fixed 90.7%±0.7. (SDN은 2026-08-30 후속에서 Kaya et al. 논문대로 재구현 — pooling IC·램프 loss·캘리브레이션 T.)",
             "- 2026-08-29: sta_tx_bitrate_mean을 7번째 입력 feature로 승격(occ 60~72% 구간에서 label2/3을 가르는 유의미한 신호로 다중 시드 검증됨). 같은 세션에 학습 파이프라인에 --seed 옵션 추가.",
-            "- Proposed의 exit-loss 가중치는 균등(0.3/0.3/0.4)으로 유지 — SDN 스타일(0.15/0.30/0.55)을 시도했던 이전 승격은 다중 시드 검증에서 유의미한 이득이 확인되지 않아 보류됨(SDNLSTM은 EarlyExitLSTM과 백본이 의도적으로 동일하므로, 같은 가중치를 쓰면 두 모델이 사실상 같은 네트워크가 되어 버려 비교 자체가 무의미해지는 것도 이유).",
+            "- 5시드 특성화: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / Proposed EE Fixed 90.7%±0.7 정확도는 겹침. 갈리는 건 label3 안정성(SDN F1 60.4%±8.1 vs Proposed 64.5%±5.5)과 속도(SDN 0.572ms vs Proposed 0.540ms — SDN의 pooling IC가 무거움). 주장: \"기존 방법과 동급 정확도 + 더 가벼운 exit head + 더 안정적인 희소클래스 성능\"이지 \"SDN을 이겼다\"가 아님.",
         ]
     )
     txt_path.write_text("\n".join(lines), encoding="utf-8")

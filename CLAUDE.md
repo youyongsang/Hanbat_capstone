@@ -21,8 +21,8 @@
 | 3 | 심각 |
 
 **발표자료(`docs/캡스톤디자인I_최종발표.pptx`) 슬라이드 8 "정량적 목표"**:
-- 목표1 = Raspberry Pi 환경에서 **혼잡 분류 정확도 95% 이상** — 2026-08-30 class-weight-power=0.0 승격으로 5시드 평균 Baseline 92.0% / SDN 90.4% / Early Exit 90.7%(전부 ±0.7, 사실상 동급), **아직 미달 (진짜 남은 숙제)**.
-- 목표2 = **추론 지연 < 1ms** — 달성 (2026-08-30 Pi INT8 재측정: Baseline 0.74ms / Early Exit 0.54ms / SDN 0.53ms, 전부 <1ms).
+- 목표1 = Raspberry Pi 환경에서 **혼잡 분류 정확도 95% 이상** — 2026-08-30 class-weight-power=0.0 승격으로 5시드 평균 Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / Early Exit 90.7%±0.7 (정확도는 사실상 동급), **아직 미달 (진짜 남은 숙제)**.
+- 목표2 = **추론 지연 < 1ms** — 달성 (2026-08-30 Pi INT8 재측정: Baseline 0.74ms / Early Exit 0.54ms / SDN 0.57ms, 전부 <1ms).
 - SDN 비교는 원래 정량 목표가 아니다. 핵심 기여 주장은 "간섭 감지에 Early Exit LSTM 구조를 최초 적용"이고, "혼잡 판단 → 채널 전환 필요 여부 + 전환 명령 후보 생성"까지가 최종 목표 문장(슬라이드 7).
 
 ## 배경 (1학기 → 1차 → 2차)
@@ -53,7 +53,8 @@ project/scripts/remeasure_redesign.py                  raw feature에서 sub-sco
 project/scripts/prepare_ap_metrics_dataset.py          windowed train/val/test 변환
 project/scripts/train_ap_early_exit.py                 Early Exit LSTM 학습 (--seed, --class-weight-power, --exit-loss-weights)
 project/scripts/train_ap_baseline_lstm.py              Baseline(EE 없음) LSTM
-project/scripts/train_ap_sdn.py                        SDN-style LSTM (EarlyExitLSTM과 백본 동일, 임계값 정책만 다름)
+project/scripts/train_ap_sdn.py                        SDN 비교모델 (Kaya et al. ICML 2019 — pooling IC + 램프 depth-weighted loss + val 캘리브레이션 T. base 백본·하이퍼파라미터는 EE와 동일=통제변수)
+project/models/sdn_lstm.py                             SDNLSTM: SDNInternalClassifier(maxpool⊗avgpool→Linear), sdn_loss_coeffs(램프), calibrate_confidence_threshold(val 스윕)
 project/scripts/evaluate_ap_early_exit.py              평가
 project/scripts/forecast_eval_redesign.py              조기경보(k폴링 뒤 라벨) 재평가
 project/scripts/generate_ap_comparison.py              Baseline/SDN/Proposed 비교표 생성
@@ -117,7 +118,7 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 
 - 아키텍처: hidden_size 128, num_layers 3, dropout 0.2, num_classes 4. (김호중 baseline과 동일하게 맞춤. 세션 내내 고정값 — **한 번도 스윕 안 함**.)
 - Optimizer Adam, lr 0.001, batch 32, epochs 50. 체크포인트 선택 기준 = **val balanced accuracy** (raw accuracy 아님 — 다수 클래스 찍는 에폭 선택 방지).
-- **multi-exit loss 가중치 = 균등 0.3/0.3/0.4** (`--exit-loss-weights`). SDN 스타일 0.15/0.30/0.55로 바꾸면 exit3 심각 탐지에 유리하다는 가설이 있었으나, 다중 시드(5개) 검증에서 차이가 표준편차보다 작아 **노이즈로 판명 → 균등 유지**. (SDN-style 백본과 EE 백본이 의도적으로 동일해서, 같은 loss 가중치+시드면 사실상 같은 네트워크가 되는 문제도 있음.)
+- **multi-exit loss 가중치 = 균등 0.3/0.3/0.4** (`--exit-loss-weights`). SDN 스타일 0.15/0.30/0.55로 바꾸면 exit3 심각 탐지에 유리하다는 가설이 있었으나, 다중 시드(5개) 검증에서 차이가 표준편차보다 작아 **노이즈로 판명 → 균등 유지**. (별도로, SDN 비교모델은 2026-08-30에 논문 충실 재구현되어 백본만 공유하고 IC·loss·threshold가 실제로 다름 — 아래 참조.)
 - **class weight power = 0.0** (`--class-weight-power`, `compute_class_weights`) — 클래스 가중치를 아예 안 씀(plain CE). **2026-08-30 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도(91.3%±0.5% vs power=1.0의 87.0%±1.1%)·Label3 F1(69.8% vs 63.2%) 둘 다 최고, 트레이드오프 없음**이라 기본값을 1.0→0.0으로 변경. 옛 1.0은 2026-08-23에 4-feature·train label3=23개 시절 "power≤0.85면 label3 recall 절벽" 때문에 정한 값인데, 7-feature·train label3=141개가 되면서 그 절벽이 사라짐(옛 결정을 재검증 안 해 계속 손해보고 있었음). 상세: work-log 4~5차 체크포인트(2026-08-30).
 - `train_*.py` 전부에 `--seed` 옵션 있음(기본 `None` = 기존 동작). **하이퍼파라미터 A/B 비교는 반드시 여러 시드로** — 단일 실행 비교가 노이즈였던 전례가 여러 번 있었다.
 
@@ -127,17 +128,18 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 
 - **5시드 특성화 (power=0.0, 각 모델 시드 0~4 test 평균 — 배포 단일 체크포인트보다 이걸 기준 수치로 인용)**:
   - Baseline: acc **92.0%±0.7** / L3 F1 66.1%±2.3 / L3 recall 54.2%±3.8
-  - SDN-style: acc **90.4%±0.7** / L3 F1 65.3%±2.5 / L3 recall 52.3%±3.2
+  - SDN (Kaya et al. 2019, 논문 충실): acc **90.4%±1.4** / L3 F1 **60.4%±8.1** / L3 recall 45.8%±8.8 — label3 편차가 2배(per-model 캘리브레이션이 작은 val에서 불안정). (옛 백본공유 "SDN-style"은 F1 65.3%±2.5였음, archived.)
   - Early Exit Fixed θ: acc **90.7%±0.7** / L3 F1 64.5%±5.5 / L3 recall 51.0%±6.6 (EE 시드 분산이 유독 큼)
   - → **셋이 ±0.7 안에서 근소차, Label3 F1은 64~66%로 사실상 동률.** "Baseline이 확실히 낫다"가 아니라 "셋이 비슷한데 Baseline이 약간 앞".
 - **배포 단일 체크포인트 (val balanced acc 최고, fp32 eval)**:
   - Baseline **seed3** (val bal 89.0%): 91.6%. L0 97.9 / L1 94.0 / L2 94.0 / L3 58.1. L3 F1 65.5%. (기존 seed0 92.3%는 val-best 아니었고 운 좋은 test draw — 2026-08-30 후속 특성화에서 seed3로 교체.)
-  - SDN seed0 (val bal 88.2%): 90.6%, L3 recall 48.4%.
+  - SDN seed3 (val bal 87.8%, 캘리브레이션 T=0.80): 90.3%, L3 recall 51.6%, F1 65.3%. Exit 36/33/31%.
   - EE Fixed θ seed4: 90.6%, L2 90.6 / L3 54.8, F1 68.0%. Exit 30.0/50.6/19.4%. Dynamic θ: 91.0%, F1 69.4%.
 - **INT8 v2 (EE seed4)**: fixed 90.3% / F1 65.3%, dynamic 90.6% / F1 66.7%. unified fp32는 PyTorch와 310/310 일치, INT8은 308/310·309/310.
 - **power=1.0 → 0.0 효과**: 5시드 평균 정확도 +2~4pt. EE/SDN label3 recall은 내려가지만(power=1.0이 label3 과보호), label2가 정상화되고 label3 F1은 precision 상승으로 유지~소폭 상승.
 - **서사**: 세 모델 정확도가 5시드 평균으로 사실상 동급 → Proposed(Early Exit)의 가치 주장은 정확도가 아니라 **속도·효율**(목표2 <1ms, Baseline 대비 -28%) + "간섭 감지에 EE 최초 적용".
-- **Pi INT8 재측정 완료** (2026-08-30, power=0.0, `capstone@192.168.8.109`, test 310창): Baseline **0.746ms** / SDN 0.534 / Proposed Fixed **0.540** / Dynamic 0.555. 전부 목표2(<1ms) 달성. power=1.0 대비 EE Fixed 0.641→0.540(-16%), **EE가 Baseline보다 -28% 빠름**(exit3 도달률 52%→19%). SDN≈Proposed Fixed 속도 동률(6μs 차이 = 엔트로피 vs max-confidence 게이트 연산).
+- **Pi INT8 재측정 완료** (2026-08-30, power=0.0, `capstone@192.168.8.109`, test 310창): Baseline **0.746ms** / SDN(논문) **0.572** / Proposed Fixed **0.540** / Dynamic 0.555. 전부 목표2(<1ms). power=1.0 대비 EE Fixed 0.641→0.540(-16%), **EE가 Baseline보다 -28% 빠름**. SDN(0.572) > Proposed(0.540) — SDN의 pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear head보다 무거움.
+- **SDN 비교모델 = "기존 조기종료 방법 vs 우리 방법" 통제 비교**: base 3층 LSTM·하이퍼파라미터는 Proposed와 완전 동일, SDN이 규정하는 3축만 논문(Kaya et al. ICML 2019)대로 다름 — (1) pooling IC, (2) 커리큘럼 램프 depth-weighted loss, (3) val 캘리브레이션 confidence T. 결과: 정확도 동급(90.4 vs 90.7), 그러나 **label3에서 덜 안정(F1 std 8.1 vs 5.5)**하고 **더 느림(0.572 vs 0.540)**. 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 희소클래스 안정성 + 트래픽 적응형 임계값".
 - **Confusion matrix 분해 (power=1.0 시절)**: label 2 오답이 label 3보다 개수가 많았음. power=0.0에서 label2가 상당히 정상화됨(94.0%). label2→1 오답은 occ 55~57% 앵커 경계 측정 노이즈, label2→3 오답은 occ 60~72% 정보 부족 구간.
 - **조기경보(forecasting) 프레이밍** (`forecast_eval_redesign.py`): k=3폴링(≈3~6s) 앞 escalation(현재 not-severe → k 뒤 severe) recall 61.5%, occupancy 규칙은 구조적으로 0/13. "점 분류 95%"와는 다른 지표라 발표 목표1을 직접 만족하진 않지만 대안 서사로 유효.
 
@@ -209,5 +211,5 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 3. **라벨 입력 ≠ 모델 입력.** 라벨은 victim 프로브(jitter/loss)·ping(latency)에 의존하고, 모델은 그걸 못 본다. 모델의 일은 채널 상태만으로 victim QoS를 예측하는 것.
 4. 하이퍼파라미터/가중치 A/B 비교 수치는 **다중 시드로 검증됐는지** 먼저 확인한다. 단일 실행 비교가 노이즈였던 전례가 여러 번 있었다(SDN 가중치 승격 → 철회 등).
 5. PC wall-time만으로 Early Exit 속도 우위를 주장하면 위험하다 — 최종 속도 주장은 Raspberry Pi INT8 실측 기준(현재 0.6~0.8ms, 목표2 <1ms 달성).
-6. Fixed/Dynamic은 별도 backbone을 새로 학습하는 것이 아니라, 같은 Early Exit backbone에서 threshold 정책(고정 θ vs 변동률 기반 θ)만 바꿔 평가하는 구조이다.
+6. Fixed/Dynamic은 별도 backbone을 새로 학습하는 것이 아니라, 같은 Early Exit backbone에서 threshold 정책(고정 θ vs 변동률 기반 θ)만 바꿔 평가하는 구조이다. **SDN은 다르다** — 2026-08-30 논문 충실 재구현으로 pooling IC head + 램프 loss + 캘리브레이션 T를 실제로 별도 학습(base 백본만 공유). "SDN-style이 EE와 사실상 같은 네트워크"라는 옛 서술은 이 재구현 이전 기준이며 stale.
 7. 남은 핵심 숙제는 **Pi 정확도 95%**(2026-08-30 power=0.0 승격 후 5시드 평균 Baseline 92.0% / SDN 90.4% / EE 90.7% — 사실상 동급). Proposed의 가치 주장은 정확도가 아니라 속도·효율(Pi에서 Baseline 대비 -28%).

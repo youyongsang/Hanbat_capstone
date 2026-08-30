@@ -1,10 +1,13 @@
-"""Train SDN-style Early Exit LSTM on AP measurement 7-feature windows.
+"""Train the SDN comparison model (Kaya et al., ICML 2019) on AP 7-feature
+windows.
 
-Trained with the same class-weighted loss and balanced-accuracy checkpoint
-selection as train_ap_early_exit.py (default --class-weight-power 0.0 since
-the 2026-08-30 re-sweep) so the Baseline/SDN/Early-Exit comparison isolates
-architecture, not training regime. Pass --class-weight-power 1 for the old
-full inverse-frequency weighting.
+Same backbone / optimizer / epochs / batch / class-weight-power as
+train_ap_early_exit.py (controlled variables) so the "existing early-exit
+method vs ours" comparison isolates SDN's three specified design choices:
+  - pooling internal classifiers (models/sdn_lstm.py SDNInternalClassifier)
+  - curriculum-ramped depth-increasing IC loss weights (sdn_loss_coeffs)
+  - confidence threshold calibrated on validation (not hard-coded)
+Balanced-accuracy checkpoint selection is on the final classifier, as before.
 """
 
 from __future__ import annotations
@@ -22,7 +25,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_sdn_lstm import APSDNLSTM  # noqa: E402
-from models.sdn_lstm import sdn_multi_exit_loss  # noqa: E402
+from models.sdn_lstm import (  # noqa: E402
+    calibrate_confidence_threshold,
+    sdn_loss_coeffs,
+    sdn_multi_exit_loss,
+)
 from utils.ap_dataloader import get_ap_dataloader  # noqa: E402
 from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
 from utils.metrics import format_percent  # noqa: E402
@@ -45,6 +52,7 @@ def run_epoch(
     dataloader: torch.utils.data.DataLoader,
     optimizer: torch.optim.Optimizer | None = None,
     class_weights: torch.Tensor | None = None,
+    ic_coeffs: tuple[float, ...] = (0.15, 0.30),
     num_classes: int = 4,
 ) -> tuple[float, float, float]:
     is_train = optimizer is not None
@@ -60,7 +68,7 @@ def run_epoch(
             optimizer.zero_grad()
 
         exit_logits = model(x_batch)
-        loss = sdn_multi_exit_loss(exit_logits, y_batch, class_weights=class_weights)
+        loss = sdn_multi_exit_loss(exit_logits, y_batch, ic_coeffs, class_weights=class_weights)
 
         if is_train:
             loss.backward()
@@ -124,12 +132,19 @@ def main() -> None:
     best_val_acc = -1.0
 
     for epoch in range(1, args.epochs + 1):
-        train_loss, train_acc, _ = run_epoch(model, train_loader, optimizer, class_weights=class_weights)
+        # SDN curriculum-ramped IC loss coefficients (epoch is 1-indexed here;
+        # the official schedule ramps from ~0.01 to the depth-scaled ceiling)
+        ic_coeffs = sdn_loss_coeffs(epoch - 1, args.epochs)
+        train_loss, train_acc, _ = run_epoch(
+            model, train_loader, optimizer, class_weights=class_weights, ic_coeffs=ic_coeffs
+        )
         with torch.no_grad():
-            val_loss, val_acc, val_balanced_acc = run_epoch(model, val_loader)
+            val_loss, val_acc, val_balanced_acc = run_epoch(
+                model, val_loader, ic_coeffs=ic_coeffs
+            )
 
         print(
-            f"Epoch {epoch}/{args.epochs} | "
+            f"Epoch {epoch}/{args.epochs} | ic_coeffs={tuple(round(c, 3) for c in ic_coeffs)} | "
             f"Train Loss: {train_loss:.3f} | Train Acc: {format_percent(train_acc)} | "
             f"Val Loss: {val_loss:.3f} | Val Acc: {format_percent(val_acc)} | "
             f"Val Balanced Acc: {format_percent(val_balanced_acc)}"
@@ -146,12 +161,42 @@ def main() -> None:
                 "feature_columns": list(AP_FEATURE_COLUMNS),
                 "val_accuracy": best_val_acc,
                 "class_weight_power": args.class_weight_power,
+                "sdn_max_loss_coeffs": [0.15, 0.30],
             }
             torch.save(checkpoint, checkpoint_path)
 
-    print(f"AP SDN model saved: {display_path(checkpoint_path)}")
+    # SDN: calibrate the confidence threshold on validation (official code
+    # searches for it). Reload the selected checkpoint, sweep T, pick the
+    # cheapest exit budget that keeps val accuracy within tolerance.
+    best_state = torch.load(checkpoint_path, map_location="cpu")
+    model.load_state_dict(best_state["model_state_dict"])
+    model.eval()
+    with torch.no_grad():
+        val_logits: list[list[torch.Tensor]] = []
+        val_targets: list[torch.Tensor] = []
+        for x_batch, y_batch in val_loader:
+            val_logits.append(model._all_exit_logits(x_batch))
+            val_targets.append(y_batch)
+        stacked = [
+            torch.cat([b[e] for b in val_logits], dim=0) for e in range(3)
+        ]
+        targets = torch.cat(val_targets, dim=0)
+    calibrated_t, cal_info = calibrate_confidence_threshold(stacked, targets)
+    best_state["confidence_threshold"] = calibrated_t
+    best_state["threshold_calibration"] = cal_info
+    torch.save(best_state, checkpoint_path)
+
+    print(
+        f"Calibrated confidence threshold T = {calibrated_t:.2f} "
+        f"(val acc {cal_info['val_acc']:.3f} vs full {cal_info['full_acc']:.3f}, "
+        f"avg exit {cal_info['avg_exit']:.2f}, qualified={cal_info['qualified']})"
+    )
     print(f"Best Val Accuracy: {format_percent(best_val_acc)}")
     print(f"Best Val Balanced Accuracy: {format_percent(best_val_balanced_acc)}")
+    try:
+        print(f"AP SDN model saved: {display_path(checkpoint_path)}")
+    except ValueError:
+        print(f"AP SDN model saved: {checkpoint_path}")
 
 
 if __name__ == "__main__":

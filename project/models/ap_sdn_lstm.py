@@ -1,8 +1,8 @@
-"""AP measurement feature variant of the SDN-style Early Exit LSTM.
+"""AP measurement feature variant of the SDN comparison model.
 
-Keeps the original SDNLSTM architecture and confidence-based early-exit
-policy, but uses this branch's 6-feature AP measurement contract (see
-utils/ap_features.py) instead of the 1st-semester 4/9-feature formats.
+Keeps SDNLSTM's paper-faithful IC / weighted-loss / confidence-exit design
+(see models/sdn_lstm.py), bound to this branch's 7-feature AP measurement
+contract (utils/ap_features.py).
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from utils.ap_features import AP_FEATURE_COLUMNS
 
 
 class APSDNLSTM(SDNLSTM):
-    """SDN-style Early Exit LSTM configured for AP 실측 6-feature windows."""
+    """SDN comparison model configured for AP 실측 7-feature windows."""
 
     def __init__(
         self,
