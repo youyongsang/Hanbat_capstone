@@ -313,18 +313,17 @@
     <h2><span class="n">2</span> 공유 데이터 계약</h2>
     <p class="lede">세 API 면이 공유하는 스키마. FeatureVector 순서의 정본은 <code>project/utils/ap_features.py</code>다.</p>
 
-    <h3>2.1 FeatureVector — 9개, 순서 고정</h3>
+    <h3>2.1 FeatureVector — 7개, 순서 고정</h3>
+    <p class="cap">(2026-08-29 기준. 9→6→7-feature로 두 번 바뀌었음 — 정본은 <code>ap_features.py</code>. <code>latency_ms</code>·<code>jitter_ms</code>·<code>probe_loss_pct</code>는 더 이상 모델 입력이 아니다: 라벨 축이자 배포 시점엔 없는 측정이라 8/27 재설계에서 제외. SubScores 계산엔 그대로 쓰임.)</p>
     <pre>{
   <span class="c">// ap_features.py AP_FEATURE_COLUMNS 와 이름·순서 정확히 일치</span>
   "throughput_mbps": 43.2,
   "channel_occupancy_percent": 88.0,
-  "latency_ms": 61.0,
-  "jitter_ms": 210.0,
-  "tx_retries_per_s": 2100.0,
-  "tx_failed_per_s": 47.0,
+  "tx_retry_ratio": 0.22,
   "rssi_dbm": -58.0,
   "rssi_delta_db": -2.0,
-  "rssi_moving_avg_dbm": -57.1
+  "rssi_moving_avg_dbm": -57.1,
+  "sta_tx_bitrate_mean": 34.5
 }</pre>
 
     <h3>2.2 Label &amp; 2.3 SubScores</h3>
@@ -337,8 +336,11 @@
         <tr><td class="num">3</td><td>심각</td><td class="mono">≥ 0.75</td></tr>
       </tbody>
     </table></div>
-    <pre>sub_scores: { "throughput": 0.18, "occupancy": 0.88, "retry_failed": 0.34, "jitter": 0.70 }
-<span class="c">congestion_score = 0.20·throughput + 0.45·occupancy + 0.20·retry_failed + 0.15·jitter</span></pre>
+    <p class="cap">(2026-08-29 최신화) 8/27 재설계로 <b>가중합 → 표준 문턱 max 방식</b>으로 바뀌었다 — 정본은 <code>collect_metrics.py</code>의 <code>calculate_scores()</code>.</p>
+    <pre>sub_scores: { "occupancy": 0.88, "jitter": 0.70, "loss": 0.0, "latency": 0.25 }
+<span class="c">congestion_score = max(occupancy, jitter, loss, latency)  // 가장 나쁜 축이 곧 점수</span>
+<span class="c">각 축은 4앵커(경고/혼잡/심각/완전)에 piecewise-linear 매핑. retry·throughput은</span>
+<span class="c">정보용 sub-score로만 유지, congestion_score(라벨 축)엔 미포함.</span></pre>
 
     <h3>2.4 LoadProfile</h3>
     <pre>{
@@ -481,9 +483,9 @@ data: { "kind": "poll_stall", "detail": "AP SSH 폴링 8s 무응답",
   "seq": 12841,
   "ts": "2026-08-27T14:03:22.514+09:00",
   "window_filled": true,
-  "features": { <span class="c">/* 2.1 FeatureVector 9개 */</span> },
+  "features": { <span class="c">/* 2.1 FeatureVector 7개 */</span> },
   "congestion_score": 0.78,
-  "sub_scores": { "throughput": 0.18, "occupancy": 0.88, "retry_failed": 0.34, "jitter": 0.70 },
+  "sub_scores": { "occupancy": 0.88, "jitter": 0.70, "loss": 0.0, "latency": 0.25 },
   "label": 3,
   "label_name": "심각",
   "early_exit": { "policy": "dynamic", "exit_taken": 1, "confidence": 0.991, "infer_ms": 0.55 },
@@ -500,18 +502,23 @@ data: { "kind": "poll_stall", "detail": "AP SSH 폴링 8s 무응답",
 
     <h3><span class="mono">GET /meta</span></h3>
     <pre>{
-  "model": { "arch": "APEarlyExitLSTM", "onnx": "ap_early_exit.onnx",
+  "model": { "arch": "APEarlyExitLSTM", "onnx": "ap_early_exit_fixed_unified_int8_v2.onnx",
              "checkpoint": "ap_early_exit_lstm_best.pth",
-             "trained_on_rows": 5574, "trained_at": "2026-08-27" },
+             "trained_on_rows": 2115, "trained_at": "2026-08-30" },
   "scaler": { "file": "scaler_params.json", "sha256": "…" },
-  "features": [ <span class="c">/* 9개 순서 */</span> ],
+  "features": ["throughput_mbps","channel_occupancy_percent","tx_retry_ratio",
+               "rssi_dbm","rssi_delta_db","rssi_moving_avg_dbm","sta_tx_bitrate_mean"],
   "window_size": 10,
   "poll_interval_s": 1.0,
   "labels": { "0": "정상", "1": "경고", "2": "혼잡", "3": "심각" },
-  "congestion_weights": { "throughput": 0.20, "occupancy": 0.45, "retry_failed": 0.20, "jitter": 0.15 },
+  "congestion_formula": "max(occupancy, jitter, loss, latency)",
+  "congestion_anchors": {
+    "occupancy": [40, 55, 75, 90], "jitter": [20, 30, 50, 100],
+    "loss": [0.5, 1.0, 5.0, 10.0], "latency": [30, 60, 150, 400]
+  },
   "label_thresholds": [0.25, 0.50, 0.75]
 }</pre>
-    <div class="note warn"><span class="mk">!</span><span>대시보드는 시작 시 <code>/meta</code>를 1회 읽어 feature 순서·가중치·문턱을 표시에 쓴다. <b><code class="mono">scaler.sha256</code>이 학습 때와 다르면 결과를 신뢰하지 말 것</b> — 재라벨링/재변환 후 ONNX·scaler 동기가 안 맞는다는 신호다.</span></div>
+    <div class="note warn"><span class="mk">!</span><span>대시보드는 시작 시 <code>/meta</code>를 1회 읽어 feature 순서·앵커·문턱을 표시에 쓴다. <b><code class="mono">scaler.sha256</code>이 학습 때와 다르면 결과를 신뢰하지 말 것</b> — 재라벨링/재변환 후 ONNX·scaler 동기가 안 맞는다는 신호다(feature 개수가 9→6→7로 바뀔 때마다 실제로 반복된 문제).</span></div>
 
     <h3><span class="mono">GET /health</span></h3>
     <pre>{ "ap_reachable": true, "poll_latency_ms": 34, "poll_stall": false,

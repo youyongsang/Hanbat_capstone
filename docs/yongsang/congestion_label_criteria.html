@@ -939,7 +939,10 @@ congestion_score =
 
   <section id="class-weight">
     <h2><span class="step">06</span> class weight power — 학습 단계의 별도 보정</h2>
-    <p class="lede">라벨 정의(위 §03~05)와는 별개로, 학습 시 <code class="mono">train_ap_early_exit.py --class-weight-power</code>(기본 1.0)가 소수 클래스(label 3)를 얼마나 강하게 밀어붙일지 결정한다. 2차 데이터에서는 완만한 트레이드오프가 아니라 절벽형이었다.</p>
+
+    <div class="callout"><span>⚠</span><span><b>(archived — 2026-08-30 재검증)</b> 아래 절벽형 트레이드오프와 <code class="mono">power=1.0</code> 채택은 <b>4-feature·train label3=23개 시절 기준이며 더 이상 유효하지 않다</b>. 라벨 재설계 + 6→7-feature 승격으로 train label3가 141개가 되면서 절벽이 사라졌다. 2026-08-30 재스윕(0.0~1.0, 3시드씩): <b><code class="mono">power=0.0</code>(가중치 없음)이 전체 정확도(91.3% vs 1.0의 87.0%)·Label3 F1(69.8% vs 63.2%) 둘 다 최고, 트레이드오프 없음</b> → 기본값 1.0→0.0으로 변경. 상세: <code class="mono">.work-log/current.md</code> 4~5차, 아티팩트 "Class-Weight-Power Zero".</span></div>
+
+    <p class="lede">라벨 정의(위 §03~05)와는 별개로, 학습 시 <code class="mono">train_ap_early_exit.py --class-weight-power</code>가 소수 클래스(label 3)를 얼마나 강하게 밀어붙일지 결정한다. <s>2차 데이터에서는 완만한 트레이드오프가 아니라 절벽형이었다.</s> (아래는 2026-08-23 시점 기록.)</p>
 
     <table class="power-table">
       <thead>

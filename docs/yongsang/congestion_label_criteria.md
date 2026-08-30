@@ -59,7 +59,9 @@ sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이�
 
 ## class weight power (2차, 모델 학습 시 클래스 불균형 보정)
 
-라벨 정의와는 별개로, `train_ap_early_exit.py --class-weight-power`(기본값 1.0)가 학습 시 얼마나 label 3을 강하게 밀어붙일지를 결정한다. 이 데이터셋에서는 완만한 트레이드오프가 아니라 절벽형이었다.
+> **(archived — 2026-08-30 재검증)** 아래 절벽형 트레이드오프와 `power=1.0` 채택은 **4-feature·train label3=23개 시절 기준이며 stale하다.** 라벨 재설계 + 6→7-feature 승격으로 train label3=141개가 되며 절벽이 소멸. 2026-08-30 재스윕(0.0~1.0, 3시드): **`power=0.0`(가중치 없음)이 정확도(91.3% vs 87.0%)·Label3 F1(69.8% vs 63.2%) 둘 다 최고, 트레이드오프 없음** → 기본값을 1.0→0.0으로 변경. 상세는 `.work-log/current.md` 4~5차.
+
+라벨 정의와는 별개로, `train_ap_early_exit.py --class-weight-power`가 학습 시 얼마나 label 3을 강하게 밀어붙일지를 결정한다. ~~이 데이터셋에서는 완만한 트레이드오프가 아니라 절벽형이었다.~~ (아래는 2026-08-23 시점 기록.)
 
 | power | 전체 정확도 | Label 0 | Label 1 | Label 2 | Label 3 |
 |---|---:|---:|---:|---:|---:|

@@ -532,7 +532,7 @@
 
       <div class="callout">
         <span class="h">1학기 Pi 실측 범위</span>
-        Raspberry Pi에 올린 것은 <strong>조기 종료 LSTM(Fixed θ / Dynamic θ)뿐</strong>이다. Full LSTM · Threshold · SDN은 Pi에 배포하지 않았으므로, "그냥 LSTM을 Pi + INT8로 돌리면 얼마나 빨라지나"의 <strong>Pi 실측 기준선은 1학기에 없다</strong>. FP32↔INT8 비교도 조기 종료 모델 한정이다. Full LSTM(EE 없음)을 Pi baseline으로 세워 Proposed와 지연을 맞비교한 것은 2학기 <span class="mono">redesign2</span>(9-feature)부터 — 거기서 Baseline INT8 0.747ms vs Proposed 0.595ms로 측정했다.
+        Raspberry Pi에 올린 것은 <strong>조기 종료 LSTM(Fixed θ / Dynamic θ)뿐</strong>이다. Full LSTM · Threshold · SDN은 Pi에 배포하지 않았으므로, "그냥 LSTM을 Pi + INT8로 돌리면 얼마나 빨라지나"의 <strong>Pi 실측 기준선은 1학기에 없다</strong>. FP32↔INT8 비교도 조기 종료 모델 한정이다. Full LSTM(EE 없음)을 Pi baseline으로 세워 Proposed와 지연을 맞비교한 것은 2학기 <span class="mono">redesign2</span>(7-feature)부터 — 최신(2026-08-30, class-weight-power=0.0) 실측은 Baseline INT8 0.746ms vs Proposed 0.540ms(둘 다 &lt;1ms).
       </div>
     </section>
 

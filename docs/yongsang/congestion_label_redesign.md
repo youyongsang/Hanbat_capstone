@@ -190,6 +190,8 @@ probe_hard_fail = channel_active AND  프로브가 한 번은 됐었음(ever_ok)
 
 ### 확정 모델 입력 (6개) — 구현됨 (`ap_features.py`)
 
+> **(업데이트 2026-08-29)** 아래는 6-feature 시절 기록. `sta_tx_bitrate_mean`이 **7번째 입력으로 승격**됨 — 5개 랜덤 시드 검증에서 occ 60~72% 구간의 label 2 vs 3을 Cohen's d=0.52로 가르는 것이 확인됨(가설 "혼잡할수록 bitrate 하락"은 실측과 반대지만 변별력은 유효). 아래 §"`sta_tx_bitrate_*` 시도 → 뺌" 단락의 결론은 이 재검증으로 뒤집혔다. 현행 feature 목록은 `project/utils/ap_features.py`가 authoritative.
+
 ```
 throughput_mbps
 channel_occupancy_percent
@@ -201,11 +203,11 @@ rssi_moving_avg_dbm
 
 제거: `latency_ms`, `jitter_ms`, `tx_failed` 별도 축, `connected_clients`.
 
-**`sta_tx_bitrate_*` 시도 → 뺌 (2026-08-28 진단)**: 6-feature 재학습에서 occ 60~72%의 label 2 vs 3이 나머지 6 feature로는 **평균이 완전히 동일**했다(occ 66/65, throughput 66/66, retry 0.30/0.30, rssi -35/-34). 라벨 차이는 오직 프로브 축에서 나오는데 프로브는 입력이 아님. `iw station dump`의 station별 `tx bitrate`를 feature로 넣어봤으나(diag_25 런) — `min`은 트래픽 없는 유휴 station이 MCS 0에 물려 상수, `mean`은 throughput을 그대로 추종(어려운 구간에선 오히려 L3가 높음). 채널 텔레메트리로 못 잡는 잔차는 in-band 프로브 없이 원리상 불가로 확인. `collect_metrics.py`는 두 컬럼을 CSV에 계속 기록(정보용)하되 모델 입력엔 미사용. 상세: `project/results/yongsang/ap_v2_redesign_threshold_comparison.txt`.
+**`sta_tx_bitrate_*` 시도 → 뺌 (2026-08-28 진단) → ~~뺌~~ 2026-08-29 재검증에서 `sta_tx_bitrate_mean` 승격**: 6-feature 재학습에서 occ 60~72%의 label 2 vs 3이 나머지 6 feature로는 **평균이 완전히 동일**했다(occ 66/65, throughput 66/66, retry 0.30/0.30, rssi -35/-34). 8/28 단일 진단에서는 `min`이 유휴 station 때문에 상수, `mean`이 throughput 추종이라 뺐으나 — **8/29 다중 시드(5개) 검증에서 `sta_tx_bitrate_mean`이 exit-loss 가중치와 무관하게 6-feature보다 Label3 F1 +5~11pt, occ 60~72%에서 Cohen's d=0.52**로 갈라짐이 확인되어 7번째 입력으로 승격. (방향은 실측과 반대 — 부하 테스트라 혼잡 구간에서 오히려 bitrate 오름 — 이지만 변별력은 유효.) `sta_tx_bitrate_min`은 여전히 미사용(CSV 기록만). 상세: `.work-log/current.md` 2026-08-29 2차 체크포인트.
 
-모델의 일: `{occupancy, retry_ratio, throughput, RSSI×3}`로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제.
+모델의 일: `{occupancy, retry_ratio, throughput, RSSI×3, sta_tx_bitrate_mean}`(7개)로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제.
 
-> **6개는 lean함**: 모델이 볼 게 적어짐 = 재설계 의도(정답 못 읽고 진짜 예측). RSSI 3개는 서로 상관이라 실질 신호는 ~4개.
+> **여전히 lean함**: 모델이 볼 게 적음 = 재설계 의도(정답 못 읽고 진짜 예측). RSSI 3개는 서로 상관이라 실질 신호는 ~5개.
 
 ## 6. 구현 순서
 
