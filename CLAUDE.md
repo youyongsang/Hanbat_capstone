@@ -202,7 +202,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석.
 4. `docs/yongsang/ap_crash_analysis.md` — AP 반복 크래시 원인 분석.
 5. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포 재설계(staged → unified If 노드 → INT8 재조립). Pi latency 주장은 이 문서 결론을 따른다.
-6. `docs/capstone1_summary.html` — 1학기(4-feature 시뮬레이션) 활동·지표 정리.
+6. `docs/capstone1_summary.html` — 1학기(4-feature 시뮬레이션) 활동·지표 정리. `docs/yongsang/capstone2_vacation_summary.html` — 2학기 방학(2026-08-21~30) 개발 흐름 정리(데이터 실측·라벨 재설계 2회·power=0.0 재검증·SDN 논문 재구현·라이브 데모·되돌린 결정 4건).
 7. `project/models/ap_early_exit_lstm.py`, `project/utils/ap_dataloader.py` — 실제 코드 흐름.
 8. `project/README_AP_V2.md`, `docs/yongsang/congestion_label_criteria.md` — **stale (9-feature·weighted-sum 시절).** 역사적 맥락용으로만.
 

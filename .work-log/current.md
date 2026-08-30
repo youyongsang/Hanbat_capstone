@@ -79,9 +79,17 @@ Pi live_congestion.py --raw 실측 라벨 전이:
 - occ 50~77% 경계에서 원시 예측 튐 (label 1/2/3 경계 노이즈) — `demo_server.py`는 `CONFIRM=5`로 설정(30M 심각 ~58초 연속). 원시 패널은 그대로 노출.
 - CONFIRM=5 재실행 확인: 확정 라벨 변경 16회 vs 원시 22회, 30M 심각 ~58초 연속. AP 크래시 없음(up 2h).
 
+### 방학 개발 흐름 정리 (`docs/yongsang/capstone2_vacation_summary.html`)
+"이번 방학 진행 흐름 html" 요청. `docs/capstone1_summary.html`(1학기)의 2학기 판.
+- 6개 phase 타임라인 (데이터 실측 → 라벨 재설계 → 본수집·ONNX → 7-feature·시드 → power=0.0·SDN 재구현 → 라이브·데모), 8/21~8/30 커밋 히스토리 기반.
+- 결과 스냅샷(정확도 90~92% / 지연 0.54ms / 라이브 검증), 발표 목표 대비(목표1 미달·목표2 달성).
+- **되돌린 결정 4건** 별도 섹션 (SDN 가중치 승격→철회, occupancy 스무딩→폐기, power 절벽 가정→소멸, 1차 데이터→포기).
+- 아티팩트: "방학 개발 흐름" https://claude.ai/code/artifact/d3948502-2ebc-43b9-b1f4-237acf4c1b3b (repo에도 standalone HTML 저장, CLAUDE.md 참고문서 목록에 추가).
+
 ### 남은 것
 - Pi 정확도 95% (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계.
-- (선택) 데모를 Pi에서 서빙 — 지금은 노트북(폰 SSH·iperf 대상이라 노트북이 자연스러움).
+- 데모 대시보드 팀 구현 (`project/demo/API.md` 기준).
+- 밴드 스티어링 (발표 슬라이드7 최종 목표).
 
 ## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
 

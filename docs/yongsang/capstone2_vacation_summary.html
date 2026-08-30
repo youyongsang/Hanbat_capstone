@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2학기 방학 개발 흐름 — AP 혼잡 감지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    color-scheme: light;
+    --paper:#f3f5f8; --surface:#ffffff; --surface-2:#eef1f5;
+    --ink:#16202b; --ink-2:#47566a; --muted:#8a95a3; --rule:#dde2e9; --rule-2:#c8d0da;
+    --accent:#2563c9; --accent-soft:#e4ecfa;
+    --l0:#2f9e5e; --l1:#c9982a; --l2:#d1712c; --l3:#cf3a40;
+    --warn:#b5462e; --warn-soft:#f8e9e4;
+    --f-display:"Spectral",Georgia,serif;
+    --f-body:"IBM Plex Sans",-apple-system,"Segoe UI",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --paper:#0e1319; --surface:#151c24; --surface-2:#1b232d;
+      --ink:#e7ecf2; --ink-2:#a7b3c1; --muted:#6c7885; --rule:#28323d; --rule-2:#37424f;
+      --accent:#5b93e6; --accent-soft:#1a2637;
+      --l0:#43b978; --l1:#d9ad48; --l2:#e08a4a; --l3:#e0565b;
+      --warn:#e08267; --warn-soft:#2a1c17;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:#0e1319; --surface:#151c24; --surface-2:#1b232d;
+    --ink:#e7ecf2; --ink-2:#a7b3c1; --muted:#6c7885; --rule:#28323d; --rule-2:#37424f;
+    --accent:#5b93e6; --accent-soft:#1a2637;
+    --l0:#43b978; --l1:#d9ad48; --l2:#e08a4a; --l3:#e0565b;
+    --warn:#e08267; --warn-soft:#2a1c17;
+  }
+
+  *{box-sizing:border-box}
+  html{text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--f-body);font-size:16px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--accent-soft)}
+  a{color:var(--accent)}
+  .page{max-width:788px;margin:0 auto;padding:clamp(30px,6vw,68px) clamp(18px,5vw,34px) 100px}
+
+  .eyebrow{
+    font-family:var(--f-mono);font-size:12px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 16px;
+  }
+  h1{
+    font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5.2vw,46px);
+    line-height:1.12;letter-spacing:-.012em;text-wrap:balance;margin:0 0 18px;
+  }
+  .lede{font-size:18.5px;color:var(--ink-2);max-width:60ch;margin:0 0 12px}
+  .lede b{color:var(--ink);font-weight:600}
+  .span{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-top:6px}
+
+  /* stat band */
+  .stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--rule);border:1px solid var(--rule);border-radius:12px;overflow:hidden;
+    margin:36px 0 8px;
+  }
+  .stat{background:var(--surface);padding:17px 18px}
+  .stat .k{font-size:12px;color:var(--muted);margin:0 0 5px}
+  .stat .v{font-family:var(--f-mono);font-size:21px;font-weight:500;color:var(--ink);line-height:1.2}
+  .stat .v small{font-size:12px;color:var(--ink-2)}
+  @media (max-width:560px){.stats{grid-template-columns:1fr}}
+
+  /* goals */
+  .goals{display:grid;gap:10px;margin:26px 0}
+  .goal{
+    display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:baseline;
+    background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:13px 16px;
+  }
+  .goal .tag{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+  .goal .txt{font-size:14.5px}
+  .goal .mark{font-family:var(--f-mono);font-size:12.5px;font-weight:500;white-space:nowrap}
+  .goal.ok{border-left:3px solid var(--l0)} .goal.ok .mark{color:var(--l0)}
+  .goal.no{border-left:3px solid var(--l1)} .goal.no .mark{color:var(--l1)}
+
+  h2{
+    font-family:var(--f-display);font-weight:600;font-size:25px;letter-spacing:-.005em;
+    margin:56px 0 6px;padding-top:10px;border-top:1px solid var(--rule);
+  }
+  h2 .n{font-family:var(--f-mono);font-size:13px;color:var(--accent);font-weight:500;margin-right:10px}
+  .sec-sub{color:var(--muted);font-size:13.5px;margin:0 0 22px}
+
+  /* timeline */
+  .tl{position:relative;margin:0;padding:0}
+  .tl::before{
+    content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--rule-2);
+  }
+  .ev{position:relative;padding:0 0 26px 34px}
+  .ev::before{
+    content:"";position:absolute;left:0;top:6px;width:16px;height:16px;border-radius:50%;
+    background:var(--surface);border:2.5px solid var(--accent);
+  }
+  .ev.rev::before{border-color:var(--warn)}
+  .ev .date{
+    font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.02em;
+    display:block;margin-bottom:3px;
+  }
+  .ev .hd{font-weight:600;font-size:15.5px;color:var(--ink);margin-bottom:3px}
+  .ev p{margin:0;font-size:14px;color:var(--ink-2)}
+  .ev p + p{margin-top:7px}
+  .ev code{
+    font-family:var(--f-mono);font-size:.88em;background:var(--surface-2);
+    border:1px solid var(--rule);border-radius:4px;padding:.06em .38em;
+  }
+  .ev .tick{color:var(--l0);font-weight:600}
+
+  /* reversed decisions */
+  .rev-box{
+    background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);
+    border-radius:12px;padding:20px 22px;margin:24px 0;
+  }
+  .rev-box h3{
+    font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--warn);margin:0 0 14px;
+  }
+  .rev-box ul{margin:0;padding:0;list-style:none;display:grid;gap:13px}
+  .rev-box li{display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:14px;align-items:baseline}
+  .rev-box li .x{color:var(--warn);font-family:var(--f-mono)}
+  .rev-box li b{color:var(--ink)}
+
+  /* mini table */
+  .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;margin:20px 0}
+  table{width:100%;border-collapse:collapse;background:var(--surface);font-size:13.5px;min-width:440px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);white-space:nowrap}
+  thead th{
+    font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;background:var(--surface-2);
+  }
+  td.num,th.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+  tbody tr:last-child td{border-bottom:none}
+  tr.hl td{background:var(--accent-soft)}
+  .scale{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;transform:translateY(1px)}
+
+  .lvbar{display:flex;height:7px;border-radius:999px;overflow:hidden;margin:6px 0 2px;max-width:320px}
+  .lvbar i{flex:1}
+  .lvbar i:nth-child(1){background:var(--l0)} .lvbar i:nth-child(2){background:var(--l1)}
+  .lvbar i:nth-child(3){background:var(--l2)} .lvbar i:nth-child(4){background:var(--l3)}
+  .lvleg{font-family:var(--f-mono);font-size:11px;color:var(--muted);display:flex;gap:13px}
+
+  .next{display:grid;gap:9px;margin:22px 0}
+  .next div{
+    background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:12px 15px;
+    font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline;
+  }
+  .next div .a{color:var(--accent);font-family:var(--f-mono)}
+
+  footer{
+    margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
+    font-family:var(--f-mono);font-size:12px;color:var(--muted);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+
+<div class="page">
+
+  <p class="eyebrow">Capstone Design II · 방학 개발 로그</p>
+  <h1>규칙으로 못 잡는 혼잡을, 학습으로 — 방학 동안의 흐름</h1>
+  <p class="lede">
+    <b>GL.iNet Opal AP</b>에서 직접 수집한 실측 데이터로, 채널 상태 시계열만 보고 무선 혼잡도를
+    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 8월 30일
+    라이브 데모까지, <b>재설계 두 번과 되돌린 결정 네 번</b>을 거친 기록.
+  </p>
+  <p class="span">2026-08-21 → 08-30 · 브랜치 <code style="font-family:var(--f-mono)">capstoneDesign2</code></p>
+
+  <div class="stats">
+    <div class="stat">
+      <p class="k">분류 정확도 (5시드 평균, test 310창)</p>
+      <p class="v">90~92% <small>Base 92.0 · EE 90.7 · SDN 90.4</small></p>
+    </div>
+    <div class="stat">
+      <p class="k">추론 지연 (Raspberry Pi, INT8)</p>
+      <p class="v">0.54 ms <small>EE Fixed θ · 전부 &lt;1ms</small></p>
+    </div>
+    <div class="stat">
+      <p class="k">라이브 감지</p>
+      <p class="v">검증 <small>실측 부하 → 심각 ~58초 지속</small></p>
+    </div>
+  </div>
+
+  <div class="goals">
+    <div class="goal no">
+      <span class="tag">목표 1</span>
+      <span class="txt">Raspberry Pi 환경에서 혼잡 분류 정확도 <b>95% 이상</b></span>
+      <span class="mark">미달 · 90~92%</span>
+    </div>
+    <div class="goal ok">
+      <span class="tag">목표 2</span>
+      <span class="txt">추론 지연 <b>&lt; 1 ms</b></span>
+      <span class="mark">달성 · 0.54~0.75ms</span>
+    </div>
+  </div>
+
+
+  <h2><span class="n">01</span>데이터 — 실측 라인을 세우다</h2>
+  <p class="sec-sub">1차 데이터의 진위 문제를 확인하고, 처음으로 "실제 AP 장비 실측" 목표를 만족시켰다.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-08-21 ~ 22</span>
+      <div class="hd">첫 라이브 수집 세션</div>
+      <p>GL.iNet Opal(GL-SFT1200)에 SSH로 붙어 <code>iw</code> 텔레메트리를 폴링, 91행 → 834행.
+      Windows ping 파싱 버그, station 재연결 시 throughput 스파이크 버그를 잡고 학습의 class collapse를 고쳤다.</p>
+    </div>
+    <div class="ev rev">
+      <span class="date">2026-08-23 ~ 24</span>
+      <div class="hd">1차 데이터(<code>ap_cleaned_strict</code>)는 실측이 아니었다</div>
+      <p>방학 초 "실제 AP 실측"으로 알고 쌓은 9-feature 파이프라인이 실은 인터넷 공개 데이터 가공본임을
+      확인. 재라벨링·재학습은 하지 않기로 결정하고, 2차 실측 라인(<code>ap_metrics_v2</code>)을 공식 진행 라인으로 세웠다.
+      브랜치를 <code>capstoneDesign2</code>로 정리(1학기 4-feature 코드 제외).</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-24 ~ 26</span>
+      <div class="hd">AP 반복 크래시의 원인을 잡다</div>
+      <p>부하만 걸면 AP가 죽는 문제. "몇 대 붙었나"가 아니라 <b>"각 폰이 대칭적으로 붙었나"</b>가
+      핵심 변수 — 신호 강한 폰이 채널을 독점하고 약한 폰이 굶는 Wi-Fi capture effect. combo 부하 스윕에서
+      60M/60M가 안정/label-3 스위트스팟으로 굳음(<code>ap_crash_analysis.md</code>).</p>
+    </div>
+  </div>
+
+
+  <h2><span class="n">02</span>라벨 재설계 — 순환논리를 끊다</h2>
+  <p class="sec-sub">occupancy 단일 문턱으로 라벨을 만들면 "occupancy 문턱 vs 모델" 비교가 순환이 된다. 라벨의 축을 바꿨다.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-08-27</span>
+      <div class="hd">가중합 → <code>max(표준 앵커)</code> + victim 프로브</div>
+      <p><code>congestion_score = max(occupancy, jitter, loss, latency)</code>. 각 축을 국제 표준
+      문턱(Cisco WLAN 설계 가이드, ITU-T Y.1541 / G.114)에 piecewise-linear 매핑. <code>max</code>라
+      가중치 논쟁이 원천 봉쇄된다 — "label 3 = 최소 한 축이 표준 심각 문턱 돌파".</p>
+      <p>jitter·loss는 부하와 별개로 흘리는 <b>경량 UDP victim 스트림</b>이 그 스트림에서 직접 겪은 값
+      ("이 혼잡 속에서 VoIP 한 통이 얼마나 깨지나"). 채널이 바쁜데 victim 경로가 완전히 죽으면 그 축을 1.0으로 본다(실패 = max).</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-27</span>
+      <div class="hd">9 → 6 feature: 정답을 입력에서 뺐다</div>
+      <p><code>latency_ms</code>·<code>jitter_ms</code>를 <b>모델 입력에서 제거</b>. 이들은 라벨을 만드는
+      축이자 배포 시점엔 없는 측정(협조 싱크 필요). 모델에 주면 정답 leakage — 모델은
+      <b>AP-side 텔레메트리만 보고 victim QoS가 깨지는지 예측</b>해야 한다. 이게 이 프로젝트가 규칙으로 못 하는 진짜 예측 문제인 이유.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-27</span>
+      <div class="hd">유선 관리채널 + 지속 SSH poller</div>
+      <p>루프마다 SSH 핸드셰이크를 반복하던 것이 혼잡할수록 자기참조적으로 느려졌다(폴링 지연 최대 156초).
+      지속 세션 하나로 스트리밍하고, 수집기를 라즈베리 파이(유선)로 옮겨 관리 트래픽을 무선 채널에서 분리.</p>
+    </div>
+  </div>
+
+
+  <h2><span class="n">03</span>본수집 · ONNX 배포 · 비교 구조</h2>
+  <p class="sec-sub">라벨 3(심각) 표본을 채우고, Early Exit을 파이에서 실제로 빠르게 돌게 만들었다.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-08-28</span>
+      <div class="hd">본수집 완료 — label 3 = 202개</div>
+      <p>두 폰 SSH 원격제어(<code>ramp_load_remote.sh</code>) + step 프로파일(10→40M) 반복 수집.
+      AP 크래시 2회, 프로브 서버 누락 사고를 넘겨 <code>ap_metrics_v2_redesign2</code> 2115행 확보.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-28</span>
+      <div class="hd">ONNX Early Exit 배포 재설계</div>
+      <p>세션 3개로 쪼갠 staged 방식이 baseline보다 <b>느렸다</b> — 작은 모델이라 세션 호출당 고정
+      오버헤드가 LSTM 연산보다 컸다. <code>torch.jit.script</code> + ONNX <code>If</code> 노드
+      <b>단일 그래프</b>로 → INT8은 stage별 양자화 후 손수 재조립(양자화 도구가 If 서브그래프의 LSTM을 건너뛰는 한계 우회).
+      <span class="tick">baseline 대비 대략 −60%</span>.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-28</span>
+      <div class="hd">Baseline · SDN-style 비교 첫 구현</div>
+      <p>Early Exit 없는 full LSTM(정확도 상한 기준)과 SDN 방식 조기종료를 이 브랜치에 처음 붙임.</p>
+    </div>
+  </div>
+
+
+  <h2><span class="n">04</span>7-feature 승격 · 시드 고정 · 목표 재확인</h2>
+  <p class="sec-sub">"단일 실행 비교가 노이즈"였던 전례를 여러 번 겪고, 검증 방식을 바로잡았다.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-08-29</span>
+      <div class="hd"><code>sta_tx_bitrate_mean</code>을 7번째 입력으로</div>
+      <p>다른 6개 feature 평균이 label 2/3 사이에 완전히 동일해지는 occ 60~72% 구간에서, station tx
+      bitrate가 두 라벨을 Cohen's d=0.52로 가른다. 5개 랜덤 시드로 검증 — exit-loss 가중치와 무관하게 7-feature가 항상 이겼다(+5~11pt).</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-29</span>
+      <div class="hd">학습 파이프라인에 <code>--seed</code> 추가</div>
+      <p>그때까지 시드 고정이 아예 없었다. 같은 설정을 시드만 바꿔 돌리니 test 정확도 91.3% → 80.0%로
+      요동. 이후 모든 하이퍼파라미터 A/B는 <b>다중 시드로만</b>.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-29</span>
+      <div class="hd">발표자료로 목표를 다시 봤다</div>
+      <p>정량 목표는 <b>정확도 95%</b>와 <b>지연 &lt;1ms</b> 둘뿐. SDN 비교는 원래 목표가 아니고,
+      핵심 기여는 "간섭 감지에 Early Exit LSTM 구조를 최초 적용". confusion matrix 분해 결과
+      <b>label 2 오답이 label 3보다 많아</b> — 95% 목표엔 label 2 개선이 더 효율적.</p>
+    </div>
+  </div>
+
+
+  <h2><span class="n">05</span>class-weight-power 재검증 · 전체 승격</h2>
+  <p class="sec-sub">2026-08-23에 굳힌 기본값 하나가, 두 번의 데이터 변화를 견디고도 재검증 안 돼 정확도를 흘리고 있었다.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd">"절벽"은 4-feature 시절 것이었다</div>
+      <p><code>power=1.0</code>은 train label-3이 23개뿐이던 옛 데이터에서, "power를 낮추면 label 3
+      recall이 0%로 떨어지는 절벽" 때문에 정한 값. 지금은 train label-3이 141개 —
+      절벽이 사라졌다. 재스윕(0.0~1.0, 3시드씩): <b><code>power=0.0</code>(가중치 없음)이
+      정확도(91.3% vs 87.0%)와 label 3 F1(69.8% vs 63.2%)을 동시에</b>, 트레이드오프 없이 이겼다.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd">전체 승격 + 5시드 특성화</div>
+      <p>세 모델 재학습(Baseline·SDN 3시드, EE 5시드), val balanced acc 최고를 배포.
+      Baseline 배포 체크포인트를 seed0 → seed3으로 교체(seed0의 높은 test 정확도는 운 좋은 draw였다).</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd">SDN을 논문대로 다시 구현</div>
+      <p>기존 "SDN-style"은 우리 모델과 백본·헤드가 100% 같아 비교 모델로 성립하지 않았다.
+      Kaya et al.(Shallow-Deep Networks, ICML 2019) 공식 코드대로 — pooling internal classifier,
+      커리큘럼 램프 depth-weighted loss, val 캘리브레이션 confidence threshold. base 백본만 공유(통제 변수).</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd">Raspberry Pi INT8 재측정</div>
+      <p>Baseline 0.746 / SDN 0.572 / Early Exit <b>0.540</b> / Dynamic 0.555 ms — 전부 목표2(&lt;1ms).
+      power=1.0 대비 EE가 0.64→0.54ms로 빨라진 건 exit3 도달률이 52%→19%로 줄어든 결과.</p>
+    </div>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>모델 (5시드 평균)</th><th class="num">정확도</th><th class="num">Label 3 F1</th><th class="num">Pi INT8</th></tr></thead>
+      <tbody>
+        <tr><td><span class="scale" style="background:var(--accent)"></span>Baseline LSTM (EE 없음)</td><td class="num">92.0% ±0.7</td><td class="num">66.1% ±2.3</td><td class="num">0.746 ms</td></tr>
+        <tr><td><span class="scale" style="background:var(--l2)"></span>SDN (Kaya et al. 2019)</td><td class="num">90.4% ±1.4</td><td class="num">60.4% ±8.1</td><td class="num">0.572 ms</td></tr>
+        <tr class="hl"><td><span class="scale" style="background:var(--l0)"></span>Proposed Early Exit</td><td class="num">90.7% ±0.7</td><td class="num">64.5% ±5.5</td><td class="num">0.540 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sec-sub">정확도는 셋이 ±0.7 안에서 겹친다. 갈리는 건 <b>희소 클래스 안정성</b>(논문 SDN은 F1 편차가 2배 — per-model 캘리브레이션이 작은 검증셋에서 취약)과 <b>속도</b>(우리 exit head가 더 가벼움). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".</p>
+
+
+  <h2><span class="n">06</span>라이브 감지 · 데모</h2>
+  <p class="sec-sub">모델·비교는 됐지만 "실제 AP 데이터로 현 상태가 혼잡인지 실시간 감지"하는 루프가 없었다.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd"><code>live_congestion.py</code> — 라이브 추론 루프</div>
+      <p>수집기의 SSH poller를 재사용해 학습과 동일하게 feature를 계산(victim 프로브 없음) →
+      window 10 → ONNX. "스파이크가 아닌 현 상태"를 4겹으로 안정화: 10-step LSTM window(주),
+      occupancy 3폴링 median, retry/rssi 5폴링 rolling, 라벨 히스테리시스.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd">Pi 이식 + 부하 테스트로 검증</div>
+      <p>Pi가 직접 AP에 SSH하며 라이브 추론. 두 폰에 iperf3 계단 부하를 걸자 라벨이
+      정상 → 경고 → 혼잡 → <b>심각</b>으로 올라가고, 부하를 끄면 정상으로 복귀. 심각(3)은 occ 63~76%,
+      retry 40~54%에서 잡혔다 — <b>occupancy 단일 문턱(75%)으로는 못 잡는 구간</b>.</p>
+      <div class="lvbar"><i></i><i></i><i></i><i></i></div>
+      <div class="lvleg"><span>정상</span><span>경고</span><span>혼잡</span><span>심각</span></div>
+    </div>
+    <div class="ev">
+      <span class="date">2026-08-30</span>
+      <div class="hd">데모 웹 대시보드 + 팀 구현 스펙</div>
+      <p>버튼으로 계단 부하를 걸고 모델의 실시간 예측을 보는 웹(<code>project/demo/</code>).
+      화면은 <b>모델 원시 출력</b>과 <b>debounce 안정화 라벨</b>을 나란히 — 후처리가 모델을 겉으로 좋아
+      보이게 하지 않도록. 팀이 프로덕션급으로 다시 짤 수 있게 API·모델 계약을 <code>API.md</code>에 고정.</p>
+    </div>
+  </div>
+
+
+  <h2>되돌린 결정 — 그리고 왜</h2>
+  <p class="sec-sub">정직한 기록. 매번 "성급한 결론"이 재확인 질문이나 다중 시드 검증으로 바로잡혔다.</p>
+
+  <div class="rev-box">
+    <h3>Reversed</h3>
+    <ul>
+      <li><span class="x">✗</span><span><b>SDN 스타일 exit-loss 가중치 승격</b> → 단일 실행 비교였고 시드만 바꾸니 F1이 66.7%→51.1%로 요동. 다중 시드에서 균등 가중치와 차이가 표준편차 이하 → 철회. (이 사건이 <code>--seed</code> 추가의 계기.)</span></li>
+      <li><span class="x">✗</span><span><b>occupancy 라벨링 스무딩</b>(window 5·3) → 경계 노이즈는 절반 줄었지만 같은 스무딩 값이 다른 앵커 경계에도 쓰여 새 오답 발생. 순효과 없음(두더지 잡기) → 폐기.</span></li>
+      <li><span class="x">✗</span><span><b><code>class-weight-power=1.0</code>의 "절벽" 가정</b> → 4-feature·23샘플 시절 근거. 데이터가 6배 늘며 절벽 소멸 — 재검증 안 해 계속 손해. → 0.0.</span></li>
+      <li><span class="x">✗</span><span><b>1차 데이터 재사용</b> → <code>ap_cleaned_strict</code>가 실측이 아님을 확인, 재라벨링 포기하고 2차 라인으로.</span></li>
+    </ul>
+  </div>
+
+
+  <h2>남은 것</h2>
+  <div class="next">
+    <div><span class="a">01</span><span><b>Pi 정확도 95%</b> (현재 90~92%). label 2는 occ 55~57% 앵커 경계 측정 노이즈(데이터로 안 고쳐짐), label 3는 심각의 75%가 victim 프로브 손실로 결정되는데 모델이 그 축을 못 봄 — AP-side 대리 신호 탐색이 필요.</span></div>
+    <div><span class="a">02</span><span><b>데모 대시보드 팀 구현</b> — 동작하는 프로토타입 + <code>project/demo/API.md</code>(계약) 기준. 백엔드 프레임워크·설정 외부화·안전장치·Pi 배포.</span></div>
+    <div><span class="a">03</span><span><b>밴드 스티어링</b> — 발표 슬라이드 7의 최종 목표("혼잡 판단 → 채널 전환 명령 후보 생성"). 라벨 스트림을 소비하는 별 모듈로.</span></div>
+  </div>
+
+
+  <footer>
+    <span>ap_metrics_v2_redesign2 · Early-Exit LSTM · GL.iNet Opal AP</span>
+    <span>2026-08-30 · Claude Code 세션 기록</span>
+  </footer>
+
+</div>
+</body></html>
