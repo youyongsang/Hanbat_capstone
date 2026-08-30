@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + 5시드 특성화 + SDN 논문 충실 재구현(7~9차) + 발표자료 비교표 정리 + 문서 stale 감사(10차)**. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). 커밋 `a3f9bde`~`d914348` 푸시. 아티팩트 3종("Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교"). 아래 "10차"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + SDN 논문 재구현 + 최소 라이브 추론 스크립트 + Pi 이식 + 부하 테스트 성공(7~11차)**. `live_congestion.py`가 Pi에서 실제 AP 데이터로 라이브 혼잡 감지 — 부하 8M×2로 경고/혼잡/**심각**까지 탐지, 부하 종료 시 정상 복귀 확인. (1차 부하 시도는 S21 약신호로 AP 크래시 → 재부팅 후 성공.) **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). 커밋 `a3f9bde`~`d914348` 푸시. 아티팩트 3종("Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교"). 아래 "10차"부터 확인.
 
 ## 11차 (2026-08-30 후속4) — 최소 라이브 추론 스크립트
 
@@ -20,12 +20,29 @@ laptop·**Pi 둘 다** 실행 확인. Pi(`capstone@192.168.8.109`)에서 `~/ap_p
 - 번들에 복사: `project/deploy/raspberry_pi_ap_v2/{collect_metrics.py, live_congestion.py, scaler_params.json}` (onnx는 이미 있음). Pi `~/ap_pi_v2/`에 scp.
 - **Pi→AP SSH는 이미 됨** (별도 키 셋업 불필요 — 확인함).
 
-### 남은 것: 부하 테스트 (폰 필요)
-1. 폰(191/S26) Termux sshd 기동 → `ssh s21 echo ok` / `ssh s26 echo ok`
-2. laptop: `iperf3 -s -p 5201 &` + `iperf3 -s -p 5202 &`
-3. 터미널 A: `ssh capstone@192.168.8.109 "cd ~/ap_pi_v2 && python3 -u live_congestion.py --raw"`
-4. 터미널 B: `bash project/scripts/ramp_load_remote.sh step` (기본 target=laptop .226, step 10/20/30/40M×60s)
-5. A에서 라벨이 정상→경고→혼잡→(심각) 상승하는지 + occ 수치 상승 관찰. (AP 크래시 주의: 45M 금지, 240s 이내)
+### 부하 테스트 완료 — 라이브 혼잡 감지 실측 성공 (`ap_v2_redesign2_live_detection_20260830.txt`)
+1차 시도(`ramp_load_remote.sh step`, 10/20/30/40M×60s)는 **~120초에 AP 크래시** — S21(191)이 STALE(약신호)라 capture effect. AP 전원 재부팅.
+2차: S21 신호 회복(-30dBm, S26 -23dBm 대칭) 후 **두 폰 동시 iperf3 UDP -b 8M -l 1400 × 40s (합계 ~16M)** — AP 크래시 없이 완주.
+
+Pi live_congestion.py --raw 실측 라벨 전이:
+
+| 시각 | 확정 라벨 | occ | 상황 |
+|---|---|---:|---|
+| 18:50:54 | 경고(1) | 50% | 부하 시작 ~2초 후 |
+| 18:50:58 | **심각(3)** | 67% | 채널 급악화 |
+| 18:51:06 | **심각(3)** | 63%, retry 43% | |
+| 18:51:22 | 경고(1) | 55% | 부하 감소 |
+| 18:51:46 | 정상(0) | 37%, thr 0M | 부하 종료 후 복귀 |
+
+라벨 분포: 정상 38 / 경고 48 / 혼잡 31 / **심각 21**.
+
+**검증됨**:
+- 실제 AP 텔레메트리로 **현 상태(스파이크 아님) 혼잡 라이브 감지** — 부하 ON→경고/혼잡/심각, OFF→정상 복귀.
+- **심각(3)을 occ 63~73%에서 탐지** — occupancy 단독 문턱(75%)으론 못 잡는 구간을 학습 모델이 잡음. 발표 핵심 포인트가 라이브로 증명됨.
+- early-exit 동작(idle exit1, 혼잡/심각 exit2/3), 히스테리시스가 경계(occ 50~73%) 원시 예측 튐을 확정 라벨로 안정화.
+
+### 남은 것
+- **부하 20M+ / 심각 지속 구간 더 길게** 재현 (이번엔 8M로 짧게 — AP 크래시 방지 우선했음). S21 신호 유지가 관건.
 - 데모 대시보드: 이 루프 위에 백엔드 REST+SSE / 대시보드 / 부하 에이전트 3컴포넌트 (`demo_api_spec.md`).
 
 ## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
