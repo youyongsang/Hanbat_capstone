@@ -4,12 +4,26 @@ AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-30 갱신 3차 — class
 
 | 모델 | Pi INT8 avg(ms) | p50 | p95 | 정확도(fp32) | Label3 recall | Label3 F1 | exit 1/2/3 |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Baseline(EE 없음)       | 0.739 | 0.738 | 0.748 | 92.3% | 58.1% | -     | -/-/100%        |
-| SDN-style               | 0.534 | 0.535 | 0.821 | 90.6% | 48.4% | -     | 33.9/36.5/29.7% |
+| Baseline(EE 없음)       | 0.746 | 0.745 | 0.754 | 91.6% | 58.1% | 65.5% | -/-/100%        |
+| SDN-style               | 0.534 | 0.535 | 0.821 | 90.6% | 48.4% | 62.5% | 33.9/36.5/29.7% |
 | Proposed Fixed theta    | 0.540 | 0.563 | 0.858 | 90.6% | 54.8% | 68.0% | 30.3/50.3/19.4% |
 | Proposed Dynamic theta  | 0.555 | 0.613 | 0.913 | 91.0% | 54.8% | 69.4% | 31.9/57.7/10.3% |
 
 (INT8 직접 정확도: Fixed 90.3% / F1 65.3%, Dynamic 90.6% / F1 66.7%.)
+
+=== 4차 (2026-08-30 후속) — Baseline·SDN 5시드 특성화 ===
+
+Proposed EE만 5시드로 특성화했던 걸 Baseline·SDN도 동일하게(power=0.0, 시드 0~4):
+
+| 모델 | 5시드 test 정확도 | Label3 F1 | Label3 recall | val-best seed | 비고 |
+|---|---:|---:|---:|---|---|
+| Baseline   | 92.0% ±0.7 | 66.1% ±2.3 | 54.2% ±3.8 | **seed3 (val bal 89.0%)** | 기존 배포 seed0에서 교체 |
+| SDN-style  | 90.4% ±0.7 | 65.3% ±2.5 | 52.3% ±3.2 | seed0 (val bal 88.2%) | 배포 그대로 |
+| EE Fixed θ | 90.7% ±0.7 | 64.5% ±5.5 | 51.0% ±6.6 | seed4 (동률 중 F1 tiebreak) | 배포 그대로 |
+
+- **Baseline 배포 체크포인트 교체: seed0 → seed3.** seed0(val bal 87.8%)은 val-best가 아니었고 test 92.3%는 운 좋은 draw였음. seed3(val bal 89.0%, test 91.6%, L3 F1 65.5%)가 정직한 selector로는 배포 대상. ONNX 재수출·Pi 재측정 완료 — Pi INT8 0.746ms(seed0의 0.739와 오차범위, Baseline은 weight 무관 항상 3층).
+- **세 모델 5시드 평균이 거의 겹침** (92.0 / 90.4 / 90.7%, 전부 ±0.7). Baseline이 평균으로도 근소 1위지만 SDN·EE와의 차이(~1.5pt)는 시드 std 두 배 수준 — "Baseline이 확실히 낫다"보다 "셋이 비슷한데 Baseline이 약간 앞"이 정확한 서술. Label3 F1은 셋 다 64~66%로 사실상 동률.
+- SDN·EE는 배포 체크포인트 안 바뀜(val-best 그대로). SDN 재수출·재측정 불필요.
 
 power=1.0 -> 0.0 지연 변화: Baseline 0.756->0.739(≈동일, 항상 3층), SDN 0.636->0.534,
 Proposed Fixed 0.641->0.540(-16%), Dynamic 0.645->0.555(-14%). EE가 빨라진 이유는 명확 —
@@ -17,16 +31,18 @@ power=1.0은 exit3 도달률이 52%였는데 power=0.0은 19%(Fixed)/10%(Dynamic
 (라벨3 과보호가 없어지면서 뒤 exit로 미루는 경향이 줄었음). Pi 실측 exit 분포가 fp32 eval과
 정확히 일치(30.3/50.3/19.4 vs 30.0/50.6/19.4).
 
-해석:
-- **4개 모델 전부 목표2(<1ms) 달성.** Baseline도 0.74ms.
-- **이제 Proposed(EE)가 Baseline보다 명확히 빠름** (0.54 vs 0.74ms, -27%). power=1.0 라운드에선
-  EE가 Baseline과 비슷하거나 근소 우위였는데, 이번엔 격차가 벌어짐.
-- SDN(0.534) ≈ Proposed Fixed(0.540) — 속도는 사실상 동률. 정확도도 둘 다 90.6%. Proposed는
-  Label3 recall(54.8% vs 48.4%)·F1이 우위.
-- **정확도 1위는 Baseline(92.3%)** — Proposed는 -1.7pt. Proposed의 가치는 속도(-27%)·연산량
-  (구조상 ~절반)이지 정확도가 아니다. 이건 발표자료 프레이밍(목표2 속도, "간섭 감지 EE 최초 적용")과 일치.
-- 세 EE/SDN 모델은 3~5시드 중 val 최고 단일 체크포인트라 근소 차이(SDN vs Proposed)는 노이즈일
-  수 있음. Baseline/SDN 5시드 완전 특성화는 미실시.
+해석 (4차 특성화 반영):
+- **4개 모델 전부 목표2(<1ms) 달성.** Baseline 0.75ms, 나머지 0.53~0.56ms.
+- **Proposed(EE)가 Baseline보다 -28% 빠름** (0.54 vs 0.75ms). power=1.0 라운드에선 거의 동률이었는데
+  power=0.0에서 EE의 exit3 도달률이 52%→19%로 줄며 격차가 벌어짐.
+- SDN(0.534) ≈ Proposed Fixed(0.540) — 속도 동률. 6μs 차이는 exit 게이트 연산(EE는 엔트로피
+  Softmax→Log→p·logp→sum→비교, SDN은 max-confidence Softmax→max→비교).
+- **정확도: 5시드 평균으로 Baseline 92.0% / SDN 90.4% / EE Fixed 90.7% — 셋이 ±0.7 안에서 근소차.**
+  Baseline이 약간 앞서지만 "확실한 우위"는 아님. Label3 F1은 셋 다 64~66%로 동률. 배포 단일
+  체크포인트(Baseline seed3 91.6% / SDN seed0 90.6% / EE seed4 90.6%)는 test draw 편차가 있으니
+  5시드 평균을 기준 수치로 인용하는 게 정직.
+- **발표 프레이밍**: Proposed의 가치 주장은 정확도(평균으로 Baseline과 사실상 동급)가 아니라
+  속도(-28%)·연산량(구조상 ~절반) + "간섭 감지에 EE 구조 최초 적용". 95% 목표는 세 모델 공통 과제.
 
 ------------------------------------------------------------------------
 아래는 2차(2026-08-29, class-weight-power=1.0) 시점 기록 — 보존용.

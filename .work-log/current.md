@@ -1,5 +1,24 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 전체 승격 완료(7차 체크포인트)**: 재학습·평가·ONNX·**Pi INT8 재측정**·문서 전부 갱신. fp32: Baseline 92.3% / EE Fixed θ 90.6% / Dynamic θ 91.0%. Pi INT8: Baseline 0.739ms / EE Fixed 0.540ms / Dynamic 0.555ms / SDN 0.534ms (전부 <1ms, EE가 Baseline보다 -27%). 커밋 `a3f9bde` 푸시 완료(Pi 재측정 분은 별도 커밋 예정). 아래 "7차"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 전체 승격 + Baseline·SDN 5시드 특성화 완료(7~8차)**. **5시드 평균 정확도: Baseline 92.0% / SDN 90.4% / EE 90.7% (전부 ±0.7, 사실상 동급).** Baseline 배포 체크포인트를 seed0→seed3으로 교체(val-best), ONNX 재수출·Pi 재측정 완료. Pi INT8: Baseline 0.746 / EE Fixed 0.540 / Dynamic 0.555 / SDN 0.534ms (전부 <1ms). 커밋 `a3f9bde`·`5ec1180`·`16f1bbf` 푸시 완료. 아티팩트 "Class-Weight-Power Zero" 재게시. 아래 "8차"부터 확인.
+
+## 8차 (2026-08-30 후속) — Baseline·SDN 5시드 특성화, Baseline 배포 seed 교체
+
+7차에서 Proposed EE만 5시드로 특성화했던 걸 Baseline·SDN도 동일하게(power=0.0, 시드 0~4). `char_baseline_sdn_5seed.py`.
+
+| 모델 | 5시드 test 정확도 | Label3 F1 | Label3 recall | val-best seed (val bal) |
+|---|---:|---:|---:|---|
+| Baseline   | 92.0% ±0.7 | 66.1% ±2.3 | 54.2% ±3.8 | **seed3 (89.0%)** ← 기존 배포 seed0(87.8%)에서 교체 |
+| SDN-style  | 90.4% ±0.7 | 65.3% ±2.5 | 52.3% ±3.2 | seed0 (88.2%) — 배포 그대로 |
+| EE Fixed θ | 90.7% ±0.7 | 64.5% ±5.5 | 51.0% ±6.6 | seed4 — 배포 그대로 |
+
+### 핵심
+- **세 모델 정확도가 5시드 평균으로 사실상 동급** (92.0 / 90.4 / 90.7%, 전부 ±0.7 — 차이가 std의 2배 수준). Label3 F1도 64~66%로 동률. → "Baseline이 정확도 1위"라는 7차 서술은 **"셋이 비슷한데 Baseline이 약간 앞"으로 완화**. 배포 단일 체크포인트 숫자(Baseline seed3 91.6% 등)는 test draw 편차가 있으니 **5시드 평균을 기준 수치로 인용**.
+- **Baseline 배포 교체**: seed0(val bal 87.8%, test 92.3%)은 val-best가 아니었음 — 운 좋은 test draw. 정직한 selector(val balanced acc)로는 seed3(89.0%, test 91.6%, L3 F1 65.5%). 교체 후:
+  - eval report 재생성 (91.6%), 기존 seed0 report → `*_seed0_archived_20260830.txt`, 체크포인트 → `checkpoints/ap_v2_redesign2/archived_baseline_seed0_20260830/`
+  - `export_onnx_ap_baseline.py` 재실행, deploy 번들 sync, Pi `~/ap_pi_v2/` scp
+  - **Pi INT8 재측정: 0.746 / 0.752ms** (seed0의 0.739와 오차범위 — Baseline은 weight 값 무관 항상 3층)
+- SDN·EE는 val-best가 배포된 그대로라 재수출·재측정 불필요.
+- 문서 갱신: `ap_v2_redesign2_pi_latency_comparison.txt`(4차 섹션), `ap_v2_redesign2_pi_bench_power0_20260830.txt`(후속 섹션), `generate_ap_comparison.py`(하드코딩 + 5시드 평균) + 비교표 재생성, `CLAUDE.md`, 아티팩트.
 
 ## 7차 (2026-08-30) — power=0.0 전체 승격 (재학습·평가·ONNX·Pi 재측정·문서 전부 완료)
 
