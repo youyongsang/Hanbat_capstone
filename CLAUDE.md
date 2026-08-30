@@ -47,7 +47,8 @@
 
 ```text
 project/scripts/collect_metrics.py                     라이브 수집 (victim 프로브 ProbeRunner + 지속 SSH APPoller + congestion_score 계산)
-project/scripts/live_congestion.py                     실시간 혼잡 감지 라이브 추론 루프 (APPoller 재사용 → 7-feature → window 10 → scaler → ONNX INT8 → 라벨. victim 프로브 없음. 라벨 히스테리시스로 스파이크 억제)
+project/scripts/live_congestion.py                     실시간 혼잡 감지 라이브 추론 루프 (APPoller 재사용 → 7-feature → window 10 → scaler → ONNX INT8 → 라벨. victim 프로브 없음. 라벨 히스테리시스로 스파이크 억제). repo·Pi 번들 양쪽 동작. 2026-08-30 부하 테스트로 정상~심각 전 구간 라이브 검증 (`ap_v2_redesign2_live_*_20260830.txt`)
+project/demo/demo_server.py + demo.html                 데모 웹 대시보드 — 버튼으로 계단형 부하(두 폰 iperf3) 걸고 모델 실시간 혼잡 예측을 SSE로 표시. live_congestion 로직 재사용. `python project/demo/demo_server.py` → localhost:8000. 상세: project/demo/README.md
 project/scripts/metrics_v2_pi_redesign2_relabeled.csv  현행 raw CSV (2115행, raw label 3 202개) ← canonical
 project/scripts/metrics_v2.csv                         레거시 raw (5574행, 프로브·tx_packets 없음 + retry 3× 버그) — 사전학습/ablation용으로만
 project/scripts/remeasure_redesign.py                  raw feature에서 sub-score·라벨 전부 재계산 (재설계 공식 적용)

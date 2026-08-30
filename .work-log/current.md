@@ -48,9 +48,17 @@ Pi live_congestion.py --raw 실측 라벨 전이:
 
 **결과**: 확정 라벨 심각(3)이 **92 폴링 연속 = ~46~49초** 유지 (18:57:17~18:58:06). p(심각) 대부분 0.90~0.99. 부하 종료 직후 정상(0) 복귀 (window lag로 occ 하락 후 몇 폴링 심각 유지 — 정상 동작). AP 크래시 없음(up 21분, 20M×2=40M는 대칭 강신호에서 안전). 라벨 분포(전체): 정상 131 / 경고 125 / 혼잡 33 / 심각 101.
 
+### 데모 웹 대시보드 완성 (`project/demo/`)
+사용자 요청: "버튼으로 계단형 부하 걸고 모델이 실시간으로 혼잡 예측하는 걸 보여주는 간단한 웹사이트".
+
+- **`project/demo/demo_server.py`** (stdlib http.server + numpy/onnxruntime): `live_congestion.py` 로직 재사용(APPoller + 7-feature + ONNX) + SSE 스트림(`/events`) + `POST /load {rate:10M|20M|30M|off}`(두 폰 iperf3 제어) + `GET /signal`(폰 신호 대칭 확인). `iperf3 -s` 서버 자동 기동. 30M 상한.
+- **`project/demo/demo.html`** (서버가 서빙 = 동일 출처, CSP 무관): 큰 혼잡 레벨 카드(색상 코딩) + 4클래스 확률 바 + 7-feature 실시간 스트립 + `10/20/30M`·정지 버튼 + 폰 신호세기(비대칭 경고) + 90초 canvas 차트(레벨 + occ).
+- 전 엔드포인트 실측 테스트 통과: `/health` `{ready:true}`, `/signal` `{s21:-25, s26:-24, symmetric:true}`, `/events` SSE 정상, `POST /load 10M` → 두 폰 started → 라벨 정상→경고 추적 → `off` → 복귀.
+- `project/demo/README.md` 에 실행법·사전조건·주의(AP 크래시).
+
 ### 남은 것
-- 데모 대시보드: 라이브 루프 위에 백엔드 REST+SSE / 대시보드 / 부하 에이전트 3컴포넌트 (`demo_api_spec.md`).
 - Pi 정확도 95% (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계.
+- (선택) 데모를 Pi에서 서빙 — 지금은 노트북(폰 SSH·iperf 대상이라 노트북이 자연스러움).
 
 ## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
 
