@@ -1,19 +1,38 @@
-AP Early Exit LSTM (재설계 스키마, 본수집 2차) — occupancy 문턱 대비
-생성: 2026-08-28
-데이터: project\data\ap_metrics_v2_redesign2  (6 feature, window 10)
-소스: project/scripts/metrics_v2_pi_redesign2_relabeled.csv  2115행
-train 1437 / val 308 / test 310  (test label 0:95 1:67 2:117 3:31)
+AP redesign2 — 학습 모델 vs occupancy 단일 문턱 (심각 탐지)
+갱신: 2026-08-30 (power=0.0, 논문 충실 SDN, 5시드 val-best 배포 체크포인트)
+데이터: project/data/ap_metrics_v2_redesign2  test 310창 (label 0:95 / 1:67 / 2:117 / 3:31)
 
-=== 심각(label 3) 탐지: LSTM vs occupancy 단일 문턱 (test 310창) ===
-방법                     recall  precision     F1  (TP/FP/FN)
-LSTM (full model)       51.6%      66.7%   58.2%  (16/8/15)
-occ >= 65%               48.4%      34.1%   40.0%  (15/29/16)
-occ >= 70%               35.5%      57.9%   44.0%  (11/8/20)
-occ >= 75%               25.8%     100.0%   41.0%  (8/0/23)
-occ >= 80%               22.6%     100.0%   36.8%  (7/0/24)
+이전 버전(2026-08-28, 6-feature, power=1.0)은 archived — 아래는 현행 배포 모델 기준.
 
-=== 참 label 3 & occ<75% (23창) — occupancy 문턱이 원리상 못 잡는 케이스 ===
-  LSTM: 8/23 = 35% 를 label 3으로 탐지
-  occ>=75 문턱: 0/23 (정의상)
-  LSTM 예측 분포: {1: 6, 2: 9, 3: 8}
-  이 창들의 occ 분포: min=50.0, median=60.0, max=73.3
+=== 심각(label 3) 탐지: 학습 모델 vs occupancy 단일 문턱 (test 310창) ===
+
+방법                        recall  precision      F1   (TP/FP/FN)
+Baseline LSTM               58.1%      75.0%   65.5%   (18/6/13)
+SDN (Kaya et al. 2019)      51.6%      88.9%   65.3%   (16/2/15)
+Proposed EE  Fixed θ        54.8%      89.5%   68.0%   (17/2/14)
+Proposed EE  Dynamic θ      54.8%      94.4%   69.4%   (17/1/14)
+occ >= 55%                  90.3%      19.4%   32.0%   (28/116/3)
+occ >= 60%                  64.5%      22.0%   32.8%   (20/71/11)
+occ >= 65%                  48.4%      34.1%   40.0%   (15/29/16)
+occ >= 70%                  35.5%      57.9%   44.0%   (11/8/20)
+occ >= 75%                  25.8%     100.0%   41.0%   (8/0/23)
+occ >= 80%                  22.6%     100.0%   36.8%   (7/0/24)
+
+- **모든 학습 모델의 F1(65~69%)이 어떤 occupancy 문턱(최고 44%)보다 크게 높다.**
+- occupancy 문턱은 트레이드오프에 갇힘: recall을 올리면(occ>=55: 90%) precision이 19%로 붕괴,
+  precision을 지키면(occ>=75: 100%) recall이 26%로 붕괴. "단일 축·단일 문턱"의 구조적 한계.
+- Proposed Dynamic θ가 precision 94.4%로 최고 — 심각이 아닌 창을 심각으로 잘못 띄우는 오탐이
+  test 310창 중 단 1건.
+
+=== 참 label 3 & occ < 75% (23창) — occupancy 문턱이 원리상 못 잡는 케이스 ===
+
+  Baseline        : 11/23 = 48%  를 label 3으로 탐지
+  SDN             :  9/23 = 39%
+  Proposed Fixed  :  9/23 = 39%
+  Proposed Dynamic:  9/23 = 39%
+  occ >= 75 문턱   :  0/23  (정의상)
+
+- 심각 창의 74%(23/31)가 occupancy 75% 미만 — victim 프로브 손실/latency로 심각 판정된 것.
+  occupancy 문턱은 이 창들을 정의상 0% 잡는다.
+- 학습 모델은 채널 상태(retry·RSSI·bitrate 추세)만으로 이 중 39~48%를 심각으로 예측 —
+  "규칙으로 못 하는 걸 학습이 부분적으로 한다"의 직접 증거.
