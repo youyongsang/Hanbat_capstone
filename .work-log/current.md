@@ -1,6 +1,31 @@
 # Capstone-Design 현재 상태
 최종 업데이트: 2026-08-31 (Claude Code) — **데모 서버 Pi 이식(13차)**: `demo_server.py`를 저장소·Pi 번들 양쪽에서 도는 dual-import + 전면 인자화(`--host --port --iperf-target --s21 --s26 ...`, 하드코딩 IP 제거)로. 번들(`project/deploy/raspberry_pi_ap_v2/`)에 `demo_server.py`+`demo.html` 추가. 노트북 2경로 스모크 테스트 통과. **Pi 실기기 테스트는 Pi·AP 오프라인이라 대기.** 그 전 12차: `docs/README.md` 신규(질문 → 문서 안내), 루트 `README.md` 전면 재작성(9-feature stale였음), `README_AP_V2.md` redirect 스텁화. 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`). 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
 
+## ⭐ 다음 세션 시작 지점 — Pi 온라인 되면 데모 서버 실기기 검증 (내일)
+
+**전제**: 코드·번들·문서 다 됨(13차). Pi(`capstone@192.168.8.109`)·AP(`root@192.168.8.1`)가 이 세션 내내 오프라인이라 실기기 테스트만 남음. Opal 망에 붙은 뒤 진행.
+
+0. **연결 확인**: `ssh root@192.168.8.1 uptime` (AP 살아있나 + 안 크래시 상태인가), `ssh capstone@192.168.8.109 "hostname -I; which iperf3; python3 -c 'import numpy,onnxruntime'"` (Pi deps). iperf3 없으면 `sudo apt install -y iperf3`.
+1. **번들 배포**: `scp -r project/deploy/raspberry_pi_ap_v2 capstone@192.168.8.109:~/demo` (기존 `~/ap_pi_v2/`와 별개 폴더로. onnx·scaler·collect_metrics 이미 번들에 포함).
+2. **Pi→폰 SSH 셋업** (지금은 노트북 키만 폰에 등록됨): Pi에서 `cat ~/.ssh/id_ed25519.pub` 없으면 `ssh-keygen -t ed25519 -N ""` → 그 pub키를 두 폰 Termux `~/.ssh/authorized_keys`에 추가 → `ssh <user@폰IP> echo ok` 양쪽 확인. 폰 IP·user(`u0_aXXX`)는 AP `cat /tmp/dhcp.leases` 또는 폰 Termux `whoami`/`ip addr`로 확인.
+3. **실행**: Pi에서
+   ```bash
+   cd ~/demo
+   python3 demo_server.py --iperf-target 192.168.8.109 --s21 <user@폰1IP> --s26 <user@폰2IP>
+   ```
+   (`--iperf-target`이 Pi 자신 IP라 `iperf3 -s` 자동 기동. 부하 경로 = 폰→AP→Pi.)
+4. **브라우저**: 노트북에서 `http://192.168.8.109:8000/` 열기.
+5. **신호 대칭 확인 먼저** (`/signal` 또는 UI 하단) — 두 폰 12dBm 이내. 비대칭이면 폰 위치 조정 (S21 약신호 → capture effect → 저부하 크래시).
+6. **부하 시나리오**: 버튼 10M→20M→30M→정지. 확인할 것:
+   - occ 60~76% 구간에서 **심각(3)** 뜨는가 (occupancy 단독 문턱 75%로 못 잡는 구간).
+   - 정지 후 정상(0) 복귀.
+   - AP 크래시 없이 완주 (30M×2=60M, 대칭 강신호면 안전. up 시간·SSID 유지 확인).
+   - 원시 패널 vs 안정화(CONFIRM=5) 패널 둘 다 정상 갱신.
+7. **결과 저장**: 콘솔 로그 → `project/results/yongsang/ap_v2_redesign2_demo_pi_run_YYYYMMDD.txt`. work-log 13차에 "Pi 실기기 검증 완료" 추가.
+8. **(선택) Pi latency 재확인**: 데모 추론이 Pi에서 도는 김에 `time` 몇 폴링 재보면 목표2(<1ms) 라이브 재확인 가능. 필수 아님 — test 310창 벤치가 이미 있음.
+
+**주의**: AP 크래시 시 물리 재부팅. 30M×2가 500초 넘거나 신호 비대칭이면 위험 (`docs/yongsang/ap_crash_analysis.md`). 이상하면 즉시 정지 버튼.
+
 ## 13차 (2026-08-31) — 데모 서버 Pi 이식 (엣지 추론)
 
 사용자: "demo_server.py도 Pi에서 돌게 이식해줘 그래야 실험이 맞지" (추론이 노트북이 아니라 실제 엣지 장비에서 돌아야 latency·엣지 서사가 성립).
