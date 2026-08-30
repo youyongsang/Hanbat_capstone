@@ -1,6 +1,8 @@
 # 혼잡 데모 API 명세서
 
-부하 제어 + 실시간 혼잡도 대시보드 데모(`.work-log/current.md` "향후 데모 구상")를 만들기 위한 API 규격. **미착수 상태의 설계 문서**이며, 구현하면서 갱신한다.
+부하 제어 + 실시간 혼잡도 대시보드 데모를 만들기 위한 API 규격. 이 문서는 원래 구상한 **3-API-면(백엔드 REST+SSE / 부하 에이전트 / 파이 서버) 큰 그림**이다.
+
+> **(2026-08-30)** 그 중 **"지금 실제로 만들어 동작·검증한 최소 버전"의 확정 스펙은 `project/demo/API.md`** 다 (레퍼런스 구현: `project/demo/demo_server.py` + `demo.html`). 팀이 데모를 만든다면 그 문서의 API·모델 계약을 지키고, 이 문서는 확장 방향(밴드 스티어링 §9 등)의 참고로 본다.
 
 > **(2026-08-29 최신화)** 아래 FeatureVector·SubScores·congestion_score 관련 절은 8/27 라벨 재설계 + 8/29 7-feature 승격을 반영해 갱신했다. 원래 이 문서가 전제했던 9-feature 가중합 스키마는 이미 두 번 바뀌었다(9→6→7-feature, 가중합→max/anchor 방식) — 구현 착수 전에 반드시 `project/utils/ap_features.py`·`project/scripts/collect_metrics.py`의 `calculate_scores()`로 최신 계약을 재확인할 것. ONNX export는 이미 끝나 있다(unified INT8 v2, `project/checkpoints/ap_v2_redesign2/`) — 8/27 시점 "신규 구현 부담은 ONNX export 하나"라는 전제는 더 이상 유효하지 않다(그 작업은 이미 끝났고, 남은 건 대시보드/백엔드/에이전트 4개 컴포넌트 자체).
 
