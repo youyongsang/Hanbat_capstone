@@ -1,0 +1,53 @@
+AP redesign2 — 라이브 혼잡 감지: 심각 지속 구간 재현 (Pi, 2026-08-30 후속)
+Pi: capstone@192.168.8.109 (유선), live_congestion.py --raw --confirm 3
+폰: S21 -28dBm / S26 -22dBm (대칭). laptop -40dBm.
+
+부하 (2단계, 각 폰 동시 iperf3 UDP -l 1400):
+  phase 1: -b 13M x 55s  -> occ 33~59%, 확정 라벨 대부분 경고(1) (채널 건강해 13M로는 심각 안 됨)
+  phase 2: -b 20M x 70s  -> occ 60~90%, retry 30~45%, throughput 47~131M -> 심각(3) 지속
+
+결과:
+  라벨 분포(전체 run): 정상 131 / 경고 125 / 혼잡 33 / 심각 101
+  ** 확정 라벨 심각(3) 92 폴링 연속 유지 (18:57:17 ~ 18:58:05, 약 46~49초) **
+  심각 구간 occ 60~90%, p(심각) 대부분 0.90~0.99
+  부하 종료(18:58:06) 직후 정상(0)으로 복귀 (window lag로 occ 하락 후 몇 폴링 심각 유지되다 전환 — 정상 동작)
+  AP 크래시 없음 (up 21분). 20M x2 = 40M는 대칭 강신호에서 안전.
+
+확정 라벨 전이:
+18:55:40  혼잡: 경고(1)  P=[0.02 0.95 0.03 0.01] exit1 clients=3  <- 확정 변경  [occ 43% thr 23M retry 13% rssi -33 bitrate 122]
+18:56:08  혼잡: 혼잡(2)  P=[0.00 0.01 0.94 0.05] exit3 clients=3  <- 확정 변경  [occ 59% thr 47M retry 37% rssi -32 bitrate 81]
+18:56:09  혼잡: 경고(1)  P=[0.01 0.95 0.03 0.01] exit2 clients=3  <- 확정 변경  [occ 47% thr 48M retry 37% rssi -32 bitrate 90]
+18:56:47  혼잡: 정상(0)  P=[0.99 0.01 0.00 0.00] exit2 clients=3  <- 확정 변경  [occ 28% thr 0M retry 7% rssi -34 bitrate 11]
+18:56:56  혼잡: 혼잡(2)  P=[0.00 0.03 0.93 0.04] exit3 clients=3  <- 확정 변경  [occ 62% thr 104M retry 44% rssi -35 bitrate 30]
+18:57:05  혼잡: 심각(3)  P=[0.00 0.00 0.05 0.95] exit2 clients=3  <- 확정 변경  [occ 70% thr 55M retry 38% rssi -35 bitrate 30]
+18:57:08  혼잡: 혼잡(2)  P=[0.00 0.00 0.82 0.18] exit2 clients=3  <- 확정 변경  [occ 72% thr 54M retry 35% rssi -35 bitrate 25]
+18:57:12  혼잡: 심각(3)  P=[0.00 0.01 0.46 0.53] exit3 clients=3  <- 확정 변경  [occ 60% thr 67M retry 29% rssi -35 bitrate 30]
+18:57:14  혼잡: 혼잡(2)  P=[0.00 0.03 0.85 0.12] exit2 clients=3  <- 확정 변경  [occ 57% thr 64M retry 31% rssi -35 bitrate 30]
+18:57:17  혼잡: 심각(3)  P=[0.00 0.00 0.03 0.97] exit2 clients=3  <- 확정 변경  [occ 87% thr 47M retry 37% rssi -35 bitrate 135]
+18:58:06  혼잡: 정상(0)  P=[0.98 0.02 0.00 0.00] exit1 clients=3  <- 확정 변경  [occ 23% thr 0M retry 9% rssi -35 bitrate 135]
+
+==================== phase 2 심각 지속 구간 (발췌) ====================
+18:57:17  혼잡: 심각(3)  [원시 심각(3) p=0.97]  P(정/경/혼/심)=[0.00 0.00 0.03 0.97] exit2 clients=3  <- 확정 변경  [occ 87% thr 47M retry 37% rssi -35 bitrate 135]
+18:57:19  혼잡: 심각(3)  [원시 심각(3) p=0.94]  P(정/경/혼/심)=[0.00 0.00 0.06 0.94] exit1 clients=3  [occ 87% thr 32M retry 13% rssi -35 bitrate 90]
+18:57:21  혼잡: 심각(3)  [원시 심각(3) p=0.94]  P(정/경/혼/심)=[0.00 0.00 0.06 0.94] exit1 clients=3  [occ 87% thr 60M retry 0% rssi -35 bitrate 90]
+18:57:23  혼잡: 심각(3)  [원시 심각(3) p=0.95]  P(정/경/혼/심)=[0.00 0.00 0.05 0.95] exit1 clients=3  [occ 83% thr 46M retry 4% rssi -35 bitrate 65]
+18:57:25  혼잡: 심각(3)  [원시 심각(3) p=0.95]  P(정/경/혼/심)=[0.00 0.00 0.04 0.95] exit1 clients=3  [occ 80% thr 43M retry 3% rssi -35 bitrate 78]
+18:57:27  혼잡: 심각(3)  [원시 심각(3) p=0.94]  P(정/경/혼/심)=[0.00 0.00 0.05 0.94] exit1 clients=3  [occ 87% thr 56M retry 0% rssi -35 bitrate 90]
+18:57:30  혼잡: 심각(3)  [원시 심각(3) p=0.94]  P(정/경/혼/심)=[0.00 0.00 0.05 0.94] exit1 clients=3  [occ 90% thr 34M retry 0% rssi -35 bitrate 58]
+18:57:32  혼잡: 심각(3)  [원시 심각(3) p=0.94]  P(정/경/혼/심)=[0.00 0.00 0.06 0.94] exit1 clients=3  [occ 87% thr 68M retry 1% rssi -35 bitrate 58]
+18:57:34  혼잡: 심각(3)  [원시 심각(3) p=0.95]  P(정/경/혼/심)=[0.00 0.00 0.05 0.95] exit1 clients=3  [occ 83% thr 43M retry 8% rssi -35 bitrate 65]
+18:57:36  혼잡: 심각(3)  [원시 심각(3) p=0.94]  P(정/경/혼/심)=[0.00 0.01 0.05 0.94] exit1 clients=3  [occ 77% thr 40M retry 7% rssi -35 bitrate 108]
+18:57:38  혼잡: 심각(3)  [원시 심각(3) p=0.98]  P(정/경/혼/심)=[0.00 0.00 0.01 0.98] exit2 clients=3  [occ 73% thr 80M retry 42% rssi -34 bitrate 122]
+18:57:40  혼잡: 심각(3)  [원시 심각(3) p=0.96]  P(정/경/혼/심)=[0.00 0.00 0.03 0.96] exit2 clients=3  [occ 70% thr 53M retry 45% rssi -34 bitrate 78]
+18:57:42  혼잡: 심각(3)  [원시 심각(3) p=0.97]  P(정/경/혼/심)=[0.00 0.00 0.03 0.97] exit2 clients=3  [occ 70% thr 53M retry 45% rssi -35 bitrate 122]
+18:57:44  혼잡: 심각(3)  [원시 심각(3) p=0.91]  P(정/경/혼/심)=[0.03 0.02 0.04 0.91] exit2 clients=3  [occ 60% thr 131M retry 31% rssi -35 bitrate 135]
+18:57:47  혼잡: 심각(3)  [원시 심각(3) p=0.91]  P(정/경/혼/심)=[0.00 0.00 0.08 0.91] exit2 clients=3  [occ 67% thr 85M retry 45% rssi -35 bitrate 122]
+18:57:49  혼잡: 심각(3)  [원시 심각(3) p=0.81]  P(정/경/혼/심)=[0.00 0.02 0.16 0.81] exit3 clients=3  [occ 60% thr 50M retry 29% rssi -35 bitrate 122]
+18:57:51  혼잡: 심각(3)  [원시 심각(3) p=0.96]  P(정/경/혼/심)=[0.00 0.00 0.04 0.96] exit2 clients=3  [occ 83% thr 49M retry 36% rssi -35 bitrate 150]
+18:57:53  혼잡: 심각(3)  [원시 심각(3) p=0.99]  P(정/경/혼/심)=[0.00 0.00 0.01 0.99] exit2 clients=3  [occ 83% thr 42M retry 2% rssi -35 bitrate 36]
+18:57:55  혼잡: 심각(3)  [원시 심각(3) p=0.92]  P(정/경/혼/심)=[0.00 0.01 0.07 0.92] exit1 clients=3  [occ 80% thr 39M retry 1% rssi -35 bitrate 135]
+18:57:57  혼잡: 심각(3)  [원시 심각(3) p=0.95]  P(정/경/혼/심)=[0.00 0.00 0.05 0.95] exit1 clients=3  [occ 83% thr 67M retry 1% rssi -35 bitrate 60]
+18:58:00  혼잡: 심각(3)  [원시 심각(3) p=0.97]  P(정/경/혼/심)=[0.00 0.00 0.03 0.97] exit2 clients=3  [occ 73% thr 24M retry 2% rssi -35 bitrate 60]
+18:58:02  혼잡: 심각(3)  [원시 심각(3) p=0.93]  P(정/경/혼/심)=[0.00 0.00 0.07 0.93] exit1 clients=3  [occ 83% thr 22M retry 0% rssi -35 bitrate 13]
+18:58:04  혼잡: 심각(3)  [원시 심각(3) p=0.98]  P(정/경/혼/심)=[0.00 0.00 0.02 0.98] exit2 clients=3  [occ 70% thr 26M retry 4% rssi -35 bitrate 54]
+18:58:06  혼잡: 정상(0)  [원시 정상(0) p=0.98]  P(정/경/혼/심)=[0.98 0.02 0.00 0.00] exit1 clients=3  <- 확정 변경  [occ 23% thr 0M retry 9% rssi -35 bitrate 135]
