@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론(`live_congestion.py`) Pi 이식·부하 테스트 성공(7~11차)**. Pi에서 실제 AP 데이터로 라이브 혼잡 감지 확인: 20M×2 부하로 **심각(3) 확정 라벨 ~49초 지속**(occ 60~90%, p 0.90~0.99), 부하 종료 시 정상 복귀. AP 크래시 없음. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). 커밋 `a3f9bde`~`d914348` 푸시. 아티팩트 3종("Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교"). 아래 "10차"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`)**. 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
 
 ## 11차 (2026-08-30 후속4) — 최소 라이브 추론 스크립트
 
@@ -54,7 +54,20 @@ Pi live_congestion.py --raw 실측 라벨 전이:
 - **`project/demo/demo_server.py`** (stdlib http.server + numpy/onnxruntime): `live_congestion.py` 로직 재사용(APPoller + 7-feature + ONNX) + SSE 스트림(`/events`) + `POST /load {rate:10M|20M|30M|off}`(두 폰 iperf3 제어) + `GET /signal`(폰 신호 대칭 확인). `iperf3 -s` 서버 자동 기동. 30M 상한.
 - **`project/demo/demo.html`** (서버가 서빙 = 동일 출처, CSP 무관): 큰 혼잡 레벨 카드(색상 코딩) + 4클래스 확률 바 + 7-feature 실시간 스트립 + `10/20/30M`·정지 버튼 + 폰 신호세기(비대칭 경고) + 90초 canvas 차트(레벨 + occ).
 - 전 엔드포인트 실측 테스트 통과: `/health` `{ready:true}`, `/signal` `{symmetric:true}`, `/events` SSE 정상, `POST /load` → 두 폰 iperf3 제어.
-- `project/demo/README.md` 에 실행법·사전조건·주의(AP 크래시).
+- `project/demo/README.md` (빠른 실행), **`project/demo/API.md` (팀 구현용 확정 스펙)**.
+- **UI 정직성 수정** (사용자 지적: "confirm이 모델 겉모습을 좋게 만들지 않냐"): `demo.html`을 좌우 2패널로 — **모델 출력(원시 argmax, 정확도 평가 기준)** + **안정화 상태(N폴링 debounce, 표시/제어용 후처리)**. 차트도 원시(점선)/확정(실선) 둘 다. 안정화 패널에 "모델·학습·평가엔 없음" 명시. → `CONFIRM=5`로 (30M 심각 지속 ~22초→~58초, 원시 패널은 그대로 노출).
+
+### `project/demo/API.md` — 팀 구현용 명세서 (신규)
+"팀이 데모를 만들어야 하는데 확실히 보고 만들 수 있는 설명서 필요" 요청. 레퍼런스 구현(`demo_server.py`+`demo.html`)의 **계약을 고정**:
+1. 무엇을 하는가 + 아키텍처 다이어그램
+2. **HTTP API 전체** — `GET / /health /events`(SSE 2형태) `POST /load` `GET /signal`, 요청/응답 스키마·예시
+3. **모델/추론 계약** (feature 순서·window 10·scaler·ONNX I/O·`collect_metrics` 헬퍼 재사용·`label` vs `raw_label`) — "바꾸지 말 것"
+4. 부하/AP 크래시 규칙 (30M 상한, 신호 대칭)
+5. 실행/사전조건 + Pi 이식 메모
+6. 레퍼런스 검증 상태 (2026-08-30 결과 표)
+7. 팀이 만들/확장할 것 (백엔드 프레임워크, 설정 외부화, 대시보드 강화, 계단 자동 진행, 안전장치, Pi 배포, **밴드 스티어링 훅**, 인증)
+
+`docs/yongsang/demo_api_spec.md`(원래 구상한 3-면 큰 그림)는 상단에 API.md 포인터 추가 — "실제 만든 최소 버전의 확정 스펙은 API.md, 이 문서는 확장 방향 참고".
 
 ### 데모 전체 시나리오 실측 (`ap_v2_redesign2_demo_full_run_20260830.txt`)
 버튼 10M→20M→30M→정지 (폰 신호 대칭 S21/S26 둘 다 -23dBm):
@@ -63,7 +76,8 @@ Pi live_congestion.py --raw 실측 라벨 전이:
 - 30M에서 채널 포화: 폰은 30M씩 밀지만 delivered throughput 12~50M로 떨어지고 retry 54%까지 → 혼잡의 전형 시그니처, 모델이 심각으로 잡음.
 - **스파이크 저항 확인**: throughput 3174M 스파이크(SSH 타이밍 아티팩트)에도 확정 라벨 혼잡 유지 (3폴링 occ median + window 10 흡수).
 - AP 크래시 없음 (30M×2=60M ~70초, up 40분).
-- occ 50~77% 경계에서 원시 예측 튐 (label 1/2/3 경계 노이즈) — confirm 3이 완화. 데모 안정성 더 원하면 `CONFIRM=5`.
+- occ 50~77% 경계에서 원시 예측 튐 (label 1/2/3 경계 노이즈) — `demo_server.py`는 `CONFIRM=5`로 설정(30M 심각 ~58초 연속). 원시 패널은 그대로 노출.
+- CONFIRM=5 재실행 확인: 확정 라벨 변경 16회 vs 원시 22회, 30M 심각 ~58초 연속. AP 크래시 없음(up 2h).
 
 ### 남은 것
 - Pi 정확도 95% (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계.
