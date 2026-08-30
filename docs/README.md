@@ -2,6 +2,8 @@
 
 > 문서가 많다. **뭘 알고 싶은지**에 따라 어느 문서를 보면 되는지만 정리한다.
 > 1학기 코드·문서는 `yongsang` 브랜치. 이 브랜치는 2차 실측 라인(`ap_metrics_v2_redesign2`, 7-feature).
+>
+> 브라우저로 보기 좋은 버전: [`docs/README.html`](README.html) (같은 내용).
 
 ---
 
