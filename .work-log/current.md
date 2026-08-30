@@ -1,5 +1,26 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + 5시드 특성화 + SDN 논문 충실 재구현(7~9차)**. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). SDN을 Kaya et al.(ICML 2019) 논문대로 재구현(pooling IC + 램프 loss + 캘리브레이션 T, base 백본만 공유). 커밋 `a3f9bde`·`5ec1180`·`16f1bbf`·`821b55e` 푸시. 아티팩트 "Class-Weight-Power Zero" 재게시. 아래 "9차"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + 5시드 특성화 + SDN 논문 충실 재구현(7~9차) + 발표자료 비교표 정리 + 문서 stale 감사(10차)**. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). 커밋 `a3f9bde`~`d914348` 푸시. 아티팩트 3종("Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교"). 아래 "10차"부터 확인.
+
+## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
+
+### 발표자료용 비교표
+- occupancy 문턱 vs 학습 모델 비교를 현행 배포 체크포인트로 재측정(`ap_v2_redesign2_threshold_comparison.txt` 갱신, 옛 8/28 6-feature 버전 대체): 학습 모델 L3 F1 65~69% ≫ 최선의 문턱(occ≥70%) F1 44%. 심각 창의 74%가 occ<75%(프로브 축으로 심각) — 문턱은 정의상 0%, 학습 모델은 39~48% 잡음.
+- 조기경보(forecasting): k=3 escalation recall 61.5% / k=5 45.5% (occupancy 규칙은 구조상 0%).
+- 아티팩트 "AP 혼잡 분류 모델 비교" 게시 (https://claude.ai/code/artifact/fc9c86b1-37e3-40e1-b0c8-aee9cca59f8f) — 정량목표 현황 / 아키텍처 비교표(5시드+배포) / 심각 탐지 vs 문턱 / 조기경보 / 발표 3줄 요약.
+
+### 문서 stale 감사 (사용자 요청: "과거 기록으로 남아 최신화 안 된 것")
+전 HTML/MD를 7-feature·power=0.0·SDN 재구현·Baseline seed3 기준으로 훑어 수정:
+
+| 문서 | stale 내용 | 수정 |
+|---|---|---|
+| `congestion_label_criteria.{html,md}` §6 | "절벽형 → power=1.0 채택" (4-feature·label3=23개 시절) | archived callout — 8/30 재스윕 결과(power=0.0 최고, 트레이드오프 없음) |
+| `congestion_label_redesign.md` | "sta_tx_bitrate_* 뺌", "6개 feature" | 8/29 다중시드 재검증으로 `sta_tx_bitrate_mean` 승격됨을 반영, feature set 7개 |
+| `demo_api_spec.html` | .md는 8/29 갱신됐는데 html 방치 — `/meta`·`/stream`이 9-feature·`trained_on_rows 5574`·옛 가중합 공식 | max(anchor) + 7-feature로 동기화 (infer_ms도 0.87→0.55) |
+| `onnx_early_exit_redesign.{html,md}` | 상단 callout이 SDN 재구현·seed3·Pi 재측정 전 시점 | 최신 갱신 (Baseline 0.746 / SDN 0.572 / EE 0.540, −28%) |
+| `capstone1_summary.html` | 2학기 forward-ref 한 줄 "9-feature / 0.747·0.595ms" | "7-feature / 0.746·0.540ms" |
+
+- **건드리지 않은 것(의도적)**: `onnx_early_exit_redesign.html` 본문의 `0.641ms·−67%` 바 차트 등 — 각 문서가 "그 시점 기록으로 보존" 정책 명시, 상단 callout이 현재 수치 제공. `ap_crash_analysis.html`·1학기 guideline은 영향 없음.
+- 커밋 `d79930e`(threshold 갱신)·`d914348`(문서 stale 수정).
 
 ## 9차 (2026-08-30 후속2) — SDN을 논문 충실 비교모델로 재구현
 
