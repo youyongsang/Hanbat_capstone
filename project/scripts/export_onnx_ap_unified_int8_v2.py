@@ -44,6 +44,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
 CKPT_DIR = PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2"
 
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+
+INPUT_SIZE = len(AP_FEATURE_COLUMNS)
+
 THETA_1 = 0.3
 THETA_2 = 0.6
 
@@ -282,7 +288,7 @@ def build(checkpoint_dir: Path, fixed: bool, out_path: Path) -> None:
     main_nodes = dyn_nodes + list(stage1_nodes) + ent1_nodes + [exit1_const, if1_node]
     main_graph = helper.make_graph(
         main_nodes, "unified_int8",
-        [helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 10, 6])],
+        [helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 10, INPUT_SIZE])],
         [
             helper.make_tensor_value_info("logits", TensorProto.FLOAT, [1, 4]),
             helper.make_tensor_value_info("exit_point", TensorProto.INT64, []),

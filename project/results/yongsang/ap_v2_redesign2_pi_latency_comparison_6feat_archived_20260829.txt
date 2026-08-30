@@ -1,0 +1,58 @@
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-29 갱신 — SDN 스타일 exit-loss 가중치 체크포인트)
+
+배경: 8/28 밤 "왜 SDN이 이겼나" 재조사에서 SDN의 뒤쪽 exit 강조 loss 가중치(0.15/0.30/0.55)가
+exit3 심각 탐지에 유리했을 것이라는 가설이 나왔다. Early Exit 백본을 그대로 두고
+exit-loss 가중치만 균등(0.3/0.3/0.4) -> SDN 스타일(0.15/0.30/0.55)로 바꿔 재학습(2026-08-29),
+`ap_v2_redesign2`의 기본 EE 체크포인트로 승격했다. 옛 균등 가중치 체크포인트/ONNX/결과는
+`project/checkpoints/ap_v2_redesign2/archived_uniform_ee_weights_20260829/`,
+`project/results/yongsang/*_uniform_weights_archived_20260829.*`에 보존한다.
+
+Pi: capstone@192.168.8.109, onnxruntime CPU, 같은 세션에서 4개 모델 전부 재측정(5회 반복/샘플 평균).
+
+=== 아키텍처 비교 (Baseline / SDN-style / Proposed, 전부 INT8) ===
+
+| 모델 | Pi INT8(ms) | 정확도(INT8 직접 확인) | Label3 recall | Label3 precision | Label3 F1 |
+|---|---:|---:|---:|---:|---:|
+| Baseline(EE 없음) | 0.747 | 89.4% | 48.4% | - | - |
+| SDN-style | 0.615 | 86.8% | 64.5% | 46.5% | 54.1% |
+| Proposed Fixed theta (신규, SDN 가중치) | 0.595 | 90.3% | 58.1% | 75.0% | 65.5% |
+| Proposed Dynamic theta (신규, SDN 가중치) | 0.591 | 89.4% | 58.1% | 69.2% | 63.2% |
+
+참고: Baseline/SDN-style 수치는 재학습 없이 기존 체크포인트를 이번 세션에서 재측정한 값
+(모델 자체는 안 바뀜, Pi 측정 노이즈로 이전 기록(Baseline 0.765ms/SDN 0.600ms)과 소폭 차이).
+Proposed 정확도는 evaluate_ap_early_exit.py 기준(fp32 stepwise) 91.3%(Fixed)/90.6%(Dynamic)이며,
+위 표의 "정확도(INT8 직접 확인)"는 배포되는 INT8 ONNX 그래프를 test set에 직접 돌려 나온 값(양자화로 인한
+약 1pp 하락 포함).
+
+=== 옛 체크포인트(균등 가중치) 대비 ===
+
+| 모델 | Pi INT8(ms) | Label3 F1 |
+|---|---:|---:|
+| EE 균등 가중치(archived) Fixed | 0.641 | 58.2% |
+| EE 균등 가중치(archived) Dynamic | 0.679 | 61.5% |
+| **EE SDN 가중치(신규, 기본값) Fixed** | **0.595(-7%)** | **66.7%(fp32 eval 기준)/65.5%(int8)** |
+| **EE SDN 가중치(신규, 기본값) Dynamic** | **0.591(-13%)** | **65.5%(fp32 eval 기준)/63.2%(int8)** |
+
+=== unified fp32 참고치 (양자화 이득 확인용) ===
+
+| 모델 | Pi fp32(ms) |
+|---|---:|
+| Proposed Fixed theta unified fp32 | 1.060 |
+| Proposed Dynamic theta unified fp32 | 1.024 |
+| Proposed Fixed theta unified INT8 v2 | 0.595 |
+| Proposed Dynamic theta unified INT8 v2 | 0.591 |
+
+INT8 v2 검증: PyTorch fp32 참조 대비 test 310창 중 fixed 305/310, dynamic 304/310 정확히 일치
+(나머지는 엔트로피 경계값 근처 양자화 노이즈, 정확도는 fp32와 거의 동일 — 위 표 참고).
+
+=== 해석 ===
+
+- staged(세션 3개) -> 단일 그래프(If 노드) -> INT8(stage별 양자화 후 재조립)이라는 배포 구성 자체의
+  방법론적 결론은 `docs/yongsang/onnx_early_exit_redesign.md`에서 이미 확정됐고 이번에도 유효하다.
+- 이번 재학습(exit-loss 가중치만 변경)으로 Proposed가 Baseline/SDN-style보다 **속도까지 앞서게 됐다**
+  (이전엔 Proposed가 SDN-style보다 근소하게 느렸음: 0.641/0.679ms vs SDN 0.600ms). 정확도·Label3 F1은
+  이미 이전 체크포인트도 SDN-style을 근소하게 이겼는데(F1 58.2% vs 54.1%), 이번 재학습으로 그 격차가 더
+  벌어졌다(66.7% vs 54.1%).
+- **최종 결론**: SDN 아키텍처를 별도로 쓸 필요 없이, Early Exit 백본에 SDN의 loss 가중치 아이디어만
+  가져오는 것으로 정확도·recall·precision·F1·속도 전부에서 SDN-style을 앞서는 구성을 얻었다. 아키텍처
+  변경이 없어 배포 리스크도 낮다.

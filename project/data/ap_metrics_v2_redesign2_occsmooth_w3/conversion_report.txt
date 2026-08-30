@@ -1,0 +1,23 @@
+AP Metrics Dataset Conversion Report
+Input: project\scripts\metrics_v2_pi_redesign2_relabeled_occsmooth_w3.csv
+Raw rows: 2115
+Prepared rows before windowing: 2109
+Window size: 10
+Feature count: 7
+Occupancy outlier fixes: 12
+
+[train] 1438 samples / 14380 rows
+  0:정상: 440
+  1:경고: 305
+  2:혼잡: 558
+  3:심각: 135
+[val] 308 samples / 3080 rows
+  0:정상: 94
+  1:경고: 65
+  2:혼잡: 120
+  3:심각: 29
+[test] 309 samples / 3090 rows
+  0:정상: 95
+  1:경고: 66
+  2:혼잡: 119
+  3:심각: 29

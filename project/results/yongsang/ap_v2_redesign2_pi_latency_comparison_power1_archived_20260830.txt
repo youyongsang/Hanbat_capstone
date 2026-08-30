@@ -1,0 +1,61 @@
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-29 갱신 2차 — sta_tx_bitrate_mean 7-feature 승격)
+
+배경: item 2(sta_tx_bitrate_mean escalation 지문 재검토) 다중 시드 검증(5시드 x 4개 설정)에서
+7-feature가 exit-loss 가중치와 무관하게 항상 6-feature를 이김을 확인(Label3 F1 +5~11pt).
+`ap_features.py`에 sta_tx_bitrate_mean을 7번째 입력으로 승격 -> Baseline/SDN-style/Proposed
+세 모델 전부 7-feature로 재변환·재학습(각 3시드, val balanced acc 최고 배포) -> ONNX 재수출 ->
+Pi 재측정까지 전체 파이프라인 갱신.
+
+같은 세션에서 item 1(EE exit-loss 가중치를 SDN 스타일로)의 승격도 재검토됨: 다중 시드로 보니
+SDN 가중치가 균등 가중치보다 낫다는 근거가 없었고(오히려 근소 열세), SDNLSTM은 EarlyExitLSTM과
+백본이 의도적으로 동일해서 같은 가중치를 쓰면 두 모델이 사실상 같은 네트워크가 되어 비교 자체가
+무의미해짐 -> Proposed는 균등 가중치(0.3/0.3/0.4)로 되돌림. 6-feature 시절 체크포인트/ONNX/결과는
+`*_6feat_archived_20260829.*` 및 `checkpoints/ap_v2_redesign2_6feat_archived_20260829/`,
+`data/ap_metrics_v2_redesign2_6feat_archived_20260829/`, Pi `~/ap_pi_v2/archived_6feat_20260829/`에
+전부 보존.
+
+학습 파이프라인에 `--seed` 옵션 신규 추가(`train_ap_early_exit.py`/`train_ap_sdn.py`/
+`train_ap_baseline_lstm.py`) — 그 전까지 시드 고정이 전혀 없어 단일 실행 A/B 비교가
+신뢰할 수 없었음(같은 6-feature+SDN 가중치 설정을 시드만 바꿔 재실행하면 test 정확도가
+91.3%->80.0%, Label3 F1이 66.7%->51.1%로 요동침). 이번 배포는 각 아키텍처마다 시드 0/1/2로
+학습 후 val balanced acc 최고를 선택.
+
+Pi: capstone@192.168.8.109, onnxruntime CPU, 같은 세션에서 4개 모델 전부 재측정(5회 반복/샘플 평균).
+
+=== 아키텍처 비교 (Baseline / SDN-style / Proposed, 전부 INT8, 7-feature) ===
+
+| 모델 | Pi INT8(ms) | 정확도 | Label3 recall | Label3 precision | Label3 F1 |
+|---|---:|---:|---:|---:|---:|
+| Baseline(EE 없음) | 0.756 | 88.7% | 58.1% | 69.2% | 63.2% |
+| SDN-style | 0.636 | 89.0% | 58.1% | 81.8% | 67.9% |
+| Proposed Fixed theta(균등 가중치) | 0.641 | 88.1% | 61.3% | 70.4% | 65.5% |
+| Proposed Dynamic theta(균등 가중치) | 0.645 | 87.7% | 61.3% | 67.9% | 64.4% |
+
+해석: 이번 라운드는 item 1과 달리 "Proposed가 전면 우위"라고 말할 수 없다 — SDN-style이 속도
+(0.636ms)와 Label3 F1(67.9%) 둘 다 근소하게 앞선다. Proposed는 recall이 조금 더 높다(61.3% vs
+58.1%). 세 모델 다 3시드 중 val 최고를 뽑은 단일 배포 체크포인트 비교이므로, SDN/Baseline까지
+포함한 완전한 다중 시드 특성화(이번엔 Proposed만 5시드로 했음)는 아직 안 했다 — 근소한 차이를
+아키텍처 우위로 확대 해석하지 않는다.
+
+=== 6-feature(archived) 대비 ===
+
+7-feature 승격 자체는 세 모델 전부에서 뚜렷한 이득이었다(다중 시드 평균 기준, 단일 배포
+체크포인트 숫자는 시드 변동 때문에 이 표만큼 깔끔하게 나타나지 않을 수 있음 - 위 "해석" 참고):
+
+| 설정(5시드 평균, Label3 F1) | 6-feature | 7-feature |
+|---|---:|---:|
+| Proposed, 균등 가중치 | 56.0%±3.3% | 60.9%±3.0% |
+| Proposed, SDN 가중치 | 52.0%±5.8% | 63.1%±3.6% |
+
+=== unified fp32 참고치 ===
+
+INT8 v2 검증: PyTorch fp32 참조 대비 test 310창 중 fixed 306/310, dynamic 305/310 정확히 일치
+(나머지는 엔트로피 경계값 근처 양자화 노이즈). INT8 직접 정확도: fixed/dynamic 둘 다 88.1%,
+Label3 F1 64.4%(fp32 eval 대비 근사).
+
+=== 다음에 필요한 것 ===
+
+- SDN-style·Baseline도 Proposed처럼 5시드로 완전히 특성화하면 위 "해석"의 근소한 차이가 노이즈인지
+  실제인지 더 명확해진다(이번엔 시간 관계상 3시드 중 최고만 뽑음).
+- item 1(exit-loss 가중치)은 여전히 미해결 — 이번 세션은 "균등 가중치가 SDN 가중치보다 못하다는
+  근거가 없다"까지만 확인했지, "균등이 SDN보다 낫다"를 증명한 건 아니다.

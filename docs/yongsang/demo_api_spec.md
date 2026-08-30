@@ -2,6 +2,8 @@
 
 부하 제어 + 실시간 혼잡도 대시보드 데모(`.work-log/current.md` "향후 데모 구상")를 만들기 위한 API 규격. **미착수 상태의 설계 문서**이며, 구현하면서 갱신한다.
 
+> **(2026-08-29 최신화)** 아래 FeatureVector·SubScores·congestion_score 관련 절은 8/27 라벨 재설계 + 8/29 7-feature 승격을 반영해 갱신했다. 원래 이 문서가 전제했던 9-feature 가중합 스키마는 이미 두 번 바뀌었다(9→6→7-feature, 가중합→max/anchor 방식) — 구현 착수 전에 반드시 `project/utils/ap_features.py`·`project/scripts/collect_metrics.py`의 `calculate_scores()`로 최신 계약을 재확인할 것. ONNX export는 이미 끝나 있다(unified INT8 v2, `project/checkpoints/ap_v2_redesign2/`) — 8/27 시점 "신규 구현 부담은 ONNX export 하나"라는 전제는 더 이상 유효하지 않다(그 작업은 이미 끝났고, 남은 건 대시보드/백엔드/에이전트 4개 컴포넌트 자체).
+
 ## 1. 시스템 개요
 
 ```text
@@ -16,28 +18,28 @@
 ```
 
 - **추론은 파이에서** 수행한다(엣지 추론 서사). 노트북은 표시·제어·중계만.
-- 신규 구현 부담의 대부분은 **`ap_metrics_v2` 모델 ONNX export** 하나다(1차 `export_onnx_ap.py` 재활용).
+- 모델 ONNX export는 이미 끝나 있다 — `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified_int8_v2.onnx`(권장, staged→unified→INT8 재설계 완료본, `docs/yongsang/onnx_early_exit_redesign.md` 참고). 신규 구현 부담은 파이 추론 서버(면 ③)·부하 에이전트(면 ②)·백엔드+대시보드(면 ①) 4개 컴포넌트.
 - 3개 API 면(surface): ① 백엔드 REST+SSE(브라우저용) ② 부하 에이전트(폰용) ③ 추론 스트림(파이용).
 
 ## 2. 공유 데이터 계약
 
 ### 2.1 FeatureVector
 
-`project/utils/ap_features.py`의 `AP_FEATURE_COLUMNS`와 **순서·이름이 정확히 일치**해야 한다.
+`project/utils/ap_features.py`의 `AP_FEATURE_COLUMNS`와 **순서·이름이 정확히 일치**해야 한다(2026-08-29 기준 7-feature — `sta_tx_bitrate_mean`이 가장 최근에 추가됨, `min-max` 스케일러는 `project/data/ap_metrics_v2_redesign2/scaler_params.json` 기준).
 
 ```json
 {
   "throughput_mbps": 43.2,
   "channel_occupancy_percent": 88.0,
-  "latency_ms": 61.0,
-  "jitter_ms": 210.0,
-  "tx_retries_per_s": 2100.0,
-  "tx_failed_per_s": 47.0,
+  "tx_retry_ratio": 0.22,
   "rssi_dbm": -58.0,
   "rssi_delta_db": -2.0,
-  "rssi_moving_avg_dbm": -57.1
+  "rssi_moving_avg_dbm": -57.1,
+  "sta_tx_bitrate_mean": 34.5
 }
 ```
+
+`latency_ms`/`jitter_ms`/`probe_loss_pct`는 더 이상 모델 입력이 아니다(라벨 축이자 배포 시점엔 없는 측정이라 8/27 재설계에서 제외 — 모델은 "채널 상태만 보고 victim QoS를 예측"해야 함). 대신 아래 SubScores 계산에 그대로 쓰인다(victim 프로브·ping으로 별도 측정).
 
 ### 2.2 Label
 
@@ -50,11 +52,22 @@
 
 ### 2.3 SubScores
 
+**(2026-08-29 최신화)** 8/27 재설계로 가중합 방식(구버전: throughput/occupancy/retry_failed/jitter 가중합)에서 **표준 문턱 max 방식**으로 바뀌었다 — 정본은 `project/scripts/collect_metrics.py`의 `calculate_scores()`.
+
 ```json
-{ "throughput": 0.18, "occupancy": 0.88, "retry_failed": 0.34, "jitter": 0.70 }
+{ "occupancy": 0.88, "jitter": 0.70, "loss": 0.0, "latency": 0.25 }
 ```
 
-각 0~1. `congestion_score = 0.20·throughput + 0.45·occupancy + 0.20·retry_failed + 0.15·jitter`.
+각 0~1, `anchor_score()`로 4앵커(경고/혼잡/심각/완전)를 piecewise-linear 매핑. `congestion_score = max(occupancy, jitter, loss, latency)` — 가중합이 아니라 **가장 나쁜 축이 곧 congestion_score**(4축 중 하나라도 완전히 깨지면 나머지가 멀쩡해도 심각으로 판정). `retry`·`throughput`은 정보용 sub-score로만 유지되고 `congestion_score`(라벨 축)엔 들어가지 않는다 — 이 2.4GHz AP는 idle에도 retry_ratio가 18~36%라 라벨 변별력이 없기 때문(상세: `docs/yongsang/congestion_label_redesign.md`).
+
+앵커(표준 문턱, `ANCHORS` in `collect_metrics.py`):
+
+| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 |
+|---|---:|---:|---:|---:|---|
+| occupancy(%) | 40 | 55 | 75 | 90 | Cisco/Aruba WLAN 가이드 |
+| jitter(ms, 프로브) | 20 | 30 | 50 | 100 | ITU-T Y.1541 / RFC 4594 |
+| loss(%, 프로브) | 0.5 | 1.0 | 5.0 | 10.0 | Cisco QoS / ITU-T G.113 |
+| latency(ms, 편도) | 30 | 60 | 150 | 400 | ITU-T G.114(ping RTT/2) |
 
 ### 2.4 LoadProfile
 
@@ -290,15 +303,14 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
   "window_filled": true,
   "features": {
     "throughput_mbps": 43.2, "channel_occupancy_percent": 88.0,
-    "latency_ms": 61.0, "jitter_ms": 210.0,
-    "tx_retries_per_s": 2100.0, "tx_failed_per_s": 47.0,
-    "rssi_dbm": -58.0, "rssi_delta_db": -2.0, "rssi_moving_avg_dbm": -57.1
+    "tx_retry_ratio": 0.22, "rssi_dbm": -58.0, "rssi_delta_db": -2.0,
+    "rssi_moving_avg_dbm": -57.1, "sta_tx_bitrate_mean": 34.5
   },
   "congestion_score": 0.78,
-  "sub_scores": { "throughput": 0.18, "occupancy": 0.88, "retry_failed": 0.34, "jitter": 0.70 },
+  "sub_scores": { "occupancy": 0.78, "jitter": 0.70, "loss": 0.0, "latency": 0.25 },
   "label": 3,
   "label_name": "심각",
-  "early_exit": { "policy": "dynamic", "exit_taken": 1, "confidence": 0.991, "infer_ms": 0.87 },
+  "early_exit": { "policy": "dynamic", "exit_taken": 1, "confidence": 0.991, "infer_ms": 0.65 },
   "connected_clients": 3,
   "ap_reachable": true,
   "steer": { "mode": "proposed", "band": "2g", "recommend": "5g", "clients_on_5g": [], "last_steer": null }
@@ -314,21 +326,25 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 
 ```json
 {
-  "model": { "arch": "APEarlyExitLSTM", "onnx": "ap_early_exit.onnx",
+  "model": { "arch": "APEarlyExitLSTM", "onnx": "ap_early_exit_fixed_unified_int8_v2.onnx",
              "checkpoint": "ap_early_exit_lstm_best.pth",
-             "trained_on_rows": 5574, "trained_at": "2026-08-27" },
+             "trained_on_rows": 2115, "trained_at": "2026-08-29" },
   "scaler": { "file": "scaler_params.json", "sha256": "…" },
-  "features": ["throughput_mbps","channel_occupancy_percent","latency_ms","jitter_ms",
-               "tx_retries_per_s","tx_failed_per_s","rssi_dbm","rssi_delta_db","rssi_moving_avg_dbm"],
+  "features": ["throughput_mbps","channel_occupancy_percent","tx_retry_ratio",
+               "rssi_dbm","rssi_delta_db","rssi_moving_avg_dbm","sta_tx_bitrate_mean"],
   "window_size": 10,
   "poll_interval_s": 1.0,
   "labels": { "0": "정상", "1": "경고", "2": "혼잡", "3": "심각" },
-  "congestion_weights": { "throughput": 0.20, "occupancy": 0.45, "retry_failed": 0.20, "jitter": 0.15 },
+  "congestion_formula": "max(occupancy, jitter, loss, latency)",
+  "congestion_anchors": {
+    "occupancy": [40, 55, 75, 90], "jitter": [20, 30, 50, 100],
+    "loss": [0.5, 1.0, 5.0, 10.0], "latency": [30, 60, 150, 400]
+  },
   "label_thresholds": [0.25, 0.50, 0.75]
 }
 ```
 
-대시보드는 시작 시 `/meta`를 1회 읽어 feature 순서·가중치·문턱을 표시에 쓴다. **`scaler.sha256`이 학습 때와 다르면 결과를 신뢰하지 말 것**(재라벨링/재변환 후 ONNX·scaler 동기 안 맞음 신호).
+대시보드는 시작 시 `/meta`를 1회 읽어 feature 순서·앵커·문턱을 표시에 쓴다. **`scaler.sha256`이 학습 때와 다르면 결과를 신뢰하지 말 것**(재라벨링/재변환 후 ONNX·scaler 동기 안 맞음 신호 — feature 개수가 바뀔 때마다(9→6→7) 실제로 반복된 문제였다).
 
 ### GET /health
 
@@ -481,4 +497,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 - `.work-log/current.md` — "향후 데모 구상", "향후 시스템 구상 — 혼잡 감지 기반 밴드 스티어링", 세션별 진행
 - `docs/yongsang/ap_crash_analysis.md` — 안전 부하 범위·부하 생성 방법 대안의 근거
 - `project/README_AP_V2.md` — 모델·feature·congestion_score 정의, "핵심 검증 질문"
-- `project/utils/ap_features.py` — FeatureVector 순서의 정본 (`tx_retries_per_s`/`tx_failed_per_s`, 2026-08-27~)
+- `project/utils/ap_features.py` — FeatureVector 순서의 정본 (7-feature, `sta_tx_bitrate_mean` 2026-08-29~)
+- `project/scripts/collect_metrics.py`의 `calculate_scores()`/`ANCHORS` — congestion_score(max/anchor 방식) 정본
+- `docs/yongsang/onnx_early_exit_redesign.md` — 배포용 ONNX(unified INT8 v2) 재설계 기록, Pi latency 수치
+- `docs/yongsang/congestion_label_redesign.md` — congestion_score 가중합→max 방식 재설계 배경

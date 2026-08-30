@@ -1,0 +1,45 @@
+AP Early Exit LSTM Evaluation Report
+Data Directory: project\data\ap_metrics_v2_redesign2
+Checkpoint: project\checkpoints\ap_v2_redesign2\ap_early_exit_lstm_best.pth
+
+=== AP Early Exit + fixed theta ===
+Test Accuracy: 88.1%
+Exit별 성능:
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 29.7% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 92.9% | Exit Rate: 18.1% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 79.6% | Exit Rate: 52.3% | Avg Time: 8.0ms
+Overall Avg Inference Time: 5.497ms
+Measured Wall Time: 0.969ms
+Label별 정확도:
+  Label 0 (정상): 96.8%
+  Label 1 (경고): 97.0%
+  Label 2 (혼잡): 82.9%
+  Label 3 (심각): 61.3%
+시나리오별 정확도:
+  step_run1: 81.2%
+  step_run2: 95.8%
+  step_run3: 87.5%
+  step_run4: 93.4%
+  step_run5: 86.6%
+  step_run6: 83.6%
+
+=== AP Early Exit + dynamic theta ===
+Test Accuracy: 87.7%
+Exit별 성능:
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 31.0% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 86.6% | Exit Rate: 31.3% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 78.6% | Exit Rate: 37.7% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.890ms
+Measured Wall Time: 0.936ms
+Label별 정확도:
+  Label 0 (정상): 96.8%
+  Label 1 (경고): 97.0%
+  Label 2 (혼잡): 82.1%
+  Label 3 (심각): 61.3%
+시나리오별 정확도:
+  step_run1: 79.2%
+  step_run2: 95.8%
+  step_run3: 81.2%
+  step_run4: 93.4%
+  step_run5: 87.8%
+  step_run6: 83.6%

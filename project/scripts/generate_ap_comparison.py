@@ -127,7 +127,7 @@ def main() -> None:
     rows = [
         {
             "model": "Baseline LSTM (no early exit)",
-            "paper_basis": "standard full-depth LSTM, class-weighted (power=1.0) to match Proposed",
+            "paper_basis": "standard full-depth LSTM, unweighted (class-weight-power=0.0, 2026-08-30 re-sweep) to match Proposed",
             "threshold_policy": "none; always runs all 3 LSTM layers",
             "test_accuracy": extract(base_report, r"Test Accuracy: ([0-9.]+%)"),
             "label2_accuracy": extract(base_report, r"Label 2 \([^)]*\): ([0-9.]+%)"),
@@ -137,11 +137,11 @@ def main() -> None:
             "exit3_rate": "100.0%",
             "pc_measured_ms_per_sample": f"{base_ms:.4f}",
             "simulated_layer_time_ms": "8.000",
-            "interpretation": "accuracy upper-bound baseline; no early stopping",
+            "interpretation": "accuracy upper-bound baseline; no early stopping; Pi INT8 latency re-measure pending post-power=0.0 (power=1.0 ref: 0.756ms)",
         },
         {
             "model": "SDN-style Early Exit (trained)",
-            "paper_basis": "SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55), class-weighted to match Proposed",
+            "paper_basis": "SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55), unweighted (class-weight-power=0.0) to match Proposed",
             "threshold_policy": f"max softmax confidence >= {sdn_model.confidence_threshold:.2f}",
             "test_accuracy": sdn["acc"],
             "label2_accuracy": sdn["l2"],
@@ -151,7 +151,7 @@ def main() -> None:
             "exit3_rate": sdn["e3"],
             "pc_measured_ms_per_sample": f"{sdn_ms:.4f}",
             "simulated_layer_time_ms": sdn["sim"],
-            "interpretation": "paper-policy baseline trained independently on AP 6-feature redesign2 data; confidence-only exit",
+            "interpretation": "paper-policy baseline trained independently on AP 7-feature redesign2 data; confidence-only exit; Pi INT8 latency re-measure pending post-power=0.0 (power=1.0 ref: 0.636ms)",
         },
         {
             "model": "Proposed Early Exit Fixed theta",
@@ -165,7 +165,7 @@ def main() -> None:
             "exit3_rate": fixed["e3"],
             "pc_measured_ms_per_sample": f"{fixed_ms:.4f}",
             "simulated_layer_time_ms": fixed["sim"],
-            "interpretation": "proposed model without dynamic threshold; real Pi (unified INT8 ONNX) latency 0.641ms",
+            "interpretation": "proposed model without dynamic threshold; uniform exit-loss weights (0.3/0.3/0.4); Pi INT8 latency re-measure pending post-power=0.0 (power=1.0 ref: 0.641ms)",
         },
         {
             "model": "Proposed Early Exit Dynamic theta",
@@ -179,7 +179,7 @@ def main() -> None:
             "exit3_rate": dynamic["e3"],
             "pc_measured_ms_per_sample": f"{dynamic_ms:.4f}",
             "simulated_layer_time_ms": dynamic["sim"],
-            "interpretation": "proposed method; real Pi (unified INT8 ONNX) latency 0.679ms",
+            "interpretation": "proposed method; uniform exit-loss weights (0.3/0.3/0.4); Pi INT8 latency re-measure pending post-power=0.0 (power=1.0 ref: 0.645ms)",
         },
     ]
 
@@ -194,7 +194,7 @@ def main() -> None:
     lines = [
         "AP redesign2 데이터 모델 비교표 (Baseline / SDN-style / Proposed Early Exit)",
         f"데이터: {DATA_DIR.relative_to(PROJECT_ROOT.parent)} (test 310창, label 3 31개)",
-        "모든 모델 class-weight-power=1.0으로 학습(공정 비교 — 1학기와 달리 Baseline/SDN도 가중치 적용)",
+        "모든 모델 class-weight-power=0.0으로 학습(2026-08-30 재스윕 — 클래스 가중치 없음이 정확도·label3 F1 둘 다 최고). 공정 비교를 위해 세 모델 동일 적용.",
         "",
         "| 모델 | 근거/역할 | 정확도 | Label 2 | Label 3 | Exit1 | Exit2 | Exit3 | PC 실측(ms/sample) | 구조상 평균(ms) |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -212,9 +212,12 @@ def main() -> None:
             "해석:",
             "- Baseline LSTM은 정확도 상한선 기준이며 항상 3개 LSTM 계층을 모두 수행한다.",
             f"- SDN-style Early Exit는 Early Exit 백본을 재사용하지 않고, SDN 논문의 loss 가중치(0.15/0.30/0.55)로 별도 학습한 백본에 고정 confidence threshold {sdn_model.confidence_threshold:.2f}를 적용한 결과이다.",
-            "- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일하게 class-weight-power=1.0으로 학습했다 — 아키텍처 차이만 비교하기 위해 훈련 방식은 통제 변수로 고정.",
+            "- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일한 학습 방식(class-weight-power=0.0)으로 학습했다 — 아키텍처 차이만 비교하기 위해 훈련 방식은 통제 변수로 고정.",
             "- Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.",
-            "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다 — Proposed는 실제 Pi(unified INT8 ONNX) 실측이 있음(0.64~0.68ms, docs/yongsang/onnx_early_exit_redesign.md 참고), Baseline/SDN은 아직 Pi 배포 안 함(향후 과제).",
+            "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다 — power=1.0 기준 Pi(INT8 ONNX) 실측은 Baseline 0.756ms/SDN 0.636ms/Proposed Fixed 0.641ms/Proposed Dynamic 0.645ms였음. power=0.0 승격 후 Pi 재측정은 미실시(별도 세션, 파이+폰 필요). feature 개수·아키텍처가 안 바뀌었으므로 지연은 거의 동일할 것으로 예상하나 미확인.",
+            "- 2026-08-30: class-weight-power 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도·label3 F1 둘 다 최고 → 기본값 1.0→0.0. 세 모델 전부 재학습(Baseline/SDN 3시드, Proposed EE 5시드 — EE 시드 분산이 커서 늘림), val balanced acc 최고를 배포.",
+            "- 2026-08-29: sta_tx_bitrate_mean을 7번째 입력 feature로 승격(occ 60~72% 구간에서 label2/3을 가르는 유의미한 신호로 다중 시드 검증됨). 같은 세션에 학습 파이프라인에 --seed 옵션 추가.",
+            "- Proposed의 exit-loss 가중치는 균등(0.3/0.3/0.4)으로 유지 — SDN 스타일(0.15/0.30/0.55)을 시도했던 이전 승격은 다중 시드 검증에서 유의미한 이득이 확인되지 않아 보류됨(SDNLSTM은 EarlyExitLSTM과 백본이 의도적으로 동일하므로, 같은 가중치를 쓰면 두 모델이 사실상 같은 네트워크가 되어 버려 비교 자체가 무의미해지는 것도 이유).",
         ]
     )
     txt_path.write_text("\n".join(lines), encoding="utf-8")

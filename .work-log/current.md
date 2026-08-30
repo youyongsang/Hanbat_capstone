@@ -1,5 +1,330 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-28 밤 세션 마무리 (yongsang) — 아래 "세션 마무리 요약"과 "다음 세션 최우선"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 전체 승격 완료(7차 체크포인트)**: 재학습·평가·ONNX·문서 전부 갱신. Baseline 92.3% / EE Fixed θ 90.6% / Dynamic θ 91.0% (fp32). **남은 것은 Pi INT8 재측정(파이+폰 별도 세션)뿐.** 아래 "진행 중 (2026-08-30, 7차)"부터 확인.
+
+## 진행 중 (2026-08-30, 7차) — power=0.0 전체 승격 (재학습·평가·ONNX·문서 완료 / Pi 재측정만 남음)
+
+5차에서 power=0.0 확정 → item 3(전체 승격) 실행.
+
+### 완료
+1. **코드 기본값 변경**: `train_ap_early_exit.py`·`train_ap_baseline_lstm.py`·`train_ap_sdn.py` 셋 다 `--class-weight-power` 기본값 1.0 → 0.0. `compute_class_weights` docstring의 stale한 "power≤0.85 절벽" 근거를 2026-08-30 재스윕 결과로 정정(보존). `--seed`/`--class-weight-power` help 문자열 갱신.
+2. **아카이빙**: `checkpoints/ap_v2_redesign2/` → `checkpoints/ap_v2_redesign2_power1_archived_20260830/`(전체 복사). 결과 리포트 8종 → `project/results/yongsang/*_power1_archived_20260830.*`.
+3. **재학습** (power=0.0, 균등 exit weights 0.3/0.3/0.4, hidden 128, dropout 0.2, epochs 50):
+   - Baseline: 시드 0/1/2 (val bal 87.8/87.7/87.1) → **seed0 선택**
+   - SDN: 시드 0/1/2 (val bal 88.2/86.7/87.1) → **seed0 선택**
+   - Proposed EE: 시드 0~4 (val bal 86.5/86.8/86.5/86.4/86.8) → val 최고 동률(seed1·4) 중 fixed L3 F1 tiebreak로 **seed4 선택** (seed1이 L3 recall 38.7%로 유독 나빴음 — 4차에서 예고된 EE 시드 불안정성 재확인, 그래서 EE만 5시드로 늘림)
+4. **평가** (fp32, canonical):
+
+   | 모델 | 정확도 (p1 → **p0**) | Label3 recall | Label3 F1 |
+   |---|---|---:|---:|
+   | **Baseline (EE 없음)** | 88.7% → **92.3%** | 58.1% (유지) | — |
+   | SDN-style | 89.0% → **90.6%** | 58.1% → 48.4% | — |
+   | Proposed EE fixed θ (seed4) | 88.1% → **90.6%** | 61.3% → 54.8% | 65.5% → **68.0%** |
+   | Proposed EE dynamic θ (seed4) | 87.7% → **91.0%** | 61.3% → 54.8% | — → 69.4% |
+
+   - Proposed EE 5시드 평균(fixed): acc 90.7%±0.7%, L3 F1 64.5%±5.5%, L3 recall 51.0%±6.6%. (seed3이 test는 91.9%/F1 70.6%로 최고지만 val bal 최저라 선택 안 됨 — 정직한 selector 준수.)
+   - **핵심**: power=0.0가 전 모델 정확도를 +1.6~3.6pt 올림. **Baseline이 92.3%로 95% 목표에 가장 근접.** 대신 EE/SDN의 label3 recall은 내려감(power=1.0이 label3 과보호하던 것 — 4차 confusion matrix 분석대로). EE label3 F1은 65.5→68.0으로 오히려 소폭 상승(precision이 크게 오름).
+   - Label별(EE seed4 fixed): L0 97.9% / L1 97.0% / L2 90.6% / L3 54.8%. Exit 종료율 30.0/50.6/19.4%.
+
+### 완료 (계속)
+5. **ONNX 재수출**: baseline/sdn/ee staged+unified+int8_v2 전부. unified fp32 = PyTorch와 310/310 일치(fixed·dynamic). INT8 v2 = fixed 308/310·dynamic 309/310(양자화 노이즈). INT8 직접 정확도: fixed 90.3%/F1 65.3%, dynamic 90.6%/F1 66.7%.
+6. **문서 갱신**: `ap_model_comparison_redesign2.{txt,csv}` 재생성(+`generate_ap_comparison.py` 하드코딩 문자열 power=1.0→0.0, Pi 수치는 "재측정 pending"으로), `ap_v2_redesign2_pi_latency_comparison.txt` 상단 STALE 배너, `CLAUDE.md`(최신 평가 결과 섹션 전면 갱신 + 목표1 줄 + 해석기준 7번), `docs/yongsang/onnx_early_exit_redesign.md`(2026-08-30 콜아웃).
+
+### 남음
+- **Pi INT8 재측정** — 파이+폰 필요, 별도 세션. (feature/아키텍처 불변이라 지연은 power=1.0 기준 0.64ms대와 거의 같을 것으로 예상, 미확인.)
+- Baseline/SDN도 5시드로 완전 특성화 (지금 3시드) — 여유되면.
+- HTML 아티팩트("Early-Exit Reweighting") 갱신 여부 판단 — 이번 변화가 크므로 별도 아티팩트가 나을 수도.
+
+### 참고 — 이번 결과의 서사적 함의
+Baseline(EE 없음)이 정확도 1위가 됨. Proposed(Early Exit)의 가치 주장은 **정확도가 아니라 속도/효율**(발표 목표2 <1ms, Pi INT8 0.6ms대) + "간섭 감지에 EE 최초 적용" — 이건 원래 발표자료 프레이밍과 일치. 95% 목표 관점에서는 **Baseline 92.3%를 기준선으로 삼는 게 정직** (목표까지 test 310창 중 8.4개).
+
+## 진행 중 (2026-08-30, 6차) — survey rx/tx airtime + 외부 점유(간섭) feature 탐색
+
+### 배경
+label3 오답 분해(위 3차·이번 세션): label3의 75%가 **victim 프로브 loss 축**으로 결정되는데 모델은 그 축을 못 봄. 기존 28개 raw 컬럼에서 파생 가능한 후보(bitrate_min, retx_per_s, clients, occ/client 등) 전부 loss_score와 상관 ≤ 0.31로 약함 — 지금 데이터엔 victim 손실 대리 신호가 없음. 1학기 모델은 loss·latency를 입력으로 직접 줬기 때문에 label3 recall 100%였던 것(+ 시뮬레이터 데이터).
+
+Opal(GL-SFT1200)은 SSH로 `iw dev wlan0 station dump` + `iw dev wlan0 survey dump` 두 명령만 제공. survey 출력에 `channel receive time` / `channel transmit time` / `noise`가 들어있는데 `collect_metrics.py`가 active/busy만 읽고 이 3줄을 버리고 있었음. **busy − (rx + tx) = 우리 AP는 아무것도 안 했는데 채널이 바빴던 시간 = 동일 채널 다른 AP·간섭(co-channel interference)** → occupancy는 중간인데 이게 크면 victim이 contention으로 굶는 상황의 대리 신호가 될 수 있음.
+
+### 코드 변경 (`project/scripts/collect_metrics.py`) — 완료, 재수집 대기
+- `parse_channel_occupancy`: `channel receive/transmit time`·`noise` 추가 파싱, 5-tuple 반환. mt76가 이 줄들을 안 뱉으면 None → CSV 빈칸, occupancy 계산엔 영향 없음(방어적).
+- `survey_counter_percent` 헬퍼 추가: 누적 카운터(ms)를 active time 대비 %로, occupancy와 동일하게 delta 우선.
+- 신규 CSV 컬럼 4개 (`channel_occupancy_method` 뒤): `channel_rx_time_percent`, `channel_tx_time_percent`, `channel_ext_busy_percent`(= busy−rx−tx), `noise_dbm`. **전부 탐색용 — 라벨 max 축 아님, 모델 feature 아님.** 유의미하면 그때 승격.
+- `CSV_FILE`을 `COLLECT_CSV_FILE` 환경변수로 override 가능하게 (탐색 수집을 canonical CSV와 분리).
+- 단위 테스트 통과 (rx/tx/noise 파싱, delta·first·reset·none-safe 경로).
+- 다운스트림 영향 없음 확인: `remeasure_redesign.py`는 `df.copy()` 후 score 컬럼만 덮어써서 새 컬럼 통과, `prepare_ap_metrics_dataset.py`는 명시적 feature 리스트라 새 컬럼 무시.
+
+### 다음 (사용자 실행)
+1. **필드 존재 확인**: `ssh root@192.168.8.1 "iw dev wlan0 survey dump"` — `channel receive time` / `channel transmit time` / `noise` 줄이 나오는지. (안 나오면 이 방향 폐기.)
+2. **탐색 수집**: step 프로파일(10/20/30/40M × 60초 = 240초) 몇 회. `COLLECT_CSV_FILE=metrics_v2_surveyext.csv python collect_metrics.py step_ext_runN`. victim 프로브(iperf3 -u -b 300k, 노트북 5203) + ping 서버 살아있어야 loss/latency 축이 라벨에 반영됨.
+3. **분석**: label2 vs label3 (occ 45–68% 혼동 구간)에서 `channel_ext_busy_percent`·`noise_dbm`의 Cohen's d, loss_score와의 상관. bitrate_mean(d≈0.43)·loss_score 상관(≤0.31) 넘으면 8번째(또는 그 이상) feature로 승격 검토.
+
+## 체크포인트 (2026-08-30, 5차) — power 0.1/0.15 갭 스윕, 절충점 없음 → power=0.0 확정
+
+4차에서 비어있던 그리드 값(0.1, 0.15) 3시드씩 채움 (`class_weight_power_sweep_010_015.py`, EXIT_WEIGHTS=(0.3,0.3,0.4), hidden 128, dropout 0.2, epochs 50):
+
+| power | 정확도 | Label3 F1 | Label3 recall | Label3 precision |
+|---|---:|---:|---:|---:|
+| **0.0** | **91.3%±0.5%** | **69.8%±2.3%** | ~51.6% | 높음 |
+| 0.1 | 91.0%±0.9% | 68.4%±2.3% | 54.8%±2.6% | 91.1%±2.4% |
+| 0.15 | 90.8%±0.2% | 67.6%±1.7% | 53.8%±1.5% | 90.9%±2.5% |
+| 0.2 | 90.1%±1.4% | 66.2%±3.1% | | |
+| 0.3 | 89.7%±0.5% | 64.3%±2.6% | | |
+| 1.0(현재 기본값) | 87.0%±1.1% | 63.2%±0.5% | | |
+
+**결론**: 0.1/0.15는 정확도·F1 둘 다 0.0과 0.2 사이에 단조롭게 놓임 — label3 recall이 살아나는 절충점 없음(0.1의 recall 54.8%가 0.0보다 근소 높지만 그 차이는 std 안, 정확도·F1은 여전히 0.0이 최고). **power=0.0으로 확정.** 사용자 예측("낮을수록 좋았으니 상관없을 것") 맞음. 이 축의 재검증 끝 — 다음은 전체 승격(item 3).
+
+### 다음 세션 첫 번째 할 일 — 전체 승격 (item 3), power=0.0 기준
+
+8/29 `sta_tx_bitrate_mean` 승격 때와 동일한 순서:
+1. `train_ap_early_exit.py` + `train_ap_baseline_lstm.py` + `train_ap_sdn.py` 셋 다 `--class-weight-power` 기본값 1.0 → 0.0 변경. `train_ap_early_exit.py`의 `compute_class_weights` docstring에 남아있는 "power≤0.85면 label3 recall 절벽" 근거는 stale(4-feature·train label3=23개 시절) — 주석으로 정정하며 보존.
+2. 기존 체크포인트/결과 아카이빙 (`*_power1_archived_20260830.*` 식). Pi(`~/ap_pi_v2/`)도.
+3. Baseline/SDN/Proposed 각각 시드 0/1/2 재학습, val balanced acc 최고를 배포 체크포인트로.
+4. ONNX 재수출 (feature 개수 안 바뀌니 8/29 hardcode 버그 재발 없음): `export_onnx_ap_baseline.py`, `export_onnx_ap_sdn*.py`, `export_onnx_ap*.py` + `export_onnx_ap_unified.py` + `export_onnx_ap_unified_int8_v2.py`.
+5. Pi 재측정 (INT8).
+6. 문서 갱신: `ap_v2_redesign2_eval_report.txt`, `ap_v2_redesign2_pi_latency_comparison.txt`, `ap_model_comparison_redesign2.{txt,csv}`, `CLAUDE.md`(class weight power 1.0 → 0.0), `docs/yongsang/onnx_early_exit_redesign.md`.
+
+## ⭐ (4차 기준) 시작 지점 — class-weight-power 승격 마무리부터
+
+**지금 상태**: `train_ap_early_exit.py`의 `--class-weight-power` 기본값은 아직 **1.0**(코드 미변경, 순수 실험만 한 상태). 실험 결과 **power=0.0(가중치 없음)이 정확도·F1 둘 다 최고**라는 게 3시드로 확인됐지만, 아직 어떤 코드/체크포인트/문서도 안 바꿨다 — 전부 스크래치패드 실험.
+
+**다음 세션 첫 번째 할 일 (순서 확정)**:
+1. **power=0.1, 0.15 추가 스윕(3시드씩)** — label3 recall을 살리면서 label2 개선폭을 최대한 유지하는 절충점이 있는지 확인. 지금까지 그리드(0.0/0.2/0.3/0.5/0.7/0.85/1.0)에 0.1·0.15만 비어있음. 재현 코드: `class_weight_power_sweep.py`의 `POWERS` 리스트를 `[0.1, 0.15]`로 바꿔서 그대로 재사용(스크립트 구조는 위 "체크포인트 (2026-08-30, 4차)" 참고, 스크래치패드에 없으면 그 섹션 세팅대로 재작성).
+2. 절충점(또는 여전히 0.0이 최선)이 정해지면 최종 값 확정.
+3. 확정되면: item 2(sta_tx_bitrate_mean) 때와 동일한 순서로 전체 승격 진행 — ①`train_ap_early_exit.py`(및 `train_ap_baseline_lstm.py`/`train_ap_sdn.py`, 지금 셋 다 `--class-weight-power` 기본값 1.0) 기본값 변경 ②기존 체크포인트/결과 아카이빙(`*_power1_archived_20260830.*` 식) ③Baseline/SDN/Proposed 재학습(멀티시드, val 최고 선택) ④ONNX 재수출(`export_onnx_ap_unified_int8_v2.py` 등 — 이번엔 feature 개수 안 바뀌니 8/29에 고친 hardcode 버그는 재발 안 함) ⑤Pi 재측정 ⑥비교표·문서 갱신
+
+## 체크포인트 (2026-08-30, 4차) — class-weight-power 재검증, 87.0%→91.9%까지 개선(미승격)
+
+### 배경
+8/29 밤 confusion matrix 분해에서 "label2(혼잡)가 label3보다 오답이 많다"는 걸 확인한 뒤, 다른 개선 방안 후보 중 **class-weight-power 재검증**(8/23에 4-feature·label3 23개짜리 옛날 데이터로 고정된 값, 그 뒤 라벨 재설계·7-feature 승격을 다 겪고도 재검증 안 함)을 사용자가 선택.
+
+### 1차 스윕 (0.5/0.7/0.85/1.0, 3시드씩, 균등 exit 가중치 고정)
+| power | 정확도 | Label3 F1 |
+|---|---:|---:|
+| 0.5 | 89.6%±0.8% | 67.1%±3.3% |
+| 0.7 | 88.3%±1.7% | 61.2%±3.2% |
+| 0.85 | 88.0%±1.0% | 62.4%±2.4% |
+| 1.0(현재 기본값) | 87.0%±1.1% | 63.2%±0.5% |
+
+power를 낮출수록 개선되는 추세 확인 → 사용자 요청으로 더 낮은 값 추가 스윕.
+
+### 2차 스윕 (0.0/0.2/0.3, 3시드씩)
+| power | 정확도 | Label3 F1 |
+|---|---:|---:|
+| **0.0** | **91.3%±0.5%** | **69.8%±2.3%** |
+| 0.2 | 90.1%±1.4% | 66.2%±3.1% |
+| 0.3 | 89.7%±0.5% | 64.3%±2.6% |
+
+**power=0.0(클래스 가중치 완전히 없음)이 정확도·F1 둘 다 최고** — 0 밑으로는 못 내려가므로(방향이 뒤집힘) 이 축의 경계 최적값. 87.0%→91.3%(+4.3pt), F1 63.2%→69.8%(+6.6pt) — 트레이드오프 없는 순수 개선.
+
+**왜 이렇게 됐나**: 8/23 결정 당시(4-feature, train label3=23개)는 "power≤0.85면 label3 recall이 0%로 떨어지는 절벽"이 있었음(`train_ap_early_exit.py`의 `compute_class_weights` docstring에 그 근거가 남아있음, 이제 stale). 지금(7-feature, train label3=141개)은 그 절벽이 사라짐 — 데이터가 늘면서 가중치 없이도 label3를 자연스럽게 학습 가능해졌는데, 옛 결정을 한 번도 재검증 안 해서 계속 손해보고 있었음.
+
+### power=0.0 confusion matrix — label2가 사실상 해결됨, label3는 트레이드오프
+seed=0 (val balanced acc 85.4%, test acc 91.9%) 기준:
+```
+        pred0  pred1  pred2  pred3
+true0:    93     1      1      0    (n=95)
+true1:     0    65      2      0    (n=67)
+true2:     0     5    111      1    (n=117)   ← recall 82.9%→94.9%, 양방향 오답 다 줄음
+true3:     0     5     10     16    (n=31)    ← recall 61.3%→51.6%, 오히려 하락
+```
+95% 목표까지 **9.5개만 남음**(8/29 밤엔 21.5개). label2→1(12→5)·label2→3(8→1) **양방향 동시 개선** — occupancy 스무딩 실험(8/29)이 한쪽 고치면 한쪽이 나빠지는 두더지 잡기였던 것과 대조적. 원인 추정: power=1.0이 label1(1.15배)·label3(2.55배)를 과보호하느라 label2(0.66배)가 상대적으로 방치돼 양방향으로 새던 것 — 가중치를 없애니 label2가 정상화됨. 대신 label3는 보호막이 없어져 recall이 내려감(오답 5→1, 10→2로 사실상 전부 label3 자체 오답).
+
+### hidden_size / dropout 스윕(power=0.0 고정, 2시드씩) — 추가 이득 없음, 현재 기본값이 이미 최적
+| hidden_size | 정확도 | F1 |
+|---|---:|---:|
+| 64 | 91.8% | 67.2% |
+| **128(현재)** | **91.5%** | **68.6%** |
+| 256 | 89.5%(악화) | 67.2% |
+
+| dropout | 정확도 | F1 |
+|---|---:|---:|
+| 0.1 | 89.5%(악화) | 63.1%(악화) |
+| **0.2(현재)** | **91.5%** | **68.6%** |
+| 0.3 | 90.3% | 66.7% |
+| 0.4 | 90.5% | 64.6%(악화) |
+
+hidden_size=256은 작은 데이터셋에 과적합 추정(악화), dropout은 0.2가 이미 최적. **이 두 축은 더 건드릴 필요 없음** — 이번 세션에서 실질적 레버는 class-weight-power 하나였음.
+
+### 실험 산출물 (전부 스크래치패드, 코드/데이터/체크포인트 변경 없음)
+`C:\Users\dkssu\AppData\Local\Temp\claude\C--dev-Hanbat-capstone\826c2c75-c14f-4e8d-b7ad-c172f7aa404b\scratchpad\`의 `class_weight_power_sweep*.py`, `power0_confusion_and_hparam.py` 및 대응 `*_out.txt` — 세션이 끝나면 사라질 수 있으므로, 다음 세션에서 재현하려면 위 표의 정확한 세팅(EXIT_WEIGHTS=(0.3,0.3,0.4), hidden=128, dropout=0.2, epochs=50, batch=32, lr=0.001)으로 `train_ap_early_exit.py --class-weight-power 0.0`을 시드 여러 개로 돌리면 동일 재현 가능(스크립트 자체는 이미 `--class-weight-power` 인자를 지원하므로 스크래치패드 스크립트 없이도 재현 가능).
+
+### occupancy 라벨링 스무딩(어제 이어서 검증 완료, 폐기 확정)
+어제 밤 오답 37건 전체 재분해 + window=3 전체 파이프라인 검증까지 마침 — 정확도 순효과 없음(88.1%→88.3%), Label3 F1 오히려 악화(65.5%→57.1%). 상세는 아래 "체크포인트 (2026-08-29, 3차)" 참고. **이 방향은 폐기, class-weight-power가 훨씬 나은 대안으로 확인됨**.
+
+## 체크포인트 (2026-08-29, 3차) — 발표자료로 실제 목표 재확인, confusion matrix 분해, occupancy 스무딩 실험(보류)
+
+### 발표자료(`docs/캡스톤디자인I_최종발표.pptx`) 확인 — SDN 비교는 원래 목표가 아니었음
+사용자가 "1학기엔 왜 정확도가 높았나" 질문 → `project/results/hojung/baseline_eval_report.txt` 확인 결과 1학기 데이터(`project/data/real`)는 시나리오명이 `emergency_ramp`/`startup_surge` 등 **시뮬레이터 생성 데이터**였음(label3 recall 100%로 확인) — 실측이 아니라 쉬운 문제였을 뿐. 이 대화가 "그럼 스마트공장이면 jitter/loss를 입력으로 그냥 줘도 되지 않냐"는 질문으로 이어져, Cisco Catalyst 9800처럼 엔터프라이즈급 AP는 실제로 WMM Traffic Stream Metrics로 클라이언트별 latency/loss를 네이티브 제공한다는 것도 웹 검색으로 확인(반면 이 프로젝트가 쓴 GL.iNet Opal 같은 저가 AP는 안 됨 — 그래서 victim 프로브를 직접 만든 것).
+
+이 논의 중 사용자 요청으로 `docs/캡스톤디자인I_최종발표.pptx`(pptx, 텍스트가 대부분 이미지로 붙어있어 PowerPoint COM 자동화로 슬라이드를 PNG로 export해서 육안 확인) 검토 → **중요 발견**:
+- **슬라이드 8 "정량적 목표"**: 목표1 = **혼잡 분류 정확도 95% 이상**(Raspberry Pi 환경), 목표2 = **추론 지연 <1ms**. SDN 비교는 목표에 없음. 목표2(<1ms)는 이미 달성(0.6~0.8ms). **목표1(95%)이 진짜 남은 숙제** — 지금 전체 정확도 87~91%.
+- **슬라이드 6 "주요 시스템 개요"**: 핵심 주장은 "간섭 감지에 Early Exit LSTM 구조를 최초 적용" — SDN을 이기는 게 목표가 아니라 최초 적용 자체가 기여.
+- **슬라이드 7 "프로젝트 최종 목표"**: "혼잡 판단 결과를 기반으로 **채널 전환 필요 여부와 전환 명령 후보를 생성한다**"가 최종 목표 문장에 명시돼 있음 — 이건 지금 `demo_api_spec.md` §9에 "미착수(팀 결정 필요)"로 남겨둔 **밴드 스티어링**과 동일. work-log에선 "선택적 확장"처럼 다뤘지만 **원래 최종 목표에 포함된 항목**이었음 — item 4(밴드 스티어링) 우선순위 재검토 필요.
+- 사용자가 "전체 정확도 95%부터"로 우선순위 결정.
+
+### Confusion matrix 분해 — label3보다 label2가 더 큰 걸림돌
+현재 배포 체크포인트(7-feature, 균등 가중치) test 310창 confusion matrix:
+
+```
+         pred0  pred1  pred2  pred3
+true0:     92     2      1      0    (n=95)
+true1:      0    65      2      0    (n=67)
+true2:      0    12     97      8    (n=117)
+true3:      0     6      6     19    (n=31)
+```
+
+95% 정확도 = 294.5개 정답 필요, 지금 273개(88.1%) → **21.5개만 더 맞히면 목표 도달**. label0/1은 이미 97% 근처. **label2(117개 중 20개 오답)가 label3(31개 중 12개 오답)보다 오답 개수 자체가 많음** — 지금까지 label3 F1에만 집중했는데 95% 목표엔 label2 개선이 더 효율적.
+
+### label2 오답 원인 분해 — 두 가지 다른 문제
+`scaler_params.json`으로 역스케일링해서 raw occupancy 확인:
+- **label2→1 (12개 중 9개)**: occupancy가 정확히 **55.2~56.7%에 몰림** — label1/2 anchor 경계(정확히 55%)에 걸친 순수 측정 잡음. 물리적으로 거의 같은 채널 상태인데 라벨만 뒤집힘. **데이터를 더 모아도 안 고쳐지는 유형**.
+- **label2→3 (8개)**: occ 63~73%로 넓게 분산, bitrate도 뒤섞임 — 기존에 진단한 "occ 60~72% 정보 부족 구간"과 동일한 유형. 데이터/대리 feature 추가가 부분적으로 도움될 수 있음.
+
+### occupancy 라벨링 스무딩 실험 — 보류(위험 판단)
+label2→1 노이즈성 오답을 고치기 위해 `remeasure_redesign.py`에 `channel_occupancy_percent`의 scenario별 rolling median(window=5, `fix_occupancy_outliers`와 동일 스타일) 스무딩을 라벨링 계산에만 적용(모델 입력 feature는 원본 유지)하는 실험을 시도.
+
+- **결과**: raw 2115행 중 **251개(12%) 라벨이 바뀜** — 목표였던 "12개 경계 노이즈"보다 훨씬 큰 변화. label1 -24 / label2 +37 순변화 — step 프로파일(60초마다 실제 부하 전환) 특성상 window=5 스무딩이 순수 잡음뿐 아니라 **진짜 전환 타이밍까지 몇 초 밀어버릴 위험**이 있음. forecasting(조기경보, k=3 3~6초 타이밍에 의존)에도 영향 줄 수 있어 사용자가 "위험해 보임"으로 보류 결정.
+- **되돌림**: `remeasure_redesign.py` 코드 변경은 `git checkout`으로 원복. 정식 데이터(`metrics_v2_pi_redesign2_relabeled.csv`)는 스크래치패드에만 출력했으므로 애초에 안 건드림 — 실험 흔적 없음.
+- **다음에 재시도한다면**: window=3처럼 더 좁은 창으로 순수 잡음만 줄이는지 재확인 필요. 또는 라벨링이 아니라 **모델 입력 쪽**(occupancy feature 자체에 rolling 평균 추가)으로 접근을 바꿔서, 라벨은 그대로 두고 모델이 노이즈에 더 강해지도록 유도하는 방향도 검토 가치 있음.
+
+### occupancy 라벨링 스무딩 window=3 전체 파이프라인 검증 — 순효과 없음, 방향 폐기 (같은 세션 후속)
+
+먼저 오답 37건 전체를 다시 분해(label3 자체 오답 12건, label0/1 오답 5건 포함)해서 확인: 오답의 89%(33/37)가 exit3(가장 깊은 레이어)에 몰려있고 오답 평균 entropy(0.740)가 정답(0.422)보다 뚜렷이 높음 — 모델의 자기 보정 자체는 잘 됨. label3 오답 12건은 occupancy가 전부 50~63%(심각 앵커 75%에 한참 못 미침) — 프로브 축(jitter/loss)만으로 결정된 정보 부족 케이스 100%. 그리고 label1→2 오답 2건도 정확히 occ=53.3%에서 발생 — 53~57% 경계 노이즈가 label2→1뿐 아니라 **양방향**(label1→2도)이라는 걸 추가 확인.
+
+사용자 요청으로 window=3 스무딩을 전체 파이프라인(relabel→convert→retrain 3시드→평가)까지 실제로 돌려서 검증:
+- `project/scripts/metrics_v2_pi_redesign2_relabeled_occsmooth_w3.csv`, `project/data/ap_metrics_v2_redesign2_occsmooth_w3/` 신규 생성(둘 다 보존 — 부정적 결과의 증거로 남김, 기존 파일과 충돌 없음)
+- raw 2115행 중 161개(7.6%) 라벨 변경(window=5의 251개보다 적지만 여전히 넓음)
+- 3시드 학습(seed2, val balanced acc 83.6% 최고) → confusion matrix 비교:
+
+| | 원본 라벨 | window=3 스무딩 |
+|---|---|---|
+| 정확도 | 88.1% | 88.3%(거의 그대로) |
+| label2→1 오답 | 12 | **6(절반으로 줄음 — 가설 확인)** |
+| label2→3 오답 | 8 | **14(오히려 늘어남)** |
+| label0 recall | 96.8% | 100%(개선) |
+| label1 오답(신규 유출) | 0 | 5(신규 발생) |
+| Label3 F1 | 65.5% | **57.1%(악화)** |
+
+**결론**: 가설(55% 경계 노이즈)은 맞았고 그 오답은 실제로 절반 줄었지만, 같은 스무딩된 occupancy 값이 다른 anchor 경계(75% 등)에도 동시에 쓰여서 **다른 곳에서 새 오답이 생겨 순효과가 없음**(전형적인 두더지 잡기) — window 크기를 더 줄여도 이 구조적 트레이드오프는 안 없어질 가능성이 높음. **occupancy 라벨링 스무딩 방향은 폐기**. 코드(`remeasure_redesign.py`)는 실험 후 매번 `git checkout`으로 원복, 실험 산출물만 보존.
+
+### 다음 세션 우선순위 — 다른 방안 검토 필요
+occupancy 라벨링 스무딩(입력/출력 양쪽 시도) 폐기 이후 재검토한 대안들(미착수, 우선순위 미정):
+1. **모델 입력 쪽 스무딩** — 라벨은 원본 유지, occupancy feature 자체에 rolling 평균만 추가해서 모델이 노이즈에 덜 민감하게. 라벨을 안 건드리므로 forecasting 등 다른 결과에 영향 없음 — 위 실험보다 안전한 변형.
+2. **class-weight-power 재검증** — 8/23에 4-feature 시절 데이터로 power=1.0을 확정한 뒤 한 번도 재검증 안 함(6→7-feature, 라벨 재설계 전부 그 이후). 지금 데이터로 0.7~1.0 재스윕 가치 있음.
+3. **하이퍼파라미터 튜닝** — hidden_size=128/dropout=0.2/lr=0.001/epochs=50을 세션 내내 고정값으로만 씀, 한 번도 스윕 안 함.
+4. **label2→3 구간(occ 60~72%) 대리 feature 추가 탐색** — `iw station dump`의 다른 미사용 필드(MCS 분포, tx 큐 등).
+5. **시나리오별 오답 편차 재조사** — step_run1(18.8%)·step_run6(16.4%)·step_run5(13.4%) 오답률이 step_run2(4.2%)보다 훨씬 높음 — 특정 세션에 다른 잡음원이 있었는지 확인 가치.
+6. **조기경보(forecasting) 프레이밍** — 이미 검증됨(k=3 61.5%), "점 분류 정확도 95%"와는 다른 지표라 발표자료 목표1을 직접 만족하진 않지만 대안 서사로 유효.
+
+문서 최상단 "내일 할 일 (2026-08-30)" 참고 — 이 체크포인트의 발견을 반영해 그쪽에서 재정리함.
+
+## 체크포인트 (2026-08-29, 2차) — sta_tx_bitrate_mean 7-feature 승격, item 1(SDN 가중치) 정정, 학습 파이프라인에 --seed 추가
+
+### 배경: item 1 재검토 — SDN 가중치 승격이 노이즈였을 가능성 확인
+work-log의 "내일 할 일" 2번(`sta_tx_bitrate_min/mean` escalation 지문 재검토)을 진행하는 과정에서, 학습 파이프라인 어디에도 `torch.manual_seed`가 없다는 걸 발견. 같은 설정(6-feature, SDN 가중치)을 시드만 바꿔 재실행하니 test 정확도 91.3%→80.0%, Label3 F1 66.7%→51.1%로 요동침 — 아래 "체크포인트 (2026-08-29, 1차)"에서 SDN 가중치를 승격한 근거(단일 실행 비교)가 노이즈였을 가능성이 높다는 뜻. 사용자 확인 후 **item 1은 일단 보류**(균등 가중치로 유지도 승격 확정도 아님), item 2부터 제대로 마무리하기로 함.
+
+### sta_tx_bitrate_mean 검증 — 다중 시드로 실제 신호 확인
+가설(혼잡할수록 station tx bitrate가 떨어진다, "rate collapse")은 실측과 정반대: 혼잡할수록 오히려 값이 올라감(부하 테스트 특성상 혼잡 구간에서 기기가 실제로 데이터를 계속 밀어넣기 때문 — 한가할 때는 관리 프레임만 드문드문 잡혀 저속 기본값으로 기록됨). occ 60~72%(다른 6개 feature가 label 2/3 사이에 완전히 동일해지는, 8/27 진단된 구간)에서 label 2/3 간 Cohen's d=0.52로 유의미하게 갈라짐.
+
+5개 시드 x 4개 설정(6/7-feature x 균등/SDN 가중치) 다중 시드 스윕 결과(Label3 F1, mean±std):
+
+| | 균등 가중치 | SDN 가중치 |
+|---|---:|---:|
+| 6-feature | 56.0%±3.3% | 52.0%±5.8% |
+| 7-feature(+bitrate) | 60.9%±3.0% | 63.1%±3.6% |
+
+**결론이 깔끔하게 갈림**: feature 축(6→7)은 가중치와 무관하게 항상 이기는 확실한 신호. exit 가중치 축(균등→SDN)은 7-feature 안에서도 차이(2.2pt)가 표준편차보다 작아 여전히 노이즈와 구분 안 됨 — item 1의 승격 근거가 이걸로도 재확인 약화됨.
+
+### 학습 파이프라인에 --seed 옵션 추가 (영구 수정)
+`train_ap_early_exit.py`/`train_ap_sdn.py`/`train_ap_baseline_lstm.py` 전부에 `--seed` CLI 옵션 추가(`torch.manual_seed`+`np.random.seed`, 체크포인트 메타데이터에도 기록). 기본값은 `None`(기존 동작 유지)이지만, 앞으로 하이퍼파라미터 A/B 비교는 여러 시드로 해야 한다는 경고를 `--seed` help 문자열에 남김.
+
+### 전체 파이프라인 승격 — Baseline/SDN-style/Proposed 전부 7-feature로 재작업
+사용자 확인("SDN에는 왜 넣어?"라는 질문에 "아키텍처 비교의 통제 변수로서 입력 feature도 맞춰야 공정하다"고 답변, 이해 확인 후 진행). 순서:
+
+1. `ap_features.py`: `AP_FEATURE_COLUMNS`에 `sta_tx_bitrate_mean` 추가(6→7). 승격 배경을 주석에 기록, 기존 "정보용" 코멘트는 "(archived)"로 보존.
+2. **아카이빙**(전부 보존, 덮어쓰지 않음): `data/ap_metrics_v2_redesign2/` → `data/ap_metrics_v2_redesign2_6feat_archived_20260829/`(전체 복사), `checkpoints/ap_v2_redesign2/` → `checkpoints/ap_v2_redesign2_6feat_archived_20260829/`(전체 복사, item 1의 중첩 archived 폴더 포함), 결과 리포트 6종 → `*_6feat_archived_20260829.*`, Pi(`~/ap_pi_v2/`) → `archived_6feat_20260829/`.
+3. `prepare_ap_metrics_dataset.py`로 `ap_metrics_v2_redesign2` 재변환(7-feature) — split은 이전과 완전히 동일(train 1437/val 308/test 310, test label3=31 그대로, seed=42 결정론적 확인됨).
+4. Baseline·SDN·Proposed(EE, **균등 가중치로 되돌림** — 위 item1 재검토 참고) 각각 시드 0/1/2로 재학습, val balanced acc 최고를 배포 체크포인트로 선택:
+   - Baseline: seed1 선택(val 86.2%)
+   - SDN: seed2 선택(val 85.5%)
+   - Proposed(EE, 균등 가중치): seed2 선택(val 86.3%)
+   - **주의**: SDN과 EE에 우연히 같은 가중치(0.15/0.30/0.55)를 썼던 중간 시도에서 두 모델이 완전히 동일한 학습 곡선을 보임 — `SDNLSTM`은 `EarlyExitLSTM`과 백본이 의도적으로 동일하게 설계돼 있어서, 같은 loss 가중치+같은 시드를 쓰면 사실상 같은 네트워크가 됨(추론 시 엔트로피 vs confidence 임계값 정책만 다름). 그래서 최종적으로 Proposed는 균등 가중치를 씀 — item 1 이슈와 별개로, 이 조합 자체가 비교를 무의미하게 만들기 때문.
+5. ONNX 재수출: `export_onnx_ap_baseline.py`, `export_onnx_ap_sdn.py`+`export_onnx_ap_sdn_unified_int8.py`, `export_onnx_ap.py`+`export_onnx_ap_unified.py`+`export_onnx_ap_unified_int8_v2.py`. **버그 발견+수정**: `export_onnx_ap_unified_int8_v2.py`와 `export_onnx_ap_sdn_unified_int8.py` 둘 다 재조립 시 그래프 입력 shape에 feature 개수를 `[1, 10, 6]`으로 하드코딩하고 있었음(7-feature로 바꿔도 옛 6 그대로 남아있어서 Pi에서 "Got 7 Expected 6" 에러로 발각) — `AP_FEATURE_COLUMNS` 기반 `INPUT_SIZE`로 고쳐서 재실행.
+6. 검증: unified fp32 PyTorch 대비 fixed/dynamic 각각 310/310 100% 일치. INT8 v2는 fixed 306/310·dynamic 305/310 일치(양자화 노이즈 수준), INT8 직접 정확도 88.1%(fixed/dynamic 동일), Label3 F1 64.4%.
+7. Pi 배포 스크립트(`bench_baseline.py`, `bench_unified.py`)도 feature 리스트가 6개로 하드코딩돼 있어서 같은 문제 재발 — 7개로 수정 후 재배포.
+8. Pi 재측정(같은 세션, INT8):
+
+   | 모델 | Pi INT8(ms) | 정확도 | Label3 recall | Label3 precision | Label3 F1 |
+   |---|---:|---:|---:|---:|---:|
+   | Baseline | 0.756 | 88.7% | 58.1% | 69.2% | 63.2% |
+   | **SDN-style** | **0.636** | 89.0% | 58.1% | **81.8%** | **67.9%** |
+   | Proposed Fixed(균등) | 0.641 | 88.1% | **61.3%** | 70.4% | 65.5% |
+   | Proposed Dynamic(균등) | 0.645 | 87.7% | **61.3%** | 67.9% | 64.4% |
+
+**정직한 결론**: item 1 때와 달리 이번 라운드는 "Proposed가 전면 우위"라고 말할 수 없다 — SDN-style이 속도와 F1에서 근소 우위, Proposed는 recall이 근소 우위. 세 모델 다 3시드 중 val 최고를 뽑은 단일 배포 체크포인트 비교라, SDN/Baseline도 Proposed처럼 5시드로 완전히 특성화하면 이 근소한 차이가 노이즈인지 실제인지 더 명확해질 것(향후 과제). **7-feature 승격 자체(다중 시드 평균 기준)는 확실한 이득**이었다는 게 이번 세션의 핵심 성과.
+
+문서 갱신: `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`(전면 재작성), `ap_model_comparison_redesign2.txt/.csv`(재생성 + 하드코딩 문자열도 스크립트 소스에서 갱신), `docs/yongsang/onnx_early_exit_redesign.md`(2차 정정 콜아웃 추가), `project/utils/ap_features.py`(주석).
+
+아티팩트("Early-Exit Reweighting")도 정정 배너 추가해 재게시 완료 — https://claude.ai/code/artifact/4e32bd34-9e28-4d43-9c1a-80ba2bb06ed1
+
+## 체크포인트 (2026-08-29, 1차) — EE exit-loss 가중치를 SDN 스타일로 바꿔 재학습 → 가설 검증됨, 새 최고 F1 (아래 "2차"에서 부분 정정됨 — SDN 가중치 승격은 보류, 7-feature 승격은 별개로 확정)
+
+8/28 밤 "왜 SDN이 이겼나" 재조사에서 나온 미검증 가설(SDN의 뒤쪽 exit 강조 loss 가중치 0.15/0.30/0.55가 exit3 심각 탐지에 유리했을 것) 검증. `train_ap_early_exit.py`에 `--exit-loss-weights W1 W2 W3` CLI 옵션 추가(기존 하드코딩 0.3/0.3/0.4 → 인자화, `models/early_exit_lstm.py`의 `multi_exit_loss` weights 파라미터 그대로 사용, 코드 변경 없음). `ap_metrics_v2_redesign2` 데이터로 `--exit-loss-weights 0.15 0.30 0.55`, `--class-weight-power 1.0`(기존과 동일, 통제 변수 유지)로 재학습 → `project/checkpoints/ap_v2_redesign2_sdnw/`(기존 `ap_v2_redesign2/` 체크포인트는 보존, 덮어쓰지 않음).
+
+**결과 — 가설 확인, 게다가 SDN 아키텍처 자체보다도 좋음**:
+
+| 모델 | 정확도 | Label3 recall | Label3 precision | Label3 F1 |
+|---|---:|---:|---:|---:|
+| EE 균등 가중치(0.3/0.3/0.4) Fixed | 88.4% | 51.6% | 66.7% | 58.2% |
+| EE 균등 가중치 Dynamic | 89.0% | 51.6% | 76.2% | 61.5% |
+| SDN-style 아키텍처(별도 백본) | 86.8% | 64.5% | 46.5% | 54.1% |
+| **EE + SDN 가중치(0.15/0.30/0.55) Fixed** | **91.3%** | **58.1%** | **78.3%** | **66.7%** |
+| EE + SDN 가중치 Dynamic | 90.6% | 58.1% | 75.0% | 65.5% |
+
+- val balanced acc도 87.0%(기존 85.4%보다 개선)
+- true label-3(31창) exit별 분해: 균등 가중치는 exit3까지 넘어가면 정답률 6/21(29%)였는데, SDN 가중치는 exit3 도달률 자체가 줄고(21→14/31) exit2에서 더 많이(13/16, 81%) 정답을 맞힘 — 가설대로 뒤쪽 exit 학습이 강화됨
+- **결론**: "SDN이 이겼다"는 재조사에서 이미 정정됐었지만(F1 근소열세), 이번 재학습으로 EE가 SDN의 장점(exit3 심각 탐지력)만 가중치 조정으로 흡수해 **정확도·recall·precision·F1 전부 SDN-style 아키텍처를 앞섬** — 별도 아키텍처(SDN) 없이도 손실 가중치만 바꿔서 달성. 아키텍처 변경 없이 얻은 개선이라 배포 리스크도 낮음
+- 파일: `project/scripts/train_ap_early_exit.py`(CLI 옵션 추가), `project/checkpoints/ap_v2_redesign2_sdnw/`, `project/results/yongsang/ap_v2_redesign2_sdnw_eval_report.txt`
+
+### 새 기본값으로 승격 완료 (같은 세션, 후속) — 사용자 확인 후 진행
+
+사용자 확인("1번으로 하지만 왜 이런 식으로 모델 변경을 했는지는 html 아티팩트로 남겨둬야 돼")에 따라 SDN 가중치 체크포인트를 `ap_v2_redesign2`의 기본 EE 체크포인트로 승격. **기존 균등 가중치 체크포인트/ONNX/결과는 전부 보존**(덮어쓰지 않음, 아래 참고).
+
+- **아카이빙**: 옛 EE `.pth`/`.onnx`(staged, unified, int8 v2 전부, 23개 파일) → `project/checkpoints/ap_v2_redesign2/archived_uniform_ee_weights_20260829/`. 옛 eval report/비교표/Pi latency 문서 → `*_uniform_weights_archived_20260829.*`. Pi(`~/ap_pi_v2/`) 쪽도 동일하게 `archived_uniform_ee_weights_20260829/`에 보존.
+- **교체**: `ap_v2_redesign2_sdnw/`의 `.pth` 3개를 `ap_v2_redesign2/`로 복사(파일명 그대로 유지) → `evaluate_ap_early_exit.py`로 canonical eval report 재생성(91.3%/90.6%, Label3 58.1% 확인).
+- **ONNX 재생성**: `export_onnx_ap.py`(staged) → `export_onnx_ap_unified.py`(fp32 unified, PyTorch 대비 310/310 100% 일치 검증) → `export_onnx_ap_unified_int8_v2.py`(INT8 v2, PyTorch 대비 fixed 305/310·dynamic 304/310 일치 — 옛 체크포인트의 309/310보다 미스매치가 조금 늘었지만 int8 자체 정확도는 fp32 대비 ~1pp 하락 수준, 여전히 전부 SDN-style 아키텍처보다 우위).
+- **Pi 재실측**: 같은 세션에서 Baseline/SDN-style/Proposed(신규) 4개 모델 전부 재측정(모델 안 바뀐 Baseline/SDN도 같은 세션 기준으로 재확인):
+
+  | 모델 | Pi INT8(ms) | 정확도 | Label3 F1 |
+  |---|---:|---:|---:|
+  | Baseline(EE 없음) | 0.747 | 89.4% | - |
+  | SDN-style | 0.615 | 86.8% | 54.1% |
+  | **Proposed Fixed θ(신규)** | **0.595** | **91.3%(fp32 eval)** | **66.7%(fp32)/65.5%(int8)** |
+  | **Proposed Dynamic θ(신규)** | **0.591** | **90.6%(fp32 eval)** | **65.5%(fp32)/63.2%(int8)** |
+
+  **Proposed가 이제 속도까지 Baseline/SDN-style을 앞섬**(이전 체크포인트는 0.641/0.679ms로 SDN 0.600ms보다 느렸었음) — exit-loss 가중치만 바꿨는데 정확도·F1·속도 전부 개선된 것은 예상 밖의 보너스(속도 개선은 exit1/2로 더 일찍 빠지는 분포 변화 때문으로 추정, 인과 확정은 안 함).
+- **문서 갱신**: `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`(신규 수치로 갱신, 옛 파일 archived), `project/results/yongsang/ap_model_comparison_redesign2.txt/.csv`(`generate_ap_comparison.py` 재실행 + 하드코딩된 Pi 수치 문자열도 스크립트 소스에서 갱신), `docs/yongsang/onnx_early_exit_redesign.md`(상단에 "2026-08-29 업데이트" 콜아웃 추가, 본문 수치는 그 시점 기록으로 보존 — 방법론적 결론은 그대로 유효함을 명시).
+- **HTML 아티팩트**: 이 모델 변경의 배경(가설)·실험·결과를 정리해 게시(사용자 요청) — "Early-Exit Reweighting", https://claude.ai/code/artifact/4e32bd34-9e28-4d43-9c1a-80ba2bb06ed1
+
+## 내일 할 일 (2026-08-30 아침 기준, 8/29 밤 3차 체크포인트에서 작성) — item 1은 8/30 낮 4차 체크포인트에서 진행됨, 최상단 "⭐ 다음 세션 시작 지점" 참고
+
+우선순위순. 상세 배경은 각 항목 옆 참고 섹션에. **8/29 밤 발표자료 확인으로 우선순위가 바뀜** — SDN 비교나 밴드 스티어링을 "선택적 확장"으로 다루던 이전 판단이 정정됨, "체크포인트 (2026-08-29, 3차)" 참고.
+
+1. ~~전체 정확도 95% 달성~~ — **진행 중, 최상단 "⭐ 다음 세션 시작 지점"과 "체크포인트 (2026-08-30, 4차)" 참고**. class-weight-power 재검증으로 87.0%→91.9%까지 개선(아직 승격 전, 코드/체크포인트 미변경). ~~occupancy 라벨링 스무딩(window=5·3)~~은 순효과 없어 폐기 확정. hidden_size/dropout 스윕도 완료, 추가 이득 없음.
+2. **밴드 스티어링(채널 전환 후보 생성)** — 발표자료 슬라이드7 "프로젝트 최종 목표"에 "채널 전환 필요 여부와 전환 명령 후보를 생성한다"가 명시돼 있음을 확인 — **선택적 확장이 아니라 원래 최종 목표에 포함된 항목**이었음. `demo_api_spec.md` §9에 설계는 이미 있음(미착수). 착수 여부·시점 판단 필요
+3. **데모 대시보드 구현 착수** — 스펙은 최신화 완료(`docs/yongsang/demo_api_spec.md`, 7-feature 기준). 백엔드+대시보드+에이전트+파이 서버 4개 컴포넌트 신규 구현 필요
+4. item 1(EE exit-loss 가중치, 균등 vs SDN) — 여전히 미해결. 균등 유지 중이나 "균등이 낫다"도 증명 안 됨. 필요하면 SDN-style·Baseline까지 5시드로 완전히 특성화해서 재검토(지금은 Proposed만 5시드 특성화함)
+5. (급하지 않음) `ramp_load.sh`에 `termux-wake-lock` 추가
+
+<details>
+<summary>이전 버전 (8/29 낮, 2차 체크포인트 직후 — 3차에서 위와 같이 재정리됨)</summary>
+
+1. ~~EE의 exit별 loss 가중치를 SDN 스타일로 바꿔 재학습~~ — **1차는 노이즈로 판명, 정정됨**(위 "체크포인트 (2026-08-29, 2차)" 참고). 다중 시드로 재검증한 결과 SDN 가중치가 균등보다 낫다는 근거 없음 — **여전히 미해결**: 균등 가중치를 유지 중이나 "균등이 SDN보다 낫다"는 것도 증명 안 됨. 필요하면 SDN-style·Baseline까지 5시드로 완전히 특성화해서 재검토
+2. ~~`sta_tx_bitrate_min/mean`이 escalation 지문을 보이는지 재검토~~ — **완료, 7번째 feature로 승격**(위 "체크포인트 (2026-08-29, 2차)" 참고). Baseline/SDN/Proposed 전부 7-feature로 재학습·ONNX 재수출·Pi 재측정까지 완료
+3. ~~데모 대시보드 착수 여부 결정~~ — **스펙만 최신화, 구현은 보류**(사용자 판단). `docs/yongsang/demo_api_spec.md`가 8/27 작성 당시의 9-feature 가중합 스키마 그대로였음(그 사이 6→7-feature, 가중합→max/anchor 방식으로 두 번 바뀜) — FeatureVector·SubScores·congestion_formula·`/meta` 예시를 전부 현재(`ap_metrics_v2_redesign2`, 7-feature) 기준으로 갱신. "신규 구현 부담은 ONNX export 하나"라는 전제도 이제 틀림(그 작업은 이미 끝났고 남은 건 백엔드+대시보드+에이전트+파이 서버 4개 컴포넌트 자체, 다음 세션 착수 대상)
+4. (팀 결정 필요) **밴드 스티어링 시스템으로 주제 확장할지** — 상세는 "향후 시스템 구상" 섹션(8/27 논의). 이번 세션 성과(occupancy 문턱 대비 우위, 조기경보, Pi 지연 -67%)로 방어력은 충분히 쌓였으니, 확장이냐 지금 라인 심화냐 판단할 시점
+5. (급하지 않음) `ramp_load.sh`에 `termux-wake-lock` 추가 — 이번엔 폰 배터리 최적화 제외로 화면 꺼짐 문제 자체는 우회됨
+
+</details>
 
 ## 세션 마무리 요약 (2026-08-28 밤, yongsang)
 

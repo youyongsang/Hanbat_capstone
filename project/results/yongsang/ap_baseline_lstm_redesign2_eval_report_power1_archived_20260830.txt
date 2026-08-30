@@ -1,0 +1,24 @@
+AP Baseline LSTM Evaluation Report (no early exit)
+Data Directory: project\data\ap_metrics_v2_redesign2
+Checkpoint: project\checkpoints\ap_v2_redesign2\ap_baseline_lstm_best.pth
+
+=== AP Baseline (always runs all 3 LSTM layers) ===
+Test Accuracy: 88.7%
+Exit별 성능:
+  Exit 1 | Accuracy: 0.0% | Exit Rate: 0.0% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 0.0% | Exit Rate: 0.0% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 88.7% | Exit Rate: 100.0% | Avg Time: 8.0ms
+Overall Avg Inference Time: 8.000ms
+Measured Wall Time: 0.104ms
+Label별 정확도:
+  Label 0 (정상): 97.9%
+  Label 1 (경고): 97.0%
+  Label 2 (혼잡): 84.6%
+  Label 3 (심각): 58.1%
+시나리오별 정확도:
+  step_run1: 79.2%
+  step_run2: 93.8%
+  step_run3: 75.0%
+  step_run4: 95.1%
+  step_run5: 90.2%
+  step_run6: 87.3%

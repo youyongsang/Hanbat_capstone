@@ -12,7 +12,8 @@
     "tx_retry_ratio",
     "rssi_dbm",
     "rssi_delta_db",
-    "rssi_moving_avg_dbm"
+    "rssi_moving_avg_dbm",
+    "sta_tx_bitrate_mean"
   ],
   "window_size": 10,
   "label_names": {
@@ -45,6 +46,10 @@
     "rssi_moving_avg_dbm": {
       "min": -53.6,
       "max": -27.93
+    },
+    "sta_tx_bitrate_mean": {
+      "min": 0.0,
+      "max": 150.0
     }
   },
   "preprocessing": {
@@ -76,7 +81,7 @@
     "train": {
       "rows": 14370,
       "samples": 1437,
-      "shape": "(1437, 10, 6)",
+      "shape": "(1437, 10, 7)",
       "label_distribution": {
         "0:정상": 442,
         "1:경고": 312,
@@ -87,7 +92,7 @@
     "val": {
       "rows": 3080,
       "samples": 308,
-      "shape": "(308, 10, 6)",
+      "shape": "(308, 10, 7)",
       "label_distribution": {
         "0:정상": 95,
         "1:경고": 67,
@@ -98,7 +103,7 @@
     "test": {
       "rows": 3100,
       "samples": 310,
-      "shape": "(310, 10, 6)",
+      "shape": "(310, 10, 7)",
       "label_distribution": {
         "0:정상": 95,
         "1:경고": 67,

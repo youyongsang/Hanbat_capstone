@@ -1,0 +1,18 @@
+AP redesign2 데이터 모델 비교표 (Baseline / SDN-style / Proposed Early Exit)
+데이터: project\data\ap_metrics_v2_redesign2 (test 310창, label 3 31개)
+모든 모델 class-weight-power=1.0으로 학습(공정 비교 — 1학기와 달리 Baseline/SDN도 가중치 적용)
+
+| 모델 | 근거/역할 | 정확도 | Label 2 | Label 3 | Exit1 | Exit2 | Exit3 | PC 실측(ms/sample) | 구조상 평균(ms) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Baseline LSTM (no early exit) | standard full-depth LSTM, class-weighted (power=1.0) to match Proposed | 89.4% | 87.2% | 48.4% | 0.0% | 0.0% | 100.0% | 0.0934 | 8.000 |
+| SDN-style Early Exit (trained) | SDN/Shallow-Deep Networks (ICML 2019)-style backbone, separately trained with SDN loss weights (0.15/0.30/0.55), class-weighted to match Proposed | 86.8% | 78.6% | 64.5% | 32.3% | 18.4% | 49.4% | 1.3284 | 5.329 |
+| Proposed Early Exit Fixed theta | our AP Early Exit LSTM ablation | 91.3% | 93.2% | 58.1% | 30.3% | 32.6% | 37.1% | 0.9921 | 4.877 |
+| Proposed Early Exit Dynamic theta | our variant on early-exit LSTM | 90.6% | 92.3% | 58.1% | 31.0% | 48.1% | 21.0% | 0.9294 | 4.219 |
+
+해석:
+- Baseline LSTM은 정확도 상한선 기준이며 항상 3개 LSTM 계층을 모두 수행한다.
+- SDN-style Early Exit는 Early Exit 백본을 재사용하지 않고, SDN 논문의 loss 가중치(0.15/0.30/0.55)로 별도 학습한 백본에 고정 confidence threshold 0.85를 적용한 결과이다.
+- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일하게 class-weight-power=1.0으로 학습했다 — 아키텍처 차이만 비교하기 위해 훈련 방식은 통제 변수로 고정.
+- Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.
+- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다 — 4개 모델 전부 같은 세션에서 Pi(INT8 ONNX) 실측 완료(Baseline 0.747ms/SDN 0.615ms/Proposed Fixed 0.595ms/Proposed Dynamic 0.591ms, project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt 참고).
+- Proposed는 2026-08-29 재학습으로 exit-loss 가중치를 SDN 스타일(0.15/0.30/0.55)로 바꿨다(이전엔 균등 0.3/0.3/0.4) — 이 표는 그 재학습 결과 기준이며, 아키텍처는 그대로다.

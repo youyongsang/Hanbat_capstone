@@ -25,7 +25,7 @@ AP_IP = "192.168.8.1"
 SERVER_IP = "192.168.8.226"
 INTERFACE = "wlan0"
 
-CSV_FILE = "metrics_v2.csv"
+CSV_FILE = os.environ.get("COLLECT_CSV_FILE", "metrics_v2.csv")
 IPERF_JSON_FILE = "iperf3_result.json"
 
 MOVING_AVG_WINDOW = 5
@@ -113,6 +113,10 @@ CSV_COLUMNS = [
     "throughput_mbps",
     "channel_occupancy_percent",
     "channel_occupancy_method",
+    "channel_rx_time_percent",    # AP 수신 airtime % (survey, 탐색용)
+    "channel_tx_time_percent",    # AP 송신 airtime % (survey, 탐색용)
+    "channel_ext_busy_percent",   # busy - rx - tx = 외부 AP/간섭 airtime % (survey, 탐색용)
+    "noise_dbm",                  # 노이즈 플로어 (survey, 탐색용)
     "latency_ms",                # ping RTT avg (latency 축)
     "probe_jitter_ms",           # victim 프로브 (jitter 축)
     "probe_loss_pct",            # victim 프로브 (loss 축)
@@ -376,7 +380,7 @@ def parse_ap_cycle(text):
         station_marker not in text
         or survey_marker not in text
     ):
-        return None, (None, None)
+        return None, (None, None, None, None, None)
 
     station_text = text.split(station_marker, 1)[1]
     station_text, survey_text = station_text.split(
@@ -384,9 +388,9 @@ def parse_ap_cycle(text):
     )
 
     station = parse_station_info(station_text)
-    active, busy = parse_channel_occupancy(survey_text)
+    survey = parse_channel_occupancy(survey_text)
 
-    return station, (active, busy)
+    return station, survey
 
 
 # ============================================================
@@ -567,9 +571,31 @@ def summarize_stations(stations, previous_stations=None):
 # Channel Occupancy
 # ============================================================
 
+def _parse_survey_ms(line):
+    try:
+        return float(
+            line.split(":", 1)[1]
+            .replace("ms", "")
+            .strip()
+        )
+    except ValueError:
+        return None
+
+
 def parse_channel_occupancy(output):
+    # 같은 `iw survey dump` 출력에서 active/busy 외에
+    # receive/transmit time·noise도 읽는다. rx/tx time은 AP 자신이
+    # 송수신에 쓴 시간이므로, busy - (rx + tx) = 채널이 바빴지만
+    # 우리 AP는 아무것도 안 한 시간 = 동일 채널의 다른 AP·간섭
+    # (co-channel interference). occupancy는 중간인데 이 값이 크면
+    # victim 경로가 contention으로 굶는 상황의 대리 신호가 된다.
+    # (mt76 드라이버가 이 줄들을 뱉는지 재수집 전에 확인:
+    #  ssh root@<ap> "iw dev <iface> survey dump")
     active = None
     busy = None
+    rx_time = None
+    tx_time = None
+    noise = None
     in_use = False
 
     for raw_line in output.splitlines():
@@ -579,33 +605,27 @@ def parse_channel_occupancy(output):
             in_use = "[in use]" in line
             continue
 
-        if (
-            in_use
-            and line.startswith("channel active time:")
-        ):
-            try:
-                active = float(
-                    line.split(":", 1)[1]
-                    .replace("ms", "")
-                    .strip()
-                )
-            except ValueError:
-                pass
+        if not in_use:
+            continue
 
-        elif (
-            in_use
-            and line.startswith("channel busy time:")
-        ):
-            try:
-                busy = float(
-                    line.split(":", 1)[1]
-                    .replace("ms", "")
-                    .strip()
-                )
-            except ValueError:
-                pass
+        if line.startswith("channel active time:"):
+            active = _parse_survey_ms(line)
 
-    return active, busy
+        elif line.startswith("channel busy time:"):
+            busy = _parse_survey_ms(line)
+
+        elif line.startswith("channel receive time:"):
+            rx_time = _parse_survey_ms(line)
+
+        elif line.startswith("channel transmit time:"):
+            tx_time = _parse_survey_ms(line)
+
+        elif line.startswith("noise:"):
+            match = re.search(r"(-?\d+(?:\.\d+)?)", line)
+            if match:
+                noise = float(match.group(1))
+
+    return active, busy, rx_time, tx_time, noise
 
 
 def calculate_channel_occupancy(
@@ -672,6 +692,37 @@ def calculate_channel_occupancy(
         ),
         "instantaneous_fallback",
     )
+
+
+def survey_counter_percent(
+    previous_counter,
+    current_counter,
+    previous_active,
+    current_active,
+):
+    # 누적 survey 카운터(ms)를 active time 대비 %로. occupancy와
+    # 동일하게 delta 우선, 카운터 리셋/첫 샘플이면 instantaneous.
+    if (
+        current_counter is None
+        or current_active is None
+        or current_active <= 0
+    ):
+        return None
+
+    if (
+        previous_counter is not None
+        and previous_active is not None
+        and current_active - previous_active > 0
+        and current_counter - previous_counter >= 0
+    ):
+        percent = (
+            (current_counter - previous_counter)
+            / (current_active - previous_active)
+        ) * 100.0
+    else:
+        percent = (current_counter / current_active) * 100.0
+
+    return round(max(0.0, min(100.0, percent)), 2)
 
 
 # ============================================================
@@ -1105,6 +1156,8 @@ def main():
 
     previous_active = None
     previous_busy = None
+    previous_rx_time = None
+    previous_tx_time = None
 
     previous_rssi = None
 
@@ -1166,7 +1219,13 @@ def main():
                 time.sleep(0.2)
                 continue
 
-            current_active, current_busy = survey
+            (
+                current_active,
+                current_busy,
+                current_rx_time,
+                current_tx_time,
+                current_noise,
+            ) = survey
 
             (
                 signal_avg,
@@ -1188,6 +1247,35 @@ def main():
                 current_active,
                 current_busy,
             )
+
+            # 2b. survey rx/tx airtime + 외부 점유(간섭) — 탐색용
+            channel_rx_time_percent = survey_counter_percent(
+                previous_rx_time,
+                current_rx_time,
+                previous_active,
+                current_active,
+            )
+            channel_tx_time_percent = survey_counter_percent(
+                previous_tx_time,
+                current_tx_time,
+                previous_active,
+                current_active,
+            )
+            if (
+                channel_rx_time_percent is not None
+                and channel_tx_time_percent is not None
+            ):
+                channel_ext_busy_percent = round(
+                    max(
+                        0.0,
+                        occupancy_raw
+                        - channel_rx_time_percent
+                        - channel_tx_time_percent,
+                    ),
+                    2,
+                )
+            else:
+                channel_ext_busy_percent = None
 
             # ------------------------------------------------
             # 3. Ping
@@ -1394,6 +1482,26 @@ def main():
                 round(throughput, 2),
                 round(occupancy, 2),
                 occupancy_method,
+                (
+                    channel_rx_time_percent
+                    if channel_rx_time_percent is not None
+                    else ""
+                ),
+                (
+                    channel_tx_time_percent
+                    if channel_tx_time_percent is not None
+                    else ""
+                ),
+                (
+                    channel_ext_busy_percent
+                    if channel_ext_busy_percent is not None
+                    else ""
+                ),
+                (
+                    round(current_noise, 1)
+                    if current_noise is not None
+                    else ""
+                ),
                 round(latency, 3),
                 (
                     round(probe_jitter_ms, 3)
@@ -1448,6 +1556,30 @@ def main():
             )
             print(
                 f"Occupancy Method   : {occupancy_method}"
+            )
+            _rxp = (
+                f"{channel_rx_time_percent:.1f}"
+                if channel_rx_time_percent is not None
+                else "N/A"
+            )
+            _txp = (
+                f"{channel_tx_time_percent:.1f}"
+                if channel_tx_time_percent is not None
+                else "N/A"
+            )
+            _extp = (
+                f"{channel_ext_busy_percent:.1f}"
+                if channel_ext_busy_percent is not None
+                else "N/A"
+            )
+            _noise = (
+                f"{current_noise:.0f} dBm"
+                if current_noise is not None
+                else "N/A"
+            )
+            print(
+                f"Airtime rx/tx/ext  : {_rxp} / {_txp} / {_extp} %"
+                f"   Noise {_noise}"
             )
             print(
                 f"Poll Interval      : {poll_interval_s:.2f} s"
@@ -1508,6 +1640,8 @@ def main():
 
             previous_active = current_active
             previous_busy = current_busy
+            previous_rx_time = current_rx_time
+            previous_tx_time = current_tx_time
 
             previous_rssi = current_rssi
 

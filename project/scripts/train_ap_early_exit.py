@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
 
 
@@ -15,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_early_exit_lstm import APEarlyExitLSTM  # noqa: E402
-from models.early_exit_lstm import multi_exit_loss  # noqa: E402
+from models.early_exit_lstm import DEFAULT_LOSS_WEIGHTS, multi_exit_loss  # noqa: E402
 from utils.ap_dataloader import get_ap_dataloader  # noqa: E402
 from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
 from utils.metrics import format_percent  # noqa: E402
@@ -28,26 +29,24 @@ def display_path(path: Path) -> str:
 def compute_class_weights(
     labels: torch.Tensor,
     num_classes: int = 4,
-    power: float = 1.0,
+    power: float = 0.0,
 ) -> torch.Tensor:
     """Power-softened inverse-frequency class weights for imbalanced labels.
 
-    Without this, plain cross-entropy on a skewed label distribution (e.g.
-    AP strict live-collection congestion labels, where label 1/2 heavily
-    outnumber label 3) lets the model collapse to always predicting the
-    majority class(es) and never output the rare ones at all.
+    power=0 means no class weighting at all (plain cross-entropy); power=1
+    is full inverse-frequency weighting; values in between soften it.
 
-    power controls how hard label 3 (severe) is upweighted, and there is a
-    sharp cliff rather than a smooth tradeoff on this dataset (~23 label-3
-    train examples after the 2026-08-23 congestion_score reweighting):
-    power<=0.85 gives strong label 0-2 accuracy (85.8% overall @ 0.7) but
-    label 3 recall stays exactly 0%; only power=1.0 (plain inverse
-    frequency) gets the model to ever predict label 3 at all (40% recall),
-    at the cost of label 2 (congested) recall dropping to 35.6% as some
-    congested samples get over-predicted as severe. power=1.0 was chosen
-    deliberately: missing a real severe-congestion event (false negative)
-    is worse for this project's use case than a congested reading being
-    over-flagged as severe (false positive).
+    HISTORY: power=1.0 was the default from 2026-08-23 to 2026-08-30. That
+    was fixed on a much smaller/older dataset (4-feature, ~23 label-3 train
+    examples) where a sharp cliff existed: power<=0.85 gave label-3 recall
+    exactly 0%, only power=1.0 got the model to predict label 3 at all.
+    After the label redesign + 6->7-feature promotion (train label-3 count
+    grew to 141) that cliff is gone. A 2026-08-30 re-sweep (0.0/0.1/0.15/
+    0.2/0.3/0.5/0.7/0.85/1.0, 3 seeds each) found power=0.0 best on BOTH
+    overall accuracy (91.3%+-0.5% vs 87.0%+-1.1% at 1.0) and label-3 F1
+    (69.8% vs 63.2%) with no tradeoff -- power=1.0 was over-protecting
+    label 1/3 and leaving label 2 to bleed errors both ways. Default is
+    now 0.0. See .work-log/current.md checkpoints 4-5 (2026-08-30).
     """
 
     counts = torch.bincount(labels, minlength=num_classes).float()
@@ -63,6 +62,7 @@ def run_epoch(
     device: torch.device = torch.device("cpu"),
     class_weights: torch.Tensor | None = None,
     num_classes: int = 4,
+    exit_loss_weights: tuple[float, float, float] = DEFAULT_LOSS_WEIGHTS,
 ) -> tuple[float, float, float]:
     is_train = optimizer is not None
     model.train(is_train)
@@ -80,7 +80,9 @@ def run_epoch(
             optimizer.zero_grad()
 
         exit_logits = model(x_batch)
-        loss = multi_exit_loss(exit_logits, y_batch, class_weights=class_weights)
+        loss = multi_exit_loss(
+            exit_logits, y_batch, weights=exit_loss_weights, class_weights=class_weights
+        )
 
         if is_train:
             loss.backward()
@@ -118,12 +120,52 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden-size", type=int, default=128)
     parser.add_argument("--theta-1", type=float, default=0.3)
     parser.add_argument("--theta-2", type=float, default=0.6)
-    parser.add_argument("--class-weight-power", type=float, default=1.0)
+    parser.add_argument(
+        "--class-weight-power",
+        type=float,
+        default=0.0,
+        help=(
+            "inverse-frequency class-weight exponent. 0 = no weighting "
+            "(default since 2026-08-30 re-sweep; best on both accuracy and "
+            "label-3 F1 for the 7-feature dataset). 1 = full inverse "
+            "frequency (old default)."
+        ),
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help=(
+            "Random seed for model init and dataloader shuffling. Unset by default "
+            "(matches prior behavior), but a 2026-08-29 multi-seed sweep found "
+            "run-to-run variance (e.g. test Label 3 F1 swinging 52-63% across "
+            "seeds on ap_metrics_v2_redesign2) large enough to make single-run "
+            "A/B comparisons between hyperparameter choices unreliable. Pass a "
+            "seed for reproducible runs, and compare configs across several "
+            "seeds rather than trusting one run each."
+        ),
+    )
+    parser.add_argument(
+        "--exit-loss-weights",
+        type=float,
+        nargs=3,
+        default=list(DEFAULT_LOSS_WEIGHTS),
+        metavar=("W1", "W2", "W3"),
+        help=(
+            "Per-exit loss weights (exit1, exit2, exit3). Default matches the "
+            "uniform-ish EE policy (0.3/0.3/0.4). Pass SDN-style 0.15 0.30 0.55 "
+            "to weight the deepest exit more heavily, matching the SDN paper's "
+            "loss schedule."
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader = get_ap_dataloader(args.data_dir / "train.csv", args.batch_size, shuffle=True)
@@ -132,6 +174,8 @@ def main() -> None:
     train_labels = train_loader.dataset.tensors[1]
     class_weights = compute_class_weights(train_labels, power=args.class_weight_power).to(device)
     print(f"Class weights (inverse frequency ^{args.class_weight_power}): {class_weights.tolist()}")
+    exit_loss_weights = tuple(args.exit_loss_weights)
+    print(f"Exit loss weights: {exit_loss_weights}")
 
     model = APEarlyExitLSTM(
         hidden_size=args.hidden_size,
@@ -149,7 +193,12 @@ def main() -> None:
 
     for epoch in range(1, args.epochs + 1):
         train_loss, train_acc, _ = run_epoch(
-            model, train_loader, optimizer, device=device, class_weights=class_weights
+            model,
+            train_loader,
+            optimizer,
+            device=device,
+            class_weights=class_weights,
+            exit_loss_weights=exit_loss_weights,
         )
         with torch.no_grad():
             val_loss, val_acc, val_balanced_acc = run_epoch(model, val_loader, device=device)
@@ -172,6 +221,9 @@ def main() -> None:
                 "input_size": len(AP_FEATURE_COLUMNS),
                 "feature_columns": list(AP_FEATURE_COLUMNS),
                 "val_accuracy": best_val_acc,
+                "exit_loss_weights": list(exit_loss_weights),
+                "class_weight_power": args.class_weight_power,
+                "seed": args.seed,
             }
             torch.save(checkpoint, checkpoint_path)
             torch.save({**checkpoint, "dynamic_threshold": False}, fixed_checkpoint_path)

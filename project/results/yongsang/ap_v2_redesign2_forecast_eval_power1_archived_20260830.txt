@@ -1,0 +1,40 @@
+AP Early Exit LSTM — forecasting(k폴링 뒤 라벨) 재평가, 본수집 2차 데이터
+생성: 2026-08-28
+데이터: project/scripts/metrics_v2_pi_redesign2_relabeled.csv (2115행, label 3 202개)
+스크립트: project/scripts/forecast_eval_redesign.py (CSV 경로를 이번 세션 데이터로 갱신)
+폴링 간격 ~1~2s → k=3은 ~3~6s 앞, k=5는 ~5~10s 앞.
+
+===== k=0 polls ahead | test 313 windows, target severe=31 =====
+  LSTM               acc  90.7%  severe R  58.1% P  72.0% F1  64.3%
+  occupancy rule@t   acc  93.3%  severe R  38.7% P 100.0% F1  55.8%
+  persistence        acc 100.0%  severe R 100.0% P 100.0% F1 100.0%   (자명, target=현재 라벨)
+
+===== k=3 polls ahead | test 309 windows, target severe=31 =====
+  LSTM               acc  61.5%  severe R  74.2% P  26.7% F1  39.3%
+  occupancy rule@t   acc  67.6%  severe R  32.3% P  71.4% F1  44.4%
+  persistence        acc  69.9%  severe R  58.1% P  56.2% F1  57.1%
+  escalation (not severe now -> severe in k): 13 windows
+     LSTM caught 8/13 = 61.5%  |  occ rule 0/13 (structural)
+
+===== k=5 polls ahead | test 308 windows, target severe=31 =====
+  LSTM               acc  61.0%  severe R  54.8% P  22.7% F1  32.1%
+  occupancy rule@t   acc  63.6%  severe R   6.5% P  25.0% F1  10.3%
+  persistence        acc  63.3%  severe R  29.0% P  31.0% F1  30.0%
+  escalation (not severe now -> severe in k): 22 windows
+     LSTM caught 10/22 = 45.5%  |  occ rule 0/22 (structural)
+
+=== 이전 세션(1614행, 8/27) 대비 재현성 ===
+                    이전(escalation 표본)   이전 LSTM   이번(escalation 표본)   이번 LSTM
+  k=3                    12창                67%             13창                61.5%
+  k=5                    14창                36%             22창                45.5%
+
+해석:
+- 표본이 커졌는데도(k=5는 14→22창) escalation 탐지율이 안정적으로 재현됨(k=3: 61.5%,
+  k=5: 45.5% — 둘 다 이전 결과와 같은 자릿수). "LSTM = 심각 전이 3~6초 조기경보기"
+  서사가 노이즈가 아니라 견고한 패턴이라는 근거가 강해짐.
+- 전체 정확도로는 이번에도 LSTM이 persistence를 못 이김(k=3: 61.5% vs 69.9%) —
+  지난 결론과 일치. LSTM의 고유 가치는 여전히 "지금 심각 아닌데 곧 심각해질 것"을
+  선제적으로 잡는 능력이지, 일반 분류 정확도가 아님.
+- occupancy 문턱/persistence는 escalation subset에서 구조적으로 0% (정의상 "아직
+  심각이 아닌" 상태만 보고 판단하므로) — LSTM만이 추세(occ/retry 상승, RSSI
+  불안정화)로 선제 탐지 가능.

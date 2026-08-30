@@ -1,10 +1,10 @@
-"""Train AP measurement Baseline LSTM (no early exit) with 6-feature windows.
+"""Train AP measurement Baseline LSTM (no early exit) with 7-feature windows.
 
 Trained with the same class-weighted loss and balanced-accuracy checkpoint
-selection as train_ap_early_exit.py (default --class-weight-power 1.0) so
-the Baseline/SDN/Early-Exit comparison isolates architecture, not training
-regime. Pass --class-weight-power 0 for plain unweighted CrossEntropyLoss
-(closer to the 1st-semester "accuracy upper-bound" baseline).
+selection as train_ap_early_exit.py (default --class-weight-power 0.0 since
+the 2026-08-30 re-sweep) so the Baseline/SDN/Early-Exit comparison isolates
+architecture, not training regime. Pass --class-weight-power 1 for the old
+full inverse-frequency weighting.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -32,7 +33,7 @@ def display_path(path: Path) -> str:
     return str(path.resolve().relative_to(REPO_ROOT))
 
 
-def compute_class_weights(labels: torch.Tensor, num_classes: int = 4, power: float = 1.0) -> torch.Tensor:
+def compute_class_weights(labels: torch.Tensor, num_classes: int = 4, power: float = 0.0) -> torch.Tensor:
     """Power-softened inverse-frequency class weights. See train_ap_early_exit.py
     for the rationale (power=0 disables weighting entirely)."""
     if power == 0:
@@ -99,12 +100,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument("--hidden-size", type=int, default=128)
-    parser.add_argument("--class-weight-power", type=float, default=1.0)
+    parser.add_argument("--class-weight-power", type=float, default=0.0,
+                        help="inverse-frequency class-weight exponent; 0 = no weighting (default since 2026-08-30 re-sweep), 1 = old full weighting.")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed (unset by default; see train_ap_early_exit.py --seed help for why this matters).")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader = get_ap_dataloader(args.data_dir / "train.csv", args.batch_size, shuffle=True)

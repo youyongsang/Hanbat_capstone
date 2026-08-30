@@ -2,6 +2,12 @@
 
 2026-08-28 밤 세션. `ap_metrics_v2_redesign2`(6-feature, 본수집 2115행) 모델을 처음 Raspberry Pi에 배포하면서 겪은 문제와 해결 과정을 기록한다.
 
+> **(업데이트 — 2026-08-29 확인, 1차)** 이 문서의 수치는 균등 exit-loss 가중치(0.3/0.3/0.4)로 학습한 체크포인트 기준이다. 2026-08-29 세션에서 `ap_v2_redesign2`의 기본 EE 체크포인트를 SDN 스타일 가중치(0.15/0.30/0.55)로 재학습한 버전으로 교체했다 — **staged→unified→INT8이라는 이 문서의 방법론적 결론(그래프 구조가 원인, INT8 stage별 양자화 후 재조립)은 그대로 유효**하지만, 실제 latency 숫자는 바뀌었다(같은 세션 실측 기준 Fixed 0.595ms/Dynamic 0.591ms, baseline 아키텍처 0.747ms·SDN-style 아키텍처 0.615ms보다도 빠름 — 정확도까지 함께 개선됨). 아래 수치는 그 시점 기록으로 보존한다.
+>
+> **(업데이트 — 2026-08-29 확인, 2차, 1차 정정)** 같은 날 후속 세션에서 1차 업데이트의 SDN 가중치 승격 자체가 다중 시드 검증 결과 노이즈였을 가능성이 높다고 확인됨(단일 실행 비교였음 — 이 파이프라인엔 그때까지 랜덤 시드 고정이 아예 없었다) → Proposed는 균등 가중치로 되돌림. 대신 같은 세션에 `sta_tx_bitrate_mean`을 7번째 입력 feature로 승격(다중 시드로 검증된 진짜 신호)하면서 Baseline·SDN·Proposed 전부 재학습·재수출·Pi 재측정함 — 최신 Pi 실측은 Baseline 0.756ms/SDN 0.636ms/Proposed Fixed 0.641ms/Proposed Dynamic 0.645ms로, 이번엔 SDN-style이 속도·Label3 F1에서 근소 우위(Proposed는 recall이 근소 우위) — "Proposed가 전면 우위"라는 1차 업데이트의 결론은 성립하지 않는다. 최신 수치·전체 경위는 `.work-log/current.md`의 2026-08-29 항목과 `project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt`를 따른다. 아래 본문 수치는 여전히 최초(균등 가중치, 6-feature) 시점 기록으로 보존한다.
+>
+> **(업데이트 — 2026-08-30, class-weight-power=0.0 승격)** class-weight-power 재스윕으로 기본값을 1.0→0.0으로 바꾸고 세 모델 전부 재학습·ONNX 재수출함. **이 문서의 방법론적 결론(staged가 세션 호출 오버헤드로 느림 → unified If 노드 → INT8은 stage별 양자화 후 재조립)은 그대로 유효.** fp32 정확도는 Baseline 92.3% / EE Fixed 90.6% / Dynamic 91.0%로 올랐고, INT8 v2는 Fixed 90.3% / Dynamic 90.6%. unified fp32는 PyTorch와 310/310 일치, INT8은 308/310·309/310. **Pi latency 재측정은 미실시**(파이+폰 별도 세션) — feature 개수·아키텍처가 불변이라 위 2차 업데이트의 Pi 수치(0.64ms대)와 거의 같을 것으로 예상하나 미확인. 최신 경위는 `.work-log/current.md` 7차 체크포인트.
+
 ## 배경
 
 Early Exit LSTM은 학습 시 `EarlyExitLSTM.forward()`가 3개 exit(lstm1/2/3 각각 뒤에 분류기)의 로짓을 전부 반환하고, 추론 시엔 `infer_batch_stepwise()`가 앞 exit의 entropy가 임계값(θ) 아래면 뒤 레이어를 계산하지 않고 즉시 반환한다. 이 "레이어를 실제로 건너뛴다"는 동작을 파이 실기기에서도 재현하려면 ONNX로 내보낼 때 그 조건부 실행을 어떻게 표현할지가 문제였다.

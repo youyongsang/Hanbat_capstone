@@ -1,0 +1,19 @@
+AP Early Exit LSTM (재설계 스키마, 본수집 2차) — occupancy 문턱 대비
+생성: 2026-08-28
+데이터: project\data\ap_metrics_v2_redesign2  (6 feature, window 10)
+소스: project/scripts/metrics_v2_pi_redesign2_relabeled.csv  2115행
+train 1437 / val 308 / test 310  (test label 0:95 1:67 2:117 3:31)
+
+=== 심각(label 3) 탐지: LSTM vs occupancy 단일 문턱 (test 310창) ===
+방법                     recall  precision     F1  (TP/FP/FN)
+LSTM (full model)       51.6%      66.7%   58.2%  (16/8/15)
+occ >= 65%               48.4%      34.1%   40.0%  (15/29/16)
+occ >= 70%               35.5%      57.9%   44.0%  (11/8/20)
+occ >= 75%               25.8%     100.0%   41.0%  (8/0/23)
+occ >= 80%               22.6%     100.0%   36.8%  (7/0/24)
+
+=== 참 label 3 & occ<75% (23창) — occupancy 문턱이 원리상 못 잡는 케이스 ===
+  LSTM: 8/23 = 35% 를 label 3으로 탐지
+  occ>=75 문턱: 0/23 (정의상)
+  LSTM 예측 분포: {1: 6, 2: 9, 3: 8}
+  이 창들의 occ 분포: min=50.0, median=60.0, max=73.3
