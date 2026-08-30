@@ -310,7 +310,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
   "sub_scores": { "occupancy": 0.78, "jitter": 0.70, "loss": 0.0, "latency": 0.25 },
   "label": 3,
   "label_name": "심각",
-  "early_exit": { "policy": "dynamic", "exit_taken": 1, "confidence": 0.991, "infer_ms": 0.65 },
+  "early_exit": { "policy": "dynamic", "exit_taken": 1, "confidence": 0.991, "infer_ms": 0.55 },
   "connected_clients": 3,
   "ap_reachable": true,
   "steer": { "mode": "proposed", "band": "2g", "recommend": "5g", "clients_on_5g": [], "last_steer": null }
