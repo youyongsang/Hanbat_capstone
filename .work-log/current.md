@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`)**. 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
+최종 업데이트: 2026-08-31 (Claude Code) — **문서 정리(12차)**: `docs/README.md` 신규(질문 → 문서 안내), 루트 `README.md` 전면 재작성(9-feature stale였음), `README_AP_V2.md` redirect 스텁화. 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`). 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
 
 ## 11차 (2026-08-30 후속4) — 최소 라이브 추론 스크립트
 
@@ -90,6 +90,22 @@ Pi live_congestion.py --raw 실측 라벨 전이:
 - Pi 정확도 95% (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계.
 - 데모 대시보드 팀 구현 (`project/demo/API.md` 기준).
 - 밴드 스티어링 (발표 슬라이드7 최종 목표).
+
+## 12차 (2026-08-31) — 문서 정리 + 네비게이션 문서
+
+사용자: "문서가 너무 많다. 필요없는 것 정리하고, 팀원이 보고 '왜 이런 라벨 정했는지 이 문서 보면 되겠네' 할 수 있는 안내 문서 만들어줘."
+
+### 신규: `docs/README.md` — 문서 안내 (질문 → 문서)
+- "처음 오면 이 4개" (CLAUDE.md / work-log / capstone2_vacation_summary.html / congestion_label_redesign.md)
+- **"왜 이렇게 정했나" 질문별 표** — 라벨 정의·congestion_score·latency/jitter 제외·7-feature·class-weight-power·AP 크래시·ONNX 배포·SDN·데모·발표 목표·재현·환경 → 각각 어느 문서/코드
+- 결과 파일 목록 (`project/results/yongsang/`), stale/역사용 목록, HTML 목록
+- CLAUDE.md 참고파일 목록 맨 앞(0번)에 추가.
+
+### 정리
+- **`README.md`(레포 루트) 전면 재작성** — 최악의 stale였음(9-feature·가중합·"ONNX/Pi 배포 아직 없음"·`--class-weight-power 1.0`·`metrics_v2.csv`). GitHub 첫 화면이라 우선. 현재 상태 표 + `docs/README.md` 포인터 + 정확한 실행 명령.
+- **`project/README_AP_V2.md` → redirect 스텁** — 9-feature·가중합 시절 내용, 여러 문서가 참조 중이라 삭제 대신 축약(현행 문서 표 + git 히스토리 안내).
+- `image.png`(루트 방치 스크린샷), `__pycache__` 삭제.
+- **팀원별 기록(`docs/hochung/`, `docs/yena/`, `guideline_*`, `stage*_work_log`)은 보존** — CLAUDE.md "기록은 다 남겨둠" 정책. `docs/README.md`에 "맥락용, 안 읽어도 됨"으로 분류.
 
 ## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
 

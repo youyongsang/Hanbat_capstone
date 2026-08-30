@@ -197,6 +197,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 ## Claude가 추가로 참고해야 할 파일
 
+0. `docs/README.md` — **문서 안내 (질문 → 문서 매핑).** "왜 이런 라벨을 정했나" 같은 질문에 어느 문서를 볼지. 팀원 온보딩용.
 1. `.work-log/current.md` — 세션별 최신 진행 상황. **이 문서보다 항상 최신.** 최신 수치·다음 할 일은 여기.
 2. `docs/yongsang/congestion_label_redesign.md` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거. 라벨 관련 질문은 여기가 authoritative (`congestion_label_criteria.md`는 구 정의).
 3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석.
@@ -204,7 +205,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 5. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포 재설계(staged → unified If 노드 → INT8 재조립). Pi latency 주장은 이 문서 결론을 따른다.
 6. `docs/capstone1_summary.html` — 1학기(4-feature 시뮬레이션) 활동·지표 정리. `docs/yongsang/capstone2_vacation_summary.html` — 2학기 방학(2026-08-21~30) 개발 흐름 정리(데이터 실측·라벨 재설계 2회·power=0.0 재검증·SDN 논문 재구현·라이브 데모·되돌린 결정 4건).
 7. `project/models/ap_early_exit_lstm.py`, `project/utils/ap_dataloader.py` — 실제 코드 흐름.
-8. `project/README_AP_V2.md`, `docs/yongsang/congestion_label_criteria.md` — **stale (9-feature·weighted-sum 시절).** 역사적 맥락용으로만.
+8. `project/README_AP_V2.md`(redirect 스텁으로 축약됨), `docs/yongsang/congestion_label_criteria.md` — **stale (9-feature·weighted-sum 시절).** 역사적 맥락용으로만.
 
 ## Claude에게 중요한 해석 기준
 

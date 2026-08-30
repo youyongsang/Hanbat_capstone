@@ -1,106 +1,91 @@
-# Early Exit LSTM 기반 AP 트래픽 혼잡 감지 시스템 (2학기, ap_metrics_v2)
+# Early Exit LSTM 기반 AP 트래픽 혼잡 감지 (2학기)
 
-> GL.iNet Opal(GL-SFT1200) AP 실측 데이터를 이용해 Early Exit LSTM으로 무선망 혼잡 수준을 실시간 분류하는 캡스톤 프로젝트
+> GL.iNet Opal(GL-SFT1200) AP에서 직접 수집한 실측 데이터로, 채널 상태 시계열만 보고 무선망 혼잡도를
+> 4단계로 분류하는 Early Exit LSTM. 엣지(Raspberry Pi)에서 sub-ms 추론.
 
-**컴퓨터공학과 | 장예나 · 유용상 · 김호중**
-
----
-
-## 브랜치 안내
-
-이 브랜치(`capstoneDesign2`)는 `yongsang` 브랜치에서 분기해 코드를 정리한 브랜치다.
-
-- **제외**: 1학기 4-feature 학습/평가/ONNX 파이프라인 코드(`train.py`, `train_early_exit.py`, `export_onnx*.py` 등)와 1차 실측(`ap_cleaned_strict`, 인터넷 공개 데이터 기반) 전체 파이프라인 — 해당 자료가 필요하면 `yongsang` 브랜치를 참고한다.
-- **포함**: 2학기 실측 데이터 라인(`ap_metrics_v2`, 아래 "실행 순서" 기준) + docs 문서 전체(팀원별 가이드라인·work log 포함) + 1학기 Raspberry Pi 실측 결과(`project/results/hojung/`, `project/results/final_figures/`, `project/deploy/raspberry_pi/`, `origin/hojung`에서 가져옴 — staged ONNX 기준 Fixed/Dynamic Early Exit의 Pi 실측 지연 비교).
+**컴퓨터공학과 | 장예나 · 유용상 · 김호중**  ·  브랜치 `capstoneDesign2`
 
 ---
 
-## 프로젝트 개요
+## 지금 상태 (2026-08-30)
 
-본 프로젝트는 AP(무선 공유기) 트래픽 혼잡 상태를 LSTM 기반 시계열 모델로 분류하고, Early Exit 구조를 적용해 엣지 장비에서도 빠르게 추론할 수 있도록 설계한 시스템이다. 혼잡 라벨은 4단계(0 정상 / 1 경고 / 2 혼잡 / 3 심각)이며, `congestion_score`(throughput·occupancy·retry·jitter 가중합)로 산출한다.
+| | |
+|---|---|
+| 데이터 | `ap_metrics_v2_redesign2` — 실측 2115행, **7 feature**, `max(표준 앵커)` + victim 프로브 라벨 |
+| 정확도 (test 310창, 5시드 평균) | Baseline 92.0% · SDN 90.4% · **Proposed Early Exit 90.7%** |
+| Pi INT8 지연 | Baseline 0.75 · SDN 0.57 · **Proposed 0.54 ms** (전부 &lt;1ms) |
+| 라이브 감지 | Pi에서 실제 AP 부하 → 정상/경고/혼잡/심각 실시간 추적 검증 완료 |
+| 발표 목표 | 지연 &lt;1ms **달성** · 정확도 95% **미달**(90~92%, 남은 숙제) |
 
-입력 feature는 9개다: `throughput_mbps`, `channel_occupancy_percent`, `latency_ms`, `jitter_ms`, `tx_retries_per_s`, `tx_failed_per_s`, `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm`.
-
-자세한 라벨 기준, 데이터 계보, 재현 명령어는 `project/README_AP_V2.md`와 `CLAUDE.md`를 참고한다.
+라벨: 0 정상 / 1 경고 / 2 혼잡 / 3 심각.
+입력 feature (7): `throughput_mbps`, `channel_occupancy_percent`, `tx_retry_ratio`, `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm`, `sta_tx_bitrate_mean` (정본: `project/utils/ap_features.py`).
 
 ---
 
-## 프로젝트 구조
+## 어디부터 보나
+
+| 먼저 | |
+|---|---|
+| **`CLAUDE.md`** | 전체 맥락·데이터 계보·현재 수치 |
+| **`.work-log/current.md`** | 세션별 최신 진행 (CLAUDE.md보다 최신) |
+| **`docs/README.md`** | **"뭘 알고 싶을 때 어느 문서를 보나" — 질문별 안내** |
+| `docs/yongsang/capstone2_vacation_summary.html` | 방학 개발 흐름 한 장 요약 |
+
+"왜 이런 라벨을 정했나" → `docs/yongsang/congestion_label_redesign.md`.
+
+---
+
+## 구조
 
 ```text
 project/
-├── checkpoints/ap_v2/                 Early Exit LSTM 체크포인트
-├── data/ap_metrics_v2/                windowed train/val/test, scaler
+├── utils/ap_features.py              7-feature 계약 (정본)
 ├── models/
-│   ├── ap_early_exit_lstm.py
-│   └── early_exit_lstm.py
-├── results/yongsang/
-│   ├── ap_v2_eval_report.txt
-│   └── ap_v2_mismatched_scaler_diagnostic.txt
+│   ├── ap_early_exit_lstm.py         Proposed (entropy θ, fixed/dynamic)
+│   ├── ap_baseline_lstm.py           Baseline (EE 없음, 정확도 상한 기준)
+│   └── sdn_lstm.py                   SDN 비교 모델 (Kaya et al. ICML 2019)
 ├── scripts/
-│   ├── collect_metrics.py             AP 라이브 수집(+congestion_score 계산)
-│   ├── relabel_metrics_v2.py          가중치 변경 시 raw CSV 재라벨링
-│   ├── prepare_ap_metrics_dataset.py  windowed 변환
-│   ├── train_ap_early_exit.py
-│   ├── evaluate_ap_early_exit.py
-│   └── metrics_v2.csv                 누적 raw 실측 데이터
-└── utils/
-    ├── ap_features.py
-    ├── ap_dataloader.py
-    └── metrics.py
+│   ├── collect_metrics.py            AP 라이브 수집 (SSH poller + victim 프로브 + 라벨)
+│   ├── remeasure_redesign.py         raw feature → sub-score·라벨 재계산
+│   ├── prepare_ap_metrics_dataset.py windowed train/val/test 변환
+│   ├── train_ap_{early_exit,baseline_lstm,sdn}.py
+│   ├── evaluate_ap_{early_exit,baseline_lstm,sdn}.py
+│   ├── export_onnx_ap*.py            staged → unified If 노드 → INT8 재조립
+│   ├── generate_ap_comparison.py     Baseline/SDN/Proposed 비교표
+│   ├── forecast_eval_redesign.py     조기경보 프레이밍
+│   └── live_congestion.py            실시간 혼잡 감지 라이브 추론 루프
+├── demo/                             데모 웹 대시보드 (README.md 실행 / API.md 구현 스펙)
+├── data/ap_metrics_v2_redesign2/     windowed 데이터 + scaler
+├── checkpoints/ap_v2_redesign2/      배포 체크포인트 + ONNX
+├── deploy/raspberry_pi_ap_v2/        Pi 번들
+└── results/yongsang/                 평가·비교·Pi 지연·라이브 실측 리포트
 ```
 
 ---
 
-## 설치 방법
+## 실행
 
 ```powershell
-git clone https://github.com/youyongsang/Hanbat_capstone.git
-cd Hanbat_capstone
-git switch capstoneDesign2
+# 환경 (anaconda base는 torch DLL 로딩 실패 — 별도 env 필요)
+conda create -n capstone python=3.11 && conda activate capstone
+pip install torch pandas numpy onnx onnxruntime
+
+# 라벨 재계산 → windowed 변환 → 학습 → 평가
+python project\scripts\remeasure_redesign.py
+python project\scripts\prepare_ap_metrics_dataset.py --input project\scripts\metrics_v2_pi_redesign2_relabeled.csv --out-dir project\data\ap_metrics_v2_redesign2 --overwrite
+python project\scripts\train_ap_early_exit.py --data-dir project\data\ap_metrics_v2_redesign2 --checkpoint-dir project\checkpoints\ap_v2_redesign2 --epochs 50 --batch-size 32 --seed 0
+python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metrics_v2_redesign2 --checkpoint project\checkpoints\ap_v2_redesign2\ap_early_exit_lstm_best.pth --output project\results\yongsang\ap_v2_redesign2_eval_report.txt
 ```
 
-torch/pandas/numpy는 별도 conda 환경에 설치해야 한다(anaconda base에서 torch DLL 로딩 실패 이슈 있음).
+전체 명령어: `docs/terminal_command_guide.md`.
 
-```powershell
-conda create -n capstone python=3.11
-conda activate capstone
-pip install torch pandas numpy
-```
-
----
-
-## 실행 순서
-
-데이터 변환:
-
-```powershell
-python project\scripts\prepare_ap_metrics_dataset.py --input project\scripts\metrics_v2.csv --out-dir project\data\ap_metrics_v2 --overwrite
-```
-
-가중치 변경 시 재라벨링(재수집 불필요, 이후 위 변환 명령을 다시 실행해야 반영됨):
-
-```powershell
-python project\scripts\relabel_metrics_v2.py
-```
-
-Early Exit LSTM 학습:
-
-```powershell
-python project\scripts\train_ap_early_exit.py --data-dir project\data\ap_metrics_v2 --checkpoint-dir project\checkpoints\ap_v2 --epochs 50 --batch-size 32 --class-weight-power 1.0
-```
-
-평가:
-
-```powershell
-python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metrics_v2 --checkpoint project\checkpoints\ap_v2\ap_early_exit_lstm_best.pth --output project\results\yongsang\ap_v2_eval_report.txt
-```
+데모: `python project\demo\demo_server.py` → <http://localhost:8000/>
 
 ---
 
 ## 팀 역할
 
-| 팀원 | 담당 영역 |
+| 팀원 | 담당 |
 |---|---|
 | 장예나 | 데이터 및 시나리오 |
 | 유용상 | 모델 설계, AP 실측 |
@@ -108,8 +93,9 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 ---
 
-## 알려진 한계
+## 남은 것
 
-- Label 3(심각) 샘플이 아직 얇아 recall이 세션마다 크게 흔들린다.
-- ONNX/INT8/Raspberry Pi 배포 파이프라인이 아직 이 라인에는 없다(1차 `raspberry_pi_ap` 번들은 `yongsang` 브랜치에만 존재).
-- AP 하드웨어가 특정 조건에서 반복 크래시하는 문제가 있다. 원인 분석은 `docs/yongsang/ap_crash_analysis.md` 참고.
+- **Pi 정확도 95%** (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계
+- 데모 대시보드 팀 구현 (`project/demo/API.md`)
+- 밴드 스티어링 — 발표 슬라이드 7의 최종 목표 (혼잡 판단 → 채널 전환 명령 후보 생성)
+- AP 반복 크래시: 신호 비대칭 시 저부하에도 크래시 (`docs/yongsang/ap_crash_analysis.md`)
