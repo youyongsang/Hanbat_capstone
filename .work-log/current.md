@@ -1,5 +1,31 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-31 (Claude Code) — **문서 정리(12차)**: `docs/README.md` 신규(질문 → 문서 안내), 루트 `README.md` 전면 재작성(9-feature stale였음), `README_AP_V2.md` redirect 스텁화. 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`). 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
+최종 업데이트: 2026-08-31 (Claude Code) — **데모 서버 Pi 이식(13차)**: `demo_server.py`를 저장소·Pi 번들 양쪽에서 도는 dual-import + 전면 인자화(`--host --port --iperf-target --s21 --s26 ...`, 하드코딩 IP 제거)로. 번들(`project/deploy/raspberry_pi_ap_v2/`)에 `demo_server.py`+`demo.html` 추가. 노트북 2경로 스모크 테스트 통과. **Pi 실기기 테스트는 Pi·AP 오프라인이라 대기.** 그 전 12차: `docs/README.md` 신규(질문 → 문서 안내), 루트 `README.md` 전면 재작성(9-feature stale였음), `README_AP_V2.md` redirect 스텁화. 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`). 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
+
+## 13차 (2026-08-31) — 데모 서버 Pi 이식 (엣지 추론)
+
+사용자: "demo_server.py도 Pi에서 돌게 이식해줘 그래야 실험이 맞지" (추론이 노트북이 아니라 실제 엣지 장비에서 돌아야 latency·엣지 서사가 성립).
+
+### `project/demo/demo_server.py` 재작성
+- **dual-import**: `try: from scripts.collect_metrics ... except ImportError: from collect_metrics ...` (`live_congestion.py`와 동일). `sys.path`에 스크립트 옆 디렉터리 추가 → 저장소/번들 같은 파일로 동작.
+- **전면 인자화** (하드코딩 IP·별칭 전부 제거):
+  - `--host --port` (기본 `0.0.0.0:8000`, env `DEMO_HOST`/`DEMO_PORT`)
+  - `--iperf-target` (폰이 iperf3 쏠 대상 — 노트북이면 노트북 wifi IP, Pi면 Pi 자신 IP)
+  - `--s21 --s26` (폰 SSH 대상 — 노트북은 `~/.ssh/config` 별칭 `s21`/`s26`, Pi는 `user@192.168.8.x`)
+  - `--s21-port --s26-port --model --scaler --confirm --no-iperf-server`
+  - `MODEL`/`SCALER` 기본값이 저장소 경로 없으면 스크립트 옆(번들)으로 fallback (`_resolve`)
+- **iperf3 -s 자동 기동 조건**: `--iperf-target`이 로컬 IP(`hostname -I`로 확인)일 때만. 아니면 대상 호스트에서 직접 띄우라고 안내.
+- `PHONES` dict로 폰 SSH 대상·포트 관리 (`PHONE_PORTS` 상수 대체).
+
+### Pi 번들 갱신 (`project/deploy/raspberry_pi_ap_v2/`)
+- `demo_server.py` + `demo.html` 추가 (이미 있던 `collect_metrics.py`, `scaler_params.json`, `*_int8_v2.onnx`와 함께 자립 실행 가능).
+
+### 문서
+- `project/demo/API.md` §6 재작성 — Pi 실행 명령·인자·env·번들 목록, Pi→폰 SSH 키 등록 절차.
+- `project/demo/README.md` — "실행 (라즈베리 파이 — 엣지 추론)" 섹션 추가, 사전조건 표를 인자 기준으로.
+
+### 검증
+- 노트북 스모크 테스트 2경로 통과: (a) `project/demo/demo_server.py` (b) 번들 `raspberry_pi_ap_v2/demo_server.py` — 둘 다 모델 로드, HTTP bind, `/health`·`/` 응답 OK, dual-import 정상.
+- **Pi 실기기 테스트 미완**: 이 세션 내내 Pi(`192.168.8.109`)·AP(`192.168.8.1`) 둘 다 connection timeout (이 PC가 Opal 망에 없음). Pi 온라인 시: 번들 scp → Pi 공개키를 두 폰 `authorized_keys`에 등록 → `python3 demo_server.py --iperf-target <PiIP> --s21 <user@폰> --s26 <user@폰>` 실행 후 부하 시나리오 재현.
 
 ## 11차 (2026-08-30 후속4) — 최소 라이브 추론 스크립트
 

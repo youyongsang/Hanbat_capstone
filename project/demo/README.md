@@ -13,22 +13,47 @@ python project/demo/demo_server.py
 
 브라우저에서 <http://localhost:8000/> 열기.
 
+## 실행 (라즈베리 파이 — 엣지 추론)
+
+추론·AP폴링·부하대상을 전부 Pi 로. 번들에 필요한 파일이 이미 다 있다
+(`project/deploy/raspberry_pi_ap_v2/` : `demo_server.py` `demo.html` `collect_metrics.py`
+`scaler_params.json` `*_int8_v2.onnx`).
+
+```bash
+# 1) 번들 복사 (한 번)
+scp -r project/deploy/raspberry_pi_ap_v2 capstone@<파이IP>:~/demo
+
+# 2) Pi 공개키를 두 폰에 등록 (한 번, 폰 Termux 에서)
+#    cat ~/.ssh/id_ed25519.pub  →  각 폰 ~/.ssh/authorized_keys 에 추가
+
+# 3) Pi 에서 실행
+ssh capstone@<파이IP>
+cd ~/demo
+python3 demo_server.py \
+    --iperf-target <파이IP> \
+    --s21 <user@폰1IP> --s26 <user@폰2IP>
+```
+
+브라우저에서 <http://\<파이IP\>:8000/> 열기. 폰들이 Pi 로 iperf3 를 쏘므로
+`--iperf-target` 이 로컬이면 `iperf3 -s` 는 자동 기동된다 (Pi 에 `iperf3` 설치 필요).
+
 ## 사전 조건
 
 | 항목 | 확인 |
 |---|---|
-| AP SSH | `ssh root@192.168.8.1` (collect_metrics.py 와 동일 키) |
-| 폰 SSH | `ssh s21 echo ok` / `ssh s26 echo ok` (Termux sshd, `~/.ssh/config`) |
-| 폰 iperf3 대상 | 노트북 wifi IP = `192.168.8.226` (`demo_server.py` `IPERF_TARGET`) |
-| Python | `onnxruntime`, `numpy` (capstone 환경) |
-| ONNX / scaler | `checkpoints/ap_v2_redesign2/ap_early_exit_fixed_unified_int8_v2.onnx`, `data/ap_metrics_v2_redesign2/scaler_params.json` |
+| AP SSH | `ssh root@192.168.8.1` (collect_metrics.py 와 동일 키) — 노트북·Pi 둘 다 |
+| 폰 SSH | `ssh <--s21> echo ok` / `ssh <--s26> echo ok` (Termux sshd) |
+| 폰 iperf3 대상 | `--iperf-target` — 노트북 실행 `192.168.8.226`, Pi 실행 Pi 자신 IP |
+| Python | `onnxruntime`, `numpy` |
+| ONNX / scaler | 저장소 경로 또는 스크립트 옆(Pi 번들) 에서 자동 로드 |
 
-`iperf3 -s` 서버(5201/5202)는 `demo_server.py` 가 자동 기동한다.
+`iperf3 -s` 서버(5201/5202)는 `--iperf-target` 이 로컬 IP면 `demo_server.py` 가 자동 기동한다.
+전부 인자로 조정 가능 — `demo_server.py --help`.
 
 ## 화면
 
 - **모델 출력 (원시)** — 매 폴링 argmax 라벨 + 4클래스 확률 바. **리포트의 정확도 수치는 전부 이것 기준.**
-- **안정화 상태** — 원시 예측이 3폴링 연속 같을 때만 갱신하는 debounce 라벨(표시/제어용). **모델·학습·평가엔 없는 후처리** — 경계 구간의 폴링 단위 흔들림만 억제.
+- **안정화 상태** — 원시 예측이 5폴링(`--confirm`) 연속 같을 때만 갱신하는 debounce 라벨(표시/제어용). **모델·학습·평가엔 없는 후처리** — 경계 구간의 폴링 단위 흔들림만 억제.
 - **AP 텔레메트리** — 모델 입력 7-feature 실시간값 + early-exit 지점
 - **부하 제어** — `10 / 20 / 30 Mbps` 버튼(두 폰 동시 iperf3 UDP), `정지`. 30M 상한.
 - **최근 90초 차트** — 안정화 상태(굵은 선) / 모델 출력 원시(점선) / 채널 점유율(%)

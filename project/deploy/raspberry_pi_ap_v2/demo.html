@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AP 혼잡 감지 데모</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel-2:#1c2230; --line:#2b3340;
+    --ink:#e8ebf0; --ink-2:#9aa4b2; --muted:#6b7480;
+    --l0:#2fb366; --l1:#e0b13a; --l2:#e8863a; --l3:#e5484d;
+    --accent:#3d8bfd;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 20px 60px}
+  header{display:flex;align-items:baseline;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  h1{font-size:19px;font-weight:650;margin:0;letter-spacing:-0.01em}
+  .status{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);
+    display:flex;align-items:center;gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+  .dot.on{background:var(--l0);box-shadow:0 0 8px var(--l0)}
+  .dot.warn{background:var(--l3);box-shadow:0 0 8px var(--l3)}
+
+  .states{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.states{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card h2{font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 14px}
+
+  /* 큰 레벨 표시 */
+  .level{text-align:center;padding:10px 0 4px;border-radius:10px;transition:background .3s}
+  .level .num{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+  .level .name{font-size:44px;font-weight:750;letter-spacing:-0.02em;margin:2px 0 6px;line-height:1}
+  .level .raw{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+  .level.l0{background:color-mix(in srgb,var(--l0) 14%,transparent)} .level.l0 .name{color:var(--l0)}
+  .level.l1{background:color-mix(in srgb,var(--l1) 15%,transparent)} .level.l1 .name{color:var(--l1)}
+  .level.l2{background:color-mix(in srgb,var(--l2) 16%,transparent)} .level.l2 .name{color:var(--l2)}
+  .level.l3{background:color-mix(in srgb,var(--l3) 18%,transparent)} .level.l3 .name{color:var(--l3)}
+
+  .probs{margin-top:16px;display:grid;gap:7px}
+  .prob{display:grid;grid-template-columns:34px 1fr 44px;align-items:center;gap:9px;font-size:13px}
+  .prob .bar{height:16px;background:var(--panel-2);border-radius:4px;overflow:hidden}
+  .prob .fill{height:100%;border-radius:4px;transition:width .3s}
+  .prob:nth-child(1) .fill{background:var(--l0)} .prob:nth-child(2) .fill{background:var(--l1)}
+  .prob:nth-child(3) .fill{background:var(--l2)} .prob:nth-child(4) .fill{background:var(--l3)}
+  .prob .pv{font-family:var(--mono);text-align:right;color:var(--ink-2)}
+
+  /* feature strip */
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+    border-radius:10px;overflow:hidden;margin-top:4px}
+  .feat{background:var(--panel);padding:11px 13px}
+  .feat .k{font-size:11px;color:var(--muted)}
+  .feat .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:2px}
+  .feat .v small{font-size:11px;color:var(--ink-2);font-weight:400}
+
+  /* 부하 컨트롤 */
+  .loadrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  button.load{font:inherit;font-weight:600;font-size:14px;padding:11px 16px;border-radius:9px;
+    border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;
+    transition:all .15s}
+  button.load:hover{border-color:var(--accent)}
+  button.load.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.load.stop.active{background:var(--l3);border-color:var(--l3)}
+  button.load:disabled{opacity:.4;cursor:wait}
+  .loadinfo{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);display:flex;
+    gap:16px;flex-wrap:wrap;align-items:center}
+  .sig{padding:3px 8px;border-radius:6px;background:var(--panel-2)}
+  .sig.bad{background:color-mix(in srgb,var(--l3) 25%,transparent);color:#fff}
+  .warn{color:var(--l1)}
+
+  canvas{width:100%;height:200px;display:block;margin-top:4px}
+  .chartlegend{display:flex;gap:18px;font-size:11.5px;color:var(--muted);margin-top:8px;font-family:var(--mono)}
+  .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+  .note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AP 혼잡 감지 — 라이브 데모</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statustext">연결 중…</span></div>
+  </header>
+
+  <div class="states">
+    <div class="card">
+      <h2>모델 출력 <span style="color:var(--muted)">— 매 폴링 argmax · 정확도 평가 기준</span></h2>
+      <div class="level l0" id="rawlevel">
+        <div class="num" id="rawnum">label —</div>
+        <div class="name" id="rawname">—</div>
+        <div class="raw" id="rawp">&nbsp;</div>
+      </div>
+      <div class="probs" id="probs">
+        <div class="prob"><span>정상</span><div class="bar"><div class="fill"></div></div><span class="pv">0.00</span></div>
+        <div class="prob"><span>경고</span><div class="bar"><div class="fill"></div></div><span class="pv">0.00</span></div>
+        <div class="prob"><span>혼잡</span><div class="bar"><div class="fill"></div></div><span class="pv">0.00</span></div>
+        <div class="prob"><span>심각</span><div class="bar"><div class="fill"></div></div><span class="pv">0.00</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>안정화 상태 <span style="color:var(--muted)">— 5폴링 debounce · 표시/제어용 후처리</span></h2>
+      <div class="level l0" id="conflevel">
+        <div class="num" id="confnum">label —</div>
+        <div class="name" id="confname">—</div>
+        <div class="raw" id="confnote">&nbsp;</div>
+      </div>
+      <div class="note">
+        모델 출력(원시)이 <b>5폴링 연속 같은 값</b>일 때만 갱신 — 경계 구간(occ 50~77%)의
+        폴링 단위 흔들림을 억제한다. <b>모델·학습·평가엔 없는 후처리</b>이며, 리포트의 정확도 수치는
+        모두 왼쪽 "모델 출력" 기준이다.
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>AP 텔레메트리 (모델 입력 7-feature)</h2>
+    <div class="feats">
+      <div class="feat"><div class="k">채널 점유율</div><div class="v" id="f_occ">—<small> %</small></div></div>
+      <div class="feat"><div class="k">throughput</div><div class="v" id="f_thr">—<small> Mbps</small></div></div>
+      <div class="feat"><div class="k">retry ratio</div><div class="v" id="f_retry">—<small> %</small></div></div>
+      <div class="feat"><div class="k">RSSI</div><div class="v" id="f_rssi">—<small> dBm</small></div></div>
+      <div class="feat"><div class="k">STA tx bitrate</div><div class="v" id="f_bitrate">—<small> M</small></div></div>
+      <div class="feat"><div class="k">early exit</div><div class="v" id="f_exit">—</div></div>
+    </div>
+    <div class="note">클라이언트 <span id="f_clients">—</span>대 · <span id="f_ts">—</span></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>부하 제어 <span style="color:var(--muted)">(두 폰 동시 iperf3 UDP)</span></h2>
+    <div class="loadrow">
+      <button class="load" data-rate="10M">10 Mbps</button>
+      <button class="load" data-rate="20M">20 Mbps</button>
+      <button class="load" data-rate="30M">30 Mbps</button>
+      <button class="load stop" data-rate="off">정지</button>
+    </div>
+    <div class="loadinfo">
+      <span>현재 부하: <b id="curload">off</b></span>
+      <span class="sig" id="sig21">S21 —</span>
+      <span class="sig" id="sig26">S26 —</span>
+      <span id="sigwarn"></span>
+    </div>
+    <div class="note">
+      30 Mbps 상한 (AP 크래시 방지). 두 폰 신호가 12 dBm 이상 차이나면 비대칭 부착으로
+      AP가 낮은 부하에도 크래시할 수 있음 — 신호 확인 후 부하.
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>최근 90초</h2>
+    <canvas id="chart"></canvas>
+    <div class="chartlegend">
+      <span><span class="sw" style="background:var(--accent)"></span>안정화 상태 (굵은 선)</span>
+      <span><span class="sw" style="background:#7a8aa0"></span>모델 출력 원시 (점선)</span>
+      <span><span class="sw" style="background:var(--ink-2)"></span>채널 점유율 %</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const LCLASS = ["l0","l1","l2","l3"];
+const hist = [];               // {level(확정), raw(원시), occ}
+const MAXPTS = 180;            // ~90s @ 2Hz
+
+function setLevel(st){
+  $("#rawlevel").className = "level " + LCLASS[st.raw_label];
+  $("#rawnum").textContent = "label " + st.raw_label;
+  $("#rawname").textContent = st.raw_name;
+  $("#rawp").textContent = "p = " + st.probs[st.raw_label].toFixed(2);
+  $("#conflevel").className = "level " + LCLASS[st.label];
+  $("#confnum").textContent = "label " + st.label;
+  $("#confname").textContent = st.label_name;
+  $("#confnote").textContent = (st.raw_label !== st.label)
+    ? "원시 출력과 다름 - debounce 대기" : "원시 출력과 일치";
+  const bars = document.querySelectorAll("#probs .prob");
+  st.probs.forEach((p,i)=>{
+    bars[i].querySelector(".fill").style.width = (p*100).toFixed(1)+"%";
+    bars[i].querySelector(".pv").textContent = p.toFixed(2);
+  });
+}
+function setFeats(f, st){
+  $("#f_occ").innerHTML   = f.channel_occupancy_percent.toFixed(0)+'<small> %</small>';
+  $("#f_thr").innerHTML   = f.throughput_mbps.toFixed(0)+'<small> Mbps</small>';
+  $("#f_retry").innerHTML = (f.tx_retry_ratio*100).toFixed(0)+'<small> %</small>';
+  $("#f_rssi").innerHTML  = f.rssi_dbm.toFixed(0)+'<small> dBm</small>';
+  $("#f_bitrate").innerHTML = f.sta_tx_bitrate_mean.toFixed(0)+'<small> M</small>';
+  $("#f_exit").textContent = st.exit ? ("exit "+st.exit) : "—";
+  $("#f_clients").textContent = st.clients ?? "—";
+  $("#f_ts").textContent = st.ts ?? "—";
+}
+
+const es = new EventSource("/events");
+es.onopen = () => { $("#dot").className="dot on"; };
+es.onerror = () => { $("#dot").className="dot warn"; $("#statustext").textContent="연결 끊김 — 재시도"; };
+es.onmessage = ev => {
+  const st = JSON.parse(ev.data);
+  if(st.load !== undefined) markLoad(st.load);
+  if(!st.ready){
+    $("#dot").className = st.msg && st.msg.includes("AP 응답 없음") ? "dot warn" : "dot on";
+    $("#statustext").textContent = st.msg || "…";
+    if(st.features) setFeats(st.features, st);
+    return;
+  }
+  $("#dot").className="dot on";
+  $("#statustext").textContent = "실시간 · " + (st.ts||"");
+  setLevel(st); setFeats(st.features, st);
+  hist.push({level:st.label, raw:st.raw_label, occ:st.features.channel_occupancy_percent});
+  if(hist.length>MAXPTS) hist.shift();
+  draw();
+};
+
+// 부하 버튼
+let busy=false;
+function markLoad(rate){
+  $("#curload").textContent = rate;
+  document.querySelectorAll("button.load").forEach(b=>{
+    b.classList.toggle("active", b.dataset.rate===rate ||
+      (rate==="off" && b.dataset.rate==="off"));
+  });
+}
+document.querySelectorAll("button.load").forEach(btn=>{
+  btn.onclick = async ()=>{
+    if(busy) return; busy=true;
+    document.querySelectorAll("button.load").forEach(b=>b.disabled=true);
+    try{
+      const r = await fetch("/load",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({rate:btn.dataset.rate})});
+      const j = await r.json();
+      if(!j.ok) alert("부하 설정 실패: "+(j.error||JSON.stringify(j)));
+      else markLoad(j.rate);
+    }catch(e){ alert("요청 실패: "+e); }
+    finally{
+      busy=false;
+      document.querySelectorAll("button.load").forEach(b=>b.disabled=false);
+    }
+  };
+});
+
+// 신호 폴링
+async function pollSignal(){
+  try{
+    const s = await (await fetch("/signal")).json();
+    const set=(el,v)=>{ const e=$(el);
+      if(typeof v==="number"){ e.textContent=el.slice(-2).toUpperCase().replace("G","")+" "+v+" dBm"; }
+      else { e.textContent=el.includes("21")?"S21 —":"S26 —"; } };
+    set("#sig21", s.s21); set("#sig26", s.s26);
+    const w=$("#sigwarn");
+    if(s.symmetric===false){ w.textContent="⚠ 신호 비대칭 — 부하 크래시 위험"; w.className="warn";
+      $("#sig21").classList.add("bad"); $("#sig26").classList.add("bad"); }
+    else { w.textContent=""; $("#sig21").classList.remove("bad"); $("#sig26").classList.remove("bad"); }
+  }catch(e){}
+}
+pollSignal(); setInterval(pollSignal, 5000);
+
+// 차트
+const cv = $("#chart"), cx = cv.getContext("2d");
+function draw(){
+  const dpr = window.devicePixelRatio||1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr; cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,W,H);
+  const pad = {l:26,r:8,t:8,b:8};
+  const iw = W-pad.l-pad.r, ih = H-pad.t-pad.b;
+  // grid + level labels
+  cx.strokeStyle="#242b36"; cx.fillStyle="#5b6472"; cx.font="10px "+getComputedStyle(document.body).fontFamily;
+  ["정상","경고","혼잡","심각"].forEach((lab,i)=>{
+    const y = pad.t + ih - (i/3)*ih;
+    cx.beginPath(); cx.moveTo(pad.l,y); cx.lineTo(W-pad.r,y); cx.stroke();
+    cx.fillText(lab, 2, y+3);
+  });
+  if(hist.length<2) return;
+  const n = hist.length, dx = iw/(MAXPTS-1);
+  const x = i => pad.l + i*dx;
+  // occupancy line
+  cx.strokeStyle="#9aa4b2"; cx.lineWidth=1; cx.beginPath();
+  hist.forEach((p,i)=>{ const y=pad.t+ih-(Math.min(100,p.occ)/100)*ih;
+    i?cx.lineTo(x(i),y):cx.moveTo(x(i),y); }); cx.stroke();
+  // 모델 출력(원시) — 얇은 점선
+  cx.strokeStyle="#7a8aa0"; cx.lineWidth=1; cx.setLineDash([2,3]); cx.beginPath();
+  hist.forEach((p,i)=>{ const yv=v=>pad.t+ih-(v/3)*ih;
+    if(!i){ cx.moveTo(x(i),yv(p.raw)); } else { cx.lineTo(x(i),yv(hist[i-1].raw)); cx.lineTo(x(i),yv(p.raw)); } });
+  cx.stroke(); cx.setLineDash([]);
+  // 안정화 상태(확정) — 굵은 실선
+  cx.strokeStyle="#3d8bfd"; cx.lineWidth=2.5; cx.beginPath();
+  hist.forEach((p,i)=>{ const yv=v=>pad.t+ih-(v/3)*ih;
+    if(!i){ cx.moveTo(x(i),yv(p.level)); } else { cx.lineTo(x(i),yv(hist[i-1].level)); cx.lineTo(x(i),yv(p.level)); } });
+  cx.stroke();
+}
+window.addEventListener("resize", draw);
+</script>
+</body>
+</html>

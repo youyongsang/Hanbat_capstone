@@ -44,7 +44,7 @@
 ```
 
 - **추론과 부하 제어가 한 프로세스**(레퍼런스는 단순화를 위해). 팀이 나눠도 됨.
-- 노트북에서 도는 이유: 폰 SSH·iperf3 대상이 노트북. Pi로 옮기려면 §6.
+- 노트북·Pi 어디서든 실행 (§6). Pi 실행이 "엣지 추론" 서사에 맞음 — 추론·AP폴링이 Pi, 부하 대상도 Pi.
 - `demo.html` 은 서버가 서빙 → **동일 출처**라 CORS·CSP 제약 없음. (claude.ai 아티팩트로는 이 백엔드에 못 붙음 — 로컬 파일이어야 함.)
 
 ---
@@ -170,19 +170,32 @@ feature 계산 로직은 레퍼런스가 `collect_metrics.py` 헬퍼(`APPoller`,
 ## 6. 실행 / 사전조건
 
 ```bash
+# 노트북 (기본값 그대로)
 python project/demo/demo_server.py     # → http://localhost:8000/
+
+# 라즈베리 파이 (엣지 추론) — 부하 대상도 Pi 자신으로
+python3 demo_server.py \
+    --iperf-target 192.168.8.109 \
+    --s21 u0_a123@192.168.8.191 --s26 u0_a45@192.168.8.103
 ```
+
+호스트/포트/경로/폰 대상은 전부 인자 또는 환경변수로 (`--host --port --iperf-target
+--s21 --s26 --s21-port --s26-port --model --scaler --confirm --no-iperf-server`,
+`DEMO_HOST` `DEMO_PORT` `DEMO_IPERF_TARGET` `DEMO_S21` `DEMO_S26`). 하드코딩 IP 없음.
 
 | 필요 | 확인 |
 |---|---|
-| AP SSH | `ssh root@192.168.8.1` (`collect_metrics.py` `SSH_CMD` 옵션, ssh-rsa 허용) |
-| 폰 SSH | `ssh s21 echo ok` / `ssh s26 echo ok` — Termux sshd(8022), `~/.ssh/config` Host s21/s26 |
-| 폰 iperf3 대상 | 노트북 wifi IP = `192.168.8.226` = `demo_server.py` `IPERF_TARGET` (환경 바뀌면 수정) |
-| iperf3 -s | 서버가 5201/5202 자동 기동 (충돌 시 기존 프로세스 정리) |
-| Python | `onnxruntime`, `numpy` (capstone conda 환경 — base는 torch DLL 문제) |
-| ONNX/scaler | 위 §4 경로 |
+| AP SSH | `ssh root@192.168.8.1` (`collect_metrics.py` `SSH_CMD` 옵션, ssh-rsa 허용). 노트북·Pi 둘 다 됨 |
+| 폰 SSH | `ssh <--s21> echo ok` / `ssh <--s26> echo ok` — Termux sshd. 노트북은 `~/.ssh/config` 별칭(`s21`/`s26`), Pi 는 `--s21 user@ip` 로 직접 지정 + Pi 공개키를 폰 `~/.ssh/authorized_keys` 에 등록 |
+| 폰 iperf3 대상 | `--iperf-target`. 노트북 실행이면 노트북 wifi IP(`192.168.8.226`), Pi 실행이면 Pi 자신의 `192.168.8.x` IP(폰→AP→Pi 경로) |
+| iperf3 -s | `--iperf-target` 이 로컬 IP면 서버가 두 포트 자동 기동. 아니면 대상 호스트에서 직접 `iperf3 -s -p 5201` / `-p 5202` |
+| Python | `onnxruntime`, `numpy`. 노트북=capstone conda 환경, Pi=시스템 python3 (onnxruntime 1.26) |
+| ONNX/scaler | 저장소 경로에 없으면 스크립트 옆(Pi 번들)에서 자동 로드 |
 
-**Pi 이식** (선택): `collect_metrics.py`, `live_congestion.py` 는 이미 `project/deploy/raspberry_pi_ap_v2/` 에 있음. `demo_server.py` + `demo.html` + `scaler_params.json` + onnx 를 Pi 로 복사하고 `IPERF_TARGET` 을 Pi 로 갈지 결정(부하 대상이 Pi가 되면 폰→AP→Pi 경로). Pi→AP SSH 는 이미 됨, Pi→폰 SSH 키는 추가 필요.
+**Pi 번들** (`project/deploy/raspberry_pi_ap_v2/`): `demo_server.py` `demo.html`
+`collect_metrics.py` `scaler_params.json` `ap_early_exit_fixed_unified_int8_v2.onnx`
+전부 포함. `scp -r` 후 위 명령으로 실행. `demo_server.py` 는 저장소/번들 양쪽에서
+같은 파일로 도는 dual-import 구조 (`live_congestion.py` 와 동일).
 
 ---
 
