@@ -26,8 +26,8 @@
   .dot.on{background:var(--l0);box-shadow:0 0 8px var(--l0)}
   .dot.warn{background:var(--l3);box-shadow:0 0 8px var(--l3)}
 
-  .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
-  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .states{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.states{grid-template-columns:1fr}}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
   .card h2{font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
@@ -88,13 +88,13 @@
     <div class="status"><span class="dot" id="dot"></span><span id="statustext">연결 중…</span></div>
   </header>
 
-  <div class="grid">
+  <div class="states">
     <div class="card">
-      <h2>현재 혼잡 상태 <span style="color:var(--muted)">(확정 라벨 · 3폴링 히스테리시스)</span></h2>
-      <div class="level l0" id="level">
-        <div class="num" id="levelnum">label —</div>
-        <div class="name" id="levelname">—</div>
-        <div class="raw" id="levelraw">&nbsp;</div>
+      <h2>모델 출력 <span style="color:var(--muted)">— 매 폴링 argmax · 정확도 평가 기준</span></h2>
+      <div class="level l0" id="rawlevel">
+        <div class="num" id="rawnum">label —</div>
+        <div class="name" id="rawname">—</div>
+        <div class="raw" id="rawp">&nbsp;</div>
       </div>
       <div class="probs" id="probs">
         <div class="prob"><span>정상</span><div class="bar"><div class="fill"></div></div><span class="pv">0.00</span></div>
@@ -105,17 +105,31 @@
     </div>
 
     <div class="card">
-      <h2>AP 텔레메트리 (모델 입력)</h2>
-      <div class="feats">
-        <div class="feat"><div class="k">채널 점유율</div><div class="v" id="f_occ">—<small> %</small></div></div>
-        <div class="feat"><div class="k">throughput</div><div class="v" id="f_thr">—<small> Mbps</small></div></div>
-        <div class="feat"><div class="k">retry ratio</div><div class="v" id="f_retry">—<small> %</small></div></div>
-        <div class="feat"><div class="k">RSSI</div><div class="v" id="f_rssi">—<small> dBm</small></div></div>
-        <div class="feat"><div class="k">STA tx bitrate</div><div class="v" id="f_bitrate">—<small> M</small></div></div>
-        <div class="feat"><div class="k">early exit</div><div class="v" id="f_exit">—</div></div>
+      <h2>안정화 상태 <span style="color:var(--muted)">— 3폴링 debounce · 표시/제어용 후처리</span></h2>
+      <div class="level l0" id="conflevel">
+        <div class="num" id="confnum">label —</div>
+        <div class="name" id="confname">—</div>
+        <div class="raw" id="confnote">&nbsp;</div>
       </div>
-      <div class="note">클라이언트 <span id="f_clients">—</span>대 · <span id="f_ts">—</span></div>
+      <div class="note">
+        모델 출력(원시)이 <b>3폴링 연속 같은 값</b>일 때만 갱신 — 경계 구간(occ 50~77%)의
+        폴링 단위 흔들림을 억제한다. <b>모델·학습·평가엔 없는 후처리</b>이며, 리포트의 정확도 수치는
+        모두 왼쪽 "모델 출력" 기준이다.
+      </div>
     </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>AP 텔레메트리 (모델 입력 7-feature)</h2>
+    <div class="feats">
+      <div class="feat"><div class="k">채널 점유율</div><div class="v" id="f_occ">—<small> %</small></div></div>
+      <div class="feat"><div class="k">throughput</div><div class="v" id="f_thr">—<small> Mbps</small></div></div>
+      <div class="feat"><div class="k">retry ratio</div><div class="v" id="f_retry">—<small> %</small></div></div>
+      <div class="feat"><div class="k">RSSI</div><div class="v" id="f_rssi">—<small> dBm</small></div></div>
+      <div class="feat"><div class="k">STA tx bitrate</div><div class="v" id="f_bitrate">—<small> M</small></div></div>
+      <div class="feat"><div class="k">early exit</div><div class="v" id="f_exit">—</div></div>
+    </div>
+    <div class="note">클라이언트 <span id="f_clients">—</span>대 · <span id="f_ts">—</span></div>
   </div>
 
   <div class="card" style="margin-top:16px">
@@ -142,8 +156,9 @@
     <h2>최근 90초</h2>
     <canvas id="chart"></canvas>
     <div class="chartlegend">
-      <span><span class="sw" style="background:var(--accent)"></span>혼잡 레벨 (0–3)</span>
-      <span><span class="sw" style="background:var(--ink-2)"></span>채널 점유율 (%)</span>
+      <span><span class="sw" style="background:var(--accent)"></span>안정화 상태 (굵은 선)</span>
+      <span><span class="sw" style="background:#7a8aa0"></span>모델 출력 원시 (점선)</span>
+      <span><span class="sw" style="background:var(--ink-2)"></span>채널 점유율 %</span>
     </div>
   </div>
 </div>
@@ -151,16 +166,19 @@
 <script>
 const $ = s => document.querySelector(s);
 const LCLASS = ["l0","l1","l2","l3"];
-const hist = [];               // {t, level, occ}
+const hist = [];               // {level(확정), raw(원시), occ}
 const MAXPTS = 180;            // ~90s @ 2Hz
 
 function setLevel(st){
-  const lv = $("#level");
-  lv.className = "level " + LCLASS[st.label];
-  $("#levelnum").textContent = "label " + st.label;
-  $("#levelname").textContent = st.label_name;
-  $("#levelraw").textContent = (st.raw_label !== st.label)
-    ? `원시 예측: ${st.raw_name}(${st.raw_label})` : " ";
+  $("#rawlevel").className = "level " + LCLASS[st.raw_label];
+  $("#rawnum").textContent = "label " + st.raw_label;
+  $("#rawname").textContent = st.raw_name;
+  $("#rawp").textContent = "p = " + st.probs[st.raw_label].toFixed(2);
+  $("#conflevel").className = "level " + LCLASS[st.label];
+  $("#confnum").textContent = "label " + st.label;
+  $("#confname").textContent = st.label_name;
+  $("#confnote").textContent = (st.raw_label !== st.label)
+    ? "원시 출력과 다름 - debounce 대기" : "원시 출력과 일치";
   const bars = document.querySelectorAll("#probs .prob");
   st.probs.forEach((p,i)=>{
     bars[i].querySelector(".fill").style.width = (p*100).toFixed(1)+"%";
@@ -193,7 +211,7 @@ es.onmessage = ev => {
   $("#dot").className="dot on";
   $("#statustext").textContent = "실시간 · " + (st.ts||"");
   setLevel(st); setFeats(st.features, st);
-  hist.push({level:st.label, occ:st.features.channel_occupancy_percent});
+  hist.push({level:st.label, raw:st.raw_label, occ:st.features.channel_occupancy_percent});
   if(hist.length>MAXPTS) hist.shift();
   draw();
 };
@@ -264,10 +282,15 @@ function draw(){
   cx.strokeStyle="#9aa4b2"; cx.lineWidth=1; cx.beginPath();
   hist.forEach((p,i)=>{ const y=pad.t+ih-(Math.min(100,p.occ)/100)*ih;
     i?cx.lineTo(x(i),y):cx.moveTo(x(i),y); }); cx.stroke();
-  // level step line
-  cx.strokeStyle="#3d8bfd"; cx.lineWidth=2; cx.beginPath();
-  hist.forEach((p,i)=>{ const y=pad.t+ih-(p.level/3)*ih;
-    if(!i){ cx.moveTo(x(i),y); } else { cx.lineTo(x(i),pad.t+ih-(hist[i-1].level/3)*ih); cx.lineTo(x(i),y); } });
+  // 모델 출력(원시) — 얇은 점선
+  cx.strokeStyle="#7a8aa0"; cx.lineWidth=1; cx.setLineDash([2,3]); cx.beginPath();
+  hist.forEach((p,i)=>{ const yv=v=>pad.t+ih-(v/3)*ih;
+    if(!i){ cx.moveTo(x(i),yv(p.raw)); } else { cx.lineTo(x(i),yv(hist[i-1].raw)); cx.lineTo(x(i),yv(p.raw)); } });
+  cx.stroke(); cx.setLineDash([]);
+  // 안정화 상태(확정) — 굵은 실선
+  cx.strokeStyle="#3d8bfd"; cx.lineWidth=2.5; cx.beginPath();
+  hist.forEach((p,i)=>{ const yv=v=>pad.t+ih-(v/3)*ih;
+    if(!i){ cx.moveTo(x(i),yv(p.level)); } else { cx.lineTo(x(i),yv(hist[i-1].level)); cx.lineTo(x(i),yv(p.level)); } });
   cx.stroke();
 }
 window.addEventListener("resize", draw);
