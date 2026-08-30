@@ -57,7 +57,7 @@ FEATURES = (
     "rssi_dbm", "rssi_delta_db", "rssi_moving_avg_dbm", "sta_tx_bitrate_mean",
 )
 WINDOW = 10
-CONFIRM = 3                              # 라벨 히스테리시스
+CONFIRM = 5                              # 라벨 히스테리시스
 LABELS = ["정상", "경고", "혼잡", "심각"]
 ALLOWED_RATES = {"10M", "20M", "30M", "off"}
 
