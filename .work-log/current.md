@@ -1,7 +1,7 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 전체 승격 완료(7차 체크포인트)**: 재학습·평가·ONNX·문서 전부 갱신. Baseline 92.3% / EE Fixed θ 90.6% / Dynamic θ 91.0% (fp32). **남은 것은 Pi INT8 재측정(파이+폰 별도 세션)뿐.** 아래 "진행 중 (2026-08-30, 7차)"부터 확인.
+최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 전체 승격 완료(7차 체크포인트)**: 재학습·평가·ONNX·**Pi INT8 재측정**·문서 전부 갱신. fp32: Baseline 92.3% / EE Fixed θ 90.6% / Dynamic θ 91.0%. Pi INT8: Baseline 0.739ms / EE Fixed 0.540ms / Dynamic 0.555ms / SDN 0.534ms (전부 <1ms, EE가 Baseline보다 -27%). 커밋 `a3f9bde` 푸시 완료(Pi 재측정 분은 별도 커밋 예정). 아래 "7차"부터 확인.
 
-## 진행 중 (2026-08-30, 7차) — power=0.0 전체 승격 (재학습·평가·ONNX·문서 완료 / Pi 재측정만 남음)
+## 7차 (2026-08-30) — power=0.0 전체 승격 (재학습·평가·ONNX·Pi 재측정·문서 전부 완료)
 
 5차에서 power=0.0 확정 → item 3(전체 승격) 실행.
 
@@ -29,8 +29,25 @@
 5. **ONNX 재수출**: baseline/sdn/ee staged+unified+int8_v2 전부. unified fp32 = PyTorch와 310/310 일치(fixed·dynamic). INT8 v2 = fixed 308/310·dynamic 309/310(양자화 노이즈). INT8 직접 정확도: fixed 90.3%/F1 65.3%, dynamic 90.6%/F1 66.7%.
 6. **문서 갱신**: `ap_model_comparison_redesign2.{txt,csv}` 재생성(+`generate_ap_comparison.py` 하드코딩 문자열 power=1.0→0.0, Pi 수치는 "재측정 pending"으로), `ap_v2_redesign2_pi_latency_comparison.txt` 상단 STALE 배너, `CLAUDE.md`(최신 평가 결과 섹션 전면 갱신 + 목표1 줄 + 해석기준 7번), `docs/yongsang/onnx_early_exit_redesign.md`(2026-08-30 콜아웃).
 
+### 커밋·푸시 완료
+- 커밋 `a3f9bde` "AP redesign2: promote 7-feature + class-weight-power=0.0" (253 files) — 8/29 7-feature 승격 + 8/30 power=0.0 승격 + `collect_metrics.py` survey 패치를 한 커밋에(마지막 커밋 `87c90ef` 이후 두 세션 분량이 섞여 있어 체크포인트 분리 불가). `image.png`(루트 방치 스크린샷)만 제외.
+- `git push origin capstoneDesign2` 완료: `87c90ef..a3f9bde`.
+
+### Pi INT8 재측정 완료 (2026-08-30, power=0.0)
+`capstone@192.168.8.109`, ort 1.26.0 CPU, test 310창, 5회 반복/샘플. 새 ONNX를 `~/ap_pi_v2/`로 scp 후 `bench_baseline.py`/`bench_unified.py`.
+
+| 모델 | Pi INT8 avg(ms) | p50 | p95 | exit 1/2/3 |
+|---|---:|---:|---:|---|
+| Baseline | **0.739** | 0.738 | 0.748 | -/-/100% |
+| SDN-style | **0.534** | 0.535 | 0.821 | 33.9/36.5/29.7% |
+| Proposed Fixed θ | **0.540** | 0.563 | 0.858 | 30.3/50.3/19.4% |
+| Proposed Dynamic θ | **0.555** | 0.613 | 0.913 | 31.9/57.7/10.3% |
+
+- power=1.0 대비: Baseline 0.756→0.739(≈동일), SDN 0.636→0.534, **Proposed Fixed 0.641→0.540(-16%)**, Dynamic 0.645→0.555(-14%). EE가 빨라진 건 exit3 도달률 52%→19%(Fixed)/10%(Dynamic) 때문 — power=1.0의 label3 과보호가 없어지며 뒤 exit로 미루는 경향 감소. Pi 실측 exit 분포가 fp32 eval과 정확히 일치.
+- **4개 모델 전부 목표2(<1ms) 달성.** 이번엔 **Proposed(EE)가 Baseline보다 명확히 빠름**(0.54 vs 0.74ms, -27%) — power=1.0 라운드에선 비슷했는데 격차 벌어짐. SDN(0.534)≈Proposed Fixed(0.540) 속도 동률, 정확도도 둘 다 90.6%, Proposed가 Label3 recall/F1 우위.
+- 문서 갱신: `ap_v2_redesign2_pi_latency_comparison.txt`(3차 섹션 추가, 2차는 보존), `generate_ap_comparison.py`(Pi 수치 하드코딩 갱신) + 비교표 재생성.
+
 ### 남음
-- **Pi INT8 재측정** — 파이+폰 필요, 별도 세션. (feature/아키텍처 불변이라 지연은 power=1.0 기준 0.64ms대와 거의 같을 것으로 예상, 미확인.)
 - Baseline/SDN도 5시드로 완전 특성화 (지금 3시드) — 여유되면.
 - HTML 아티팩트("Early-Exit Reweighting") 갱신 여부 판단 — 이번 변화가 크므로 별도 아티팩트가 나을 수도.
 

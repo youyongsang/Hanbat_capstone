@@ -1,0 +1,64 @@
+AP redesign2 Raspberry Pi INT8 bench — 2026-08-30 (class-weight-power=0.0 승격)
+Pi: capstone@192.168.8.109, onnxruntime 1.26.0 CPU (aarch64), test 310창, 5 repeats/sample, 10 warmup
+요약: Baseline 0.74ms / SDN 0.53ms / EE Fixed 0.54ms / EE Dynamic 0.55ms — 전부 <1ms(목표2 달성), EE가 Baseline보다 -27%
+power=1.0 대비: Baseline 0.756->0.74, SDN 0.636->0.53, EE Fixed 0.641->0.54(-16%), EE Dynamic 0.645->0.555
+===========================================================================
+
+########## baseline (ap_baseline_lstm_int8.onnx) ##########
+model: ap_baseline_lstm_int8.onnx
+sample_count: 310
+avg_inference_ms: 0.740576
+std_inference_ms: 0.009215
+min_inference_ms: 0.726167
+max_inference_ms: 0.853740
+p50_inference_ms: 0.739147
+p95_inference_ms: 0.751737
+
+########## sdn (ap_sdn_unified_int8.onnx) ##########
+model: ap_sdn_unified_int8.onnx
+sample_count: 310
+avg_inference_ms: 0.530714
+std_inference_ms: 0.213111
+min_inference_ms: 0.269537
+max_inference_ms: 0.924424
+p50_inference_ms: 0.535294
+p95_inference_ms: 0.812687
+exit1_rate: 33.87%  (n=105)
+exit2_rate: 36.45%  (n=113)
+exit3_rate: 29.68%  (n=92)
+exit1_avg_ms: 0.276680
+exit2_avg_ms: 0.539592
+exit3_avg_ms: 0.809740
+
+########## ee_fixed (ap_early_exit_fixed_unified_int8_v2.onnx) ##########
+model: ap_early_exit_fixed_unified_int8_v2.onnx
+sample_count: 310
+avg_inference_ms: 0.539842
+std_inference_ms: 0.195241
+min_inference_ms: 0.281922
+max_inference_ms: 0.879384
+p50_inference_ms: 0.566753
+p95_inference_ms: 0.854568
+exit1_rate: 30.32%  (n=94)
+exit2_rate: 50.32%  (n=156)
+exit3_rate: 19.35%  (n=60)
+exit1_avg_ms: 0.291429
+exit2_avg_ms: 0.569436
+exit3_avg_ms: 0.852078
+
+########## ee_dynamic (ap_early_exit_dynamic_unified_int8_v2.onnx) ##########
+model: ap_early_exit_dynamic_unified_int8_v2.onnx
+sample_count: 310
+avg_inference_ms: 0.561410
+std_inference_ms: 0.178769
+min_inference_ms: 0.323466
+max_inference_ms: 0.938957
+p50_inference_ms: 0.617667
+p95_inference_ms: 0.913232
+exit1_rate: 31.94%  (n=99)
+exit2_rate: 57.74%  (n=179)
+exit3_rate: 10.32%  (n=32)
+exit1_avg_ms: 0.334081
+exit2_avg_ms: 0.623764
+exit3_avg_ms: 0.915918
+

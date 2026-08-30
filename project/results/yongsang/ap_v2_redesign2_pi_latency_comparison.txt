@@ -1,10 +1,38 @@
-AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-29 갱신 2차 — sta_tx_bitrate_mean 7-feature 승격)
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-30 갱신 3차 — class-weight-power=0.0 승격)
 
-*** STALE (2026-08-30): 아래 수치는 class-weight-power=1.0 체크포인트 기준이다. 2026-08-30에
-    power=0.0으로 승격(정확도 Baseline 88.7->92.3% / EE 88.1->90.6% 등)하면서 세 모델을 재학습·
-    ONNX 재수출했으나 Pi 재측정은 미실시(파이+폰 별도 세션). feature 개수·아키텍처가 불변이라
-    지연 자체는 아래와 거의 동일할 것으로 예상하나 미확인. 최신 정확도는
-    project/results/yongsang/ap_model_comparison_redesign2.txt, 경위는 .work-log/current.md 7차. ***
+=== 3차 재측정 (2026-08-30, class-weight-power=0.0, Pi INT8, test 310창, 5회 반복/샘플) ===
+
+| 모델 | Pi INT8 avg(ms) | p50 | p95 | 정확도(fp32) | Label3 recall | Label3 F1 | exit 1/2/3 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Baseline(EE 없음)       | 0.739 | 0.738 | 0.748 | 92.3% | 58.1% | -     | -/-/100%        |
+| SDN-style               | 0.534 | 0.535 | 0.821 | 90.6% | 48.4% | -     | 33.9/36.5/29.7% |
+| Proposed Fixed theta    | 0.540 | 0.563 | 0.858 | 90.6% | 54.8% | 68.0% | 30.3/50.3/19.4% |
+| Proposed Dynamic theta  | 0.555 | 0.613 | 0.913 | 91.0% | 54.8% | 69.4% | 31.9/57.7/10.3% |
+
+(INT8 직접 정확도: Fixed 90.3% / F1 65.3%, Dynamic 90.6% / F1 66.7%.)
+
+power=1.0 -> 0.0 지연 변화: Baseline 0.756->0.739(≈동일, 항상 3층), SDN 0.636->0.534,
+Proposed Fixed 0.641->0.540(-16%), Dynamic 0.645->0.555(-14%). EE가 빨라진 이유는 명확 —
+power=1.0은 exit3 도달률이 52%였는데 power=0.0은 19%(Fixed)/10%(Dynamic)로 훨씬 일찍 빠짐
+(라벨3 과보호가 없어지면서 뒤 exit로 미루는 경향이 줄었음). Pi 실측 exit 분포가 fp32 eval과
+정확히 일치(30.3/50.3/19.4 vs 30.0/50.6/19.4).
+
+해석:
+- **4개 모델 전부 목표2(<1ms) 달성.** Baseline도 0.74ms.
+- **이제 Proposed(EE)가 Baseline보다 명확히 빠름** (0.54 vs 0.74ms, -27%). power=1.0 라운드에선
+  EE가 Baseline과 비슷하거나 근소 우위였는데, 이번엔 격차가 벌어짐.
+- SDN(0.534) ≈ Proposed Fixed(0.540) — 속도는 사실상 동률. 정확도도 둘 다 90.6%. Proposed는
+  Label3 recall(54.8% vs 48.4%)·F1이 우위.
+- **정확도 1위는 Baseline(92.3%)** — Proposed는 -1.7pt. Proposed의 가치는 속도(-27%)·연산량
+  (구조상 ~절반)이지 정확도가 아니다. 이건 발표자료 프레이밍(목표2 속도, "간섭 감지 EE 최초 적용")과 일치.
+- 세 EE/SDN 모델은 3~5시드 중 val 최고 단일 체크포인트라 근소 차이(SDN vs Proposed)는 노이즈일
+  수 있음. Baseline/SDN 5시드 완전 특성화는 미실시.
+
+------------------------------------------------------------------------
+아래는 2차(2026-08-29, class-weight-power=1.0) 시점 기록 — 보존용.
+------------------------------------------------------------------------
+
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-29 갱신 2차 — sta_tx_bitrate_mean 7-feature 승격)
 
 
 배경: item 2(sta_tx_bitrate_mean escalation 지문 재검토) 다중 시드 검증(5시드 x 4개 설정)에서
