@@ -53,8 +53,17 @@ Pi live_congestion.py --raw 실측 라벨 전이:
 
 - **`project/demo/demo_server.py`** (stdlib http.server + numpy/onnxruntime): `live_congestion.py` 로직 재사용(APPoller + 7-feature + ONNX) + SSE 스트림(`/events`) + `POST /load {rate:10M|20M|30M|off}`(두 폰 iperf3 제어) + `GET /signal`(폰 신호 대칭 확인). `iperf3 -s` 서버 자동 기동. 30M 상한.
 - **`project/demo/demo.html`** (서버가 서빙 = 동일 출처, CSP 무관): 큰 혼잡 레벨 카드(색상 코딩) + 4클래스 확률 바 + 7-feature 실시간 스트립 + `10/20/30M`·정지 버튼 + 폰 신호세기(비대칭 경고) + 90초 canvas 차트(레벨 + occ).
-- 전 엔드포인트 실측 테스트 통과: `/health` `{ready:true}`, `/signal` `{s21:-25, s26:-24, symmetric:true}`, `/events` SSE 정상, `POST /load 10M` → 두 폰 started → 라벨 정상→경고 추적 → `off` → 복귀.
+- 전 엔드포인트 실측 테스트 통과: `/health` `{ready:true}`, `/signal` `{symmetric:true}`, `/events` SSE 정상, `POST /load` → 두 폰 iperf3 제어.
 - `project/demo/README.md` 에 실행법·사전조건·주의(AP 크래시).
+
+### 데모 전체 시나리오 실측 (`ap_v2_redesign2_demo_full_run_20260830.txt`)
+버튼 10M→20M→30M→정지 (폰 신호 대칭 S21/S26 둘 다 -23dBm):
+- 10M → 경고/혼잡, 20M → 혼잡/심각(occ 63~69%), **30M → 심각 지속 ~22초** (occ 76%, retry 54%), 정지 → 정상 복귀
+- 라벨 분포: 정상 29 / 경고 73 / 혼잡 68 / **심각 42**
+- 30M에서 채널 포화: 폰은 30M씩 밀지만 delivered throughput 12~50M로 떨어지고 retry 54%까지 → 혼잡의 전형 시그니처, 모델이 심각으로 잡음.
+- **스파이크 저항 확인**: throughput 3174M 스파이크(SSH 타이밍 아티팩트)에도 확정 라벨 혼잡 유지 (3폴링 occ median + window 10 흡수).
+- AP 크래시 없음 (30M×2=60M ~70초, up 40분).
+- occ 50~77% 경계에서 원시 예측 튐 (label 1/2/3 경계 노이즈) — confirm 3이 완화. 데모 안정성 더 원하면 `CONFIRM=5`.
 
 ### 남은 것
 - Pi 정확도 95% (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계.
