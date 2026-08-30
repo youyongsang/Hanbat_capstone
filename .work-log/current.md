@@ -1,6 +1,24 @@
 # Capstone-Design 현재 상태
 최종 업데이트: 2026-08-30 (Claude Code) — **class-weight-power=0.0 승격 + 5시드 특성화 + SDN 논문 충실 재구현(7~9차) + 발표자료 비교표 정리 + 문서 stale 감사(10차)**. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성(SDN F1 std 8.1 vs EE 5.5), 속도(SDN 0.572 vs EE 0.540ms Pi INT8). 커밋 `a3f9bde`~`d914348` 푸시. 아티팩트 3종("Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교"). 아래 "10차"부터 확인.
 
+## 11차 (2026-08-30 후속4) — 최소 라이브 추론 스크립트
+
+**동기**: 모델·ONNX·비교는 다 됐지만 "실제 AP 데이터를 보고 현 상태가 혼잡인지 실시간 감지"하는 연속 루프가 없었음.
+
+### `project/scripts/live_congestion.py` (신규)
+- `collect_metrics.py`의 `APPoller`(지속 SSH `iw` 폴링) + parser 헬퍼(`parse_ap_cycle`, `summarize_stations`, `calculate_channel_occupancy`, `calculate_station_deltas`)를 **그대로 import** — feature 계산이 학습 시점과 동일하게 맞음.
+- victim 프로브(`ProbeRunner`) 없음 — 라벨링 전용이라 추론엔 불필요.
+- 루프: 폴링 → 7-feature 계산(occ 3폴링 median, retry/rssi 5폴링 rolling) → window deque(10) → min-max 정규화(`scaler_params.json`) → ONNX(`ap_early_exit_fixed_unified_int8_v2.onnx`) → softmax → 라벨.
+- **"스파이크 아닌 현 상태" 4겹 안정화**: ① LSTM window 10(~10~20초 이력) ② occ 3폴링 median ③ retry/rssi 5폴링 rolling ④ 라벨 히스테리시스(`--confirm N`, 원시 예측 N회 연속 일치해야 확정 라벨 변경).
+- 출력: `HH:MM:SS 혼잡: 정상(0) [원시 정상(0) p=1.00] P(정/경/혼/심)=[...] exit1 clients=3`
+
+### 실측 검증 (idle AP)
+laptop에서 실행, GL.iNet Opal(192.168.8.1)에 지속 SSH. window 채운 뒤 ~30초: **정상(0), p=1.00, exit1로 일관** — idle AP를 안정적으로 정상 판정, early-exit(exit1) 동작 확인. **부하 걸린 상태 검증은 폰 필요(미실시).**
+
+### 남은 것
+- Pi로 이식: `collect_metrics.py` + `live_congestion.py` + `scaler_params.json`을 번들에 복사, Pi→AP SSH 키 셋업 (`demo_api_spec.md` §4.B 컨벤션). 현재는 repo에서 laptop 실행.
+- 데모 대시보드: 이 루프 위에 백엔드 REST+SSE / 대시보드 / 부하 에이전트 3컴포넌트 (`demo_api_spec.md`).
+
 ## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
 
 ### 발표자료용 비교표
