@@ -13,10 +13,19 @@
 - 출력: `HH:MM:SS 혼잡: 정상(0) [원시 정상(0) p=1.00] P(정/경/혼/심)=[...] exit1 clients=3`
 
 ### 실측 검증 (idle AP)
-laptop에서 실행, GL.iNet Opal(192.168.8.1)에 지속 SSH. window 채운 뒤 ~30초: **정상(0), p=1.00, exit1로 일관** — idle AP를 안정적으로 정상 판정, early-exit(exit1) 동작 확인. **부하 걸린 상태 검증은 폰 필요(미실시).**
+laptop·**Pi 둘 다** 실행 확인. Pi(`capstone@192.168.8.109`)에서 `~/ap_pi_v2/live_congestion.py` → Pi가 직접 AP에 SSH(키 이미 됨) → window 채운 뒤 **정상(0), p≈1.00, exit1로 일관**. idle AP 안정 판정 + early-exit 동작 확인.
 
-### 남은 것
-- Pi로 이식: `collect_metrics.py` + `live_congestion.py` + `scaler_params.json`을 번들에 복사, Pi→AP SSH 키 셋업 (`demo_api_spec.md` §4.B 컨벤션). 현재는 repo에서 laptop 실행.
+### Pi 이식 완료 (커밋 6672fde)
+- `live_congestion.py`를 repo·번들 양쪽에서 동작하게: collect_metrics dual import, `AP_FEATURE_COLUMNS` 인라인, model/scaler 기본값이 스크립트 옆 파일로 fallback.
+- 번들에 복사: `project/deploy/raspberry_pi_ap_v2/{collect_metrics.py, live_congestion.py, scaler_params.json}` (onnx는 이미 있음). Pi `~/ap_pi_v2/`에 scp.
+- **Pi→AP SSH는 이미 됨** (별도 키 셋업 불필요 — 확인함).
+
+### 남은 것: 부하 테스트 (폰 필요)
+1. 폰(191/S26) Termux sshd 기동 → `ssh s21 echo ok` / `ssh s26 echo ok`
+2. laptop: `iperf3 -s -p 5201 &` + `iperf3 -s -p 5202 &`
+3. 터미널 A: `ssh capstone@192.168.8.109 "cd ~/ap_pi_v2 && python3 -u live_congestion.py --raw"`
+4. 터미널 B: `bash project/scripts/ramp_load_remote.sh step` (기본 target=laptop .226, step 10/20/30/40M×60s)
+5. A에서 라벨이 정상→경고→혼잡→(심각) 상승하는지 + occ 수치 상승 관찰. (AP 크래시 주의: 45M 금지, 240s 이내)
 - 데모 대시보드: 이 루프 위에 백엔드 REST+SSE / 대시보드 / 부하 에이전트 3컴포넌트 (`demo_api_spec.md`).
 
 ## 10차 (2026-08-30 후속3) — 발표자료 비교표 정리 + 문서 stale 감사·수정
