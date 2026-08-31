@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-31 (Claude Code) — **데모 서버 Pi 이식(13차)**: `demo_server.py`를 저장소·Pi 번들 양쪽에서 도는 dual-import + 전면 인자화(`--host --port --iperf-target --s21 --s26 ...`, 하드코딩 IP 제거)로. 번들(`project/deploy/raspberry_pi_ap_v2/`)에 `demo_server.py`+`demo.html` 추가. 노트북 2경로 스모크 테스트 통과. **Pi 실기기 테스트는 Pi·AP 오프라인이라 대기.** 그 전 12차: `docs/README.md` 신규(질문 → 문서 안내), 루트 `README.md` 전면 재작성(9-feature stale였음), `README_AP_V2.md` redirect 스텁화. 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드(`project/demo/`) + 팀 구현 스펙(`API.md`). 데모: 버튼으로 계단 부하(10/20/30M) 걸고 모델 실시간 혼잡 예측을 웹으로 — 30M에서 심각 ~58초 연속, 정지 시 정상 복귀, AP 크래시 없음. UI는 모델 원시 출력 + debounce 라벨 2패널(정직성). **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 커밋 `a3f9bde`~`cb6d33c` 푸시. 아티팩트 3종. 아래 "10차"부터 확인.
+최종 업데이트: 2026-08-31 (Claude Code) — **문서 대청소·표준 인용 검증·새 문서 2종 (14차)**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
 ## ⭐ 다음 세션 시작 지점 — Pi 온라인 되면 데모 서버 실기기 검증 (내일)
 
@@ -24,7 +24,48 @@
 7. **결과 저장**: 콘솔 로그 → `project/results/yongsang/ap_v2_redesign2_demo_pi_run_YYYYMMDD.txt`. work-log 13차에 "Pi 실기기 검증 완료" 추가.
 8. **(선택) Pi latency 재확인**: 데모 추론이 Pi에서 도는 김에 `time` 몇 폴링 재보면 목표2(<1ms) 라이브 재확인 가능. 필수 아님 — test 310창 벤치가 이미 있음.
 
-**주의**: AP 크래시 시 물리 재부팅. 30M×2가 500초 넘거나 신호 비대칭이면 위험 (`docs/yongsang/ap_crash_analysis.md`). 이상하면 즉시 정지 버튼.
+**주의**: AP 크래시 시 물리 재부팅. 30M×2가 500초 넘거나 신호 비대칭이면 위험 (`docs/yongsang/ap_crash_analysis.{md,html}`). 이상하면 즉시 정지 버튼.
+
+### 그 밖에 다음 세션에 마무리할 것 (문서 관련, 급하지 않음)
+- **`ap_cleaned_strict` "인터넷 공개 데이터" 문구** — 14차에서 재검토 결과 근거 약함(증거: `metrics_cleaned.csv`가 호중 카톡 수신본, 생성 코드 미커밋, latency 0.05ms·RSSI −20dBm대로 물리적 비현실적). 다만 팀이 8/23~24에 "실측 아님 → archived"로 판단한 건 유효. **호중에게 `metrics_cleaned.csv` 원본 출처 직접 확인** 후 `CLAUDE.md`·`capstone2_vacation_summary.html`의 "인터넷 공개 데이터 가공" 문구를 "출처 불명·값 비현실적 → 실측 불인정"으로 톤 조정. (1학기 `data/real`은 확실히 Kaggle 6G Network Slicing — 별개 라인.)
+- **`README.html` 링크 실제 브라우저 클릭 확인** — 14차는 Claude-in-Chrome 확장 미연결이라 Node+DOM셰임 실행으로만 검증(콘솔 에러 없음, 링크 52개 정상 생성). 실제 `file://`로 열어 `.html` 상대링크·GitHub blob 링크 클릭 동작 확인 필요.
+
+## 14차 (2026-08-31) — 문서 대청소 · 표준 인용 검증 · 새 문서 2종
+
+**동기**: 사용자가 문서를 훑으며 발견한 오류·모호함을 연쇄적으로 정리. 코드·데이터·수치 변경 없음, 전부 문서.
+
+### 새 문서 2종
+- **`docs/yongsang/model_features.{md,html}`** — 현행 7-feature 레퍼런스 (`congestion_label_criteria`가 4-가중합 시절만 다뤄서 7-feature용 문서가 없었음). §1 feature 표(원천·스무딩·train-split scaler min/max), §2 feature별 상세 + RSSI 설명, §3 **라벨 축 vs 모델 입력**(§3.1 y vs X 개념 — "라벨 축=학습용/모델입력=추론용"이 아니라 7개는 학습·추론 공통, 라벨 축은 양쪽 다 모델에 안 들어감 / §3.2 모델 입력 7개 전부 나열 + 제외 컬럼), §4 scaler, §5 변천(9→6→7). 정본은 `ap_features.py`.
+- **`docs/yongsang/congestion_label_redesign.html`** — 그 authoritative `.md`의 브라우저 판(옛 라벨 HTML은 archived `congestion_label_criteria.html`뿐이었음). §1~5 정의·근거 + §3 표준 앵커 표(출처 포함) + §4 max + §6 캘리브레이션(collapsed `<details>`). `.md`는 세션 로그·열린 항목까지 전체본.
+
+### 표준 앵커 인용 원문 대조 (2026-08-31)
+ITU-T Y.1541·G.114·G.113·RFC 4594·Cisco QoS·Aruba 문서를 실제로 확인:
+- **유지(확인됨)**: jitter 심각 50ms = Y.1541 Class 0/1 IPDV ≤ 50ms · latency 150/400ms = G.114 편도 티어 경계 · occupancy ~50/75% = Aruba WLAN 가이드 · Cisco Enterprise QoS voice(편도 150 / jitter 30 / loss 1%).
+- **정정(제거)**: RFC 4594는 텔레포니를 "jitter Very Low" **정성 등급**으로만 규정(§2.3, 수치는 Y.1541로 위임) — "RFC 4594 ~30ms" 잘못, 30ms는 Cisco 값. G.113 App.I는 **코덕별 Ie/Bpl(E-model 계수) 표**라 손실 문턱 아님. Y.1541 IPLR ≤ 0.1%는 우리 loss 스케일(0.5~10%)보다 **엄격** — 이 스케일은 Cisco 실무 기준.
+- 반영: `congestion_label_redesign.{md,html}` §3, `collect_metrics.py`(repo+Pi번들) `ANCHORS` 주석, `CLAUDE.md`, `demo_api_spec.{md,html}`.
+- redesign §3에 **"실측값이 앵커 대비 어디쯤"** 표 추가(idle/60·60/소패킷 캘리브레이션 각 축이 어느 밴드) — occupancy가 주력, jitter는 이 셋업에서 거의 안 뜸(peak 19ms < 경고 20ms), loss/latency는 peak만 심각.
+- §4 "심각 = ping RTT ≥ 150ms" → **"편도 ≥ 150ms = RTT ≥ 300ms"** 정정 (앵커가 편도, `calculate_scores`가 RTT/2).
+
+### 문서 정합성 정리
+- **9→6 feature 산수** — "latency·jitter 2개 뺐다"만 적혀 7로 읽힘. 실제 `−2`(latency/jitter, leakage) `−1`(tx_retries+tx_failed → tx_retry_ratio) `= 6`. `CLAUDE.md`·`capstone2_vacation_summary.html`·`ap_features.py`·`redesign.md §5`(헤더 "6개"→"7개").
+- **"RSSI 3종"** 표기 통일(`rssi×3`/`RSSI×3` → `RSSI 3종`), 각 문서 첫 등장 시 풀어씀. `model_features`에 RSSI 정의(수신 신호 세기, dBm, 0에 가까울수록 강함, 약하면 저MCS→airtime↑) 추가.
+- **`congestion_label_criteria.{md,html}`** — "2차 진행 중" 배지·현재형 서술이 남아 있었음(2차는 재설계됨). 문서 **전체가 가중합 시절 기록**임을 상단에 명시, "2차 ap_metrics_v2 · 진행 중" → "2차 초기 (가중합) · archived".
+- **`capstone2_vacation_summary.html`** 결과 표 — "모델 (5시드 평균)" 헤더인데 Pi INT8 열은 배포 단일 체크포인트. 열별 스코프 분리 + 배포 체크포인트 test 정확도(Baseline 91.6 등)가 5시드 평균보다 약간 낮다는 캡션.
+
+### 문서 흐름 스캔 (README.html → 전체)
+- 참조 무결성: 40여 개 파일 전부 존재, 섹션 번호 실제 헤더와 일치.
+- **죽은 참조 정리**: `project/demo/API.md §4 표`(SDN 비교라고 가리켰으나 API.md에 SDN 내용 0) → `sdn_lstm.py` docstring + `CLAUDE.md` + `ap_model_comparison_redesign2.{txt,csv}` + work-log 9차. `project/README_AP_V2.md "핵심 검증 질문"` **6곳**(스텁이 돼서 그 섹션·정의 없음: `ap_crash_analysis`·`demo_api_spec`·`redesign.md`·`congestion_label_criteria` 각 .md/.html) → `congestion_label_redesign §1·§3` + `ap_v2_redesign2_threshold_comparison.txt`. `pi_latency_comparison.txt` 설명 "1~5차"→"3~5차+보존".
+- **`.md` 참조 전부 `.{md,html}`로 통일** — HTML 형제 있는 6개 문서(`congestion_label_redesign`·`model_features`·`ap_crash_analysis`·`onnx_early_exit_redesign`·`congestion_label_criteria`·`demo_api_spec`)를 가리키는 모든 bare `.md`(문서 본문 + 소스 파일 헤더/주석). `collect_metrics.py`·`demo_server.py` repo↔Pi번들 바이트 동일 유지.
+
+### `README.html` 링크화
+- "문서 안내"가 네비게이션 목적인데 파일명이 전부 plain `<code>`였음. 로드 후 스크립트가 각 `<code>` → 링크: `.html`은 이 폴더 기준 상대경로(`yongsang/*.html`), `.md`/`.py`/`.txt`/`.csv`/`.pptx`는 `capstoneDesign2` GitHub blob(새 탭 + ↗), `x.{md,html}`는 `.html` 쪽, 글롭·bare 확장자·이미 `<a>` 안인 것은 스킵. `try/catch`로 실패해도 plain 유지.
+- 검증: `node --check` + DOM셰임 실행 — 예외 없음, `<code>` 75개 중 링크 52 / plain 23(섹션참조·글롭 등 의도대로).
+
+### `ap_cleaned_strict` 출처 재검토 (문서 변경 없음, 논의만)
+사용자 질문 "인터넷 공개 데이터 맞나". git 증거로 재구성: raw는 `metrics_cleaned_strict_report.txt`에 `C:\...\카카오톡 받은 파일\metrics_cleaned.csv`(호중 수신본), 5시나리오 정확히 120행씩, 생성 코드 미커밋. 값이 물리적으로 비현실적(latency 0.047~0.163ms, RSSI −17~−30dBm, retry_delta max 23 vs 팀 실측 20만). 형식은 오히려 `collect_metrics.py` 계열 산출물(`channel_occupancy_method=instantaneous_fallback` 등)이라 "인터넷 데이터"라는 특정은 근거 약함. → 위 "다음 세션" 항목으로.
+
+### 커밋
+`e17a50e`~`69c9f78` 19개, `git push origin capstoneDesign2` 완료 (`cd68b94..69c9f78`).
 
 ## 13차 (2026-08-31) — 데모 서버 Pi 이식 (엣지 추론)
 
