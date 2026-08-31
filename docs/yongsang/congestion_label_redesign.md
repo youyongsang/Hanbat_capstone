@@ -206,9 +206,9 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 
 **`sta_tx_bitrate_mean` 승격 (6→7, 2026-08-29)** — 처음엔 뺐다가 다중 시드 재검증에서 되살림: 6-feature 재학습에서 occ 60~72%의 label 2 vs 3이 나머지 6 feature로는 **평균이 완전히 동일**했다(occ 66/65, throughput 66/66, retry 0.30/0.30, rssi -35/-34). 8/28 단일 진단에서는 `min`이 유휴 station 때문에 상수, `mean`이 throughput 추종이라 뺐으나 — **8/29 다중 시드(5개) 검증에서 `sta_tx_bitrate_mean`이 exit-loss 가중치와 무관하게 6-feature보다 Label3 F1 +5~11pt, occ 60~72%에서 Cohen's d=0.52**로 갈라짐이 확인되어 7번째 입력으로 승격. (방향은 실측과 반대 — 부하 테스트라 혼잡 구간에서 오히려 bitrate 오름 — 이지만 변별력은 유효.) `sta_tx_bitrate_min`은 여전히 미사용(CSV 기록만). 상세: `.work-log/current.md` 2026-08-29 2차 체크포인트.
 
-모델의 일: `{occupancy, retry_ratio, throughput, RSSI×3, sta_tx_bitrate_mean}`(7개)로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제.
+모델의 일: `{occupancy, retry_ratio, throughput, RSSI 3종, sta_tx_bitrate_mean}`(7개)로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제. (**RSSI 3종** = `rssi_dbm`(수신 신호 세기, dBm) · `rssi_delta_db`(직전 폴링 대비 변화) · `rssi_moving_avg_dbm`(5폴링 이동평균) — 상세는 `docs/yongsang/model_features.md` §2.)
 
-> **여전히 lean함**: 모델이 볼 게 적음 = 재설계 의도(정답 못 읽고 진짜 예측). RSSI 3개는 서로 상관이라 실질 신호는 ~5개.
+> **여전히 lean함**: 모델이 볼 게 적음 = 재설계 의도(정답 못 읽고 진짜 예측). RSSI 3종은 서로 상관이라 실질 신호는 ~5개.
 
 ## 6. 구현 순서
 

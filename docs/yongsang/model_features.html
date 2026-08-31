@@ -258,7 +258,7 @@
 
   <section>
     <h2><span class="step">01</span> 7개 feature (순서 고정)</h2>
-    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>10 폴링</b> — 텐서 shape <code>[1, 10, 7]</code>.</p>
+    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>10 폴링</b> — 텐서 shape <code>[1, 10, 7]</code>. (4~6번 <b>RSSI</b> = 수신 신호 세기, §2에서 설명.)</p>
     <div class="tw">
     <table class="grid">
       <thead>
@@ -311,28 +311,22 @@
     </div>
 
     <div class="feat">
-      <h3><span class="idx">4</span> rssi_dbm <span class="tag">모델 입력</span></h3>
+      <h3><span class="idx">4~6</span> RSSI 3종 <span class="tag">모델 입력</span></h3>
       <dl>
-        <dt>계산</dt><dd>이번 폴링에 잡힌 각 station <code>signal avg</code>의 평균.</dd>
-        <dt>의미</dt><dd>링크 품질. 낮으면 저MCS → 같은 데이터에 airtime 더 씀 → 혼잡 가속.</dd>
-        <dt>역할</dt><dd>victim 피해의 원인 쪽 신호. 라벨 축 아님.</dd>
+        <dt>RSSI란</dt><dd><b>Received Signal Strength Indicator</b> — AP가 각 station에서 받는 <b>무선 신호의 세기</b>. 단위 dBm, 항상 음수이고 <b>0에 가까울수록 강함</b> (−30 아주 강함 / −50 좋음 / −70 약함 / −80 이하 불안정). 원천은 <code>iw station dump</code>의 <code>signal avg</code>, station별 값을 이번 폴링에서 평균.</dd>
+        <dt>왜 혼잡</dt><dd>신호가 약하면 rate control이 낮은 MCS로 떨어져 <b>같은 데이터에 airtime을 더 쓴다</b> → 채널 점유 상승, 다른 station이 굶음. victim 피해의 <b>원인 쪽</b> 신호라 라벨 축 아님, 모델 입력으로만.</dd>
       </dl>
-    </div>
-
-    <div class="feat">
-      <h3><span class="idx">5</span> rssi_delta_db <span class="tag">모델 입력</span></h3>
-      <dl>
-        <dt>계산</dt><dd><code>현재 rssi − 직전 폴링 rssi</code>. 첫 폴링은 0.</dd>
-        <dt>의미</dt><dd>신호가 급격히 나빠지는 중인지(station 이동, 간섭 유입) — 추세 feature.</dd>
-      </dl>
-    </div>
-
-    <div class="feat">
-      <h3><span class="idx">6</span> rssi_moving_avg_dbm <span class="tag">모델 입력</span></h3>
-      <dl>
-        <dt>계산</dt><dd>최근 <b>5-폴링</b> RSSI 평균(<code>rssi_history</code>).</dd>
-        <dt>의미</dt><dd>단일 폴링 노이즈를 걷어낸 링크 품질 기저선. 4·5·6번은 서로 상관이 높아 실질 정보는 ~1.5개 축.</dd>
-      </dl>
+      <div class="tw" style="margin-top:0.8rem;">
+      <table class="grid">
+        <thead><tr><th>feature</th><th>계산</th><th>잡는 것</th></tr></thead>
+        <tbody>
+          <tr><td><code>rssi_dbm</code></td><td>이번 폴링 station 평균 (raw)</td><td>지금 신호 세기</td></tr>
+          <tr><td><code>rssi_delta_db</code></td><td><code>현재 − 직전 폴링</code>, 첫 폴링 0</td><td>급격히 나빠지는 중인지 (station 이동·간섭 유입) — 추세</td></tr>
+          <tr><td><code>rssi_moving_avg_dbm</code></td><td>최근 <b>5-폴링</b> 평균 (<code>rssi_history</code>)</td><td>단일 폴링 노이즈 걷어낸 기저선</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p style="color:var(--ink-mute); font-size:0.83rem; margin:0.6rem 0 0;">같은 원천을 3가지로 가공 — 서로 상관이 높아 실질 정보는 ~1.5개 축. 문서 전체에서 이 셋을 <b>RSSI 3종</b>으로 묶어 부른다.</p>
     </div>
 
     <div class="feat">
@@ -418,15 +412,16 @@
     <pre class="diagram">1학기            4개   RPS, occupancy, packet_loss, latency  (시뮬레이터 데이터)
 
 초기 ap_metrics_v2   9개   throughput, occupancy, <span class="r">latency_ms</span>, <span class="r">jitter_ms</span>,
-                          <span class="r">tx_retries_delta</span>, <span class="r">tx_failed_delta</span>, rssi×3
+                          <span class="r">tx_retries_delta</span>, <span class="r">tx_failed_delta</span>, RSSI 3종
                             │  라벨 재설계 (2026-08-27)
                             │   <span class="r">−2</span>  latency_ms, jitter_ms      (정답 leakage)
                             │   <span class="r">−1</span>  tx_retries + tx_failed  →  tx_retry_ratio
                             ▼
-redesign          6개   throughput, occupancy, tx_retry_ratio, rssi×3
+redesign          6개   throughput, occupancy, tx_retry_ratio, RSSI 3종
                             │   <span class="a">+1</span>  sta_tx_bitrate_mean   (2026-08-29, occ 60~72% 변별)
                             ▼
 redesign2         7개   ← 현행    (9 − 2 − 1 + 1 = 7)</pre>
+    <p style="color:var(--ink-mute); font-size:0.83rem; margin:0.6rem 0 0;"><b>RSSI 3종</b> = <code>rssi_dbm</code> · <code>rssi_delta_db</code> · <code>rssi_moving_avg_dbm</code> (§2 참조).</p>
     <div class="callout"><span>ℹ</span><span>상세: <code>project/utils/ap_features.py</code> 상단 주석, <code>.work-log/current.md</code> 2026-08-29 체크포인트.</span></div>
   </section>
 

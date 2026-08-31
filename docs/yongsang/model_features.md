@@ -22,7 +22,7 @@
 | 6 | `rssi_moving_avg_dbm` | RSSI 이동평균 | 4번을 5-폴링 평균 | **5-폴링 평균** | −53.6 / −27.93 |
 | 7 | `sta_tx_bitrate_mean` | 실제 송신한 station들의 PHY rate 평균 | `iw station dump` `tx bitrate` | 없음 (raw, 활성 station만) | 0.0 / 150.0 |
 
-폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 **10 폴링** (`[1, 10, 7]`).
+폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 **10 폴링** (`[1, 10, 7]`). (4~6번 **RSSI** = 수신 신호 세기, §2에서 설명.)
 
 ---
 
@@ -45,18 +45,19 @@
 - **라벨 축 아님**: 이 2.4GHz AP는 RF가 험해서 **idle에도 retry_ratio med 18% / p90 36%**(자는 폰 백그라운드 버스트)인데 victim 프로브는 완벽. retry는 jitter/loss를 유발하는 *원인*이지 QoS 피해의 독립 증거가 아니다 — 피해가 나면 프로브가 잡는다. → `max()`에서 제외.
 - **왜 모델 입력**: "재전송 많다 → victim 곧 깨질 것"이라는 선행 신호를 모델이 추론.
 
-### 4. `rssi_dbm`
-- **계산**: 이번 폴링에 잡힌 각 station `signal avg`의 평균.
-- **의미**: 링크 품질. 낮으면(예: −55dBm) 저MCS → 같은 데이터에 airtime 더 씀 → 혼잡 가속.
-- **라벨 축 아님, 모델 입력**: victim 피해의 원인 쪽 신호.
+### 4~6. RSSI 3종 (`rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm`)
 
-### 5. `rssi_delta_db`
-- **계산**: `현재 rssi − 직전 폴링 rssi`. 첫 폴링은 0.
-- **의미**: 신호가 급격히 나빠지는 중인지 (station 이동, 간섭 유입). 추세 feature.
+> **RSSI** (Received Signal Strength Indicator) = AP가 각 station에서 받는 **무선 신호의 세기**. 단위 dBm, 항상 음수이고 **0에 가까울수록 강함**(−30dBm 아주 강함 / −50 좋음 / −70 약함 / −80 이하 불안정). 원천은 `iw station dump`의 `signal avg` 줄, station별 값을 이번 폴링에서 평균낸다.
+>
+> **왜 혼잡과 관련**: 신호가 약하면 rate control이 낮은 MCS로 떨어져 **같은 데이터를 보내는 데 airtime을 더 쓴다** → 채널 점유가 오르고 다른 station이 굶는다. victim 피해의 **원인 쪽** 신호라서 라벨 축은 아니고 모델 입력으로만 쓴다.
+>
+> 같은 원천을 3가지로 가공했다 — 서로 상관이 높아 실질 정보는 ~1.5개 축:
 
-### 6. `rssi_moving_avg_dbm`
-- **계산**: 최근 **5-폴링** RSSI 평균(`rssi_history`).
-- **의미**: 단일 폴링 노이즈를 걷어낸 링크 품질 기저선. 4·5·6번은 서로 상관이 높아 실질 정보는 ~1.5개 축.
+| feature | 계산 | 잡는 것 |
+|---|---|---|
+| `rssi_dbm` | 이번 폴링 station 평균 (raw) | 지금 신호 세기 |
+| `rssi_delta_db` | `현재 − 직전 폴링`, 첫 폴링 0 | 급격히 나빠지는 중인지 (station 이동·간섭 유입) — 추세 |
+| `rssi_moving_avg_dbm` | 최근 **5-폴링** 평균 (`rssi_history`) | 단일 폴링 노이즈 걷어낸 기저선 |
 
 ### 7. `sta_tx_bitrate_mean`
 - **계산**: `iw station dump`의 `tx bitrate`(PHY rate)를 **이번 폴링에 실제로 송신한 station**(tx_packets 증가)만 골라 평균. 활성 station 없으면 0.0. 연결만 되고 트래픽 없는 station은 rate가 MCS 0 바닥에 stale하게 물려 있어 제외.
@@ -87,7 +88,7 @@
 |---|:--:|:--:|---|
 | `jitter_score`·`loss_score`·`latency_score` (`latency_ms`, victim 프로브) | ✅ | ❌ | 정답 재료 + 배포 시 측정 불가(협조 싱크·프로브 필요) → 주면 **커닝** |
 | `channel_occupancy_percent` | ✅ | ✅ | 정답 재료지만 배포 시 AP 텔레메트리로 있음 → 줘도 됨 ("맞는 shortcut") |
-| `tx_retry_ratio`·`throughput`·`rssi×3`·`sta_tx_bitrate_mean` | ❌ | ✅ | 정답과 무관, 채널 상태 신호 |
+| `tx_retry_ratio`·`throughput`·RSSI 3종·`sta_tx_bitrate_mean` | ❌ | ✅ | 정답과 무관, 채널 상태 신호 |
 
 > 모델의 일 = **라벨 축(jitter/loss/latency)을 못 보는 상태에서, 채널 상태 7개만으로 그 라벨을 예측**. latency/jitter를 입력에 넣으면 정답을 그대로 베끼는 꼴이라 뺐다.
 
@@ -141,14 +142,16 @@ retry_score, congestion_score
 ```
 1학기          4개   RPS, occupancy, packet_loss, latency (시뮬레이터 데이터)
 초기 ap_metrics_v2   9개   throughput, occupancy, latency_ms, jitter_ms,
-                          tx_retries_delta, tx_failed_delta, rssi×3
+                          tx_retries_delta, tx_failed_delta, RSSI 3종
                             │ 라벨 재설계 (2026-08-27)
                             │  −2  latency_ms, jitter_ms  (정답 leakage)
                             │  −1  tx_retries + tx_failed → tx_retry_ratio
-redesign        6개   throughput, occupancy, tx_retry_ratio, rssi×3
+redesign        6개   throughput, occupancy, tx_retry_ratio, RSSI 3종
                             │  +1  sta_tx_bitrate_mean  (2026-08-29, occ 60~72% 변별)
 redesign2       7개   ← 현행
 ```
+
+**RSSI 3종** = `rssi_dbm` · `rssi_delta_db` · `rssi_moving_avg_dbm` (문서 전체에서 이 셋을 묶어 부르는 표기, §2 참조).
 
 상세: `project/utils/ap_features.py` 상단 주석, `.work-log/current.md` 2026-08-29 체크포인트.
 

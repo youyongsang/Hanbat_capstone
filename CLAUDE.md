@@ -86,9 +86,9 @@ docs/yongsang/onnx_early_exit_redesign.md  ONNX Early Exit 배포 재설계 (sta
 throughput_mbps
 channel_occupancy_percent
 tx_retry_ratio                 # (tx_retries + tx_failed) / (retries + failed + tx_packets), 비율이라 폴링 주기 무관
-rssi_dbm
-rssi_delta_db
-rssi_moving_avg_dbm
+rssi_dbm                       # RSSI = 수신 신호 세기(dBm, 음수·0에 가까울수록 강함). 이번 폴링 station 평균
+rssi_delta_db                  # 직전 폴링 대비 RSSI 변화 (악화 추세 신호)
+rssi_moving_avg_dbm            # RSSI 최근 5폴링 이동평균 (노이즈 걷어낸 기저선). ↑ 3개 합쳐 "RSSI 3종", 서로 상관 높음
 sta_tx_bitrate_mean            # 이번 폴링에 실제 송신한 station들의 tx bitrate 평균
 ```
 
