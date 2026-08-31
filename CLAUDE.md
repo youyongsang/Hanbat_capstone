@@ -93,8 +93,13 @@ sta_tx_bitrate_mean            # 이번 폴링에 실제 송신한 station들의
 
 **변천**: 1학기 4개 → 초기 `ap_metrics_v2` 9개 → 라벨 재설계로 6개(2026-08-27) → 7개(2026-08-29).
 
+초기 9개 = `throughput_mbps`, `channel_occupancy_percent`, `latency_ms`, `jitter_ms`, `tx_retries_delta`, `tx_failed_delta`, `rssi_dbm`, `rssi_delta_db`, `rssi_moving_avg_dbm`.
+
+- **9→6 (라벨 재설계, 2026-08-27)** — 두 변경이 겹쳐 −3:
+  - **−2**: `latency_ms`·`jitter_ms`를 모델 입력에서 **제거**. 이들이 라벨을 만드는 축이자(아래 참조) 배포 시점엔 없는 측정(victim 프로브 필요)이라, 모델에 주면 정답 leakage. 모델은 "채널 상태만 보고 victim QoS를 예측"해야 함.
+  - **−1**: `tx_retries_delta` + `tx_failed_delta`(→ per_s) 2개를 `tx_retry_ratio` **하나로 통합**.
+  - 9 − 2 − 1 = **6**.
 - **6→7 (`sta_tx_bitrate_mean` 추가, 2026-08-29)**: occ 60~72% 구간(나머지 6개 feature 평균이 label 2/3 사이에 완전히 동일해지는 구간)에서 label 2 vs 3이 Cohen's d=0.52로 갈라짐. 5개 랜덤 시드 검증에서 exit-loss 가중치와 무관하게 7-feature가 6-feature보다 Label3 F1 +5~11pt. (가설 "혼잡할수록 bitrate 하락"은 실측과 반대 — 부하 테스트라 혼잡 구간에서 오히려 오름. 신호 방향이 반대일 뿐 변별력은 유효.)
-- **9→6 (라벨 재설계, 2026-08-27)**: `latency_ms`·`jitter_ms`를 모델 입력에서 **제거** — 이들이 라벨을 만드는 축이자(아래 참조) 배포 시점엔 없는 측정(victim 프로브 필요)이라, 모델에 주면 정답 leakage. 모델은 "채널 상태만 보고 victim QoS를 예측"해야 함. `tx_retries_per_s`+`tx_failed_per_s` → `tx_retry_ratio` 하나로 통합.
 
 모델 입력 제외 컬럼(`dataset_summary.json`의 `model_excluded_columns`): `timestamp`, `scenario`, `poll_interval_s`, `channel_occupancy_method`, `packet_loss_udp_percent`, `connected_clients`, `latency_ms`, `probe_jitter_ms`, `probe_loss_pct`, `probe_ok`, `tx_retx_delta`, `tx_packets_delta`, sub-score 6개, `congestion_score`. 정규화는 train split의 min-max 기준이며 `scaler_params.json`을 val/test·실시간 추론에 동일하게 써야 한다.
 

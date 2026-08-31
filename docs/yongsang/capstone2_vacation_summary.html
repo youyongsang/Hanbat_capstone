@@ -246,9 +246,10 @@
     <div class="ev">
       <span class="date">2026-08-27</span>
       <div class="hd">9 → 6 feature: 정답을 입력에서 뺐다</div>
-      <p><code>latency_ms</code>·<code>jitter_ms</code>를 <b>모델 입력에서 제거</b>. 이들은 라벨을 만드는
+      <p><code>latency_ms</code>·<code>jitter_ms</code>를 <b>모델 입력에서 제거</b>(−2). 이들은 라벨을 만드는
       축이자 배포 시점엔 없는 측정(협조 싱크 필요). 모델에 주면 정답 leakage — 모델은
       <b>AP-side 텔레메트리만 보고 victim QoS가 깨지는지 예측</b>해야 한다. 이게 이 프로젝트가 규칙으로 못 하는 진짜 예측 문제인 이유.</p>
+      <p>같은 재설계에서 <code>tx_retries</code>·<code>tx_failed</code> 2개를 <code>tx_retry_ratio</code> 하나로 통합(−1). 9 − 2 − 1 = <b>6</b>. (이후 8/29에 <code>sta_tx_bitrate_mean</code> 추가 → 7.)</p>
     </div>
     <div class="ev">
       <span class="date">2026-08-27</span>

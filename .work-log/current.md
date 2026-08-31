@@ -978,7 +978,7 @@ blast-UDP는 순식간에 포화로 튀어 1→2→3 전이가 안 생김. **서
 - **새 관찰**: 소패킷 고PPS는 bps가 아니라 프레임 수로 AP를 압박하는 별개 스트레스 벡터 — 25/25(60/60보다 저부하)인데도 400초에서 라디오 리셋. 다음엔 250~300초로
 
 ### 혼잡 라벨 재설계 — 코드 구현 + 캘리브레이션 완료 (프로브·표준 문턱·max)
-- **코드 구현 완료** (커밋 `ec109d0`, `013df75`): `collect_metrics.py`에 `ProbeRunner`(백그라운드 300kbps UDP victim 프로브, `iperf3 -c 192.168.8.226 -p 5203`), `anchor_score()`(표준 문턱 4-앵커 piecewise-linear), `calculate_scores`가 `max(occupancy, jitter, loss, latency)` — retry는 계산하되 max에서 제외. `ap_features.py` 9→6 feature(latency/jitter/connected_clients 제거, `tx_retry_ratio` 도입). `prepare_ap_metrics_dataset.py` 제외 컬럼 갱신. 새 스키마라 `prepare_csv()` 가드가 옛 CSV append 거부 → **새 파일 `metrics_v2_pi_redesign.csv`로 수집**
+- **코드 구현 완료** (커밋 `ec109d0`, `013df75`): `collect_metrics.py`에 `ProbeRunner`(백그라운드 300kbps UDP victim 프로브, `iperf3 -c 192.168.8.226 -p 5203`), `anchor_score()`(표준 문턱 4-앵커 piecewise-linear), `calculate_scores`가 `max(occupancy, jitter, loss, latency)` — retry는 계산하되 max에서 제외. `ap_features.py` 9→6 feature(−2: `latency_ms`/`jitter_ms` 제거, −1: `tx_retries_delta`+`tx_failed_delta` → `tx_retry_ratio` 통합. `connected_clients`는 원래 모델 입력이 아니라 후보였다가 기각). 9−2−1=6. `prepare_ap_metrics_dataset.py` 제외 컬럼 갱신. 새 스키마라 `prepare_csv()` 가드가 옛 CSV append 거부 → **새 파일 `metrics_v2_pi_redesign.csv`로 수집**
 - **idle 캘리브레이션 완료** (커밋 `3e0780a`): 파이 무부하 수집, v6 앵커에서 idle 77/77이 label 0, congestion_score max 0.17. retry는 idle에서도 retry_ratio 18~36%라 (RF 험한 2.4GHz 채널) — **retry를 라벨 축에서 뺌** (사용자 결정 "retry 빼고 가자"), 모델 feature로는 유지
 - **부하 캘리브레이션 완료** (커밋 `ee6c776` 60/60, `8f93c2d` 소패킷):
   - 60/60 런: 폰이 60M씩 못 실어 채널은 ~36초만 혼잡했지만, 그 구간에서 **occupancy 60~73%(포화 아님)인데 label 3** — latency 140~291ms / loss 7.4% 주도
