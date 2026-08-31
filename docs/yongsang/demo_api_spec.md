@@ -60,7 +60,7 @@
 { "occupancy": 0.88, "jitter": 0.70, "loss": 0.0, "latency": 0.25 }
 ```
 
-각 0~1, `anchor_score()`로 4앵커(경고/혼잡/심각/완전)를 piecewise-linear 매핑. `congestion_score = max(occupancy, jitter, loss, latency)` — 가중합이 아니라 **가장 나쁜 축이 곧 congestion_score**(4축 중 하나라도 완전히 깨지면 나머지가 멀쩡해도 심각으로 판정). `retry`·`throughput`은 정보용 sub-score로만 유지되고 `congestion_score`(라벨 축)엔 들어가지 않는다 — 이 2.4GHz AP는 idle에도 retry_ratio가 18~36%라 라벨 변별력이 없기 때문(상세: `docs/yongsang/congestion_label_redesign.md`).
+각 0~1, `anchor_score()`로 4앵커(경고/혼잡/심각/완전)를 piecewise-linear 매핑. `congestion_score = max(occupancy, jitter, loss, latency)` — 가중합이 아니라 **가장 나쁜 축이 곧 congestion_score**(4축 중 하나라도 완전히 깨지면 나머지가 멀쩡해도 심각으로 판정). `retry`·`throughput`은 정보용 sub-score로만 유지되고 `congestion_score`(라벨 축)엔 들어가지 않는다 — 이 2.4GHz AP는 idle에도 retry_ratio가 18~36%라 라벨 변별력이 없기 때문(상세: `docs/yongsang/congestion_label_redesign.{md,html}`).
 
 앵커(표준 문턱, `ANCHORS` in `collect_metrics.py`):
 
@@ -502,4 +502,4 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 - `project/utils/ap_features.py` — FeatureVector 순서의 정본 (7-feature, `sta_tx_bitrate_mean` 2026-08-29~)
 - `project/scripts/collect_metrics.py`의 `calculate_scores()`/`ANCHORS` — congestion_score(max/anchor 방식) 정본
 - `docs/yongsang/onnx_early_exit_redesign.md` — 배포용 ONNX(unified INT8 v2) 재설계 기록, Pi latency 수치
-- `docs/yongsang/congestion_label_redesign.md` — congestion_score 가중합→max 방식 재설계 배경
+- `docs/yongsang/congestion_label_redesign.{md,html}` — congestion_score 가중합→max 방식 재설계 배경

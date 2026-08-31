@@ -7,7 +7,7 @@ AP 트래픽 혼잡을 4단계로 분류하는 `congestion_score` 계산식과 �
 > - jitter/loss는 이제 **victim 프로브 실측** (ping mdev 아님), latency 축 신규
 > - 가중치라는 개념 자체가 없음 — `max`라 논쟁 불가
 >
-> 최신 정의·근거는 `docs/yongsang/congestion_label_redesign.md`, 최신 수치는 `.work-log/current.md`. 이 문서는 그 이전 시점 구현의 기록으로만 남겨둔다.
+> 최신 정의·근거는 `docs/yongsang/congestion_label_redesign.{md,html}`, 최신 수치는 `.work-log/current.md`. 이 문서는 그 이전 시점 구현의 기록으로만 남겨둔다.
 
 ## 4단계 라벨
 
@@ -29,7 +29,7 @@ congestion_score = w_t * throughput_score
                   + w_j * jitter_score
 ```
 
-sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이다. **(archived — 2026-08-28 확인) 이 절이 설명하는 weighted-sum 공식은 `project/scripts/collect_metrics.py`의 `calculate_scores()`에 더 이상 없다.** 그 함수는 재설계(§ 위 배너, `congestion_label_redesign.md`)로 완전히 다시 쓰여 `max(anchor_score(...))` 방식을 쓴다. 아래 표는 2026-08-23 시점 구현을 기록만 해둔 것이다.
+sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이다. **(archived — 2026-08-28 확인) 이 절이 설명하는 weighted-sum 공식은 `project/scripts/collect_metrics.py`의 `calculate_scores()`에 더 이상 없다.** 그 함수는 재설계(§ 위 배너, `congestion_label_redesign.{md,html}`)로 완전히 다시 쓰여 `max(anchor_score(...))` 방식을 쓴다. 아래 표는 2026-08-23 시점 구현을 기록만 해둔 것이다.
 
 | sub-score | 계산 | 상한 |
 |---|---|---:|
@@ -81,5 +81,5 @@ sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이�
 ## 주의
 
 - 1차와 2차는 congestion_score 가중치가 다르므로 label 정의 자체가 다르다. 정확도나 label 분포를 같은 표에서 직접 비교하지 않는다.
-- 2차의 label 3 표본은 아직 얇다(**2026-08-23 시점** test 5개). recall 40%가 통계적으로 안정적이라 보기 어렵다. **이 수치는 그 시점 스냅샷이며 현재 상태가 아니다** — 이후 여러 차례 재수집·재라벨링·재설계를 거쳐 지금(재설계 6-feature 기준)은 test label 3가 38개다. 최신 수치는 `.work-log/current.md`, `docs/yongsang/congestion_label_redesign.md`, `project/results/yongsang/ap_v2_redesign_threshold_comparison.txt`를 본다.
+- 2차의 label 3 표본은 아직 얇다(**2026-08-23 시점** test 5개). recall 40%가 통계적으로 안정적이라 보기 어렵다. **이 수치는 그 시점 스냅샷이며 현재 상태가 아니다** — 이후 여러 차례 재수집·재라벨링·재설계를 거쳐 지금(재설계 6-feature 기준)은 test label 3가 38개다. 최신 수치는 `.work-log/current.md`, `docs/yongsang/congestion_label_redesign.{md,html}`, `project/results/yongsang/ap_v2_redesign_threshold_comparison.txt`를 본다.
 - 자세한 재현 명령어, 현재 평가 결과 전체는 `project/README_AP_V2.md`(2차), `project/README_AP_STRICT.md`(1차)를 참고한다.

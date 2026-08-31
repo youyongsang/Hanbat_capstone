@@ -31,7 +31,7 @@
 | **`docs/README.md`** | **"뭘 알고 싶을 때 어느 문서를 보나" — 질문별 안내** |
 | `docs/yongsang/capstone2_vacation_summary.html` | 방학 개발 흐름 한 장 요약 |
 
-"왜 이런 라벨을 정했나" → `docs/yongsang/congestion_label_redesign.md`.
+"왜 이런 라벨을 정했나" → `docs/yongsang/congestion_label_redesign.{md,html}`.
 
 ---
 

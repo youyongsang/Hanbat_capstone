@@ -10,7 +10,7 @@
 | 전체 맥락·데이터 계보·현재 수치 | `CLAUDE.md` |
 | 세션별 최신 진행 | `.work-log/current.md` |
 | 문서 안내 (질문 → 문서) | `docs/README.md` |
-| 라벨 정의 (정본) | `docs/yongsang/congestion_label_redesign.md` |
+| 라벨 정의 (정본) | `docs/yongsang/congestion_label_redesign.{md,html}` |
 | feature 계약 (정본) | `project/utils/ap_features.py` |
 | 재현 명령어 | `README.md` (레포 루트) · `docs/terminal_command_guide.md` |
 

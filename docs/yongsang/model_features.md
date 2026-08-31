@@ -3,7 +3,7 @@
 현행 2차 라인(`ap_metrics_v2_redesign2`)의 **모델 입력 7개 feature** 레퍼런스. 각 feature가 무엇이고, 어디서 나오고, 어떻게 스무딩되고, 왜 이건 라벨 축이 아닌데 모델 입력인지 정리한다.
 
 - **정본**: `project/utils/ap_features.py`의 `AP_FEATURE_COLUMNS`. 이 문서와 어긋나면 코드가 맞다.
-- **라벨 정의**는 여기가 아니라 `docs/yongsang/congestion_label_redesign.md` (`max(표준 앵커)` + victim 프로브).
+- **라벨 정의**는 여기가 아니라 `docs/yongsang/congestion_label_redesign.{md,html}` (`max(표준 앵커)` + victim 프로브).
 - 옛 `congestion_label_criteria.{md,html}`은 **4개 sub-score 가중합 시절**이라 stale — feature 관련해선 보지 말 것.
 
 > **핵심 원칙 — 라벨 입력 ≠ 모델 입력.** 라벨(`congestion_score`)은 victim 프로브(jitter·loss)와 ping(latency)로 만든다. 모델은 그걸 **못 본다.** 모델의 일은 **AP-side 텔레메트리(채널 상태)만 보고 "지금 victim QoS가 깨지고 있는가"를 예측**하는 것. 그래서 정답을 만드는 축(latency/jitter/loss)은 입력에서 뺀다.
@@ -160,7 +160,7 @@ redesign2       7개   ← 현행
 ## 참고
 
 - `project/utils/ap_features.py` — 정본 목록
-- `docs/yongsang/congestion_label_redesign.md` — 라벨 정의(`max` 앵커 + victim 프로브)
+- `docs/yongsang/congestion_label_redesign.{md,html}` — 라벨 정의(`max` 앵커 + victim 프로브)
 - `project/scripts/collect_metrics.py` — feature 계산 구현 (`APPoller`, `summarize_stations`, `calculate_channel_occupancy`, `calculate_station_deltas`)
 - `project/demo/API.md` §3 — 데모용으로 고정된 feature/추론 계약
 - `project/data/ap_metrics_v2_redesign2/dataset_summary.json` — 기계 판독용 (features, excluded, scaler)
