@@ -252,7 +252,7 @@
     <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
     <h1>모델 입력 feature 기준 (현행 7-feature)</h1>
     <p>현행 2차 라인 <code>ap_metrics_v2_redesign2</code>의 모델 입력 7개 feature 레퍼런스. 각 feature가 무엇이고, 어디서 나오고, 어떻게 스무딩되고, 왜 이건 라벨 축이 아닌데 모델 입력인지 정리한다.</p>
-    <div class="callout warn"><span>⚑</span><span><b>라벨 입력 ≠ 모델 입력.</b> 라벨(<code>congestion_score</code>)은 victim 프로브(jitter·loss)와 ping(latency)으로 만든다. 모델은 그걸 <b>못 본다</b> — 모델의 일은 AP-side 텔레메트리(채널 상태)만 보고 "지금 victim QoS가 깨지고 있는가"를 예측하는 것이다. 그래서 정답을 만드는 축(latency/jitter/loss)은 입력에서 뺀다. 라벨 정의는 <code>docs/yongsang/congestion_label_redesign.md</code>. 옛 <code>congestion_label_criteria</code>는 4개 sub-score 가중합 시절이라 feature 관련해선 보지 말 것.</span></div>
+    <div class="callout warn"><span>⚑</span><span><b>라벨 입력 ≠ 모델 입력.</b> 라벨(<code>congestion_score</code>)은 victim 프로브(jitter·loss)와 ping(latency)으로 만든다. 모델은 그걸 <b>못 본다</b> — 모델의 일은 AP-side 텔레메트리(채널 상태)만 보고 "지금 victim QoS가 깨지고 있는가"를 예측하는 것이다. 그래서 정답을 만드는 축(latency/jitter/loss)은 입력에서 뺀다. 라벨 정의는 <code>docs/yongsang/congestion_label_redesign.html</code>. 옛 <code>congestion_label_criteria</code>는 4개 sub-score 가중합 시절이라 feature 관련해선 보지 말 것.</span></div>
     <div class="callout"><span>ℹ</span><span>정본은 <code>project/utils/ap_features.py</code>의 <code>AP_FEATURE_COLUMNS</code>. 이 문서와 어긋나면 코드가 맞다.</span></div>
   </header>
 
@@ -426,7 +426,7 @@ redesign2         7개   ← 현행    (9 − 2 − 1 + 1 = 7)</pre>
   </section>
 
   <footer class="page-foot">
-    <span>정본: <code>project/utils/ap_features.py</code> · 라벨 정의: <code>docs/yongsang/congestion_label_redesign.md</code> · 계산 구현: <code>project/scripts/collect_metrics.py</code></span>
+    <span>정본: <code>project/utils/ap_features.py</code> · 라벨 정의: <code>docs/yongsang/congestion_label_redesign.html</code> · 계산 구현: <code>project/scripts/collect_metrics.py</code></span>
     <span>데모 계약: <code>project/demo/API.md</code> §3 · 기계 판독용: <code>project/data/ap_metrics_v2_redesign2/dataset_summary.json</code></span>
     <span>markdown 원본: <code>docs/yongsang/model_features.md</code></span>
   </footer>

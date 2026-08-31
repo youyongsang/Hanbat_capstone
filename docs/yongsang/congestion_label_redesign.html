@@ -1,0 +1,344 @@
+<title>혼잡 라벨 재설계 (표준 앵커 + victim 프로브)</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#f5f7fa; --panel:#fcfcfb; --panel-raise:#ffffff;
+    --ink:#12151b; --ink-2:#4b5566; --ink-mute:#7c8494;
+    --rule:#e2e6ec; --rule-strong:#c9d0da;
+    --accent:#2a78d6; --accent-2:#eb6834; --accent-ink:#ffffff;
+    --l0:#0ca30c; --l1:#c99a1e; --l2:#e0752c; --l3:#d03b3b;
+    --shadow:0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+      --l0:#3ec13e; --l1:#d9ad48; --l2:#e08a4a; --l3:#e2564f;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+    --l0:#3ec13e; --l1:#d9ad48; --l2:#e08a4a; --l3:#e2564f;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums; }
+  main { max-width:940px; margin:0 auto; padding:4rem 1.75rem 6rem; }
+
+  header.page-head { max-width:740px; margin-bottom:2.5rem; }
+  .eyebrow {
+    font-family:"IBM Plex Mono",monospace; font-size:0.78rem; letter-spacing:0.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 0.9rem;
+  }
+  h1 { font-size:clamp(1.9rem,1.5rem + 1.6vw,2.5rem); font-weight:700; letter-spacing:-0.01em; line-height:1.18; margin:0 0 0.9rem; text-wrap:balance; }
+  .page-head p { color:var(--ink-2); font-size:1.03rem; margin:0; max-width:66ch; }
+
+  section { margin-top:3.5rem; }
+  section > h2 {
+    font-size:1.05rem; font-weight:700; letter-spacing:-0.005em; margin:0 0 0.35rem;
+    display:flex; align-items:baseline; gap:0.6rem;
+  }
+  section > h2 .step { font-family:"IBM Plex Mono",monospace; font-size:0.78rem; color:var(--ink-mute); font-weight:500; }
+  section > .lede { color:var(--ink-2); max-width:72ch; margin:0 0 1.5rem; }
+  h3 { font-size:0.95rem; margin:2rem 0 0.5rem; }
+
+  code, .k {
+    font-family:"IBM Plex Mono",monospace; font-size:0.86em;
+    background:var(--panel); border:1px solid var(--rule); border-radius:3px;
+    padding:0.05em 0.32em; color:var(--ink-2);
+  }
+
+  .callout {
+    display:flex; gap:0.85rem; background:var(--panel); border:1px solid var(--rule);
+    border-left:3px solid var(--accent); border-radius:4px; padding:1rem 1.2rem;
+    font-size:0.9rem; color:var(--ink-2); margin-top:1.5rem;
+  }
+  .callout b { color:var(--ink); }
+  .callout.warn { border-left-color:var(--accent-2); }
+  .callout.key { border-left-color:var(--l0); }
+
+  .tw { overflow-x:auto; }
+  table.grid { width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:0.4rem; }
+  table.grid th, table.grid td { text-align:left; padding:0.6rem 0.7rem; border-bottom:1px solid var(--rule); vertical-align:top; }
+  table.grid thead th {
+    font-weight:600; color:var(--ink-mute); font-size:0.74rem; text-transform:uppercase;
+    letter-spacing:0.03em; border-bottom:1px solid var(--rule-strong);
+  }
+  table.grid td.n, table.grid th.n { text-align:right; font-family:"IBM Plex Mono",monospace; white-space:nowrap; }
+  table.grid td code { background:none; border:none; padding:0; color:var(--ink); }
+  table.grid tbody tr:hover { background:color-mix(in oklab, var(--accent) 5%, transparent); }
+
+  pre.block {
+    background:var(--ink); color:var(--paper); border-radius:6px; padding:1.2rem 1.4rem;
+    font-family:"IBM Plex Mono",monospace; font-size:0.8rem; line-height:1.7; overflow-x:auto; margin-top:1rem;
+  }
+  pre.block .c { color:#8fa6bd; }
+  pre.block .kw { color:#7fb3f0; }
+
+  .anchors { display:flex; height:30px; border-radius:4px; overflow:hidden; border:1px solid var(--rule-strong); margin:0.3rem 0; }
+  .anchors span {
+    flex:1; display:flex; align-items:center; justify-content:center;
+    font-family:"IBM Plex Mono",monospace; font-size:0.7rem; font-weight:600; color:var(--accent-ink);
+  }
+  .anchors .a0{background:var(--l0)} .anchors .a1{background:var(--l1);color:#2a2000} .anchors .a2{background:var(--l2)} .anchors .a3{background:var(--l3)}
+
+  .lbl { display:inline-block; padding:0.05em 0.5em; border-radius:3px; font-weight:700; font-size:0.85em; color:#fff; }
+  .lbl.l0{background:var(--l0)} .lbl.l1{background:var(--l1);color:#2a2000} .lbl.l2{background:var(--l2)} .lbl.l3{background:var(--l3)}
+
+  details { margin-top:1rem; border:1px solid var(--rule); border-radius:6px; background:var(--panel); }
+  details > summary { padding:0.8rem 1rem; cursor:pointer; font-size:0.88rem; color:var(--ink-2); font-weight:600; user-select:none; }
+  details[open] > summary { border-bottom:1px solid var(--rule); }
+  details .body { padding:0.5rem 1rem 1rem; }
+
+  ul { color:var(--ink-2); font-size:0.9rem; max-width:74ch; }
+  ul li { margin:0.3rem 0; }
+
+  footer.page-foot {
+    margin-top:4rem; padding-top:1.6rem; border-top:1px solid var(--rule);
+    font-size:0.82rem; color:var(--ink-mute); display:flex; flex-direction:column; gap:0.4rem;
+  }
+  footer.page-foot code { background:var(--panel); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
+    <h1>혼잡 라벨 재설계 — 표준 앵커 + victim 프로브</h1>
+    <p>2차 데이터(<code>ap_metrics_v2_redesign2</code>)의 <code>congestion_score</code> / <code>label</code> 정의와 그 근거. 옛 weighted-sum 정의(<code>congestion_label_criteria</code>)를 대체하는 <b>현행 정본</b>이다.</p>
+    <div class="callout key"><span>▸</span><span><b>한 줄 요약</b> — 라벨 = <b>victim 프로브(경량 UDP 스트림)의 실측 QoS + AP 채널 상태</b>를 각각 국제 표준 문턱에 매핑한 뒤 <b><code>max</code>로 합친 값</b>. 모델 입력에서는 프로브 파생값과 <code>jitter_ms</code>/<code>latency_ms</code>를 빼서, 모델이 "재지 못하는 victim QoS를 채널 상태만으로 예측"하게 만든다.</span></div>
+    <div class="callout"><span>ℹ</span><span>이 페이지는 정의·근거 중심. 세션별 캘리브레이션 로그·구현 순서·열린 항목 전체는 markdown 원본 <code>docs/yongsang/congestion_label_redesign.md</code>에 있다. 최신 수치는 <code>.work-log/current.md</code>.</span></div>
+  </header>
+
+  <section>
+    <h2><span class="step">01</span> 왜 재설계했나 — 옛 정의는 순환논리</h2>
+    <p class="lede">옛 정의: <code>congestion_score = 0.20·throughput + 0.45·occupancy + 0.20·retry + 0.15·jitter</code>, 문턱 0.25 / 0.50 / 0.75.</p>
+    <ul>
+      <li><b><span class="lbl l3">심각</span>이 사실상 <code>channel_occupancy ≈ 100%</code>에서만 나왔다.</b> occ 66%면 나머지 축이 다 최대여도 산술적으로 0.75를 못 넘음.</li>
+      <li>→ label 3 학습 데이터가 전부 "occ≈100" 순간 → 모델이 "occ 높음 → 심각" 지름길만 학습.</li>
+      <li>→ <b>정답 라벨 자체가 occupancy 문턱과 거의 같음</b> → "occupancy 문턱 대비 LSTM이 낫다"를 증명할 수 없음 (비교 대상이 정답과 동일).</li>
+      <li>가중치 <code>occ 0.45</code>도 <b>우리 데이터의 label 2 vs 3 차이가 가장 큰 축</b>이라 크게 준 것 — 외부 근거 아닌 자기 데이터 fit.</li>
+    </ul>
+    <h3>재설계 원칙</h3>
+    <ul>
+      <li><b>1. 축별 문턱은 외부 표준에서</b> (ITU-T, Cisco/WLAN 가이드). 자기 데이터 fit 금지.</li>
+      <li><b>2. 조합은 <code>max</code></b> — 표준은 "각 축이 언제 나쁜가"만 주고 "어떻게 합치나"는 안 줌. <code>max</code>면 가중치 논쟁 원천 봉쇄. <span class="lbl l3">심각</span> = 최소 한 축이 표준 심각 문턱 돌파.</li>
+      <li><b>3. 라벨 입력 ≠ 모델 입력.</b> 라벨은 victim QoS(프로브) 실측에 의존, 모델은 프로브를 못 봄 → "채널 상태로 victim QoS 예측"이 모델의 일.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step">02</span> victim 프로브</h2>
+    <p class="lede">QoS에 민감한 <b>작고 일정한 스트림 하나</b>(300kbps UDP)를 배경 부하와 별개로 흘리고, <b>그 스트림 자체의 jitter/loss를 측정</b>한다. "이 혼잡 속에서 VoIP 통화 한 통이 얼마나 깨지나" — 합성 점수가 아니라 실제 앱 피해. 300kbps라 아무것도 못 막는다(센서지 부하 아님).</p>
+    <pre class="block"><span class="c">── 부하 (혼잡 유발) ──</span>
+  폰 191 ──iperf3 -u -b 25M──┐
+  폰 S26 ──iperf3 -u -b 25M──┤──> AP ──무선──> 노트북 (부하 싱크)
+                             │
+<span class="c">── 프로브 (QoS 피해 측정) ──</span>
+  파이 ──iperf3 -u -b 300k -l 200──> AP ──<span class="kw">무선 downlink</span>──> 노트북 (프로브 싱크)
+        지속 스트림, 파이가 구간별 jitter/loss 읽음</pre>
+    <ul>
+      <li>파이→AP는 유선이지만 <b>AP→노트북 홉이 무선</b>이라 프로브가 폰들의 혼잡을 실제로 겪는다.</li>
+      <li>300kbps·200B ≈ 187pps → VoIP급. 새 컬럼 <code>probe_jitter_ms</code>, <code>probe_loss_pct</code>.</li>
+      <li><code>latency_ms</code>(ping RTT)는 유지 — iperf3 UDP는 RTT를 못 줌.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step">03</span> sub-score 표준 문턱 (앵커)</h2>
+    <p class="lede">각 축을 4개 앵커에 piecewise-linear 매핑, <code>[0,1]</code> clamp. 구현: <code>collect_metrics.py</code>의 <code>ANCHORS</code> + <code>anchor_score()</code>.</p>
+    <div class="anchors"><span class="a0">경고 0.25</span><span class="a1">혼잡 0.50</span><span class="a2">심각 0.75</span><span class="a3">완전 1.0</span></div>
+
+    <h3>라벨 축 (4개) — <code>congestion_score = max(이 4개)</code></h3>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">완전</th><th>출처</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>occupancy_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">채널 airtime %</span></td>
+          <td class="n">40%</td><td class="n">55%</td><td class="n">75%</td><td class="n">90%</td>
+          <td>Cisco / Aruba WLAN 설계 가이드 (&gt;50% 경고, &gt;75% 혼잡), Ekahau 실무 기준</td>
+        </tr>
+        <tr>
+          <td><code>jitter_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">프로브 IPDV</span></td>
+          <td class="n">20ms</td><td class="n">30ms</td><td class="n">50ms</td><td class="n">100ms</td>
+          <td>ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms), RFC 4594 (텔레포니 ~30ms), Cisco (voice &lt; 30ms)</td>
+        </tr>
+        <tr>
+          <td><code>loss_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">프로브 패킷 손실</span></td>
+          <td class="n">0.5%</td><td class="n">1%</td><td class="n">5%</td><td class="n">10%</td>
+          <td>Cisco Enterprise QoS (voice loss &lt; 1%, &gt; 5% 사용 불가), ITU-T G.113 App.I, Y.1541</td>
+        </tr>
+        <tr>
+          <td><code>latency_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">ping 편도 추정 = RTT/2</span></td>
+          <td class="n">30ms</td><td class="n">60ms</td><td class="n">150ms</td><td class="n">400ms</td>
+          <td>ITU-T G.114 (편도 150 / 400). 앵커가 편도 규격이라 <code>calculate_scores</code>가 <code>latency_ms/2</code>를 넣는다</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>라벨 축 아님 — 계산은 하되 <code>max()</code> 제외 (모델 입력으로만 유지)</h3>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>축</th><th>값</th><th>왜 라벨 축이 아닌가</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>retry_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">앵커 10/15/25/40%</span></td>
+          <td><code>(tx_retries + tx_failed) / (retries + failed + tx_packets)</code>, 최근 5폴링 rolling</td>
+          <td>이 2.4GHz AP는 RF가 열악해 <b>idle에도 retry_ratio med 18% / p90 36%</b>(자는 폰 백그라운드)인데 프로브는 완벽. retry는 jitter/loss의 <i>원인</i>이지 QoS 피해의 독립 증거가 아니다 — 피해가 나면 프로브가 잡는다.</td>
+        </tr>
+        <tr>
+          <td><code>throughput_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">상한 150 Mbps</span></td>
+          <td><code>throughput_mbps / 150</code></td>
+          <td>label 2/3 변별력 없음 (0.665 → 0.707). 채널이 빠르게 도는 것 자체는 혼잡 아님.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout"><span>ℹ</span><span>앵커 값은 "consensus 근처"로 잡은 것 — 논문 인용 시 정확한 조항 확인 필요 (Y.1541 표, G.114 §, Cisco 문서 버전 등).</span></div>
+  </section>
+
+  <section>
+    <h2><span class="step">04</span> 조합 = <code>max</code></h2>
+    <pre class="block">congestion_score = <span class="kw">max</span>(
+    occupancy_score,   <span class="c"># 채널 airtime</span>
+    jitter_score,      <span class="c"># 프로브 IPDV</span>
+    loss_score,        <span class="c"># 프로브 패킷 손실</span>
+    latency_score,     <span class="c"># ping RTT/2</span>
+)   <span class="c"># retry·throughput은 제외</span>
+
+label = 0  if score &lt; 0.25       <span class="c"># 정상</span>
+        1  if score &lt; 0.50       <span class="c"># 경고</span>
+        2  if score &lt; 0.75       <span class="c"># 혼잡</span>
+        3  if score ≥ 0.75       <span class="c"># 심각</span></pre>
+
+    <div class="callout key"><span>▸</span><span><b><span class="lbl l3">심각</span> = 최소 한 축이 발표된 심각 문턱을 넘었다.</b><br>
+    occupancy ≥ 75% (WLAN 가이드) <b>OR</b> 프로브 jitter ≥ 50ms (Y.1541) <b>OR</b> 프로브 loss ≥ 5% (Cisco QoS) <b>OR</b> ping RTT ≥ 150ms (G.114).<br>
+    심사 방어: "이 라벨 왜 이렇게?" → "각 축을 국제 표준 문턱에 매핑하고, 하나라도 넘으면 심각으로 봤다. 가중치는 없다."</span></div>
+
+    <h3><code>max</code>가 놓치는 것 (알려진 단순화)</h3>
+    <p class="lede">여러 축이 "어중간하게 나쁜"(다 0.6대) 경우 각각은 <span class="lbl l2">혼잡</span>에 머문다. 실제론 한 축만 0.8인 것보다 나쁠 수 있음. 대안(나중에): 비정규화 p-norm(p≈6, magic number 부담) 또는 app 축만 ITU-T <b>G.107 E-model(R-factor)</b>로 조합(정석, 무거움). 지금은 <code>max</code>로 시작.</p>
+
+    <h3>실패 = max</h3>
+    <p class="lede">프로브·ping 타겟이 같은 무선 다운링크를 타므로, 채널이 심하게 포화되면 프로브 완료 불가 / ping 무응답이 된다. 원래는 이 축을 <code>0.0</code>으로 처리 → 라벨이 조용히 occupancy 단독으로 되돌아감(재설계 목적 훼손). 수정:</p>
+    <pre class="block">channel_active = throughput ≥ 3 Mbps  OR  occupancy ≥ 40%
+ping_hard_fail  = channel_active AND latency(3-폴링 median) == 0   → latency_score = 1.0
+probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → loss_score    = 1.0</pre>
+    <ul>
+      <li><b>왜 채널 포화로 보나</b>: 이 판정에 도달했다는 건 유선 SSH로 AP 텔레메트리를 방금 정상 파싱했다는 뜻 — AP는 살아있고 무선 채널만 막힌 것.</li>
+      <li><b>idle 안전장치</b>: <code>channel_active</code> 게이트 + <code>ever_ok</code> 게이트 (무부하 셋업 문제를 혼잡으로 오인 안 함).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step">05</span> 모델 입력 feature 재정의</h2>
+    <p class="lede"><b>문제</b>: <code>max(표준 문턱)</code>은 그 자체로 규칙 기반 분류기다. 배포 시점에 규칙으로 계산하면 되는데 왜 LSTM인가?</p>
+    <div class="callout key"><span>▸</span><span><b>답: 프로브가 배포 시점엔 없다.</b> 배포 시스템엔 victim 프로브(협조 싱크 + 지속 스트림)가 없다. 모델은 <b>AP-side 텔레메트리만 보고 "지금 victim QoS가 깨지고 있는가"를 예측</b>해야 한다. 규칙으로 못 한다 — victim 측정값이 없으니까. + 시계열 추세(window 10) + Early Exit 효율.</span></div>
+
+    <h3>라벨 축 vs 모델 입력</h3>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>feature</th><th class="n">라벨 축?</th><th class="n">모델 입력?</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td><code>probe_jitter_ms</code> / <code>probe_loss_pct</code></td><td class="n">✅</td><td class="n">✗</td><td>victim 측정 = "정답". 배포 시 없음</td></tr>
+        <tr><td><code>latency_ms</code> (ping RTT)</td><td class="n">✅</td><td class="n">✗ 제거</td><td>라벨 축 → 모델이 정답을 그대로 받는 꼴</td></tr>
+        <tr><td><code>jitter_ms</code> (기존 ping mdev)</td><td class="n">—</td><td class="n">✗ 제거</td><td>프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage</td></tr>
+        <tr><td><code>channel_occupancy_percent</code></td><td class="n">✅</td><td class="n">✓ 유지</td><td>배포 시 AP 텔레메트리로 있음. "occ 높음 → 혼잡"은 맞는 shortcut</td></tr>
+        <tr><td><code>tx_retry_ratio</code></td><td class="n">✗</td><td class="n">✓ 유지</td><td>배포 시 있음. "재전송 많다 → victim 곧 깨질 것"</td></tr>
+        <tr><td><code>throughput_mbps</code></td><td class="n">✗</td><td class="n">✓ 유지</td><td>부하 지표</td></tr>
+        <tr><td>RSSI 3종 (<code>rssi_dbm</code> · <code>rssi_delta_db</code> · <code>rssi_moving_avg_dbm</code>)</td><td class="n">✗</td><td class="n">✓ 유지</td><td>링크 품질 (victim 피해의 원인 쪽)</td></tr>
+        <tr><td><code>connected_clients</code></td><td class="n">✗</td><td class="n">✗</td><td>우리 데이터 2~3으로 변별력 없음</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>확정 모델 입력 (7개)</h3>
+    <pre class="block">throughput_mbps
+channel_occupancy_percent
+tx_retry_ratio
+rssi_dbm
+rssi_delta_db
+rssi_moving_avg_dbm
+sta_tx_bitrate_mean        <span class="c">← 2026-08-29 추가 (6→7)</span></pre>
+    <p class="lede">변천: 초기 9개 →(−2 latency_ms·jitter_ms, −1 retry 통합)→ 6개 →(+1 <code>sta_tx_bitrate_mean</code>, occ 60~72% label 2/3 변별)→ 7개. 각 feature의 계산·스무딩·스케일러는 <b><code>docs/yongsang/model_features.{md,html}</code></b>.</p>
+    <div class="callout"><span>ℹ</span><span><b>여전히 lean함</b>: 모델이 볼 게 적음 = 재설계 의도(정답 못 읽고 진짜 예측). RSSI 3종은 서로 상관이라 실질 신호는 ~5개. <b>occupancy·retry가 라벨 축이자 모델 입력</b>이라 leakage 논란 여지 — "배포 시 available하니 정당"으로 방어.</span></div>
+  </section>
+
+  <section>
+    <h2><span class="step">06</span> 캘리브레이션 기록 (2026-08-27)</h2>
+    <p class="lede">Pi에서 프로브 켜고 idle 5회 + 부하 런으로 앵커 검증. <b>핵심 성과</b>: label 3 행들이 occupancy 60~73%(포화 아님)에서 latency·loss 주도로 나옴 → occupancy-only 문턱(≥75%)이면 놓쳤을 케이스 → "occupancy 문턱 대비 LSTM 우위"의 실증 기반.</p>
+
+    <details>
+      <summary>idle 캘리브레이션 — v6 결과 77/77 label 0, congestion_score max 0.17</summary>
+      <div class="body"><div class="tw">
+      <table class="grid">
+        <thead><tr><th>축</th><th>idle 실측 → 조치</th></tr></thead>
+        <tbody>
+          <tr><td>jitter / loss (프로브)</td><td>jitter med 1ms / max 3.5ms, loss 0% → 그대로. Y.1541 앵커에 여유 많음</td></tr>
+          <tr><td>occupancy</td><td>med 17%, 가끔 100% 스파이크(<code>instantaneous_fallback</code> 카운터 리셋) → <b>3-폴링 median</b>, 앵커 그대로</td></tr>
+          <tr><td>latency</td><td>폰 ping이 절전으로 31~295ms 요동 → <b>노트북 대상으로 변경</b> + Windows inbound ICMP 허용. 단일 폴링 스파이크 → <b>3-폴링 median</b>. idle RTT med 3ms</td></tr>
+          <tr><td>retry</td><td><b>버그</b>: AP가 retries/failed를 라디오 전체 카운터로 보고(모든 station 동일) → station별로 더하니 뻥튀기 → <b>단일 delta로 수정</b>. 그래도 idle 18~36% → <b>라벨 축에서 제외</b></td></tr>
+        </tbody>
+      </table>
+      </div></div>
+    </details>
+
+    <details>
+      <summary>부하 캘리브레이션 — 60/60 & 소패킷 25/25</summary>
+      <div class="body"><div class="tw">
+      <table class="grid">
+        <thead><tr><th>축</th><th>idle → 60/60 부하</th><th>판정</th></tr></thead>
+        <tbody>
+          <tr><td>occupancy</td><td>17% → med 63% / max 87%</td><td>앵커 OK, label 2~3 잘 뜸</td></tr>
+          <tr><td>latency</td><td>3ms → med 53ms / p90 186ms / max 291ms</td><td>앵커 OK</td></tr>
+          <tr><td>probe jitter</td><td>1.5ms → med 6ms / max 19ms</td><td>Y.1541 앵커(20)를 60/60론 못 넘음 — 표준 그대로, 더 센 경합에서 오를 것</td></tr>
+          <tr><td>probe loss</td><td>0% → med 0.27% / max 7.4%</td><td>앵커 OK, label 3 뜸</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p style="font-size:0.87rem; color:var(--ink-2); margin-top:0.8rem;"><b>두 런 종합</b>: 60/60 → latency·loss 주도, occ 60~73%(포화 아님) · 소패킷 → occupancy 주도, occ 72~90%. occupancy-only 문턱이면 60/60의 label 3을 놓친다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>남은 이슈 / 열린 항목</summary>
+      <div class="body"><ul>
+        <li>jitter 축이 이 셋업에선 거의 안 뜸 (표준 유지하되 기여 낮음).</li>
+        <li>부하 중 ping 2~3연속 실패로 <code>latency_ms=0</code> 행 (median으로 대부분 커버, 나머지는 "실패=max").</li>
+        <li>프로브 생존율: 45/45 부하 중 <code>probe_ok</code> 26/75. 나머지는 "실패=max"로 커버.</li>
+        <li>표준 문턱 출처 정밀화 필요 (정확한 조항).</li>
+        <li>occupancy·retry leakage 여지 — occ만으로 label 3 되는 행이 많으면 occ 심각 앵커 상향(90%) 또는 라벨에서 제외 검토.</li>
+        <li>옛 <code>metrics_v2.csv</code> 5574행은 프로브·tx_packets 없어 완전 relabel 불가 → 레거시/사전학습용.</li>
+      </ul></div>
+    </details>
+  </section>
+
+  <footer class="page-foot">
+    <span>정본(코드): <code>project/scripts/collect_metrics.py</code> <code>calculate_scores()</code> / <code>ANCHORS</code> · feature: <code>project/utils/ap_features.py</code></span>
+    <span>feature 상세: <code>docs/yongsang/model_features.{md,html}</code> · 최신 수치: <code>.work-log/current.md</code></span>
+    <span>표준: ITU-T G.114 · G.107 · G.113 · Y.1541 · RFC 4594 · Cisco Enterprise QoS Design Guide</span>
+    <span>markdown 원본(전체 로그): <code>docs/yongsang/congestion_label_redesign.md</code> · 옛 정의: <code>congestion_label_criteria.{md,html}</code> (archived)</span>
+  </footer>
+
+</main>

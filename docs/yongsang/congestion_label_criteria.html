@@ -665,7 +665,7 @@
       <span class="gen-badge archived">1차 <b>ap_cleaned_strict</b> · archived</span>
       <span class="gen-badge archived">2차 초기 <b>ap_metrics_v2</b> (가중합) · archived</span>
     </div>
-    <div class="callout" style="margin-top:1.4rem;"><span>⚠</span><span><b>(archived — 2026-08-28 확인) 이 페이지 전체가 stale하다.</b> §03~05가 설명하는 <b>weighted-sum</b> 공식(<code class="mono">calculate_scores()</code>)은 2026-08-23 시점 2차 초기 구현이고, 그 뒤 2차가 <b>재설계</b>되어 지금 코드는 <code class="mono">max(anchor_score(occupancy, jitter, loss, latency))</code> 방식을 쓴다 — sub-score도 4개 가중합에서 <b>6개 계산 / 그중 4개만 max</b>로 바뀌었고(throughput·retry는 계산만, max·라벨 축에서 제외), jitter/loss는 이제 victim 프로브 실측이다. 현행 2차는 <code class="mono">ap_metrics_v2_redesign2</code> · 7-feature · max-앵커 라벨이다. 최신 계산식·캘리브레이션은 <code class="mono">docs/yongsang/congestion_label_redesign.md</code>와 <code class="mono">.work-log/current.md</code>. 이 페이지는 그 이전 시점 구현을 기록으로 남겨둔 것이다.</span></div>
+    <div class="callout" style="margin-top:1.4rem;"><span>⚠</span><span><b>(archived — 2026-08-28 확인) 이 페이지 전체가 stale하다.</b> §03~05가 설명하는 <b>weighted-sum</b> 공식(<code class="mono">calculate_scores()</code>)은 2026-08-23 시점 2차 초기 구현이고, 그 뒤 2차가 <b>재설계</b>되어 지금 코드는 <code class="mono">max(anchor_score(occupancy, jitter, loss, latency))</code> 방식을 쓴다 — sub-score도 4개 가중합에서 <b>6개 계산 / 그중 4개만 max</b>로 바뀌었고(throughput·retry는 계산만, max·라벨 축에서 제외), jitter/loss는 이제 victim 프로브 실측이다. 현행 2차는 <code class="mono">ap_metrics_v2_redesign2</code> · 7-feature · max-앵커 라벨이다. 최신 계산식·캘리브레이션은 <code class="mono">docs/yongsang/congestion_label_redesign.html</code>와 <code class="mono">.work-log/current.md</code>. 이 페이지는 그 이전 시점 구현을 기록으로 남겨둔 것이다.</span></div>
   </header>
 
   <section id="labels">
@@ -960,7 +960,7 @@ congestion_score =
 
   <footer class="page-foot">
     <span>작성 2026-08-23 · 데이터 기준 <code>metrics_v2.csv</code> 1265행 · §03~05 weighted-sum 공식은 (archived — 2026-08-28 확인)</span>
-    <span>전체 배경: <code>CLAUDE.md</code> "데이터 계보" · 1차 상세: <code>project/README_AP_STRICT.md</code> · 2차 상세: <code>project/README_AP_V2.md</code> · 최신 재설계: <code>docs/yongsang/congestion_label_redesign.md</code></span>
+    <span>전체 배경: <code>CLAUDE.md</code> "데이터 계보" · 1차 상세: <code>project/README_AP_STRICT.md</code> · 2차 상세: <code>project/README_AP_V2.md</code> · 최신 재설계: <code>docs/yongsang/congestion_label_redesign.html</code></span>
     <span>1차와 2차는 라벨 정의가 다르므로 정확도·분포를 같은 표에서 직접 비교하지 않는다.</span>
   </footer>
 

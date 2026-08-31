@@ -94,8 +94,8 @@
       <div class="d">방학(8/21~30) 개발 흐름 한 장 요약 — 6단계 타임라인 + 되돌린 결정 4건. 브라우저로.</div>
     </div></div>
     <div class="card"><span class="n">4</span><div>
-      <div class="t"><code>docs/yongsang/congestion_label_redesign.md</code></div>
-      <div class="d">라벨 정의의 <b>정본</b>. 아래 "왜" 표의 절반이 이 문서.</div>
+      <div class="t"><code>docs/yongsang/congestion_label_redesign.{md,html}</code></div>
+      <div class="d">라벨 정의의 <b>정본</b> (표준 앵커 + victim 프로브). HTML = 정의·근거 요약, MD = 전체 로그. 아래 "왜" 표의 절반이 이 문서.</div>
     </div></div>
   </div>
 
@@ -104,9 +104,9 @@
     <thead><tr><th>알고 싶은 것</th><th>어디를 보면 되나</th></tr></thead>
     <tbody>
       <tr class="star"><td class="q"><span class="star">★</span> 왜 이런 라벨(정상/경고/혼잡/심각)을 정했나</td>
-        <td><code>congestion_label_redesign.md</code> — §1 "왜 재설계하나"(순환논리), §3 "sub-score 표준 문턱"(Cisco/ITU-T), §4 "조합 = max"</td></tr>
+        <td><code>congestion_label_redesign.{md,html}</code> — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(Cisco/ITU-T Y.1541/G.114/RFC 4594), §4 "조합 = max"</td></tr>
       <tr><td class="q">congestion_score는 어떻게 계산하나</td>
-        <td><code>congestion_label_redesign.md</code> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
+        <td><code>congestion_label_redesign.{md,html}</code> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
       <tr class="star"><td class="q"><span class="star">★</span> 7개 feature 각각이 뭔가 / 계산·스무딩·스케일러</td>
         <td><code>docs/yongsang/model_features.{md,html}</code> — feature 레퍼런스 (정본은 <code>project/utils/ap_features.py</code>)</td></tr>
       <tr><td class="q">왜 latency·jitter를 모델 입력에서 뺐나</td>
@@ -168,8 +168,8 @@
 
   <h2><span class="dot"></span>HTML로 읽기 좋은 것</h2>
   <p class="sub">브라우저로 열면 표·차트가 렌더된다:
-    <code>capstone2_vacation_summary.html</code> · <code>model_features.html</code> · <code>onnx_early_exit_redesign.html</code> ·
-    <code>ap_crash_analysis.html</code> · <code>congestion_label_criteria.html</code> ·
+    <code>capstone2_vacation_summary.html</code> · <code>congestion_label_redesign.html</code> · <code>model_features.html</code> · <code>onnx_early_exit_redesign.html</code> ·
+    <code>ap_crash_analysis.html</code> · <code>congestion_label_criteria.html</code>(archived) ·
     <code>docs/capstone1_summary.html</code>(1학기)</p>
   <p class="sub">발행 아티팩트 (링크는 <code>.work-log/current.md</code>): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".</p>
 

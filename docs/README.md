@@ -14,7 +14,7 @@
 | 1 | **`CLAUDE.md`** (레포 루트) | 프로젝트 전체 맥락, 데이터 계보(1학기→1차→2차), 현재 수치, 자주 헷갈리는 점. **항상 여기부터.** |
 | 2 | **`.work-log/current.md`** | 세션별 최신 진행·다음 할 일. **CLAUDE.md보다 최신** (수치가 어긋나면 이게 맞음). |
 | 3 | **`docs/yongsang/capstone2_vacation_summary.html`** | 방학(8/21~30) 개발 흐름 한 장 요약 — 6단계 타임라인 + 되돌린 결정 4건. 브라우저로. |
-| 4 | **`docs/yongsang/congestion_label_redesign.md`** | 라벨 정의의 **정본**. 아래 "왜" 표의 절반이 이 문서. |
+| 4 | **`docs/yongsang/congestion_label_redesign.{md,html}`** | 라벨 정의의 **정본** (표준 앵커 + victim 프로브). 아래 "왜" 표의 절반이 이 문서. HTML = 정의·근거 요약, MD = 전체 로그. |
 
 ---
 
@@ -22,8 +22,8 @@
 
 | 알고 싶은 것 | 어디를 보면 되나 |
 |---|---|
-| **왜 이런 라벨(정상/경고/혼잡/심각)을 정했나** | `congestion_label_redesign.md` — §1 "왜 재설계하나"(순환논리), §3 "sub-score 표준 문턱"(Cisco/ITU-T), §4 "조합 = max" |
-| **congestion_score는 어떻게 계산하나** | `congestion_label_redesign.md` §3~4 + `collect_metrics.py`의 `calculate_scores()`/`ANCHORS` (코드 정본) |
+| **왜 이런 라벨(정상/경고/혼잡/심각)을 정했나** | `congestion_label_redesign.{md,html}` — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(Cisco/ITU-T Y.1541/G.114/RFC 4594), §4 "조합 = max" |
+| **congestion_score는 어떻게 계산하나** | `congestion_label_redesign.{md,html}` §3~4 + `collect_metrics.py`의 `calculate_scores()`/`ANCHORS` (코드 정본) |
 | **7개 feature 각각이 뭔가 / 계산·스무딩·스케일러** | **`docs/yongsang/model_features.{md,html}`** — feature 레퍼런스 (정본은 `project/utils/ap_features.py`) |
 | **왜 latency·jitter를 모델 입력에서 뺐나** | `model_features.md` §3 + `congestion_label_redesign.md` §5 — 정답 leakage + 배포 시점엔 없는 측정 |
 | **왜 feature가 7개인가 (9→6→7), `sta_tx_bitrate_mean`은 왜** | `model_features.md` §2(7번)·§5 + `.work-log/current.md` "2026-08-29 2차" |
@@ -73,6 +73,6 @@
 ## HTML로 읽기 좋은 것
 
 브라우저로 열면 표·차트가 렌더된다:
-`capstone2_vacation_summary.html` · `model_features.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html` · `docs/capstone1_summary.html`(1학기)
+`capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
 
 발행 아티팩트 (링크는 `.work-log/current.md`): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".

@@ -72,7 +72,7 @@ project/models/early_exit_lstm.py       EarlyExitLSTM 베이스, multi_exit_loss
 project/utils/ap_features.py            AP_FEATURE_COLUMNS = 7개 feature (authoritative)
 project/utils/ap_dataloader.py          windowed CSV → DataLoader
 docs/yongsang/model_features.{md,html}  7개 feature 레퍼런스 (계산·스무딩·스케일러·라벨 축 vs 모델 입력·변천)
-docs/yongsang/congestion_label_redesign.md  현행 라벨 정의 (max 앵커 + victim 프로브) ← 라벨 관련은 이 문서가 authoritative
+docs/yongsang/congestion_label_redesign.{md,html}  현행 라벨 정의 (max 앵커 + victim 프로브) ← 라벨 관련은 이 문서가 authoritative. html=근거 요약, md=전체 로그
 docs/yongsang/ap_crash_analysis.md      AP(Opal) 반복 크래시 원인 분석
 docs/yongsang/onnx_early_exit_redesign.md  ONNX Early Exit 배포 재설계 (staged → unified If 노드 → INT8 재조립)
 .work-log/current.md                    세션별 최신 진행 상황 (이 문서보다 최신)
@@ -205,7 +205,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 0. `docs/README.md` — **문서 안내 (질문 → 문서 매핑).** "왜 이런 라벨을 정했나" 같은 질문에 어느 문서를 볼지. 팀원 온보딩용.
 1. `.work-log/current.md` — 세션별 최신 진행 상황. **이 문서보다 항상 최신.** 최신 수치·다음 할 일은 여기.
-2. `docs/yongsang/congestion_label_redesign.md` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거. 라벨 관련 질문은 여기가 authoritative (`congestion_label_criteria.md`는 구 정의).
+2. `docs/yongsang/congestion_label_redesign.{md,html}` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거(Cisco/ITU-T Y.1541/G.114/RFC 4594). 라벨 관련 질문은 여기가 authoritative. html=정의·근거 요약, md=세션 로그까지 전체 (`congestion_label_criteria.{md,html}`는 구 정의, archived).
 3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석 (정본). 각 feature 상세(계산·스무딩·스케일러·왜 라벨 축 아닌지)는 `docs/yongsang/model_features.{md,html}`.
 4. `docs/yongsang/ap_crash_analysis.md` — AP 반복 크래시 원인 분석.
 5. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포 재설계(staged → unified If 노드 → INT8 재조립). Pi latency 주장은 이 문서 결론을 따른다.
