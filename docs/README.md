@@ -22,10 +22,10 @@
 
 | 알고 싶은 것 | 어디를 보면 되나 |
 |---|---|
-| **왜 이런 라벨(정상/경고/혼잡/심각)을 정했나** | `congestion_label_redesign.{md,html}` — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(Cisco/ITU-T Y.1541/G.114/RFC 4594), §4 "조합 = max" |
+| **왜 이런 라벨(정상/경고/혼잡/심각)을 정했나** | `congestion_label_redesign.{md,html}` — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max" |
 | **congestion_score는 어떻게 계산하나** | `congestion_label_redesign.{md,html}` §3~4 + `collect_metrics.py`의 `calculate_scores()`/`ANCHORS` (코드 정본) |
 | **7개 feature 각각이 뭔가 / 계산·스무딩·스케일러** | **`docs/yongsang/model_features.{md,html}`** — feature 레퍼런스 (정본은 `project/utils/ap_features.py`) |
-| **왜 latency·jitter를 모델 입력에서 뺐나** | `model_features.md` §3 + `congestion_label_redesign.md` §5 — 정답 leakage + 배포 시점엔 없는 측정 |
+| **왜 latency·jitter를 모델 입력에서 뺐나** | `model_features.{md,html}` §3 + `congestion_label_redesign.{md,html}` §5 — 정답 leakage + 배포 시점엔 없는 측정 |
 | **왜 feature가 7개인가 (9→6→7), `sta_tx_bitrate_mean`은 왜** | `model_features.md` §2(7번)·§5 + `.work-log/current.md` "2026-08-29 2차" |
 | **왜 `class-weight-power=0.0`인가** | 아티팩트 "Class-Weight-Power Zero" (`.work-log/current.md` 4~5차 체크포인트에 링크·표) |
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
@@ -60,7 +60,7 @@
 
 | 문서 | 상태 |
 |---|---|
-| `congestion_label_criteria.{md,html}` | 옛 라벨 정의(9-feature·가중합). `congestion_label_redesign.md`가 대체. 상단에 archived 배너. |
+| `congestion_label_criteria.{md,html}` | 옛 라벨 정의(가중합 4 sub-score 시절). `congestion_label_redesign.{md,html}`가 대체. 문서 전체 stale — 상단 배너 참고. |
 | `README_AP_V2.md` | 9-feature·가중합 시절. stale (내용은 redirect 스텁으로 축약됨). |
 | `dummy_data_spec.md` | 1학기, 시뮬레이터 데이터 전 임시 스펙. |
 | `docs/yongsang/result_text_analysis.md` | `yongsang` 브랜치 결과 분석. 이 브랜치와 무관. |
