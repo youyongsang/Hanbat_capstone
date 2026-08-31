@@ -71,6 +71,7 @@ project/models/ap_early_exit_lstm.py    APEarlyExitLSTM (EarlyExitLSTM 상속, i
 project/models/early_exit_lstm.py       EarlyExitLSTM 베이스, multi_exit_loss(weights 파라미터)
 project/utils/ap_features.py            AP_FEATURE_COLUMNS = 7개 feature (authoritative)
 project/utils/ap_dataloader.py          windowed CSV → DataLoader
+docs/yongsang/model_features.{md,html}  7개 feature 레퍼런스 (계산·스무딩·스케일러·라벨 축 vs 모델 입력·변천)
 docs/yongsang/congestion_label_redesign.md  현행 라벨 정의 (max 앵커 + victim 프로브) ← 라벨 관련은 이 문서가 authoritative
 docs/yongsang/ap_crash_analysis.md      AP(Opal) 반복 크래시 원인 분석
 docs/yongsang/onnx_early_exit_redesign.md  ONNX Early Exit 배포 재설계 (staged → unified If 노드 → INT8 재조립)
@@ -205,7 +206,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 0. `docs/README.md` — **문서 안내 (질문 → 문서 매핑).** "왜 이런 라벨을 정했나" 같은 질문에 어느 문서를 볼지. 팀원 온보딩용.
 1. `.work-log/current.md` — 세션별 최신 진행 상황. **이 문서보다 항상 최신.** 최신 수치·다음 할 일은 여기.
 2. `docs/yongsang/congestion_label_redesign.md` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거. 라벨 관련 질문은 여기가 authoritative (`congestion_label_criteria.md`는 구 정의).
-3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석.
+3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석 (정본). 각 feature 상세(계산·스무딩·스케일러·왜 라벨 축 아닌지)는 `docs/yongsang/model_features.{md,html}`.
 4. `docs/yongsang/ap_crash_analysis.md` — AP 반복 크래시 원인 분석.
 5. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포 재설계(staged → unified If 노드 → INT8 재조립). Pi latency 주장은 이 문서 결론을 따른다.
 6. `docs/capstone1_summary.html` — 1학기(4-feature 시뮬레이션) 활동·지표 정리. `docs/yongsang/capstone2_vacation_summary.html` — 2학기 방학(2026-08-21~30) 개발 흐름 정리(데이터 실측·라벨 재설계 2회·power=0.0 재검증·SDN 논문 재구현·라이브 데모·되돌린 결정 4건).

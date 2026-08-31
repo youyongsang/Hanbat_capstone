@@ -24,8 +24,9 @@
 |---|---|
 | **왜 이런 라벨(정상/경고/혼잡/심각)을 정했나** | `congestion_label_redesign.md` — §1 "왜 재설계하나"(순환논리), §3 "sub-score 표준 문턱"(Cisco/ITU-T), §4 "조합 = max" |
 | **congestion_score는 어떻게 계산하나** | `congestion_label_redesign.md` §3~4 + `collect_metrics.py`의 `calculate_scores()`/`ANCHORS` (코드 정본) |
-| **왜 latency·jitter를 모델 입력에서 뺐나** | `congestion_label_redesign.md` §5 "모델 입력 feature 재정의" — 정답 leakage + 배포 시점엔 없는 측정 |
-| **왜 feature가 7개인가, `sta_tx_bitrate_mean`은 왜** | `project/utils/ap_features.py` 상단 주석 (변천 기록) + `.work-log/current.md` "2026-08-29 2차" |
+| **7개 feature 각각이 뭔가 / 계산·스무딩·스케일러** | **`docs/yongsang/model_features.{md,html}`** — feature 레퍼런스 (정본은 `project/utils/ap_features.py`) |
+| **왜 latency·jitter를 모델 입력에서 뺐나** | `model_features.md` §3 + `congestion_label_redesign.md` §5 — 정답 leakage + 배포 시점엔 없는 측정 |
+| **왜 feature가 7개인가 (9→6→7), `sta_tx_bitrate_mean`은 왜** | `model_features.md` §2(7번)·§5 + `.work-log/current.md` "2026-08-29 2차" |
 | **왜 `class-weight-power=0.0`인가** | 아티팩트 "Class-Weight-Power Zero" (`.work-log/current.md` 4~5차 체크포인트에 링크·표) |
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
 | **ONNX를 왜 이렇게 배포했나** (staged→unified If→INT8 재조립) | `docs/yongsang/onnx_early_exit_redesign.{md,html}` |
@@ -72,6 +73,6 @@
 ## HTML로 읽기 좋은 것
 
 브라우저로 열면 표·차트가 렌더된다:
-`capstone2_vacation_summary.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html` · `docs/capstone1_summary.html`(1학기)
+`capstone2_vacation_summary.html` · `model_features.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html` · `docs/capstone1_summary.html`(1학기)
 
 발행 아티팩트 (링크는 `.work-log/current.md`): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".

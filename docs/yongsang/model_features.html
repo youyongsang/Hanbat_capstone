@@ -1,0 +1,403 @@
+<title>모델 입력 feature 기준 (7-feature)</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #f5f7fa;
+    --panel:        #fcfcfb;
+    --panel-raise:  #ffffff;
+    --ink:          #12151b;
+    --ink-2:        #4b5566;
+    --ink-mute:     #7c8494;
+    --rule:         #e2e6ec;
+    --rule-strong:  #c9d0da;
+    --accent:       #2a78d6;
+    --accent-2:     #eb6834;
+    --accent-ink:   #ffffff;
+    --good:         #0ca30c;
+    --keep:         #0ca30c;
+    --drop:         #d03b3b;
+    --shadow:       0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+      --good:#3ec13e; --keep:#3ec13e; --drop:#e2564f;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+    --good:#3ec13e; --keep:#3ec13e; --drop:#e2564f;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 4rem 1.75rem 6rem;
+  }
+
+  header.page-head {
+    max-width: 720px;
+    margin-bottom: 3rem;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 1.5rem + 1.6vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.18;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+  }
+
+  .page-head p {
+    color: var(--ink-2);
+    font-size: 1.03rem;
+    margin: 0 0 0;
+    max-width: 64ch;
+  }
+
+  section { margin-top: 3.5rem; }
+
+  section > h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  section > h2 .step {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+  section > .lede {
+    color: var(--ink-2);
+    max-width: 70ch;
+    margin: 0 0 1.5rem;
+  }
+
+  code, .k {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.86em;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.05em 0.32em;
+    color: var(--ink-2);
+  }
+
+  .callout {
+    display: flex;
+    gap: 0.85rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    font-size: 0.9rem;
+    color: var(--ink-2);
+    margin-top: 1.5rem;
+  }
+  .callout b { color: var(--ink); }
+  .callout.warn { border-left-color: var(--accent-2); }
+
+  table.grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+  }
+  table.grid th, table.grid td {
+    text-align: left;
+    padding: 0.6rem 0.7rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  table.grid thead th {
+    font-weight: 600;
+    color: var(--ink-mute);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  table.grid td.n, table.grid th.n { text-align: right; font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  table.grid td code { background: none; border: none; padding: 0; color: var(--ink); }
+  table.grid tbody tr:hover { background: color-mix(in oklab, var(--accent) 5%, transparent); }
+  .tw { overflow-x: auto; }
+
+  .keep { color: var(--keep); font-weight: 700; }
+  .drop { color: var(--drop); font-weight: 700; }
+
+  .feat {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.15rem 1.3rem 1.25rem;
+    margin-top: 1rem;
+    box-shadow: var(--shadow);
+  }
+  .feat h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.95rem;
+    margin: 0 0 0.15rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .feat h3 .idx { color: var(--ink-mute); font-size: 0.8rem; }
+  .feat h3 .tag {
+    font-family: "IBM Plex Sans KR", sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink-mute);
+  }
+  .feat h3 .tag.axis { color: var(--accent); border-color: var(--accent); }
+  .feat dl {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 0.3rem 0.9rem;
+    margin: 0.7rem 0 0;
+    font-size: 0.87rem;
+  }
+  .feat dt { color: var(--ink-mute); font-size: 0.8rem; }
+  .feat dd { margin: 0; color: var(--ink-2); }
+  .feat dd b { color: var(--ink); }
+
+  pre.diagram {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 6px;
+    padding: 1.2rem 1.4rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin-top: 1rem;
+  }
+  pre.diagram .a { color: #7fb3f0; }
+  pre.diagram .r { color: #f0a08a; }
+
+  footer.page-foot {
+    margin-top: 4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.82rem;
+    color: var(--ink-mute);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  footer.page-foot code { background: var(--panel); }
+
+  @media (max-width: 640px) {
+    .feat dl { grid-template-columns: 1fr; gap: 0.15rem; }
+    .feat dt { margin-top: 0.5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
+    <h1>모델 입력 feature 기준 (현행 7-feature)</h1>
+    <p>현행 2차 라인 <code>ap_metrics_v2_redesign2</code>의 모델 입력 7개 feature 레퍼런스. 각 feature가 무엇이고, 어디서 나오고, 어떻게 스무딩되고, 왜 이건 라벨 축이 아닌데 모델 입력인지 정리한다.</p>
+    <div class="callout warn"><span>⚑</span><span><b>라벨 입력 ≠ 모델 입력.</b> 라벨(<code>congestion_score</code>)은 victim 프로브(jitter·loss)와 ping(latency)으로 만든다. 모델은 그걸 <b>못 본다</b> — 모델의 일은 AP-side 텔레메트리(채널 상태)만 보고 "지금 victim QoS가 깨지고 있는가"를 예측하는 것이다. 그래서 정답을 만드는 축(latency/jitter/loss)은 입력에서 뺀다. 라벨 정의는 <code>docs/yongsang/congestion_label_redesign.md</code>. 옛 <code>congestion_label_criteria</code>는 4개 sub-score 가중합 시절이라 feature 관련해선 보지 말 것.</span></div>
+    <div class="callout"><span>ℹ</span><span>정본은 <code>project/utils/ap_features.py</code>의 <code>AP_FEATURE_COLUMNS</code>. 이 문서와 어긋나면 코드가 맞다.</span></div>
+  </header>
+
+  <section>
+    <h2><span class="step">01</span> 7개 feature (순서 고정)</h2>
+    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>10 폴링</b> — 텐서 shape <code>[1, 10, 7]</code>.</p>
+    <div class="tw">
+    <table class="grid">
+      <thead>
+        <tr><th class="n">#</th><th>feature</th><th>한 줄</th><th>원천</th><th>스무딩</th><th class="n">scaler min/max</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="n">1</td><td><code>throughput_mbps</code></td><td>채널 총 전송률</td><td><code>iw station dump</code> 바이트 카운터 델타</td><td>없음 (raw)</td><td class="n">0.0 / 177.83</td></tr>
+        <tr><td class="n">2</td><td><code>channel_occupancy_percent</code></td><td>채널 airtime 점유율</td><td><code>iw survey dump</code> busy/active 델타</td><td><b>3-폴링 median</b></td><td class="n">13.33 / 93.1</td></tr>
+        <tr><td class="n">3</td><td><code>tx_retry_ratio</code></td><td>재전송 비율</td><td><code>iw station dump</code> retries/failed/packets 델타</td><td><b>5-폴링 rolling</b> (denom ≥ 50)</td><td class="n">0.0 / 0.7593</td></tr>
+        <tr><td class="n">4</td><td><code>rssi_dbm</code></td><td>이번 폴링 station 평균 신호세기</td><td><code>iw station dump</code> <code>signal avg</code></td><td>없음 (raw)</td><td class="n">−57.0 / 0.0</td></tr>
+        <tr><td class="n">5</td><td><code>rssi_delta_db</code></td><td>직전 폴링 대비 RSSI 변화</td><td>폴링 간 차분</td><td>없음 (1차 차분)</td><td class="n">−43.0 / 37.0</td></tr>
+        <tr><td class="n">6</td><td><code>rssi_moving_avg_dbm</code></td><td>RSSI 이동평균</td><td>4번을 5-폴링 평균</td><td><b>5-폴링 평균</b></td><td class="n">−53.6 / −27.93</td></tr>
+        <tr><td class="n">7</td><td><code>sta_tx_bitrate_mean</code></td><td>실제 송신한 station들의 PHY rate 평균</td><td><code>iw station dump</code> <code>tx bitrate</code></td><td>없음 (활성 station만)</td><td class="n">0.0 / 150.0</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">02</span> feature별 상세</h2>
+
+    <div class="feat">
+      <h3><span class="idx">1</span> throughput_mbps <span class="tag">모델 입력</span></h3>
+      <dl>
+        <dt>계산</dt><dd><code>(rx_delta + tx_delta) 바이트 × 8 / 경과초 / 1e6</code>. 모든 station 합산.</dd>
+        <dt>의미</dt><dd>채널이 얼마나 바쁘게 데이터를 나르는가 — 부하 지표.</dd>
+        <dt>라벨 축 X</dt><dd><code>throughput_score</code>(상한 150)는 계산되지만 <code>max()</code>에 안 들어간다. label 2 vs 3 변별력이 없음(stress 평균 0.665 → 0.707). "빠르게 도는 것 자체는 혼잡이 아니다."</dd>
+        <dt>왜 입력</dt><dd>다른 feature를 해석하는 맥락. occ 60%가 5Mbps 때문인지 100Mbps 때문인지에 따라 의미가 다르다.</dd>
+      </dl>
+    </div>
+
+    <div class="feat">
+      <h3><span class="idx">2</span> channel_occupancy_percent <span class="tag axis">라벨 축 + 모델 입력</span></h3>
+      <dl>
+        <dt>계산</dt><dd><code>busy_delta / active_delta × 100</code> (survey 카운터 정상 증가 시). 카운터 리셋 시 현재 비율로 폴백. clamp [0, 100].</dd>
+        <dt>스무딩</dt><dd><code>instantaneous_fallback</code> 경로가 카운터 리셋 순간 100% 스파이크를 뱉어 <b>3-폴링 median</b>으로 안정화(<code>occ_history</code>). CSV·스코어·모델 입력 모두 median.</dd>
+        <dt>라벨 축</dt><dd><code>occupancy_score</code>가 <code>max()</code>의 한 축(앵커 40/55/75/90%).</dd>
+        <dt>왜 입력</dt><dd>배포 시 AP 텔레메트리로 available하니 정당. "occ 높으면 대개 혼잡"은 <b>맞는 shortcut</b>. 중요한 건 occ 60~72%인데 프로브가 깨진 행 — 거기선 모델이 retry/RSSI/bitrate/추세로 예측해야 한다.</dd>
+      </dl>
+    </div>
+
+    <div class="feat">
+      <h3><span class="idx">3</span> tx_retry_ratio <span class="tag">모델 입력</span></h3>
+      <dl>
+        <dt>계산</dt><dd><code>(tx_retries + tx_failed) 델타 합 / (그 합 + tx_packets 델타 합)</code>, 최근 <b>5-폴링 rolling</b>. 분모가 50 미만이면 표본 부족 → 0.0.</dd>
+        <dt>왜 비율</dt><dd>절대 개수는 폴링 주기에 비례해 흔들린다(4초 = 1초 × 4). 비율이면 주기 무관. 9→6 축소 때 <code>tx_retries</code> + <code>tx_failed</code> 2개를 이 하나로 통합.</dd>
+        <dt>라벨 축 X</dt><dd>이 2.4GHz AP는 <b>idle에도 retry_ratio med 18% / p90 36%</b>(자는 폰 백그라운드 버스트)인데 프로브는 완벽. retry는 jitter/loss의 <i>원인</i>이지 QoS 피해의 독립 증거가 아니다. → <code>max()</code>에서 제외.</dd>
+        <dt>왜 입력</dt><dd>"재전송 많다 → victim 곧 깨질 것"이라는 선행 신호.</dd>
+      </dl>
+    </div>
+
+    <div class="feat">
+      <h3><span class="idx">4</span> rssi_dbm <span class="tag">모델 입력</span></h3>
+      <dl>
+        <dt>계산</dt><dd>이번 폴링에 잡힌 각 station <code>signal avg</code>의 평균.</dd>
+        <dt>의미</dt><dd>링크 품질. 낮으면 저MCS → 같은 데이터에 airtime 더 씀 → 혼잡 가속.</dd>
+        <dt>역할</dt><dd>victim 피해의 원인 쪽 신호. 라벨 축 아님.</dd>
+      </dl>
+    </div>
+
+    <div class="feat">
+      <h3><span class="idx">5</span> rssi_delta_db <span class="tag">모델 입력</span></h3>
+      <dl>
+        <dt>계산</dt><dd><code>현재 rssi − 직전 폴링 rssi</code>. 첫 폴링은 0.</dd>
+        <dt>의미</dt><dd>신호가 급격히 나빠지는 중인지(station 이동, 간섭 유입) — 추세 feature.</dd>
+      </dl>
+    </div>
+
+    <div class="feat">
+      <h3><span class="idx">6</span> rssi_moving_avg_dbm <span class="tag">모델 입력</span></h3>
+      <dl>
+        <dt>계산</dt><dd>최근 <b>5-폴링</b> RSSI 평균(<code>rssi_history</code>).</dd>
+        <dt>의미</dt><dd>단일 폴링 노이즈를 걷어낸 링크 품질 기저선. 4·5·6번은 서로 상관이 높아 실질 정보는 ~1.5개 축.</dd>
+      </dl>
+    </div>
+
+    <div class="feat">
+      <h3><span class="idx">7</span> sta_tx_bitrate_mean <span class="tag">모델 입력 · 2026-08-29 추가</span></h3>
+      <dl>
+        <dt>계산</dt><dd><code>iw station dump</code>의 <code>tx bitrate</code>(PHY rate)를 <b>이번 폴링에 실제로 송신한 station</b>(tx_packets 증가)만 골라 평균. 활성 station 없으면 0.0. 연결만 되고 트래픽 없는 station은 MCS 0 바닥에 stale하게 물려 있어 제외.</dd>
+        <dt>왜 추가</dt><dd>occ 60~72%에서 나머지 6개 feature 평균이 label 2 vs 3 사이에 <b>완전히 동일</b>해진다(occ 66/65, thr 66/66, retry 0.30/0.30, rssi −35/−34). 여기서 이 feature가 두 라벨을 <b>Cohen's d = 0.52</b>로 가른다. 5개 랜덤 시드 검증에서 exit-loss 가중치와 무관하게 7-feature가 6-feature보다 Label3 F1 +5~11pt.</dd>
+        <dt>방향 주의</dt><dd>가설은 "혼잡 → rate collapse(하락)"였으나 <b>실측은 반대</b> — 부하 테스트라 혼잡 구간에서 기기가 데이터를 계속 밀어넣어 오히려 오른다(한가하면 관리 프레임만 잡혀 저속). 방향이 반대일 뿐 변별력은 유효.</dd>
+        <dt>min은?</dt><dd><code>sta_tx_bitrate_min</code>은 CSV 기록만, 미사용(위 검증에서 mean만큼 신호가 뚜렷하지 않았음).</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">03</span> 라벨 축 vs 모델 입력</h2>
+    <p class="lede">모델이 계산하는 sub-score는 6개(<code>occupancy·jitter·loss·latency·throughput·retry</code>). 그중 <b>4개</b>(occupancy, jitter, loss, latency)만 <code>max()</code>에 들어가 라벨이 된다. 6개 전부 <code>model_excluded_columns</code>라 모델 입력엔 안 들어간다.</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>컬럼</th><th class="n">라벨 축?</th><th class="n">모델 입력?</th><th>이유</th></tr></thead>
+      <tbody>
+        <tr><td><code>latency_ms</code> (ping RTT)</td><td class="n">✅ <span class="mono">latency_score</span></td><td class="n"><span class="drop">✗ 제거</span></td><td>라벨을 만드는 축. 모델이 정답을 그대로 받는 꼴</td></tr>
+        <tr><td><code>jitter_ms</code> (ping mdev)</td><td class="n">—</td><td class="n"><span class="drop">✗ 제거</span></td><td>victim 프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage</td></tr>
+        <tr><td><code>probe_jitter_ms</code></td><td class="n">✅ <span class="mono">jitter_score</span></td><td class="n"><span class="drop">✗</span></td><td>victim 실측 = "정답". 배포 시 프로브 없음</td></tr>
+        <tr><td><code>probe_loss_pct</code></td><td class="n">✅ <span class="mono">loss_score</span></td><td class="n"><span class="drop">✗</span></td><td>〃</td></tr>
+        <tr><td><code>channel_occupancy_percent</code></td><td class="n">✅ <span class="mono">occupancy_score</span></td><td class="n"><span class="keep">✓ 유지</span></td><td>배포 시 available. "맞는 shortcut"</td></tr>
+        <tr><td><code>tx_retry_ratio</code></td><td class="n">✗ (계산만)</td><td class="n"><span class="keep">✓ 유지</span></td><td>배포 시 available. 선행 신호</td></tr>
+        <tr><td><code>throughput_mbps</code></td><td class="n">✗ (계산만)</td><td class="n"><span class="keep">✓ 유지</span></td><td>부하 맥락</td></tr>
+        <tr><td><code>connected_clients</code></td><td class="n">✗</td><td class="n"><span class="drop">✗</span></td><td>우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout"><span>ℹ</span><span><code>dataset_summary.json</code>의 <code>model_excluded_columns</code> (19개): <span class="mono">timestamp, scenario, poll_interval_s, channel_occupancy_method, packet_loss_udp_percent, connected_clients, latency_ms, probe_jitter_ms, probe_loss_pct, probe_ok, tx_retx_delta, tx_packets_delta, throughput_score, occupancy_score, jitter_score, loss_score, latency_score, retry_score, congestion_score</span></span></div>
+  </section>
+
+  <section>
+    <h2><span class="step">04</span> 정규화 (scaler)</h2>
+    <p class="lede"><code>(x − min) / (max − min)</code>, <code>[0, 1]</code> clip.</p>
+    <ul style="color:var(--ink-2); font-size:0.9rem; max-width:70ch;">
+      <li><b>min/max는 train split에서만</b> 구해서 <code>data/ap_metrics_v2_redesign2/scaler_params.json</code>에 저장. val/test·실시간 추론은 <b>그 파일을 그대로</b> 써야 한다 — 재라벨링만 하고 재변환 안 하면 라벨과 스케일러가 어긋난다.</li>
+      <li>windowed 변환: window 10, stride 1, 시나리오별 첫 행 1개 drop.</li>
+      <li>train 1437 / val 308 / test 310 샘플, shape <code>(N, 10, 7)</code>. test label 분포 0:95 · 1:67 · 2:117 · 3:31.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step">05</span> feature 변천</h2>
+    <pre class="diagram">1학기            4개   RPS, occupancy, packet_loss, latency  (시뮬레이터 데이터)
+
+초기 ap_metrics_v2   9개   throughput, occupancy, <span class="r">latency_ms</span>, <span class="r">jitter_ms</span>,
+                          <span class="r">tx_retries_delta</span>, <span class="r">tx_failed_delta</span>, rssi×3
+                            │  라벨 재설계 (2026-08-27)
+                            │   <span class="r">−2</span>  latency_ms, jitter_ms      (정답 leakage)
+                            │   <span class="r">−1</span>  tx_retries + tx_failed  →  tx_retry_ratio
+                            ▼
+redesign          6개   throughput, occupancy, tx_retry_ratio, rssi×3
+                            │   <span class="a">+1</span>  sta_tx_bitrate_mean   (2026-08-29, occ 60~72% 변별)
+                            ▼
+redesign2         7개   ← 현행    (9 − 2 − 1 + 1 = 7)</pre>
+    <div class="callout"><span>ℹ</span><span>상세: <code>project/utils/ap_features.py</code> 상단 주석, <code>.work-log/current.md</code> 2026-08-29 체크포인트.</span></div>
+  </section>
+
+  <footer class="page-foot">
+    <span>정본: <code>project/utils/ap_features.py</code> · 라벨 정의: <code>docs/yongsang/congestion_label_redesign.md</code> · 계산 구현: <code>project/scripts/collect_metrics.py</code></span>
+    <span>데모 계약: <code>project/demo/API.md</code> §3 · 기계 판독용: <code>project/data/ap_metrics_v2_redesign2/dataset_summary.json</code></span>
+    <span>markdown 원본: <code>docs/yongsang/model_features.md</code></span>
+  </footer>
+
+</main>
