@@ -217,7 +217,29 @@
     </table>
     </div>
 
-    <div class="callout"><span>ℹ</span><span>앵커 값은 "consensus 근처"로 잡은 것 — 논문 인용 시 정확한 조항 확인 필요 (Y.1541 표, G.114 §, Cisco 문서 버전 등).</span></div>
+    <h3>실측값이 앵커 대비 어디쯤 (2026-08-27 캘리브레이션)</h3>
+    <p class="lede"><code>정상 &lt; 0.25 · 경고 &lt; 0.50 · 혼잡 &lt; 0.75 · 심각 ≥ 0.75</code>. 60/60 = 대표 부하.</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">완전</th><th>idle</th><th>60/60 부하 (med → peak)</th><th>소패킷 부하 (med → peak)</th></tr></thead>
+      <tbody>
+        <tr><td><b>occupancy</b> (%)</td><td class="n">40</td><td class="n">55</td><td class="n">75</td><td class="n">90</td><td>med 17 · <span class="lbl l0">정상</span></td><td>med 63 <span class="lbl l2">혼잡</span> → max 87 <span class="lbl l3">심각</span></td><td>med 77 <span class="lbl l3">심각</span> → max 90 <span class="lbl l3">완전</span></td></tr>
+        <tr><td><b>probe jitter</b> (ms)</td><td class="n">20</td><td class="n">30</td><td class="n">50</td><td class="n">100</td><td>med 1 / max 3.5 · <span class="lbl l0">정상</span></td><td>med 6 → max 19 · <span class="lbl l0">정상</span> (앵커 안 건드림)</td><td>med 10 → max 11 · <span class="lbl l0">정상</span></td></tr>
+        <tr><td><b>probe loss</b> (%)</td><td class="n">0.5</td><td class="n">1</td><td class="n">5</td><td class="n">10</td><td>0 · <span class="lbl l0">정상</span></td><td>med 0.27 <span class="lbl l0">정상</span> → max 7.4 <span class="lbl l3">심각</span></td><td>p90 4.3 <span class="lbl l2">혼잡</span> → max 8.2 <span class="lbl l3">심각</span></td></tr>
+        <tr><td><b>latency</b> 편도=RTT/2 (ms)</td><td class="n">30</td><td class="n">60</td><td class="n">150</td><td class="n">400</td><td>RTT 3 → OW ~1.5 · <span class="lbl l0">정상</span></td><td>RTT med 53→OW 27 <span class="lbl l0">정상</span> · p90 186→OW 93 <span class="lbl l2">혼잡</span> · max 291→OW 146 <span class="lbl l2">혼잡</span>(심각 직전)</td><td>RTT med 146→OW 73 <span class="lbl l2">혼잡</span> → max 247→OW 124 <span class="lbl l2">혼잡</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <ul>
+      <li><b>occupancy가 주력 축</b> — idle 17% 바닥, 부하에서 혼잡~심각.</li>
+      <li><b>jitter 축은 이 셋업에서 거의 안 뜬다</b> — peak(19ms)도 경고(20ms) 문턱 못 넘음(문서에 명시된 한계).</li>
+      <li><b>loss·latency는 peak에서만 심각/심각직전</b> — med는 거의 정상, 부하 셀 때 순간 튐.</li>
+      <li><b>latency는 ping RTT 측정값, 채점은 ÷2 한 편도(OW)</b> — 위 표 OW가 실제 채점값.</li>
+      <li><b>"실패=max" 오버라이드</b> (§4): ping 무응답 / 프로브 stale → 그 축 곧장 1.0. 45/45 런 프로브 생존율 26/75라 심각의 다수가 이 경로.</li>
+      <li>정보용 축(라벨 아님): <code>retry</code> idle 18~36% / 부하 30~45% — RF 험한 2.4GHz라 idle에도 혼잡~심각대(라벨 축에서 뺀 이유), <code>throughput</code> 60/60 ≈ 0.4.</li>
+    </ul>
+
+    <div class="callout"><span>ℹ</span><span>앵커 출처는 <b>표준 원문 대조 완료 (2026-08-31)</b> — 심각 앵커는 표준 직접 지지(§ 표 참조), 경고·혼잡은 Cisco voice 값/보간, RFC 4594·G.113은 앵커 근거 부적합.</span></div>
   </section>
 
   <section>
@@ -235,7 +257,7 @@ label = 0  if score &lt; 0.25       <span class="c"># 정상</span>
         3  if score ≥ 0.75       <span class="c"># 심각</span></pre>
 
     <div class="callout key"><span>▸</span><span><b><span class="lbl l3">심각</span> = 최소 한 축이 발표된 심각 문턱을 넘었다.</b><br>
-    occupancy ≥ 75% (WLAN 가이드) <b>OR</b> 프로브 jitter ≥ 50ms (Y.1541) <b>OR</b> 프로브 loss ≥ 5% (Cisco QoS) <b>OR</b> ping RTT ≥ 150ms (G.114).<br>
+    occupancy ≥ 75% (Aruba) <b>OR</b> 프로브 jitter ≥ 50ms (Y.1541) <b>OR</b> 프로브 loss ≥ 5% (Cisco QoS) <b>OR</b> ping 편도 ≥ 150ms = RTT ≥ 300ms (G.114).<br>
     심사 방어: "이 라벨 왜 이렇게?" → "각 축을 국제 표준 문턱에 매핑하고, 하나라도 넘으면 심각으로 봤다. 가중치는 없다."</span></div>
 
     <h3><code>max</code>가 놓치는 것 (알려진 단순화)</h3>
