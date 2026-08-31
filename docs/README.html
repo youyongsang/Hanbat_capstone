@@ -70,6 +70,9 @@
   .foot{margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);
     font-family:var(--m);font-size:12px;color:var(--muted)}
   .foot a{color:var(--muted);text-decoration:underline}
+  code a{color:var(--accent);text-decoration:none}
+  code a:hover{text-decoration:underline}
+  code a[data-ext]::after{content:" \2197";font-size:.8em;opacity:.55}
   @media (max-width:560px){.card{grid-template-columns:1fr}.card .n{display:none}}
 </style>
 </head><body>
@@ -175,7 +178,69 @@
 
   <div class="foot">
     이 파일은 <a href="README.md"><code>docs/README.md</code></a>의 HTML 판. 내용이 어긋나면 <code>.md</code>가 정본.
+    <br>파일명을 눌러 이동 — <code>.html</code>은 이 폴더 기준 상대링크, 나머지는 GitHub(<code>capstoneDesign2</code>)로 연다(↗).
   </div>
 
 </div>
+
+<script>
+/* 문서명 <code> 를 실제 링크로. 로컬(file://)에서 .html은 상대경로로,
+   .md/.py/.txt/.csv/.pptx 는 GitHub blob 로 연다. */
+(function () {
+  var REPO = "https://github.com/youyongsang/Hanbat_capstone/blob/capstoneDesign2/";
+  var BARE = {                       // 경로 없이 파일명만 적힌 것들
+    "CLAUDE.md": "CLAUDE.md",
+    "README_AP_V2.md": "project/README_AP_V2.md",
+    "dummy_data_spec.md": "docs/dummy_data_spec.md",
+    "API.md": "project/demo/API.md",
+    "terminal_command_guide.md": "docs/terminal_command_guide.md",
+    "current.md": ".work-log/current.md"
+  };
+  var RESULT_DIR = "project/results/yongsang/";
+
+  function htmlHref(p) {
+    p = p.replace(/^docs\//, "");                 // docs/x.html -> x.html
+    if (p.indexOf("/") < 0 &&
+        p !== "README.html" && p !== "capstone1_summary.html") {
+      p = "yongsang/" + p;                        // 나머지 bare .html 은 yongsang/
+    }
+    return p;
+  }
+
+  function resolve(txt) {
+    txt = txt.trim();
+    if (txt.indexOf("*") >= 0) return null;           // glob pattern, not a file
+    if (/^\.[a-z]+$/.test(txt)) return null;          // bare ".md" / ".html"
+    var brace = txt.match(/^(.+?)\.\{([a-z,]+)\}$/);   // x.{md,html} / x.{txt,csv}
+    if (brace) {
+      var opts = brace[2].split(",");
+      var pick = opts.indexOf("html") >= 0 ? "html" : opts[0];
+      return resolve(brace[1] + "." + pick);
+    }
+    if (/\.html$/.test(txt)) return { href: htmlHref(txt), ext: false };
+    if (/\.(md|py|txt|csv|json|pptx|sh)$/.test(txt)) {
+      if (txt.indexOf("/") >= 0)  return { href: REPO + encodeURI(txt), ext: true };
+      if (BARE[txt])              return { href: REPO + BARE[txt], ext: true };
+      if (/\.txt$/.test(txt) &&
+          (/^ap_(v2_redesign2|baseline|sdn|model_comparison)/.test(txt)))
+        return { href: REPO + RESULT_DIR + txt, ext: true };
+    }
+    return null;
+  }
+
+  try {
+    document.querySelectorAll(".wrap code").forEach(function (c) {
+      if (c.closest("a") || c.querySelector("a")) return;
+      var r = resolve(c.textContent);
+      if (!r) return;
+      var a = document.createElement("a");
+      a.href = r.href;
+      a.textContent = c.textContent;
+      if (r.ext) { a.target = "_blank"; a.rel = "noopener"; a.dataset.ext = "1"; }
+      c.textContent = "";
+      c.appendChild(a);
+    });
+  } catch (e) { /* 링크화 실패해도 페이지는 그대로 */ }
+})();
+</script>
 </body></html>
