@@ -114,7 +114,7 @@ congestion_score = max(occupancy_score, jitter_score, loss_score, latency_score)
 label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계는 1차·초기와 동일)
 ```
 
-- 각 축을 4개 앵커(경고 0.25 / 혼잡 0.5 / 심각 0.75 / 완전 1.0)에 piecewise-linear 매핑, [0,1] clamp. 앵커 값은 **국제 표준**에서: occupancy는 Cisco/Aruba WLAN 설계 가이드(40/55/75/90%), jitter·loss·latency는 ITU-T Y.1541 / G.114 / RFC 4594 / Cisco Enterprise QoS.
+- 각 축을 4개 앵커(경고 0.25 / 혼잡 0.5 / 심각 0.75 / 완전 1.0)에 piecewise-linear 매핑, [0,1] clamp. **심각(0.75) 앵커는 표준이 직접 지지** (원문 대조 2026-08-31): jitter 50ms = ITU-T Y.1541 Class 0/1 IPDV, latency 150/400ms = ITU-T G.114 편도 티어 경계, occupancy 75% = Aruba WLAN 가이드, loss 5% = Cisco Enterprise QoS. 경고·혼잡 앵커는 Cisco voice 값(jitter 30ms, loss 1%, latency 150ms) 또는 그 아래 보간. **RFC 4594·G.113은 앵커 수치 근거 아님** (정성 등급 / E-model 계수) — 상세는 `congestion_label_redesign.md` §3.
 - `jitter_score`·`loss_score`는 **victim 프로브**(부하와 별개로 흘리는 300kbps 경량 UDP 스트림, `iperf3 -u -b 300k`)가 그 스트림 자체에서 겪은 IPDV/손실을 측정한 값. "이 혼잡 속에서 VoIP 통화 한 통이 얼마나 깨지나". `latency_score`는 ping RTT/2 (편도 추정).
 - **조합이 `max`인 이유**: 표준은 "각 축이 언제 나쁜가"는 주지만 "어떻게 합치나"는 안 준다. `max`면 가중치 논쟁이 원천 봉쇄됨 — `label 3 = 최소 한 축이 표준 심각 문턱 돌파`.
 - **"실패 = max"**: 채널이 실제로 바쁜 상태(`throughput ≥ 3Mbps or occupancy ≥ 40%`)에서 victim 경로가 완전히 죽으면(ping 무응답 / 프로브 stale) 해당 축을 1.0으로 본다 — 안 그러면 occupancy 단독으로 조용히 되돌아감. 유선 SSH로 AP 텔레메트리를 방금 정상 파싱했으므로 AP는 살아있고 무선 채널만 막힌 것.
@@ -205,7 +205,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 0. `docs/README.md` — **문서 안내 (질문 → 문서 매핑).** "왜 이런 라벨을 정했나" 같은 질문에 어느 문서를 볼지. 팀원 온보딩용.
 1. `.work-log/current.md` — 세션별 최신 진행 상황. **이 문서보다 항상 최신.** 최신 수치·다음 할 일은 여기.
-2. `docs/yongsang/congestion_label_redesign.{md,html}` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거(Cisco/ITU-T Y.1541/G.114/RFC 4594). 라벨 관련 질문은 여기가 authoritative. html=정의·근거 요약, md=세션 로그까지 전체 (`congestion_label_criteria.{md,html}`는 구 정의, archived).
+2. `docs/yongsang/congestion_label_redesign.{md,html}` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거(ITU-T Y.1541/G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, §3에 표준 원문 대조 결과). 라벨 관련 질문은 여기가 authoritative. html=정의·근거 요약, md=세션 로그까지 전체 (`congestion_label_criteria.{md,html}`는 구 정의, archived).
 3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석 (정본). 각 feature 상세(계산·스무딩·스케일러·왜 라벨 축 아닌지)는 `docs/yongsang/model_features.{md,html}`.
 4. `docs/yongsang/ap_crash_analysis.md` — AP 반복 크래시 원인 분석.
 5. `docs/yongsang/onnx_early_exit_redesign.md` — ONNX Early Exit 배포 재설계(staged → unified If 노드 → INT8 재조립). Pi latency 주장은 이 문서 결론을 따른다.

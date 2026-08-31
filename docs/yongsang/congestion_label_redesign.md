@@ -61,12 +61,12 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 **라벨 축 (4개)** — `congestion_score = max(이 4개)`:
 
-| 축 | 경고 (0.25) | 혼잡 (0.5) | 심각 (0.75) | 완전 (1.0) | 출처 |
+| 축 | 경고 (0.25) | 혼잡 (0.5) | 심각 (0.75) | 완전 (1.0) | 출처 (표준 원문 대조 2026-08-31) |
 |---|---:|---:|---:|---:|---|
-| `occupancy_score` (채널 airtime %) | 40% | 55% | 75% | 90% | Cisco/Aruba WLAN 설계 가이드 (>50% 경고, >75% 혼잡), Ekahau 실무 기준 |
-| `jitter_score` (프로브 IPDV) | 20ms | 30ms | 50ms | 100ms | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms), RFC 4594 (텔레포니 ~30ms), Cisco (voice < 30ms) |
-| `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss < 1%, > 5% 사용 불가), ITU-T G.113 App.I, ITU-T Y.1541 |
-| `latency_score` (ping **편도 추정** = RTT/2) | 30ms | 60ms | 150ms | 400ms | ITU-T G.114 (편도 150/400). **앵커는 편도 규격이고 ping은 RTT를 재므로 `calculate_scores`가 `latency_ms/2`를 넣는다** (2026-08-27 밤: RTT 생값 → 편도 앵커라 RTT 150ms(≈편도 75ms)가 "심각"으로 채점, label 3 79% 과다 → 수정. 부하행 label 3 111→85, label 2 28→54). idle RTT med ~2ms |
+| `occupancy_score` (채널 airtime %) | 40% | 55% | 75% | 90% | **심각=75, 경고≈50**: Aruba WLAN 설계 가이드(~50% good threshold, >75% 문제). 40/55/90은 그 근처 보간 — 4-티어 정식 표준은 아님 |
+| `jitter_score` (프로브 IPDV) | 20ms | 30ms | 50ms | 100ms | **심각=50ms**: ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms). **경고/혼잡 20/30ms**: Cisco Enterprise QoS (voice jitter ≤ 30ms). (RFC 4594는 텔레포니를 "jitter Very Low" 정성 등급으로만 규정 §2.3, 수치는 Y.1541로 위임 — 30ms는 Cisco 값) |
+| `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss ≤ 1%, > 5% 사용 불가). ITU-T Y.1541 Class 0/1 IPLR ≤ 0.1%는 이보다 **엄격** — 이 스케일은 Cisco 실무 기준. (G.113 App.I는 E-model용 코덕별 Ie/Bpl 표라 손실 문턱을 규정하지 않음 — 인용에서 제외) |
+| `latency_score` (ping **편도 추정** = RTT/2) | 30ms | 60ms | 150ms | 400ms | **심각=150ms, 완전=400ms**: ITU-T G.114 (편도 전송시간 <150 transparent / 150–400 acceptable-with-awareness / >400 unacceptable). 30/60ms는 그 아래 보간. **앵커는 편도 규격이고 ping은 RTT를 재므로 `calculate_scores`가 `latency_ms/2`를 넣는다** (2026-08-27 밤: RTT 생값 → 편도 앵커라 RTT 150ms(≈편도 75ms)가 "심각"으로 채점, label 3 79% 과다 → 수정. 부하행 label 3 111→85, label 2 28→54). idle RTT med ~2ms |
 
 **라벨 축 아님 (정보용 컬럼 + 모델 입력)**:
 
@@ -241,7 +241,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 
 - **latency 축**: ping 타겟을 폰→노트북으로 바꾼 뒤 idle RTT ~2ms로 깨끗해짐(폰은 전력절약으로 31~295ms 노이즈였음). 45/45 런에서 부하 시 50~250ms(스파이크 814ms)로 잘 반응. 단 노트북이 로밍하면 타겟이 사라지므로 수집 중 노트북을 Opal에 고정 필수(집 공유기 프로필 수동 연결).
 - **프로브 생존율**: 45/45 부하 중 `probe_ok` 26/75. 나머지는 "실패=max"로 커버되지만, 프로브가 더 자주 살아남게 하려면 `PROBE_RATE`/`PROBE_LEN`/재시도 간격 튜닝 여지.
-- **표준 문턱의 출처 정밀화**: 위 표의 앵커 값은 "consensus 근처"로 잡은 것. 실제 인용 시 정확한 문서·조항 확인 필요 (Y.1541 표 X, G.114 §Y, Cisco 문서 버전 등).
+- **표준 문턱의 출처** (2026-08-31 원문 대조 완료): 심각 앵커는 표준 지지됨 — jitter 50ms = Y.1541 Class 0/1 IPDV, latency 150/400ms = G.114 티어 경계, occupancy 75% = Aruba. 경고/혼잡 앵커(jitter 20/30, latency 30/60, occupancy 40/55)는 Cisco Enterprise QoS voice 값 또는 그 아래 보간 — 정식 표준 아님. **정정된 것**: RFC 4594는 수치 없음(정성 등급만, Y.1541 위임), G.113 App.I는 손실 문턱 아님(E-model 계수 표) → 두 인용 제거. loss 스케일(0.5~10%)은 Y.1541(0.1%)보다 느슨한 Cisco 실무 기준.
 - **occupancy·retry가 라벨 축이자 모델 입력** — leakage 논란 여지. "배포 시 available하니 정당" 논리로 방어하되, occ만으로 label 3 되는 행이 여전히 많으면 occ의 심각 앵커를 올리거나(90%) occ를 라벨에서 빼는 것도 검토.
 - **`max`의 단순화** (§4) — 여러 축 어중간한 경우. E-model이 정석이지만 무거움.
 - **데이터 손실**: 5574행이 사실상 레거시. label 3(56개)도 새로 쌓아야 함.
@@ -252,7 +252,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 - `docs/yongsang/congestion_label_criteria.md` — 현재(구) 정의
 - `project/README_AP_V2.md` — "핵심 검증 질문"
 - `.work-log/current.md` — 2026-08-27 저녁 세션 (문제 발견 경위)
-- ITU-T G.114, G.107, G.113, Y.1541 · RFC 4594 · Cisco Enterprise QoS Design Guide
+- **앵커 근거** (원문 대조 2026-08-31): ITU-T Y.1541 (jitter IPDV ≤ 50ms, loss IPLR ≤ 0.1% — Class 0/1) · ITU-T G.114 (편도 지연 150 / 400ms) · Cisco Enterprise QoS SRND (voice: 편도 ≤ 150ms, jitter ≤ 30ms, loss ≤ 1%) · Aruba WLAN 설계 가이드 (channel utilization ~50% / 75%) · ITU-T G.107 E-model (§4 대안 조합 방식). RFC 4594·G.113 App.I는 앵커 수치 근거로 부적합(위 §3 참조).
 
 ### 소패킷 25/25 부하 캘리브레이션 (2026-08-27, 180초 완주)
 

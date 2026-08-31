@@ -64,12 +64,12 @@
 
 앵커(표준 문턱, `ANCHORS` in `collect_metrics.py`):
 
-| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 |
+| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 (심각 앵커 기준, 원문 대조는 `congestion_label_redesign.md` §3) |
 |---|---:|---:|---:|---:|---|
-| occupancy(%) | 40 | 55 | 75 | 90 | Cisco/Aruba WLAN 가이드 |
-| jitter(ms, 프로브) | 20 | 30 | 50 | 100 | ITU-T Y.1541 / RFC 4594 |
-| loss(%, 프로브) | 0.5 | 1.0 | 5.0 | 10.0 | Cisco QoS / ITU-T G.113 |
-| latency(ms, 편도) | 30 | 60 | 150 | 400 | ITU-T G.114(ping RTT/2) |
+| occupancy(%) | 40 | 55 | 75 | 90 | Aruba WLAN 가이드 (75% 문제) — 40/55/90은 보간 |
+| jitter(ms, 프로브) | 20 | 30 | 50 | 100 | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms); 20/30 = Cisco voice |
+| loss(%, 프로브) | 0.5 | 1.0 | 5.0 | 10.0 | Cisco Enterprise QoS (voice ≤ 1%, > 5% 불가) |
+| latency(ms, 편도) | 30 | 60 | 150 | 400 | ITU-T G.114 (편도 150/400); ping RTT/2 |
 
 ### 2.4 LoadProfile
 

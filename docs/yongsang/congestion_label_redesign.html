@@ -169,6 +169,7 @@
     <div class="anchors"><span class="a0">경고 0.25</span><span class="a1">혼잡 0.50</span><span class="a2">심각 0.75</span><span class="a3">완전 1.0</span></div>
 
     <h3>라벨 축 (4개) — <code>congestion_score = max(이 4개)</code></h3>
+    <p class="lede">표준 원문 대조 완료 (2026-08-31). <b>심각(0.75) 앵커는 표준이 직접 지지</b>, 경고·혼잡 앵커는 Cisco Enterprise QoS voice 값 또는 그 아래 보간(정식 표준 아님).</p>
     <div class="tw">
     <table class="grid">
       <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">완전</th><th>출처</th></tr></thead>
@@ -176,22 +177,22 @@
         <tr>
           <td><code>occupancy_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">채널 airtime %</span></td>
           <td class="n">40%</td><td class="n">55%</td><td class="n">75%</td><td class="n">90%</td>
-          <td>Cisco / Aruba WLAN 설계 가이드 (&gt;50% 경고, &gt;75% 혼잡), Ekahau 실무 기준</td>
+          <td><b>심각 75% · 경고 ≈50%</b>: Aruba WLAN 설계 가이드 (~50% good threshold, &gt;75% 문제). 40 / 55 / 90은 그 근처 보간 — 4-티어 정식 표준은 아님</td>
         </tr>
         <tr>
           <td><code>jitter_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">프로브 IPDV</span></td>
           <td class="n">20ms</td><td class="n">30ms</td><td class="n">50ms</td><td class="n">100ms</td>
-          <td>ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms), RFC 4594 (텔레포니 ~30ms), Cisco (voice &lt; 30ms)</td>
+          <td><b>심각 50ms</b>: ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms). <b>경고·혼잡 20 / 30ms</b>: Cisco Enterprise QoS (voice jitter ≤ 30ms). RFC 4594는 텔레포니를 "jitter Very Low" 정성 등급으로만 규정(§2.3, 수치는 Y.1541로 위임)</td>
         </tr>
         <tr>
           <td><code>loss_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">프로브 패킷 손실</span></td>
           <td class="n">0.5%</td><td class="n">1%</td><td class="n">5%</td><td class="n">10%</td>
-          <td>Cisco Enterprise QoS (voice loss &lt; 1%, &gt; 5% 사용 불가), ITU-T G.113 App.I, Y.1541</td>
+          <td>Cisco Enterprise QoS (voice loss ≤ 1%, &gt; 5% 사용 불가). ITU-T Y.1541 Class 0/1 IPLR ≤ 0.1%는 이보다 <b>엄격</b> — 이 스케일은 Cisco 실무 기준. (G.113 App.I는 E-model 계수 표라 손실 문턱 아님)</td>
         </tr>
         <tr>
           <td><code>latency_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">ping 편도 추정 = RTT/2</span></td>
           <td class="n">30ms</td><td class="n">60ms</td><td class="n">150ms</td><td class="n">400ms</td>
-          <td>ITU-T G.114 (편도 150 / 400). 앵커가 편도 규격이라 <code>calculate_scores</code>가 <code>latency_ms/2</code>를 넣는다</td>
+          <td><b>심각 150ms · 완전 400ms</b>: ITU-T G.114 (편도 &lt;150 transparent / 150–400 acceptable-with-awareness / &gt;400 unacceptable). 30 / 60ms는 그 아래 보간. 앵커가 편도 규격이라 <code>calculate_scores</code>가 <code>latency_ms/2</code>를 넣는다</td>
         </tr>
       </tbody>
     </table>
@@ -337,7 +338,7 @@ sta_tx_bitrate_mean        <span class="c">← 2026-08-29 추가 (6→7)</span><
   <footer class="page-foot">
     <span>정본(코드): <code>project/scripts/collect_metrics.py</code> <code>calculate_scores()</code> / <code>ANCHORS</code> · feature: <code>project/utils/ap_features.py</code></span>
     <span>feature 상세: <code>docs/yongsang/model_features.{md,html}</code> · 최신 수치: <code>.work-log/current.md</code></span>
-    <span>표준: ITU-T G.114 · G.107 · G.113 · Y.1541 · RFC 4594 · Cisco Enterprise QoS Design Guide</span>
+    <span>앵커 근거: ITU-T Y.1541 (jitter/loss 클래스) · ITU-T G.114 (편도 지연) · Cisco Enterprise QoS SRND (voice) · Aruba WLAN 설계 가이드 (channel utilization) · ITU-T G.107 E-model (§4 대안). 원문 대조 2026-08-31</span>
     <span>markdown 원본(전체 로그): <code>docs/yongsang/congestion_label_redesign.md</code> · 옛 정의: <code>congestion_label_criteria.{md,html}</code> (archived)</span>
   </footer>
 
