@@ -98,4 +98,4 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 - **Pi 정확도 95%** (현재 90~92%) — label 2 경계 노이즈 / label 3 관측성 한계
 - 데모 대시보드 팀 구현 (`project/demo/API.md`)
 - 밴드 스티어링 — 발표 슬라이드 7의 최종 목표 (혼잡 판단 → 채널 전환 명령 후보 생성)
-- AP 반복 크래시: 신호 비대칭 시 저부하에도 크래시 (`docs/yongsang/ap_crash_analysis.md`)
+- AP 반복 크래시: 신호 비대칭 시 저부하에도 크래시 (`docs/yongsang/ap_crash_analysis.{md,html}`)

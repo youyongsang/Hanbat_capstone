@@ -16,7 +16,7 @@
   - GET  /signal      두 폰의 현재 신호세기 (부하 전 대칭 확인용)
   - GET  /health
 
-부하는 30M 로 상한 (AP 크래시 방지 — docs/yongsang/ap_crash_analysis.md).
+부하는 30M 로 상한 (AP 크래시 방지 — docs/yongsang/ap_crash_analysis.{md,html}).
 iperf3 -s 서버(포트 2개)는 서버 시작 시 --iperf-target 이 로컬이면 자동 기동.
 """
 

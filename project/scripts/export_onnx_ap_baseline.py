@@ -3,7 +3,7 @@
 Single flat graph (no control flow), so onnxruntime's dynamic quantizer
 converts the LSTM layers correctly without the If-subgraph pitfall that
 affected the unified Early Exit export (see
-docs/yongsang/onnx_early_exit_redesign.md).
+docs/yongsang/onnx_early_exit_redesign.{md,html}).
 """
 
 from __future__ import annotations

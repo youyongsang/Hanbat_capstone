@@ -41,7 +41,7 @@ MOVING_AVG_WINDOW = 5
 # ============================================================
 
 # ============================================================
-# 혼잡 라벨 재설계 (2026-08-27, docs/yongsang/congestion_label_redesign.md)
+# 혼잡 라벨 재설계 (2026-08-27, docs/yongsang/congestion_label_redesign.{md,html})
 #
 # 각 축을 외부 표준 문턱에 매핑(4 앵커: 경고→0.25 / 혼잡→0.5 /
 # 심각→0.75 / 완전→1.0, piecewise-linear, [0,1] clamp).
@@ -171,7 +171,7 @@ def run_command(command, timeout=10):
 # 같은 무선 채널을 그대로 타고 가서, 채널이 혼잡할수록 SSH
 # 핸드셰이크 자체도 같이 느려지는 자기참조적 지연(폴링 지연
 # 스파이크 최대 156초, 2026-08-26 새벽에는 완전 크래시까지
-# 재현됨 — docs/yongsang/ap_crash_analysis.md 참고)의 유력한
+# 재현됨 — docs/yongsang/ap_crash_analysis.{md,html} 참고)의 유력한
 # 원인이었다. 대신 원격에서 무한루프를 SSH 세션 하나로 계속
 # 돌리고 표준출력을 스트리밍으로 읽어, 핸드셰이크를 세션당
 # 1회로 줄인다. 연결이 끊기면 백그라운드 스레드가 자동으로
@@ -1028,7 +1028,7 @@ def calculate_scores(
     # 죽은 경우 — ping이 응답 0 / 프로브 스트림이 완료 불가 — 는 "증거 없음"이
     # 아니라 "실시간 흐름이 완전히 깨짐" = 해당 축 최악(1.0)으로 본다.
     # AP 텔레메트리(유선)는 이 지점에서 이미 정상 파싱됐으므로 "AP 다운"이
-    # 아니라 "무선 채널 포화"가 원인이다. 상세: congestion_label_redesign.md
+    # 아니라 "무선 채널 포화"가 원인이다. 상세: congestion_label_redesign.{md,html}
     if ping_hard_fail:
         latency_score = 1.0
     if probe_hard_fail:

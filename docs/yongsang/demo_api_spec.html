@@ -369,7 +369,7 @@
         <tr><td>금지 조합</td><td class="num">—</td><td>합계 ≥ 160Mbps, 또는 두 폰 모두 ≥ 80</td></tr>
       </tbody>
     </table></div>
-    <div class="note warn"><span class="mk">!</span><span>범위를 벗어난 요청은 <code>422</code>로 거부한다. 근거는 <code>docs/yongsang/ap_crash_analysis.md</code>. 프리셋은 전부 안전 범위 안에 있고, 자유 입력 프로필은 개발 모드에서만 노출한다.</span></div>
+    <div class="note warn"><span class="mk">!</span><span>범위를 벗어난 요청은 <code>422</code>로 거부한다. 근거는 <code>docs/yongsang/ap_crash_analysis.{md,html}</code>. 프리셋은 전부 안전 범위 안에 있고, 자유 입력 프로필은 개발 모드에서만 노출한다.</span></div>
   </section>
 
   <section id="surface-1">
@@ -652,7 +652,7 @@ data: { "kind": "poll_stall", "detail": "AP SSH 폴링 8s 무응답",
     작성 2026-08-27 · 미착수 설계 문서, 구현하며 갱신
     <ul>
       <li><code>.work-log/current.md</code> — "향후 데모 구상", "향후 시스템 구상 — 밴드 스티어링", 세션별 진행</li>
-      <li><code>docs/yongsang/ap_crash_analysis.md</code> — 안전 부하 범위 · 부하 생성 방법 대안의 근거</li>
+      <li><code>docs/yongsang/ap_crash_analysis.{md,html}</code> — 안전 부하 범위 · 부하 생성 방법 대안의 근거</li>
       <li><code>docs/yongsang/congestion_label_redesign.{md,html}</code> — 라벨 정의 · 근거 · "occupancy 문턱 대비 LSTM 우위" 검증 프레이밍</li>
       <li><code>docs/yongsang/model_features.{md,html}</code> — 7-feature 상세 (계산 · 스무딩 · 스케일러)</li>
       <li><code>project/utils/ap_features.py</code> — FeatureVector 순서의 정본 (<code>tx_retries_per_s</code>/<code>tx_failed_per_s</code>, 2026-08-27~)</li>

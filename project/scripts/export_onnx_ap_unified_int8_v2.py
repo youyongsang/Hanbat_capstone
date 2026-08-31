@@ -2,7 +2,7 @@
 INT8-quantized LSTM layers.
 
 Background: export_onnx_ap_unified.py produces one ONNX graph with `If`
-nodes (see docs/yongsang/onnx_early_exit_redesign.md) that beats the staged
+nodes (see docs/yongsang/onnx_early_exit_redesign.{md,html}) that beats the staged
 (3-session) export on Pi latency. Naively INT8-quantizing *that* graph
 (export_onnx_ap_unified_int8.py) leaves accuracy unchanged but gives no
 speedup: onnxruntime's dynamic quantizer silently fails to convert LSTM to

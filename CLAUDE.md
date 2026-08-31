@@ -73,8 +73,8 @@ project/utils/ap_features.py            AP_FEATURE_COLUMNS = 7개 feature (autho
 project/utils/ap_dataloader.py          windowed CSV → DataLoader
 docs/yongsang/model_features.{md,html}  7개 feature 레퍼런스 (계산·스무딩·스케일러·라벨 축 vs 모델 입력·변천)
 docs/yongsang/congestion_label_redesign.{md,html}  현행 라벨 정의 (max 앵커 + victim 프로브) ← 라벨 관련은 이 문서가 authoritative. html=근거 요약, md=전체 로그
-docs/yongsang/ap_crash_analysis.md      AP(Opal) 반복 크래시 원인 분석
-docs/yongsang/onnx_early_exit_redesign.md  ONNX Early Exit 배포 재설계 (staged → unified If 노드 → INT8 재조립)
+docs/yongsang/ap_crash_analysis.{md,html}      AP(Opal) 반복 크래시 원인 분석
+docs/yongsang/onnx_early_exit_redesign.{md,html}  ONNX Early Exit 배포 재설계 (staged → unified If 노드 → INT8 재조립)
 .work-log/current.md                    세션별 최신 진행 상황 (이 문서보다 최신)
 ```
 
@@ -106,7 +106,7 @@ sta_tx_bitrate_mean            # 이번 폴링에 실제 송신한 station들의
 
 ### congestion_score = 정답 라벨 판별 기준 (재설계, 2026-08-27~)
 
-상세·근거는 `docs/yongsang/congestion_label_redesign.md`. 요약:
+상세·근거는 `docs/yongsang/congestion_label_redesign.{md,html}`. 요약:
 
 ```text
 congestion_score = max(occupancy_score, jitter_score, loss_score, latency_score)
@@ -114,7 +114,7 @@ congestion_score = max(occupancy_score, jitter_score, loss_score, latency_score)
 label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계는 1차·초기와 동일)
 ```
 
-- 각 축을 4개 앵커(경고 0.25 / 혼잡 0.5 / 심각 0.75 / 완전 1.0)에 piecewise-linear 매핑, [0,1] clamp. **심각(0.75) 앵커는 표준이 직접 지지** (원문 대조 2026-08-31): jitter 50ms = ITU-T Y.1541 Class 0/1 IPDV, latency 150/400ms = ITU-T G.114 편도 티어 경계, occupancy 75% = Aruba WLAN 가이드, loss 5% = Cisco Enterprise QoS. 경고·혼잡 앵커는 Cisco voice 값(jitter 30ms, loss 1%, latency 150ms) 또는 그 아래 보간. **RFC 4594·G.113은 앵커 수치 근거 아님** (정성 등급 / E-model 계수) — 상세는 `congestion_label_redesign.md` §3.
+- 각 축을 4개 앵커(경고 0.25 / 혼잡 0.5 / 심각 0.75 / 완전 1.0)에 piecewise-linear 매핑, [0,1] clamp. **심각(0.75) 앵커는 표준이 직접 지지** (원문 대조 2026-08-31): jitter 50ms = ITU-T Y.1541 Class 0/1 IPDV, latency 150/400ms = ITU-T G.114 편도 티어 경계, occupancy 75% = Aruba WLAN 가이드, loss 5% = Cisco Enterprise QoS. 경고·혼잡 앵커는 Cisco voice 값(jitter 30ms, loss 1%, latency 150ms) 또는 그 아래 보간. **RFC 4594·G.113은 앵커 수치 근거 아님** (정성 등급 / E-model 계수) — 상세는 `congestion_label_redesign.{md,html}` §3.
 - `jitter_score`·`loss_score`는 **victim 프로브**(부하와 별개로 흘리는 300kbps 경량 UDP 스트림, `iperf3 -u -b 300k`)가 그 스트림 자체에서 겪은 IPDV/손실을 측정한 값. "이 혼잡 속에서 VoIP 통화 한 통이 얼마나 깨지나". `latency_score`는 ping RTT/2 (편도 추정).
 - **조합이 `max`인 이유**: 표준은 "각 축이 언제 나쁜가"는 주지만 "어떻게 합치나"는 안 준다. `max`면 가중치 논쟁이 원천 봉쇄됨 — `label 3 = 최소 한 축이 표준 심각 문턱 돌파`.
 - **"실패 = max"**: 채널이 실제로 바쁜 상태(`throughput ≥ 3Mbps or occupancy ≥ 40%`)에서 victim 경로가 완전히 죽으면(ping 무응답 / 프로브 stale) 해당 축을 1.0으로 본다 — 안 그러면 occupancy 단독으로 조용히 되돌아감. 유선 SSH로 AP 텔레메트리를 방금 정상 파싱했으므로 AP는 살아있고 무선 채널만 막힌 것.
@@ -155,9 +155,9 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 
 - **Label 3(심각) 표본이 여전히 얇다** (test 31개) — recall이 실행마다 흔들린다. AP가 부하 종류에 따라 반복 크래시해서 추가 수집이 제한적.
 - **occupancy 55~57% 경계 노이즈**: label 1/2가 물리적으로 거의 같은 채널 상태에서 뒤집힘. 라벨링 쪽 rolling median 스무딩(window 3·5)을 전체 파이프라인으로 검증했으나 — 같은 스무딩 값이 다른 앵커 경계(75% 등)에도 쓰여 다른 데서 새 오답이 생겨 **순효과 없음(두더지 잡기) → 라벨링 스무딩 방향 폐기**. 모델 입력 쪽 스무딩은 미시도.
-- **AP(Opal) 반복 크래시**: "몇 대 붙었나"보다 "각 폰이 대칭적으로 붙었나"가 핵심 변수 — 신호 강한 S26이 채널 독점하고 약한 191이 굶는 Wi-Fi capture effect. 부하 스위트스팟 191=60M/S26=60M, 안전 구간 대략 300~420초 (60/60도 500초 넘기면 완전 크래시, 80/80은 10분 시도에서 물리 재부팅). 상세: `docs/yongsang/ap_crash_analysis.md`.
+- **AP(Opal) 반복 크래시**: "몇 대 붙었나"보다 "각 폰이 대칭적으로 붙었나"가 핵심 변수 — 신호 강한 S26이 채널 독점하고 약한 191이 굶는 Wi-Fi capture effect. 부하 스위트스팟 191=60M/S26=60M, 안전 구간 대략 300~420초 (60/60도 500초 넘기면 완전 크래시, 80/80은 10분 시도에서 물리 재부팅). 상세: `docs/yongsang/ap_crash_analysis.{md,html}`.
 - **유선 관리채널**: `collect_metrics.py`가 지속 SSH(`APPoller`)로 전환됐고 victim 프로브(`ProbeRunner`)가 추가됨. collector를 라즈베리 파이로 옮겨 관리 트래픽을 무선 채널에서 분리하는 구조 확정.
-- **ONNX/Pi 배포**: staged(세션 3개) → `torch.jit.script`+ONNX `If` 노드 단일 그래프(`export_onnx_ap_unified.py`) → INT8은 staged(flat)로 먼저 양자화 후 손수 재조립(`export_onnx_ap_unified_int8_v2.py`, `If` 서브그래프 안 LSTM을 양자화 도구가 건너뛰는 한계 우회). baseline 대비 대략 -60% 내외 (1학기 4-feature 자료로 두 현상 교차검증). Pi latency 주장 시 `docs/yongsang/onnx_early_exit_redesign.md`의 결론을 따르고 staged/fp32-only 수치를 최종 결과로 인용하지 않는다.
+- **ONNX/Pi 배포**: staged(세션 3개) → `torch.jit.script`+ONNX `If` 노드 단일 그래프(`export_onnx_ap_unified.py`) → INT8은 staged(flat)로 먼저 양자화 후 손수 재조립(`export_onnx_ap_unified_int8_v2.py`, `If` 서브그래프 안 LSTM을 양자화 도구가 건너뛰는 한계 우회). baseline 대비 대략 -60% 내외 (1학기 4-feature 자료로 두 현상 교차검증). Pi latency 주장 시 `docs/yongsang/onnx_early_exit_redesign.{md,html}`의 결론을 따르고 staged/fp32-only 수치를 최종 결과로 인용하지 않는다.
 - 하이퍼파라미터(lr/epochs/batch) 스윕 미실시. hidden_size·dropout은 2026-08-30에 스윕(각 2시드) — 현재 기본값(128/0.2)이 이미 최적, 추가 이득 없음. class-weight-power는 2026-08-30 재스윕 완료(→ 0.0).
 
 ### 재현 명령어

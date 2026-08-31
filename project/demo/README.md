@@ -61,7 +61,7 @@ python3 demo_server.py \
 
 ## 주의
 
-- **AP 크래시**: 신호 비대칭 + 20M 이상이면 AP가 죽을 수 있다(`docs/yongsang/ap_crash_analysis.md`). 신호 확인 후 부하, 이상하면 즉시 정지.
+- **AP 크래시**: 신호 비대칭 + 20M 이상이면 AP가 죽을 수 있다(`docs/yongsang/ap_crash_analysis.{md,html}`). 신호 확인 후 부하, 이상하면 즉시 정지.
 - 부하는 `iperf3 -u -t 3600` 으로 계속 흐르다가 다음 버튼(또는 정지)에서 `pkill iperf3` 로 교체된다. 서버 종료 시 자동 정지.
 
 ## 구조

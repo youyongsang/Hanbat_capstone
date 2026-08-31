@@ -1,6 +1,6 @@
 # 혼잡 라벨 재설계 — 표준 문턱 + victim 프로브 (2026-08-27)
 
-`ap_metrics_v2`의 `congestion_score`/`label` 정의를 근거 기반으로 다시 세운다. `congestion_label_criteria.md`의 옛(weighted-sum) 정의를 대체한다.
+`ap_metrics_v2`의 `congestion_score`/`label` 정의를 근거 기반으로 다시 세운다. `congestion_label_criteria.{md,html}`의 옛(weighted-sum) 정의를 대체한다.
 
 > 브라우저로 보기 좋은 버전: [`congestion_label_redesign.html`](congestion_label_redesign.html) — 정의·근거 중심 요약(§1~5 + 캘리브레이션). 이 markdown이 세션 로그·열린 항목까지 담은 전체본.
 
@@ -128,7 +128,7 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 ### `throughput_score`는 라벨에서 제외
 
-문서(`congestion_label_criteria.md`)에 이미 기록된 대로 label 2 vs 3 변별력이 없다(0.665→0.707). 채널이 빠르게 도는 것 자체는 혼잡의 지표가 아니다. **모델 입력 feature로는 유지**한다.
+문서(`congestion_label_criteria.{md,html}`)에 이미 기록된 대로 label 2 vs 3 변별력이 없다(0.665→0.707). 채널이 빠르게 도는 것 자체는 혼잡의 지표가 아니다. **모델 입력 feature로는 유지**한다.
 
 ### `retry_score`는 비율로
 
@@ -214,7 +214,7 @@ probe_hard_fail = channel_active AND  프로브가 한 번은 됐었음(ever_ok)
 
 ### 확정 모델 입력 (7개) — 구현됨 (`ap_features.py`, authoritative)
 
-각 feature의 정의·출처·스무딩·스케일러는 별도 레퍼런스 `docs/yongsang/model_features.md`(HTML: `model_features.html`).
+각 feature의 정의·출처·스무딩·스케일러는 별도 레퍼런스 `docs/yongsang/model_features.{md,html}`.
 
 ```
 throughput_mbps
@@ -230,7 +230,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 
 **`sta_tx_bitrate_mean` 승격 (6→7, 2026-08-29)** — 처음엔 뺐다가 다중 시드 재검증에서 되살림: 6-feature 재학습에서 occ 60~72%의 label 2 vs 3이 나머지 6 feature로는 **평균이 완전히 동일**했다(occ 66/65, throughput 66/66, retry 0.30/0.30, rssi -35/-34). 8/28 단일 진단에서는 `min`이 유휴 station 때문에 상수, `mean`이 throughput 추종이라 뺐으나 — **8/29 다중 시드(5개) 검증에서 `sta_tx_bitrate_mean`이 exit-loss 가중치와 무관하게 6-feature보다 Label3 F1 +5~11pt, occ 60~72%에서 Cohen's d=0.52**로 갈라짐이 확인되어 7번째 입력으로 승격. (방향은 실측과 반대 — 부하 테스트라 혼잡 구간에서 오히려 bitrate 오름 — 이지만 변별력은 유효.) `sta_tx_bitrate_min`은 여전히 미사용(CSV 기록만). 상세: `.work-log/current.md` 2026-08-29 2차 체크포인트.
 
-모델의 일: `{occupancy, retry_ratio, throughput, RSSI 3종, sta_tx_bitrate_mean}`(7개)로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제. (**RSSI 3종** = `rssi_dbm`(수신 신호 세기, dBm) · `rssi_delta_db`(직전 폴링 대비 변화) · `rssi_moving_avg_dbm`(5폴링 이동평균) — 상세는 `docs/yongsang/model_features.md` §2.)
+모델의 일: `{occupancy, retry_ratio, throughput, RSSI 3종, sta_tx_bitrate_mean}`(7개)로 `max(occ, probe_jitter, probe_loss, latency)` 라벨을 예측. 못 보는 프로브 축을 채널 상태만으로 추론해야 함 → 진짜 예측 문제. (**RSSI 3종** = `rssi_dbm`(수신 신호 세기, dBm) · `rssi_delta_db`(직전 폴링 대비 변화) · `rssi_moving_avg_dbm`(5폴링 이동평균) — 상세는 `docs/yongsang/model_features.{md,html}` §2.)
 
 > **여전히 lean함**: 모델이 볼 게 적음 = 재설계 의도(정답 못 읽고 진짜 예측). RSSI 3종은 서로 상관이라 실질 신호는 ~5개.
 
@@ -246,7 +246,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 2. ✅ **`utils/ap_features.py`**: 모델 feature 6개.
 3. ✅ **`prepare_ap_metrics_dataset.py`**: `model_excluded_columns` 갱신.
 4. ⬜ **노트북**: `iperf3 -s -p 5203` 인스턴스 추가 (프로브 싱크). — 다음 하드웨어 세션
-5. ⬜ **`congestion_label_criteria.md`**: 이 설계로 개정 (지금은 상단 배너 + 이 문서 포인터만).
+5. ✅ **`congestion_label_criteria.{md,html}`**: archived 재프레이밍 완료 (문서 전체 stale 배너 + 이 문서로 포인터).
 6. ⬜ **retry 앵커 idle 재보정** (§3 관찰) → **재수집(새 파일) → 재변환 → 재학습 → 평가**. — 다음 하드웨어 세션
 
 ## 7. 기존 데이터 (`metrics_v2.csv` 5574행) 처리
@@ -271,7 +271,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 
 ## 참고
 
-- `docs/yongsang/congestion_label_criteria.md` — 현재(구) 정의
+- `docs/yongsang/congestion_label_criteria.{md,html}` — 옛(가중합) 정의, archived
 - `project/results/yongsang/ap_v2_redesign2_threshold_comparison.txt` — "occupancy 문턱 vs 학습 모델" 실측 대조 ("핵심 검증 질문"의 결과)
 - `.work-log/current.md` — 2026-08-27 저녁 세션 (문제 발견 경위)
 - **앵커 근거** (원문 대조 2026-08-31): ITU-T Y.1541 (jitter IPDV ≤ 50ms, loss IPLR ≤ 0.1% — Class 0/1) · ITU-T G.114 (편도 지연 150 / 400ms) · Cisco Enterprise QoS SRND (voice: 편도 ≤ 150ms, jitter ≤ 30ms, loss ≤ 1%) · Aruba WLAN 설계 가이드 (channel utilization ~50% / 75%) · ITU-T G.107 E-model (§4 대안 조합 방식). RFC 4594·G.113 App.I는 앵커 수치 근거로 부적합(위 §3 참조).

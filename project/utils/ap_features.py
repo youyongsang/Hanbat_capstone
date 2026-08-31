@@ -32,7 +32,7 @@ AP_FEATURE_COLUMNS: Tuple[str, ...] = (
 #   무신호. 2차 정의(이번 폴링에 실제 송신한 station만)로 바꿈.
 #   상세: project/results/yongsang/ap_v2_redesign_threshold_comparison.txt
 #
-# 2026-08-27 혼잡 라벨 재설계 (docs/yongsang/congestion_label_redesign.md):
+# 2026-08-27 혼잡 라벨 재설계 (docs/yongsang/congestion_label_redesign.{md,html}):
 #   초기 9개 = throughput_mbps, channel_occupancy_percent, latency_ms, jitter_ms,
 #             tx_retries_delta, tx_failed_delta, rssi_dbm, rssi_delta_db,
 #             rssi_moving_avg_dbm. 재설계로 9 -> 6 (두 변경이 겹쳐 -3):

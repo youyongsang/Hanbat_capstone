@@ -4,7 +4,7 @@ Mirrors export_onnx_ap.py's staged split (stage1/2/3, one LSTM+classifier
 each) so export_onnx_ap_sdn_unified_int8.py can quantize each flat stage
 independently (LSTM quantizes correctly there) before reassembling into a
 single confidence-threshold If-node graph, following the same fix used for
-the Early Exit model (see docs/yongsang/onnx_early_exit_redesign.md).
+the Early Exit model (see docs/yongsang/onnx_early_exit_redesign.{md,html}).
 """
 
 from __future__ import annotations

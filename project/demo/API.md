@@ -6,9 +6,9 @@
 > 다시 짜더라도 이 계약을 지키면 프론트/모델/부하 파트가 서로 안 깨진다.
 
 관련 문서:
-- `docs/yongsang/demo_api_spec.md` — 원래 구상한 3-API-면(백엔드/부하 에이전트/파이 서버) 큰 그림. **이 문서가 그 중 "지금 실제로 만든 최소 버전"의 확정 스펙**이다.
+- `docs/yongsang/demo_api_spec.{md,html}` — 원래 구상한 3-API-면(백엔드/부하 에이전트/파이 서버) 큰 그림. **이 문서가 그 중 "지금 실제로 만든 최소 버전"의 확정 스펙**이다.
 - `project/scripts/live_congestion.py` — 웹 없이 터미널로 도는 같은 추론 루프.
-- `docs/yongsang/onnx_early_exit_redesign.md` — ONNX 배포 구조.
+- `docs/yongsang/onnx_early_exit_redesign.{md,html}` — ONNX 배포 구조.
 
 ---
 
@@ -160,7 +160,7 @@ feature 계산 로직은 레퍼런스가 `collect_metrics.py` 헬퍼(`APPoller`,
 
 - 부하 상한 **30 Mbps/폰** (합계 60). `ALLOWED_RATES` 로 강제.
 - **두 폰 신호 비대칭(>12 dBm) → capture effect → AP가 20M에도 크래시**. 실측 사례:
-  step 프로파일 크래시(S21 STALE), 대칭 회복 후 60M ~70초 무사. 상세 `docs/yongsang/ap_crash_analysis.md`.
+  step 프로파일 크래시(S21 STALE), 대칭 회복 후 60M ~70초 무사. 상세 `docs/yongsang/ap_crash_analysis.{md,html}`.
 - 크래시 = br-lan 전체 다운(AP·Pi·노트북 연결 끊김) → AP 물리 재부팅.
 - **프론트에 신호 대칭 표시 필수** (`/signal` 폴링, 레퍼런스 5초). 비대칭이면 부하 버튼 경고.
 - AP 무응답 감지: `/events` 가 `ready:false, msg:"AP 응답 없음"` 을 push (poller 6초 stale).
@@ -225,7 +225,7 @@ python3 demo_server.py \
 4. **부하 프로파일** — 지금은 고정 rate 버튼. 계단 자동 진행(10→20→30, N초씩), knee, 커스텀 rate 입력.
 5. **안전장치** — 신호 비대칭 시 버튼 비활성화, AP 무응답 시 자동 부하 정지, 부하 최대 지속시간 워치독.
 6. **Pi 배포** — §6. 관리 트래픽을 무선 채널에서 분리하는 서사.
-7. **밴드 스티어링 훅** (`demo_api_spec.md` §9, 발표 슬라이드7 최종 목표) — "심각 지속 → 채널 전환 명령 후보 생성". 지금 데모엔 없음. 라벨 스트림을 소비해서 별 모듈로.
+7. **밴드 스티어링 훅** (`demo_api_spec.{md,html}` §9, 발표 슬라이드7 최종 목표) — "심각 지속 → 채널 전환 명령 후보 생성". 지금 데모엔 없음. 라벨 스트림을 소비해서 별 모듈로.
 8. **인증/멀티유저** — 지금 무인증 로컬. 필요하면.
 
 **깨지 말아야 할 것**: §4 모델 계약, §3 API 스키마(특히 `raw_label` 노출), §5 크래시 주의.

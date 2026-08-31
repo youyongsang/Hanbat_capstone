@@ -20,7 +20,7 @@
 ```
 
 - **추론은 파이에서** 수행한다(엣지 추론 서사). 노트북은 표시·제어·중계만.
-- 모델 ONNX export는 이미 끝나 있다 — `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified_int8_v2.onnx`(권장, staged→unified→INT8 재설계 완료본, `docs/yongsang/onnx_early_exit_redesign.md` 참고). 신규 구현 부담은 파이 추론 서버(면 ③)·부하 에이전트(면 ②)·백엔드+대시보드(면 ①) 4개 컴포넌트.
+- 모델 ONNX export는 이미 끝나 있다 — `project/checkpoints/ap_v2_redesign2/ap_early_exit_{fixed,dynamic}_unified_int8_v2.onnx`(권장, staged→unified→INT8 재설계 완료본, `docs/yongsang/onnx_early_exit_redesign.{md,html}` 참고). 신규 구현 부담은 파이 추론 서버(면 ③)·부하 에이전트(면 ②)·백엔드+대시보드(면 ①) 4개 컴포넌트.
 - 3개 API 면(surface): ① 백엔드 REST+SSE(브라우저용) ② 부하 에이전트(폰용) ③ 추론 스트림(파이용).
 
 ## 2. 공유 데이터 계약
@@ -64,7 +64,7 @@
 
 앵커(표준 문턱, `ANCHORS` in `collect_metrics.py`):
 
-| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 (심각 앵커 기준, 원문 대조는 `congestion_label_redesign.md` §3) |
+| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 (심각 앵커 기준, 원문 대조는 `congestion_label_redesign.{md,html}` §3) |
 |---|---:|---:|---:|---:|---|
 | occupancy(%) | 40 | 55 | 75 | 90 | Aruba WLAN 가이드 (75% 문제) — 40/55/90은 보간 |
 | jitter(ms, 프로브) | 20 | 30 | 50 | 100 | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms); 20/30 = Cisco voice |
@@ -112,7 +112,7 @@
 | `COOLDOWN_S` | 60 | run 사이 AP 회복 여유 |
 | 금지 조합 | 합계 ≥ 160Mbps, 또는 두 폰 모두 ≥ 80 | 다중 station 고부하 |
 
-범위를 벗어난 요청은 `422`로 거부한다. 상세는 `docs/yongsang/ap_crash_analysis.md`.
+범위를 벗어난 요청은 `422`로 거부한다. 상세는 `docs/yongsang/ap_crash_analysis.{md,html}`.
 
 ## 3. 면 ① — 백엔드 REST + SSE (브라우저 ↔ 노트북 백엔드)
 
@@ -497,9 +497,9 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 ## 참고
 
 - `.work-log/current.md` — "향후 데모 구상", "향후 시스템 구상 — 혼잡 감지 기반 밴드 스티어링", 세션별 진행
-- `docs/yongsang/ap_crash_analysis.md` — 안전 부하 범위·부하 생성 방법 대안의 근거
+- `docs/yongsang/ap_crash_analysis.{md,html}` — 안전 부하 범위·부하 생성 방법 대안의 근거
 - `docs/yongsang/congestion_label_redesign.{md,html}` — 라벨 정의(max 앵커 + victim 프로브)·근거·"occupancy 문턱 대비 LSTM 우위" 검증 프레이밍
 - `project/utils/ap_features.py` — FeatureVector 순서의 정본 (7-feature, `sta_tx_bitrate_mean` 2026-08-29~). 각 feature 상세는 `docs/yongsang/model_features.{md,html}`
 - `project/scripts/collect_metrics.py`의 `calculate_scores()`/`ANCHORS` — congestion_score(max/anchor 방식) 정본
-- `docs/yongsang/onnx_early_exit_redesign.md` — 배포용 ONNX(unified INT8 v2) 재설계 기록, Pi latency 수치
+- `docs/yongsang/onnx_early_exit_redesign.{md,html}` — 배포용 ONNX(unified INT8 v2) 재설계 기록, Pi latency 수치
 - `docs/yongsang/congestion_label_redesign.{md,html}` — congestion_score 가중합→max 방식 재설계 배경
