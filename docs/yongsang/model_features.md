@@ -66,7 +66,32 @@
 
 ---
 
-## 3. 왜 이건 뺐나 (라벨 축 vs 모델 입력)
+## 3. 라벨 축 vs 모델 입력
+
+### 3.1 "라벨 축"과 "모델 입력"은 서로 다른 것 (헷갈리기 쉬움)
+
+| | 라벨 축 (`congestion_score`의 재료) | 모델 입력 (7개 feature) |
+|---|---|---|
+| **정체** | 정답(y)을 **만드는** 값 | 모델이 **보는** 값(X) |
+| **뭐가** | `occupancy_score`, `jitter_score`, `loss_score`, `latency_score` → `max()` → 0/1/2/3 | 위 §1의 7개 |
+| **모델이 봄?** | ❌ **절대 안 봄** (학습·추론 둘 다) | ✅ |
+| **언제 존재?** | 학습/평가 데이터에만 (정답 채점용) | 학습·추론 모두 (동일해야 함) |
+
+- **학습**: `7개 feature` → 모델이 라벨 예측 → 진짜 라벨(라벨 축으로 만든 것)과 비교 → 가중치 수정. 라벨 축 값(jitter_score 등)은 feature 벡터에 **없다**.
+- **추론(배포)**: 똑같은 `7개 feature` → 모델이 라벨 예측. 여기엔 정답 라벨도, 라벨 축(victim 프로브·ping)도 아예 없다 — 그게 모델이 맞혀야 하는 것.
+- **"라벨 축 = 학습용, 모델 입력 = 추론용"이 아니다.** 7개 feature는 학습·추론에서 **똑같이** 쓰이고, 라벨 축은 어느 쪽에서도 모델에 안 들어간다.
+
+**세 가지 경우:**
+
+| 컬럼 | 라벨 축? | 모델 입력? | 왜 |
+|---|:--:|:--:|---|
+| `jitter_score`·`loss_score`·`latency_score` (`latency_ms`, victim 프로브) | ✅ | ❌ | 정답 재료 + 배포 시 측정 불가(협조 싱크·프로브 필요) → 주면 **커닝** |
+| `channel_occupancy_percent` | ✅ | ✅ | 정답 재료지만 배포 시 AP 텔레메트리로 있음 → 줘도 됨 ("맞는 shortcut") |
+| `tx_retry_ratio`·`throughput`·`rssi×3`·`sta_tx_bitrate_mean` | ❌ | ✅ | 정답과 무관, 채널 상태 신호 |
+
+> 모델의 일 = **라벨 축(jitter/loss/latency)을 못 보는 상태에서, 채널 상태 7개만으로 그 라벨을 예측**. latency/jitter를 입력에 넣으면 정답을 그대로 베끼는 꼴이라 뺐다.
+
+### 3.2 컬럼별 판정
 
 | 컬럼 | 라벨 축? | 모델 입력? | 이유 |
 |---|:--:|:--:|---|
@@ -79,7 +104,7 @@
 | `throughput_mbps` | ❌ (계산만) | ✅ 유지 | 부하 맥락 |
 | `connected_clients` | ❌ | ❌ | 우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨 |
 
-**모델이 계산하는 sub-score는 6개** (`occupancy_score`, `jitter_score`, `loss_score`, `latency_score`, `throughput_score`, `retry_score`) — 그중 **4개**(occupancy, jitter, loss, latency)만 `max()`에 들어가 라벨이 된다. 전부 `model_excluded_columns`라 모델 입력엔 안 들어간다.
+**`collect_metrics.py`가 계산하는 sub-score는 6개** (`occupancy_score`, `jitter_score`, `loss_score`, `latency_score`, `throughput_score`, `retry_score`) — 그중 **4개**(occupancy, jitter, loss, latency)만 `max()`에 들어가 라벨이 된다. 6개 전부 `model_excluded_columns`라 모델 입력엔 안 들어간다.
 
 `dataset_summary.json`의 `model_excluded_columns` (19개):
 ```
