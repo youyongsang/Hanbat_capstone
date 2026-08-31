@@ -347,7 +347,7 @@
 
   <div class="tw">
     <table>
-      <thead><tr><th>모델 (5시드 평균)</th><th class="num">정확도</th><th class="num">Label 3 F1</th><th class="num">Pi INT8</th></tr></thead>
+      <thead><tr><th>모델</th><th class="num">정확도<br><small>5시드 평균</small></th><th class="num">Label 3 F1<br><small>5시드 평균</small></th><th class="num">Pi INT8<br><small>배포 1개</small></th></tr></thead>
       <tbody>
         <tr><td><span class="scale" style="background:var(--accent)"></span>Baseline LSTM (EE 없음)</td><td class="num">92.0% ±0.7</td><td class="num">66.1% ±2.3</td><td class="num">0.746 ms</td></tr>
         <tr><td><span class="scale" style="background:var(--l2)"></span>SDN (Kaya et al. 2019)</td><td class="num">90.4% ±1.4</td><td class="num">60.4% ±8.1</td><td class="num">0.572 ms</td></tr>
@@ -355,6 +355,7 @@
       </tbody>
     </table>
   </div>
+  <p class="sec-sub">정확도·F1은 시드 0~4 평균 ±표준편차, Pi INT8은 배포 체크포인트(val-best 시드) 실측. 배포된 단일 체크포인트의 test 정확도는 평균보다 조금 낮다(Baseline 91.6% · SDN 90.3% · EE Fixed θ 90.6%).</p>
   <p class="sec-sub">정확도는 셋이 ±0.7 안에서 겹친다. 갈리는 건 <b>희소 클래스 안정성</b>(논문 SDN은 F1 편차가 2배 — per-model 캘리브레이션이 작은 검증셋에서 취약)과 <b>속도</b>(우리 exit head가 더 가벼움). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".</p>
 
 
