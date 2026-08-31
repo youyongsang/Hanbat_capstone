@@ -54,18 +54,23 @@ MOVING_AVG_WINDOW = 5
 
 # (축, 경고, 혼잡, 심각, 완전) — 단위는 각 축 주석 참고
 ANCHORS = {
-    # channel airtime %  — Cisco/Aruba WLAN 설계 가이드 (>50% 경고, >75% 혼잡)
+    # channel airtime %  — Aruba WLAN 설계 가이드 (~50% 경고, >75% 문제).
+    #                      심각=75가 표준 지지, 40/55/90은 그 근처 보간(4-티어 정식 표준 아님).
     "occupancy": (40.0, 55.0, 75.0, 90.0),
-    # probe IPDV ms      — ITU-T Y.1541 Class 0/1 (≤50ms), RFC 4594 (~30ms)
+    # probe IPDV ms      — 심각=50: ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms).
+    #                      경고/혼잡 20/30: Cisco Enterprise QoS (voice jitter ≤ 30ms).
+    #                      (RFC 4594는 'jitter Very Low' 정성 등급만, 수치는 Y.1541 위임.)
     "jitter": (20.0, 30.0, 50.0, 100.0),
-    # probe loss %       — Cisco Enterprise QoS (voice <1%, >5% 불가), ITU-T G.113
+    # probe loss %       — Cisco Enterprise QoS (voice loss ≤ 1%, > 5% 사용 불가).
+    #                      Y.1541 Class 0/1 IPLR ≤ 0.1%는 더 엄격 — 이 스케일은 Cisco 실무 기준.
     "loss": (0.5, 1.0, 5.0, 10.0),
-    # 편도(one-way) ms   — ITU-T G.114. ping은 RTT를 재므로 calculate_scores에서
-    #                      latency_ms/2 를 편도 추정치로 넣는다(2026-08-27 밤:
-    #                      RTT 생값을 편도 앵커에 넣어 label 3 과다 발생 → 수정).
+    # 편도(one-way) ms   — 심각=150·완전=400: ITU-T G.114 (전송 시간 티어 경계).
+    #                      경고/혼잡 30/60은 그 아래 보간. ping은 RTT를 재므로
+    #                      calculate_scores에서 latency_ms/2 를 편도 추정치로 넣는다
+    #                      (2026-08-27 밤: RTT 생값을 편도 앵커에 넣어 label 3 과다 → 수정).
     #                      노트북 대상(방화벽 ICMP 허용). idle RTT ~2ms.
     "latency": (30.0, 60.0, 150.0, 400.0),
-    # retry ratio %      — WLAN 헬스 (Cisco/Ekahau/7signal: <10% 정상, >20% 불량)
+    # retry ratio %      — WLAN 헬스 실무 룰오브썸(<10% 정상, >20% 불량). 정식 표준 아님.
     "retry": (10.0, 15.0, 25.0, 40.0),
 }
 
