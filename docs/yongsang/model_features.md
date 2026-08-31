@@ -93,16 +93,27 @@
 
 ### 3.2 컬럼별 판정
 
-| 컬럼 | 라벨 축? | 모델 입력? | 이유 |
-|---|:--:|:--:|---|
-| `latency_ms` (ping RTT) | ✅ (`latency_score`) | ❌ **제거** | 라벨을 만드는 축. 모델이 정답을 그대로 받는 꼴 |
-| `jitter_ms` (ping mdev) | — | ❌ **제거** | victim 프로브 jitter로 대체되고 라벨 축과 겹쳐 leakage |
-| `probe_jitter_ms` | ✅ (`jitter_score`) | ❌ | victim 실측 = "정답". 배포 시 프로브 없음 |
-| `probe_loss_pct` | ✅ (`loss_score`) | ❌ | 〃 |
-| `channel_occupancy_percent` | ✅ (`occupancy_score`) | ✅ 유지 | 배포 시 available. "맞는 shortcut" |
-| `tx_retry_ratio` | ❌ (계산만) | ✅ 유지 | 배포 시 available. 선행 신호 |
-| `throughput_mbps` | ❌ (계산만) | ✅ 유지 | 부하 맥락 |
-| `connected_clients` | ❌ | ❌ | 우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨 |
+**모델 입력 = 아래 7개** (§1과 동일). 이 중 `channel_occupancy_percent`만 라벨 축을 겸한다.
+
+| 모델 입력 (7개) | 라벨 축? | 이유 |
+|---|:--:|---|
+| `channel_occupancy_percent` | ✅ (`occupancy_score`) | 배포 시 AP 텔레메트리로 available. "occ 높으면 대개 혼잡"은 맞는 shortcut |
+| `throughput_mbps` | ❌ (`throughput_score` 계산만, max 제외) | 부하 맥락 |
+| `tx_retry_ratio` | ❌ (`retry_score` 계산만, max 제외) | 배포 시 available. "재전송 많다 → victim 곧 깨질 것" 선행 신호 |
+| `rssi_dbm` | ❌ | 링크 품질 (victim 피해의 원인 쪽 신호) |
+| `rssi_delta_db` | ❌ | 신호 악화 추세 |
+| `rssi_moving_avg_dbm` | ❌ | 링크 품질 기저선 |
+| `sta_tx_bitrate_mean` | ❌ | occ 60~72%에서 label 2/3 변별 (2026-08-29 추가) |
+
+**모델 입력에서 제외한 것:**
+
+| 제외 컬럼 | 라벨 축? | 왜 뺐나 |
+|---|:--:|---|
+| `latency_ms` (ping RTT) | ✅ (`latency_score`) | 라벨을 만드는 축 → 모델이 정답을 그대로 받는 꼴 |
+| `jitter_ms` (ping mdev) | — | victim 프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage |
+| `probe_jitter_ms` | ✅ (`jitter_score`) | victim 실측 = "정답". 배포 시 프로브 없음 |
+| `probe_loss_pct` | ✅ (`loss_score`) | 〃 |
+| `connected_clients` | ❌ | 우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨 |
 
 **`collect_metrics.py`가 계산하는 sub-score는 6개** (`occupancy_score`, `jitter_score`, `loss_score`, `latency_score`, `throughput_score`, `retry_score`) — 그중 **4개**(occupancy, jitter, loss, latency)만 `max()`에 들어가 라벨이 된다. 6개 전부 `model_excluded_columns`라 모델 입력엔 안 들어간다.
 

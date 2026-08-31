@@ -371,23 +371,37 @@
     <div class="callout"><span>▸</span><span><b>모델의 일</b> = 라벨 축(jitter/loss/latency)을 못 보는 상태에서, 채널 상태 7개만으로 그 라벨을 예측. latency/jitter를 입력에 넣으면 정답을 그대로 베끼는 꼴이라 뺐다.</span></div>
 
     <h3 style="font-size:0.92rem; margin:2rem 0 0.6rem;">컬럼별 판정</h3>
-    <p class="lede"><code>collect_metrics.py</code>가 계산하는 sub-score는 6개(<code>occupancy·jitter·loss·latency·throughput·retry</code>). 그중 <b>4개</b>(occupancy, jitter, loss, latency)만 <code>max()</code>에 들어가 라벨이 된다. 6개 전부 <code>model_excluded_columns</code>라 모델 입력엔 안 들어간다.</p>
+    <p class="lede"><b>모델 입력 = 아래 7개</b> (§1과 동일). 이 중 <code>channel_occupancy_percent</code>만 라벨 축을 겸한다.</p>
     <div class="tw">
     <table class="grid">
-      <thead><tr><th>컬럼</th><th class="n">라벨 축?</th><th class="n">모델 입력?</th><th>이유</th></tr></thead>
+      <thead><tr><th>모델 입력 (7개)</th><th class="n">라벨 축?</th><th>이유</th></tr></thead>
       <tbody>
-        <tr><td><code>latency_ms</code> (ping RTT)</td><td class="n">✅ <span class="mono">latency_score</span></td><td class="n"><span class="drop">✗ 제거</span></td><td>라벨을 만드는 축. 모델이 정답을 그대로 받는 꼴</td></tr>
-        <tr><td><code>jitter_ms</code> (ping mdev)</td><td class="n">—</td><td class="n"><span class="drop">✗ 제거</span></td><td>victim 프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage</td></tr>
-        <tr><td><code>probe_jitter_ms</code></td><td class="n">✅ <span class="mono">jitter_score</span></td><td class="n"><span class="drop">✗</span></td><td>victim 실측 = "정답". 배포 시 프로브 없음</td></tr>
-        <tr><td><code>probe_loss_pct</code></td><td class="n">✅ <span class="mono">loss_score</span></td><td class="n"><span class="drop">✗</span></td><td>〃</td></tr>
-        <tr><td><code>channel_occupancy_percent</code></td><td class="n">✅ <span class="mono">occupancy_score</span></td><td class="n"><span class="keep">✓ 유지</span></td><td>배포 시 available. "맞는 shortcut"</td></tr>
-        <tr><td><code>tx_retry_ratio</code></td><td class="n">✗ (계산만)</td><td class="n"><span class="keep">✓ 유지</span></td><td>배포 시 available. 선행 신호</td></tr>
-        <tr><td><code>throughput_mbps</code></td><td class="n">✗ (계산만)</td><td class="n"><span class="keep">✓ 유지</span></td><td>부하 맥락</td></tr>
-        <tr><td><code>connected_clients</code></td><td class="n">✗</td><td class="n"><span class="drop">✗</span></td><td>우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨</td></tr>
+        <tr><td><code>channel_occupancy_percent</code></td><td class="n">✅ <span class="mono">occupancy_score</span></td><td>배포 시 AP 텔레메트리로 available. "occ 높으면 대개 혼잡"은 맞는 shortcut</td></tr>
+        <tr><td><code>throughput_mbps</code></td><td class="n">✗ <span style="color:var(--ink-mute)">(score 계산만)</span></td><td>부하 맥락</td></tr>
+        <tr><td><code>tx_retry_ratio</code></td><td class="n">✗ <span style="color:var(--ink-mute)">(score 계산만)</span></td><td>배포 시 available. "재전송 많다 → victim 곧 깨질 것" 선행 신호</td></tr>
+        <tr><td><code>rssi_dbm</code></td><td class="n">✗</td><td>링크 품질 (victim 피해의 원인 쪽 신호)</td></tr>
+        <tr><td><code>rssi_delta_db</code></td><td class="n">✗</td><td>신호 악화 추세</td></tr>
+        <tr><td><code>rssi_moving_avg_dbm</code></td><td class="n">✗</td><td>링크 품질 기저선</td></tr>
+        <tr><td><code>sta_tx_bitrate_mean</code></td><td class="n">✗</td><td>occ 60~72%에서 label 2/3 변별 (2026-08-29 추가)</td></tr>
       </tbody>
     </table>
     </div>
-    <div class="callout"><span>ℹ</span><span><code>dataset_summary.json</code>의 <code>model_excluded_columns</code> (19개): <span class="mono">timestamp, scenario, poll_interval_s, channel_occupancy_method, packet_loss_udp_percent, connected_clients, latency_ms, probe_jitter_ms, probe_loss_pct, probe_ok, tx_retx_delta, tx_packets_delta, throughput_score, occupancy_score, jitter_score, loss_score, latency_score, retry_score, congestion_score</span></span></div>
+
+    <p class="lede" style="margin-top:1.4rem;"><b>모델 입력에서 제외한 것:</b></p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>제외 컬럼</th><th class="n">라벨 축?</th><th>왜 뺐나</th></tr></thead>
+      <tbody>
+        <tr><td><code>latency_ms</code> (ping RTT)</td><td class="n">✅ <span class="mono">latency_score</span></td><td>라벨을 만드는 축 → 모델이 정답을 그대로 받는 꼴</td></tr>
+        <tr><td><code>jitter_ms</code> (ping mdev)</td><td class="n">—</td><td>victim 프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage</td></tr>
+        <tr><td><code>probe_jitter_ms</code></td><td class="n">✅ <span class="mono">jitter_score</span></td><td>victim 실측 = "정답". 배포 시 프로브 없음</td></tr>
+        <tr><td><code>probe_loss_pct</code></td><td class="n">✅ <span class="mono">loss_score</span></td><td>〃</td></tr>
+        <tr><td><code>connected_clients</code></td><td class="n">✗</td><td>우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout"><span>ℹ</span><span><code>collect_metrics.py</code>가 계산하는 sub-score는 6개(<code>occupancy·jitter·loss·latency·throughput·retry</code>) — 그중 4개(occupancy, jitter, loss, latency)만 <code>max()</code>에 들어가 라벨이 되고, 6개 전부 모델 입력엔 안 들어간다. <code>dataset_summary.json</code>의 <code>model_excluded_columns</code> (19개): <span class="mono">timestamp, scenario, poll_interval_s, channel_occupancy_method, packet_loss_udp_percent, connected_clients, latency_ms, probe_jitter_ms, probe_loss_pct, probe_ok, tx_retx_delta, tx_packets_delta, throughput_score, occupancy_score, jitter_score, loss_score, latency_score, retry_score, congestion_score</span></span></div>
   </section>
 
   <section>
