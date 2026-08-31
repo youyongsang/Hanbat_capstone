@@ -30,7 +30,7 @@
 | **왜 `class-weight-power=0.0`인가** | 아티팩트 "Class-Weight-Power Zero" (`.work-log/current.md` 4~5차 체크포인트에 링크·표) |
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
 | **ONNX를 왜 이렇게 배포했나** (staged→unified If→INT8 재조립) | `docs/yongsang/onnx_early_exit_redesign.{md,html}` |
-| **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | `project/models/sdn_lstm.py` docstring + `project/demo/API.md` §4 표 + `.work-log/current.md` 9차 |
+| **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | `project/models/sdn_lstm.py` docstring (Kaya et al. 2019 재구현) + `CLAUDE.md` "최신 평가 결과" + `project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}` + `.work-log/current.md` 9차 |
 | **Fixed θ vs Dynamic θ 차이** | `CLAUDE.md` "해석 기준" 6번 |
 | **데모를 어떻게 돌리나** | `project/demo/README.md` |
 | **데모를 (팀이) 어떻게 만드나** | `project/demo/API.md` — API·SSE 스키마·모델 계약·확장 항목 |
@@ -47,7 +47,7 @@
 | `ap_v2_redesign2_eval_report.txt` | 최신 Early Exit 평가 (fixed/dynamic θ) |
 | `ap_baseline_lstm_redesign2_eval_report.txt` · `ap_sdn_redesign2_eval_report.txt` | Baseline · SDN 평가 |
 | `ap_model_comparison_redesign2.{txt,csv}` | Baseline / SDN / Proposed 비교표 |
-| `ap_v2_redesign2_pi_latency_comparison.txt` | Raspberry Pi INT8 지연 실측 (1~5차 이력) |
+| `ap_v2_redesign2_pi_latency_comparison.txt` | Raspberry Pi INT8 지연 실측 (3~5차 + 이전 차수 보존) |
 | `ap_v2_redesign2_threshold_comparison.txt` | 학습 모델 vs occupancy 단일 문턱 (심각 탐지) |
 | `ap_v2_redesign2_forecast_eval.txt` | 조기경보(k폴링 뒤 라벨) 프레이밍 |
 | `ap_v2_redesign2_pi_bench_power0_20260830.txt` | Pi INT8 벤치 raw 로그 |
