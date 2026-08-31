@@ -4,7 +4,9 @@
 
 > 브라우저로 보기 좋은 버전: [`congestion_label_redesign.html`](congestion_label_redesign.html) — 정의·근거 중심 요약(§1~5 + 캘리브레이션). 이 markdown이 세션 로그·열린 항목까지 담은 전체본.
 
-**상태 (2026-08-27 밤)**: `collect_metrics.py`·`ap_features.py`·`prepare_ap_metrics_dataset.py` 구현 완료. Pi 캘리브레이션: idle(v6: 77/77 label 0) + 60/60·소패킷·45/45 부하 — **occupancy 포화 아닌 occ 60~72%에서 latency/loss 주도 label 3 확인**(45/45 런 22행). "실패=max" 채점 추가(§4) — victim 경로가 죽으면 occupancy 단독으로 안 되돌아감. **남은 것: 여러 시나리오 재수집(새 파일, 누적) → 재변환 → 재학습 → 평가.** 기존 5574행은 레거시(프로브·tx_packets 없음 + retry 3× 버그).
+> **현재 상태 (2026-08-31)**: 이 설계는 **전부 구현·본수집·배포 완료**. 데이터 `ap_metrics_v2_redesign2`(2115행, feature는 이후 7개로), 세 모델 학습·ONNX·Pi 실측까지. §3 표준 앵커는 원문 대조 완료(§3 표). §6~8의 "구현 순서/열린 항목/남은 것"은 **2026-08-27 시점 기록**이며 대부분 완료됐다 — 최신 진행은 `.work-log/current.md`.
+
+**상태 (2026-08-27 밤, 원문 보존)**: `collect_metrics.py`·`ap_features.py`·`prepare_ap_metrics_dataset.py` 구현 완료. Pi 캘리브레이션: idle(v6: 77/77 label 0) + 60/60·소패킷·45/45 부하 — **occupancy 포화 아닌 occ 60~72%에서 latency/loss 주도 label 3 확인**(45/45 런 22행). "실패=max" 채점 추가(§4) — victim 경로가 죽으면 occupancy 단독으로 안 되돌아감. **남은 것: 여러 시나리오 재수집(새 파일, 누적) → 재변환 → 재학습 → 평가.** 기존 5574행은 레거시(프로브·tx_packets 없음 + retry 3× 버그).
 
 ## 0. 한 줄 요약
 
@@ -270,7 +272,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 ## 참고
 
 - `docs/yongsang/congestion_label_criteria.md` — 현재(구) 정의
-- `project/README_AP_V2.md` — "핵심 검증 질문"
+- `project/results/yongsang/ap_v2_redesign2_threshold_comparison.txt` — "occupancy 문턱 vs 학습 모델" 실측 대조 ("핵심 검증 질문"의 결과)
 - `.work-log/current.md` — 2026-08-27 저녁 세션 (문제 발견 경위)
 - **앵커 근거** (원문 대조 2026-08-31): ITU-T Y.1541 (jitter IPDV ≤ 50ms, loss IPLR ≤ 0.1% — Class 0/1) · ITU-T G.114 (편도 지연 150 / 400ms) · Cisco Enterprise QoS SRND (voice: 편도 ≤ 150ms, jitter ≤ 30ms, loss ≤ 1%) · Aruba WLAN 설계 가이드 (channel utilization ~50% / 75%) · ITU-T G.107 E-model (§4 대안 조합 방식). RFC 4594·G.113 App.I는 앵커 수치 근거로 부적합(위 §3 참조).
 

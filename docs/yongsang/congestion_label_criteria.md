@@ -82,4 +82,4 @@ sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이�
 
 - 1차와 2차는 congestion_score 가중치가 다르므로 label 정의 자체가 다르다. 정확도나 label 분포를 같은 표에서 직접 비교하지 않는다.
 - 2차의 label 3 표본은 아직 얇다(**2026-08-23 시점** test 5개). recall 40%가 통계적으로 안정적이라 보기 어렵다. **이 수치는 그 시점 스냅샷이며 현재 상태가 아니다** — 이후 여러 차례 재수집·재라벨링·재설계를 거쳐 지금(재설계 6-feature 기준)은 test label 3가 38개다. 최신 수치는 `.work-log/current.md`, `docs/yongsang/congestion_label_redesign.{md,html}`, `project/results/yongsang/ap_v2_redesign_threshold_comparison.txt`를 본다.
-- 자세한 재현 명령어, 현재 평가 결과 전체는 `project/README_AP_V2.md`(2차), `project/README_AP_STRICT.md`(1차)를 참고한다.
+- 자세한 재현 명령어·현재 평가 결과는 `CLAUDE.md` "재현 명령어"·"최신 평가 결과" + `.work-log/current.md`. 1차(`ap_cleaned_strict`)는 `yongsang` 브랜치의 `project/README_AP_STRICT.md`.

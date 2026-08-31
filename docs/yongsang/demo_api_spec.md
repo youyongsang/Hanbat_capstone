@@ -485,7 +485,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 | `static` | occupancy 문턱 전환 — 전환 시각, 오탐 횟수, 회복 속도 |
 | `proposed` | LSTM 전환 — **더 일찍 감지하는가? 오탐이 적은가? 회복이 빠른가?** |
 
-이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(`README_AP_V2.md` "핵심 검증 질문").
+이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(`congestion_label_redesign.{md,html}` §1·§3, 실측 대조 `ap_v2_redesign2_threshold_comparison.txt`).
 
 ### 9.5 전제 (미착수 이유이기도 함)
 
@@ -498,8 +498,8 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 
 - `.work-log/current.md` — "향후 데모 구상", "향후 시스템 구상 — 혼잡 감지 기반 밴드 스티어링", 세션별 진행
 - `docs/yongsang/ap_crash_analysis.md` — 안전 부하 범위·부하 생성 방법 대안의 근거
-- `project/README_AP_V2.md` — 모델·feature·congestion_score 정의, "핵심 검증 질문"
-- `project/utils/ap_features.py` — FeatureVector 순서의 정본 (7-feature, `sta_tx_bitrate_mean` 2026-08-29~)
+- `docs/yongsang/congestion_label_redesign.{md,html}` — 라벨 정의(max 앵커 + victim 프로브)·근거·"occupancy 문턱 대비 LSTM 우위" 검증 프레이밍
+- `project/utils/ap_features.py` — FeatureVector 순서의 정본 (7-feature, `sta_tx_bitrate_mean` 2026-08-29~). 각 feature 상세는 `docs/yongsang/model_features.{md,html}`
 - `project/scripts/collect_metrics.py`의 `calculate_scores()`/`ANCHORS` — congestion_score(max/anchor 방식) 정본
 - `docs/yongsang/onnx_early_exit_redesign.md` — 배포용 ONNX(unified INT8 v2) 재설계 기록, Pi latency 수치
 - `docs/yongsang/congestion_label_redesign.{md,html}` — congestion_score 가중합→max 방식 재설계 배경
