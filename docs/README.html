@@ -107,10 +107,12 @@
         <td><code>congestion_label_redesign.md</code> — §1 "왜 재설계하나"(순환논리), §3 "sub-score 표준 문턱"(Cisco/ITU-T), §4 "조합 = max"</td></tr>
       <tr><td class="q">congestion_score는 어떻게 계산하나</td>
         <td><code>congestion_label_redesign.md</code> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
+      <tr class="star"><td class="q"><span class="star">★</span> 7개 feature 각각이 뭔가 / 계산·스무딩·스케일러</td>
+        <td><code>docs/yongsang/model_features.{md,html}</code> — feature 레퍼런스 (정본은 <code>project/utils/ap_features.py</code>)</td></tr>
       <tr><td class="q">왜 latency·jitter를 모델 입력에서 뺐나</td>
-        <td><code>congestion_label_redesign.md</code> §5 — 정답 leakage + 배포 시점엔 없는 측정</td></tr>
-      <tr><td class="q">왜 feature가 7개인가, <code>sta_tx_bitrate_mean</code>은 왜</td>
-        <td><code>project/utils/ap_features.py</code> 상단 주석 (변천 기록) + <code>.work-log/current.md</code> "2026-08-29 2차"</td></tr>
+        <td><code>model_features.md</code> §3 + <code>congestion_label_redesign.md</code> §5 — 정답 leakage + 배포 시점엔 없는 측정</td></tr>
+      <tr><td class="q">왜 feature가 7개인가 (9→6→7), <code>sta_tx_bitrate_mean</code>은 왜</td>
+        <td><code>model_features.md</code> §2(7번)·§5 + <code>.work-log/current.md</code> "2026-08-29 2차"</td></tr>
       <tr><td class="q">왜 <code>class-weight-power=0.0</code>인가</td>
         <td>아티팩트 "Class-Weight-Power Zero" (<code>.work-log/current.md</code> 4~5차 체크포인트에 링크·표)</td></tr>
       <tr><td class="q">AP가 왜 자꾸 크래시하나 / 부하는 얼마까지</td>
@@ -166,7 +168,7 @@
 
   <h2><span class="dot"></span>HTML로 읽기 좋은 것</h2>
   <p class="sub">브라우저로 열면 표·차트가 렌더된다:
-    <code>capstone2_vacation_summary.html</code> · <code>onnx_early_exit_redesign.html</code> ·
+    <code>capstone2_vacation_summary.html</code> · <code>model_features.html</code> · <code>onnx_early_exit_redesign.html</code> ·
     <code>ap_crash_analysis.html</code> · <code>congestion_label_criteria.html</code> ·
     <code>docs/capstone1_summary.html</code>(1학기)</p>
   <p class="sub">발행 아티팩트 (링크는 <code>.work-log/current.md</code>): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".</p>
