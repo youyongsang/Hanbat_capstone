@@ -387,19 +387,18 @@
     </table>
     </div>
 
-    <p class="lede" style="margin-top:1.4rem;"><b>모델 입력에서 제외한 것:</b></p>
+    <p class="lede" style="margin-top:1.4rem;"><b>라벨 축이지만 모델 입력에서 뺀 것</b> (정답 leakage — 핵심):</p>
     <div class="tw">
     <table class="grid">
-      <thead><tr><th>제외 컬럼</th><th class="n">라벨 축?</th><th>왜 뺐나</th></tr></thead>
+      <thead><tr><th>제외 컬럼</th><th class="n">라벨 축</th><th>왜 모델엔 안 주나</th></tr></thead>
       <tbody>
-        <tr><td><code>latency_ms</code> (ping RTT)</td><td class="n">✅ <span class="mono">latency_score</span></td><td>라벨을 만드는 축 → 모델이 정답을 그대로 받는 꼴</td></tr>
-        <tr><td><code>jitter_ms</code> (ping mdev)</td><td class="n">—</td><td>victim 프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage</td></tr>
-        <tr><td><code>probe_jitter_ms</code></td><td class="n">✅ <span class="mono">jitter_score</span></td><td>victim 실측 = "정답". 배포 시 프로브 없음</td></tr>
-        <tr><td><code>probe_loss_pct</code></td><td class="n">✅ <span class="mono">loss_score</span></td><td>〃</td></tr>
-        <tr><td><code>connected_clients</code></td><td class="n">✗</td><td>우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨</td></tr>
+        <tr><td><code>latency_ms</code> (ping RTT)</td><td class="n"><span class="mono">latency_score</span></td><td>라벨을 만드는 축 → 모델이 정답을 그대로 받는 꼴</td></tr>
+        <tr><td><code>probe_jitter_ms</code></td><td class="n"><span class="mono">jitter_score</span></td><td>victim 실측 = "정답". 배포 시 프로브 없음</td></tr>
+        <tr><td><code>probe_loss_pct</code></td><td class="n"><span class="mono">loss_score</span></td><td>〃</td></tr>
       </tbody>
     </table>
     </div>
+    <p style="color:var(--ink-2); font-size:0.88rem; max-width:72ch; margin-top:1rem;"><b>애초에 라벨 축도 모델 입력도 아닌 것:</b> <code>jitter_ms</code>(기존 ping mdev — 9-feature 시절 입력이었으나 victim 프로브 jitter로 대체, 라벨 축과 상관 높아 leakage 우려로 제거), <code>connected_clients</code>(후보였으나 우리 데이터 2~3으로 변별력 없음 → 기각).</p>
 
     <div class="callout"><span>ℹ</span><span><code>collect_metrics.py</code>가 계산하는 sub-score는 6개(<code>occupancy·jitter·loss·latency·throughput·retry</code>) — 그중 4개(occupancy, jitter, loss, latency)만 <code>max()</code>에 들어가 라벨이 되고, 6개 전부 모델 입력엔 안 들어간다. <code>dataset_summary.json</code>의 <code>model_excluded_columns</code> (19개): <span class="mono">timestamp, scenario, poll_interval_s, channel_occupancy_method, packet_loss_udp_percent, connected_clients, latency_ms, probe_jitter_ms, probe_loss_pct, probe_ok, tx_retx_delta, tx_packets_delta, throughput_score, occupancy_score, jitter_score, loss_score, latency_score, retry_score, congestion_score</span></span></div>
   </section>

@@ -105,15 +105,15 @@
 | `rssi_moving_avg_dbm` | ❌ | 링크 품질 기저선 |
 | `sta_tx_bitrate_mean` | ❌ | occ 60~72%에서 label 2/3 변별 (2026-08-29 추가) |
 
-**모델 입력에서 제외한 것:**
+**라벨 축이지만 모델 입력에서 뺀 것** (정답 leakage — 핵심):
 
-| 제외 컬럼 | 라벨 축? | 왜 뺐나 |
+| 제외 컬럼 | 라벨 축 | 왜 모델엔 안 주나 |
 |---|:--:|---|
-| `latency_ms` (ping RTT) | ✅ (`latency_score`) | 라벨을 만드는 축 → 모델이 정답을 그대로 받는 꼴 |
-| `jitter_ms` (ping mdev) | — | victim 프로브 jitter로 대체 + 라벨 축과 겹쳐 leakage |
-| `probe_jitter_ms` | ✅ (`jitter_score`) | victim 실측 = "정답". 배포 시 프로브 없음 |
-| `probe_loss_pct` | ✅ (`loss_score`) | 〃 |
-| `connected_clients` | ❌ | 우리 데이터 2~3으로 변별력 없음, 실배포 일반화 안 됨 |
+| `latency_ms` (ping RTT) | `latency_score` | 라벨을 만드는 축 → 모델이 정답을 그대로 받는 꼴 |
+| `probe_jitter_ms` | `jitter_score` | victim 실측 = "정답". 배포 시 프로브 없음 |
+| `probe_loss_pct` | `loss_score` | 〃 |
+
+**애초에 라벨 축도 모델 입력도 아닌 것**: `jitter_ms`(기존 ping mdev — 9-feature 시절 입력이었으나 victim 프로브 jitter로 대체, 라벨 축과 상관 높아 leakage 우려로 제거), `connected_clients`(후보였으나 우리 데이터 2~3으로 변별력 없음 → 기각).
 
 **`collect_metrics.py`가 계산하는 sub-score는 6개** (`occupancy_score`, `jitter_score`, `loss_score`, `latency_score`, `throughput_score`, `retry_score`) — 그중 **4개**(occupancy, jitter, loss, latency)만 `max()`에 들어가 라벨이 된다. 6개 전부 `model_excluded_columns`라 모델 입력엔 안 들어간다.
 
