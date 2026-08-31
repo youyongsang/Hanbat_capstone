@@ -1,8 +1,13 @@
 # 혼잡 라벨 분류 기준
 
-AP 트래픽 혼잡을 4단계로 분류하는 `congestion_score` 계산식과 라벨 경계를 정리한다. 1차(`ap_cleaned_strict`)와 2차(`ap_metrics_v2`)는 가중치가 다르므로 반드시 구분해서 읽는다. 두 라인의 전체 배경은 `CLAUDE.md`의 "데이터 계보" 섹션, 2차 상세는 `project/README_AP_V2.md`를 참고한다.
+AP 트래픽 혼잡을 4단계로 분류하는 `congestion_score` 계산식과 라벨 경계를 정리한다. **이 문서 전체는 `throughput·occupancy·retry·jitter` 4개 sub-score를 가중합하던 시절(2026-08-23 기준)의 기록이다.** 전체 배경은 `CLAUDE.md`의 "데이터 계보" 섹션.
 
-> **2026-08-27**: 아래 2차 정의(weighted-sum, occupancy 0.45)는 label 3이 occupancy 포화에서만 나오는 순환논리 문제가 실측으로 확인됐다. **표준 문턱 + victim 프로브 + `max` 조합**으로 재설계하는 제안은 `docs/yongsang/congestion_label_redesign.md`. 재설계가 구현되면 이 문서는 그에 맞춰 개정한다.
+> **⚠ (archived — 2026-08-28 확인) 이 문서 전체가 stale하다.** 아래 §계산식~§가중치가 설명하는 weighted-sum(occupancy 0.45)은 2026-08-23 시점 2차 초기 구현이고, label 3이 occupancy 포화에서만 나오는 순환논리가 실측으로 확인돼 **재설계됐다(이미 구현·배포 완료)**. 현행 2차는 **`ap_metrics_v2_redesign2` · 7-feature · `max(anchor_score(occupancy, jitter, loss, latency))`** 방식이다:
+> - sub-score가 **4개 가중합 → 6개 계산 / 그중 4개만 `max`** (throughput·retry는 계산만 하고 라벨 축·max에서 제외, 모델 입력 feature로만 유지)
+> - jitter/loss는 이제 **victim 프로브 실측** (ping mdev 아님), latency 축 신규
+> - 가중치라는 개념 자체가 없음 — `max`라 논쟁 불가
+>
+> 최신 정의·근거는 `docs/yongsang/congestion_label_redesign.md`, 최신 수치는 `.work-log/current.md`. 이 문서는 그 이전 시점 구현의 기록으로만 남겨둔다.
 
 ## 4단계 라벨
 
@@ -13,7 +18,7 @@ AP 트래픽 혼잡을 4단계로 분류하는 `congestion_score` 계산식과 �
 | 2 | 혼잡 | 0.50 ~ 0.75 |
 | 3 | 심각 | ≥ 0.75 |
 
-라벨 경계 자체(0.25 / 0.50 / 0.75)는 1차와 2차가 동일하다. 다른 건 `congestion_score`를 만드는 가중치다.
+라벨 경계 자체(0.25 / 0.50 / 0.75)는 1차·2차·재설계 전후 모두 동일하다. 아래에서 다루는 "라인마다 다른 가중치"는 **가중합 시절 얘기** — 현행 max 방식엔 가중치가 없다.
 
 ## congestion_score 계산식
 
@@ -37,12 +42,14 @@ sub-score는 각각 raw 측정값을 상한으로 나눠 0~1로 clamp한 값이�
 >
 > **(archived — 2026-08-28 확인) 위는 "정규화 방식만 바뀜"으로 읽히지만, 실제로는 그 다음 재설계에서 retry를 congestion_score(라벨 축) 자체에서 완전히 뺐다.** 지금 코드는 `retry_ratio_pct` 기반 `retry_score`를 계산은 하되 `max()`에 넣지 않는다(정보/모델 feature용으로만 유지, `tx_retry_ratio`). `RETRY_FAILED_MAX_PER_SEC`·`JITTER_MAX_MS` 상수도 코드에서 삭제됐다 — 아래 표는 2026-08-23 시점 구현의 기록이지 현재 코드 참조가 아니다.
 
-### 가중치(w_t, w_o, w_r, w_j) — 1차 vs 2차
+### 가중치(w_t, w_o, w_r, w_j) — 1차 vs 2차 초기 (둘 다 archived)
 
 | | throughput | occupancy | retry/failed | jitter |
 |---|---:|---:|---:|---:|
 | 1차 (`ap_cleaned_strict`) | 0.35 | 0.35 | 0.20 | 0.10 |
-| 2차 (`ap_metrics_v2`) | 0.20 | 0.45 | 0.20 | 0.15 |
+| 2차 초기 (`ap_metrics_v2`, 가중합) | 0.20 | 0.45 | 0.20 | 0.15 |
+
+> 현행 2차(`ap_metrics_v2_redesign2`)엔 가중치가 없다 — `max(occupancy, jitter, loss, latency)`.
 
 ## 2차에서 가중치를 바꾼 이유
 

@@ -660,17 +660,17 @@
   <header class="page-head">
     <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
     <h1>혼잡 라벨 분류 기준</h1>
-    <p>AP 무선 트래픽을 4단계로 분류하는 <code class="mono">congestion_score</code> 계산식과 라벨 경계를 정리한다. 데이터 라인이 두 개(1차·2차)이고 계산식 가중치가 서로 다르므로, 반드시 구분해서 읽는다.</p>
+    <p>AP 무선 트래픽을 4단계로 분류하는 <code class="mono">congestion_score</code> 계산식과 라벨 경계를 정리한다. <b>이 페이지 전체는 <code class="mono">throughput·occupancy·retry·jitter</code> 4개 sub-score를 가중합하던 시절(2026-08-23 기준)의 기록이다.</b></p>
     <div class="gen-badges">
       <span class="gen-badge archived">1차 <b>ap_cleaned_strict</b> · archived</span>
-      <span class="gen-badge active">2차 <b>ap_metrics_v2</b> · 진행 중</span>
+      <span class="gen-badge archived">2차 초기 <b>ap_metrics_v2</b> (가중합) · archived</span>
     </div>
-    <div class="callout" style="margin-top:1.4rem;"><span>⚠</span><span><b>(archived — 2026-08-28 확인)</b> 이 페이지 §03~05가 설명하는 <b>weighted-sum</b> 공식(<code class="mono">calculate_scores()</code>)은 2026-08-23 시점 2차 구현이다. 그 이후 2차 자체가 <b>재설계</b>되어 지금 코드는 <code class="mono">max(anchor_score(throughput, occupancy, jitter, loss, latency))</code> 방식을 쓰고, retry는 congestion_score(라벨 축)에서 완전히 빠졌다(모델 입력 feature로만 유지). 최신 계산식·캘리브레이션은 <code class="mono">docs/yongsang/congestion_label_redesign.md</code>와 <code class="mono">.work-log/current.md</code>를 본다. 이 페이지는 그 이전 시점 구현을 기록으로 남겨둔 것이다.</span></div>
+    <div class="callout" style="margin-top:1.4rem;"><span>⚠</span><span><b>(archived — 2026-08-28 확인) 이 페이지 전체가 stale하다.</b> §03~05가 설명하는 <b>weighted-sum</b> 공식(<code class="mono">calculate_scores()</code>)은 2026-08-23 시점 2차 초기 구현이고, 그 뒤 2차가 <b>재설계</b>되어 지금 코드는 <code class="mono">max(anchor_score(occupancy, jitter, loss, latency))</code> 방식을 쓴다 — sub-score도 4개 가중합에서 <b>6개 계산 / 그중 4개만 max</b>로 바뀌었고(throughput·retry는 계산만, max·라벨 축에서 제외), jitter/loss는 이제 victim 프로브 실측이다. 현행 2차는 <code class="mono">ap_metrics_v2_redesign2</code> · 7-feature · max-앵커 라벨이다. 최신 계산식·캘리브레이션은 <code class="mono">docs/yongsang/congestion_label_redesign.md</code>와 <code class="mono">.work-log/current.md</code>. 이 페이지는 그 이전 시점 구현을 기록으로 남겨둔 것이다.</span></div>
   </header>
 
   <section id="labels">
     <h2><span class="step">01</span> 4단계 라벨</h2>
-    <p class="lede">경계값(0.25 / 0.50 / 0.75)은 1차·2차 공통이다. 라벨을 만드는 <code class="mono">congestion_score</code>의 가중치만 라인마다 다르다.</p>
+    <p class="lede">경계값(0.25 / 0.50 / 0.75)은 라인·재설계 전후 공통이다. 아래 §03~05에서 다루는 "라인마다 다른 가중치"는 <b>가중합 시절 얘기</b> — 현행 max 방식엔 가중치가 아예 없다.</p>
 
     <div class="label-grid">
       <div class="label-card l0">
@@ -746,8 +746,8 @@ congestion_score =
         </div>
       </div>
       <div class="formula-card gen2">
-        <div class="gen-tag">2차</div>
-        <div class="gen-name">ap_metrics_v2 — 진행 중</div>
+        <div class="gen-tag">2차 초기</div>
+        <div class="gen-name">ap_metrics_v2 (가중합) — archived</div>
         <div class="weight-bars">
           <div class="weight-row"><span class="wlabel">throughput</span><span class="wtrack"><span class="wfill" style="width:40%"></span></span><span class="wval">0.20</span></div>
           <div class="weight-row"><span class="wlabel">occupancy</span><span class="wtrack"><span class="wfill" style="width:90%"></span></span><span class="wval">0.45</span></div>
