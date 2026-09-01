@@ -32,7 +32,7 @@
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
 | **ONNX를 왜 이렇게 배포했나** (staged→unified If→INT8 재조립) | `docs/yongsang/onnx_early_exit_redesign.{md,html}` |
 | **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | **`docs/yongsang/sdn_comparison.html`** — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 `project/models/sdn_lstm.py` docstring (Kaya et al. 2019 재구현) + `.work-log/current.md` 8~9차 + `project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}` |
-| **정확도·지연 결과 그래프로** | **`docs/yongsang/model_results.html`** — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. 수치 정본은 `ap_model_comparison_redesign2.{txt,csv}` + `ap_v2_redesign2_pi_latency_comparison.txt` |
+| **정확도·지연 결과 그래프로** | **`docs/yongsang/model_results.html`** (인터랙티브) — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. **발표 슬라이드용 이미지는 `docs/yongsang/figures/`** (SVG·PNG). 수치 정본은 `ap_model_comparison_redesign2.{txt,csv}` + `ap_v2_redesign2_pi_latency_comparison.txt` |
 | **Fixed θ vs Dynamic θ 차이** | `CLAUDE.md` "해석 기준" 6번 |
 | **데모를 어떻게 돌리나** | `project/demo/README.md` |
 | **데모를 (팀이) 어떻게 만드나** | `project/demo/API.md` — API·SSE 스키마·모델 계약·확장 항목 |
