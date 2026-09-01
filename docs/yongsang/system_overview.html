@@ -1,0 +1,486 @@
+<title>시스템 한눈에 (계보 · 라벨 · 수집)</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:        #f5f7fa;
+    --panel:        #fcfcfb;
+    --panel-raise:  #ffffff;
+    --ink:          #12151b;
+    --ink-2:        #4b5566;
+    --ink-mute:     #7c8494;
+    --rule:         #e2e6ec;
+    --rule-strong:  #c9d0da;
+    --accent:       #2a78d6;
+    --accent-2:     #eb6834;
+    --accent-ink:   #ffffff;
+    --load:         #cf3a40;
+    --probe:        #2a78d6;
+    --mgmt:         #7c8494;
+    --l0:           #2f9e5e;
+    --l1:           #c9982a;
+    --l2:           #d1712c;
+    --l3:           #cf3a40;
+    --archived:     #8a95a3;
+    --shadow:       0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+      --load:#e0565b; --probe:#5b93e6; --mgmt:#8890a0;
+      --l0:#43b978; --l1:#d9ad48; --l2:#e08a4a; --l3:#e0565b;
+      --archived:#6c7885;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+    --load:#e0565b; --probe:#5b93e6; --mgmt:#8890a0;
+    --l0:#43b978; --l1:#d9ad48; --l2:#e08a4a; --l3:#e0565b;
+    --archived:#6c7885;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  main { max-width: 960px; margin: 0 auto; padding: 4rem 1.75rem 6rem; }
+
+  header.page-head { max-width: 760px; margin-bottom: 3rem; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-size: clamp(1.9rem, 1.5rem + 1.6vw, 2.5rem);
+    font-weight: 700; letter-spacing: -0.01em; line-height: 1.18;
+    margin: 0 0 0.9rem; text-wrap: balance;
+  }
+  .page-head p { color: var(--ink-2); font-size: 1.03rem; margin: 0; max-width: 66ch; }
+
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.6rem;
+  }
+  .toc a {
+    font-size: 0.82rem; text-decoration: none; color: var(--ink-2);
+    border: 1px solid var(--rule-strong); border-radius: 999px;
+    padding: 0.25rem 0.8rem;
+  }
+  .toc a:hover { border-color: var(--accent); color: var(--accent); }
+
+  section { margin-top: 4rem; scroll-margin-top: 1.5rem; }
+  section > h2 {
+    font-size: 1.15rem; font-weight: 700; letter-spacing: -0.005em;
+    margin: 0 0 0.35rem; display: flex; align-items: baseline; gap: 0.6rem;
+  }
+  section > h2 .step { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--ink-mute); font-weight: 500; }
+  section > .lede { color: var(--ink-2); max-width: 74ch; margin: 0 0 1.75rem; }
+  h3 { font-size: 0.95rem; margin: 2.2rem 0 0.7rem; }
+
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.86em;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 0.05em 0.32em; color: var(--ink-2);
+  }
+
+  .callout {
+    display: flex; gap: 0.85rem; background: var(--panel);
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    border-radius: 4px; padding: 1rem 1.2rem; font-size: 0.9rem;
+    color: var(--ink-2); margin-top: 1.5rem;
+  }
+  .callout b { color: var(--ink); }
+  .callout.warn { border-left-color: var(--accent-2); }
+  .callout.key { border-left-color: var(--l3); }
+
+  /* ---- generic diagram frame ---- */
+  .diagram {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 8px; padding: 1.6rem 1.4rem; margin-top: 1rem;
+    box-shadow: var(--shadow); overflow-x: auto;
+  }
+  .diagram .cap {
+    font-size: 0.76rem; color: var(--ink-mute); font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.03em; margin-bottom: 1.1rem;
+  }
+
+  /* ---- 1. lineage ---- */
+  .lineage { display: flex; align-items: stretch; gap: 0; min-width: 1120px; }
+  .stage {
+    flex: 1; border: 1px solid var(--rule-strong); border-radius: 7px;
+    background: var(--panel-raise); padding: 0.85rem 0.9rem 1rem;
+    display: flex; flex-direction: column; gap: 0.45rem;
+  }
+  .stage.archived { opacity: 0.62; border-style: dashed; }
+  .stage.current { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent); }
+  .stage .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.66rem;
+    letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700;
+    color: var(--ink-mute);
+  }
+  .stage.current .tag { color: var(--accent); }
+  .stage .name { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; font-weight: 600; color: var(--ink); word-break: break-all; }
+  .stage .feat {
+    align-self: flex-start; font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; padding: 0.05rem 0.4rem;
+  }
+  .stage .desc { font-size: 0.76rem; color: var(--ink-2); line-height: 1.45; }
+  .stage .status { font-size: 0.72rem; margin-top: auto; padding-top: 0.4rem; font-weight: 600; }
+  .stage .status.a { color: var(--archived); }
+  .stage .status.m { color: var(--l1); }
+  .stage .status.c { color: var(--l0); }
+  .arrow-col {
+    flex: 0 0 92px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 0.3rem; padding: 0 0.2rem;
+  }
+  .arrow-col .why {
+    font-size: 0.66rem; color: var(--ink-mute); text-align: center; line-height: 1.35;
+  }
+  .arrow-col .bar { color: var(--accent); font-size: 1.1rem; line-height: 1; }
+
+  .feat-evo {
+    display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; margin-top: 0.6rem;
+  }
+  .feat-evo .box {
+    border: 1px solid var(--rule-strong); border-radius: 4px; padding: 0.3rem 0.6rem;
+    background: var(--panel-raise);
+  }
+  .feat-evo .box.now { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .feat-evo .op { color: var(--ink-mute); font-size: 0.76rem; }
+  .feat-evo .op .minus { color: var(--load); }
+  .feat-evo .op .plus { color: var(--l0); }
+
+  /* ---- 2. score pipeline ---- */
+  .pipe { display: flex; flex-direction: column; gap: 0.5rem; min-width: 680px; }
+  .pipe-row { display: flex; align-items: stretch; gap: 0.55rem; }
+  .pnode {
+    border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--panel-raise);
+    padding: 0.6rem 0.75rem; font-size: 0.78rem; flex: 1; line-height: 1.4;
+  }
+  .pnode .h { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 0.76rem; color: var(--ink); display: block; margin-bottom: 0.15rem; }
+  .pnode .s { color: var(--ink-mute); font-size: 0.72rem; }
+  .pnode.axis { border-left: 3px solid var(--accent); }
+  .pnode.side { border-left: 3px solid var(--ink-mute); opacity: 0.75; }
+  .pnode.probe-src { border-left: 3px solid var(--probe); }
+  .flowdown { text-align: center; color: var(--accent); font-size: 1rem; line-height: 1; margin: 0.1rem 0; }
+  .maxbox {
+    text-align: center; font-family: "IBM Plex Mono", monospace; font-weight: 700;
+    background: var(--ink); color: var(--paper); border-radius: 6px; padding: 0.7rem;
+    font-size: 0.86rem;
+  }
+  .ladder { display: flex; gap: 0.4rem; }
+  .rung {
+    flex: 1; text-align: center; border-radius: 5px; padding: 0.5rem 0.3rem;
+    font-size: 0.78rem; font-weight: 700; color: #fff;
+  }
+  .rung .r { display: block; font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 0.68rem; opacity: 0.9; }
+  .rung.l0 { background: var(--l0); } .rung.l1 { background: var(--l1); }
+  .rung.l2 { background: var(--l2); } .rung.l3 { background: var(--l3); }
+
+  /* ---- 3. topology ---- */
+  .topo { min-width: 600px; display: flex; flex-direction: column; gap: 0.35rem; }
+  .lane { display: flex; align-items: center; gap: 0.4rem; }
+  .lane-label {
+    flex: 0 0 76px; font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+    font-weight: 700; text-align: right; padding-right: 0.3rem;
+  }
+  .lane.load  .lane-label { color: var(--load); }
+  .lane.probe .lane-label { color: var(--probe); }
+  .lane.mgmt  .lane-label { color: var(--mgmt); }
+  .tbox {
+    border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--panel-raise);
+    padding: 0.5rem 0.7rem; font-size: 0.76rem; text-align: center; line-height: 1.3; flex: 0 0 auto;
+  }
+  .tbox .h { font-weight: 700; display: block; }
+  .tbox .s { color: var(--ink-mute); font-size: 0.68rem; }
+  .tbox.ap { border-color: var(--ink); border-width: 2px; }
+  .tbox.stack { display: flex; flex-direction: column; gap: 0.3rem; }
+  .conn { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+  .conn .t { font-size: 0.63rem; color: var(--ink-mute); white-space: nowrap; margin-bottom: 0.1rem; }
+  .conn .line { width: 100%; height: 0; }
+  .conn.load .line  { border-top: 2px solid var(--load); }
+  .conn.probe .line { border-top: 2px dashed var(--probe); }
+  .conn.mgmt .line  { border-top: 2px solid var(--mgmt); }
+  .conn .cap2 { font-size: 0.63rem; margin-top: 0.05rem; }
+  .conn.load .cap2  { color: var(--load); }
+  .conn.probe .cap2 { color: var(--probe); }
+  .conn.mgmt .cap2  { color: var(--mgmt); }
+  .legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.4rem; font-size: 0.76rem; color: var(--ink-2); }
+  .legend span { display: flex; align-items: center; gap: 0.5rem; }
+  .legend i { flex: 0 0 26px; width: 26px; height: 0; display: inline-block; }
+  .legend i.load { border-top: 2px solid var(--load); }
+  .legend i.probe { border-top: 2px dashed var(--probe); }
+  .legend i.wire { border-top: 2px solid var(--mgmt); }
+
+  table.grid { width: 100%; border-collapse: collapse; font-size: 0.84rem; margin-top: 0.6rem; }
+  table.grid th, table.grid td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  table.grid thead th { font-weight: 600; color: var(--ink-mute); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--rule-strong); }
+  table.grid td.n { text-align: right; font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  .tw { overflow-x: auto; }
+
+  footer.page-foot {
+    margin-top: 4.5rem; padding-top: 1.6rem; border-top: 1px solid var(--rule);
+    font-size: 0.82rem; color: var(--ink-mute); display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  footer.page-foot code { background: var(--panel); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
+    <h1>시스템 한눈에</h1>
+    <p>산문·표로 흩어져 있던 세 가지를 그림으로: <b>데이터가 어디서 왔나</b>(계보), <b>정답 라벨이 어떻게 만들어지나</b>(파이프라인), <b>실측을 어떻게 수집하나</b>(토폴로지). 수치·정의의 정본은 각 절 하단 링크.</p>
+    <nav class="toc">
+      <a href="#lineage">1 · 데이터 계보</a>
+      <a href="#label">2 · 라벨 파이프라인</a>
+      <a href="#topology">3 · 수집 토폴로지</a>
+    </nav>
+  </header>
+
+  <!-- ============ 1 ============ -->
+  <section id="lineage">
+    <h2><span class="step">01</span> 데이터 계보</h2>
+    <p class="lede">이 브랜치가 쓰는 데이터는 <b>2차 실측 라인의 현행 단계</b>(<code>ap_metrics_v2_redesign2</code>) 하나다. 나머지는 전부 왜 폐기·보류됐는지 알고 넘어가면 헷갈릴 일이 없다. <b>"AP 실측 데이터" = 항상 맨 오른쪽.</b></p>
+
+    <div class="diagram">
+      <div class="cap">시뮬레이션 → 출처불명 → 실측 (순환논리) → 재설계 → 현행</div>
+      <div class="lineage">
+
+        <div class="stage archived">
+          <span class="tag">1학기</span>
+          <span class="name">project/data/real</span>
+          <span class="feat">4 feature</span>
+          <p class="desc"><b>시뮬레이터 생성</b>(<code>traffic_simulator.py</code>, 공장 4시나리오). 라벨 = 채널 점유율 <b>단일 문턱</b> 40/65/85 → Threshold baseline과 순환.</p>
+          <span class="status a">코드는 yongsang 브랜치 · 정리: capstone1_summary.html</span>
+        </div>
+
+        <div class="arrow-col">
+          <span class="why">"실제 AP 실측" 목표로 9-feature 파이프라인 구축</span>
+          <span class="bar">▶</span>
+        </div>
+
+        <div class="stage archived">
+          <span class="tag">1차 · ap_cleaned_strict</span>
+          <span class="name">metrics_cleaned.csv (588행)</span>
+          <span class="feat">9 feature</span>
+          <p class="desc">congestion score 라벨링 + Early Exit/SDN 비교 구조를 <b>미리 검증</b>. 다만 <b>출처 불명 + 값이 물리적으로 비현실적</b>(latency 0.05ms, RSSI −20dBm대).</p>
+          <span class="status a">실측 불인정 (2026-08-24) · 재라벨/재학습 안 함 · yongsang 브랜치에만</span>
+        </div>
+
+        <div class="arrow-col">
+          <span class="why">팀이 구매한 실 AP(GL.iNet Opal)에서 라이브 수집 시작 (8/23~)</span>
+          <span class="bar">▶</span>
+        </div>
+
+        <div class="stage archived">
+          <span class="tag">2차 · 초기</span>
+          <span class="name">ap_metrics_v2</span>
+          <span class="feat">9 feature</span>
+          <p class="desc"><b>진짜 실측</b>(<code>collect_metrics.py</code>). 그러나 라벨 = <b>가중합</b> congestion_score(occ 0.45) → occupancy 문턱과 사실상 동일한 <b>순환논리</b>.</p>
+          <span class="status a">archived — 라벨 폐기</span>
+        </div>
+
+        <div class="arrow-col">
+          <span class="why">라벨 재설계: <span style="color:var(--load)">−2</span> leakage 축, <span style="color:var(--load)">−1</span> retry 통합. max(표준 앵커) + victim 프로브 (8/27)</span>
+          <span class="bar">▶</span>
+        </div>
+
+        <div class="stage archived">
+          <span class="tag">2차 · 재설계</span>
+          <span class="name">ap_metrics_v2_redesign</span>
+          <span class="feat">6 feature</span>
+          <p class="desc">라벨 = <code>max(표준 앵커)</code> + victim 프로브 (절 2). feature 정의도 재정비.</p>
+          <span class="status m">캘리브레이션용 중간 단계</span>
+        </div>
+
+        <div class="arrow-col">
+          <span class="why"><span style="color:var(--l0)">+1</span> <code>sta_tx_bitrate_mean</code> (occ 60~72% label 2/3 변별, 8/29)</span>
+          <span class="bar">▶</span>
+        </div>
+
+        <div class="stage current">
+          <span class="tag">2차 · 현행</span>
+          <span class="name">ap_metrics_v2_redesign2</span>
+          <span class="feat">7 feature</span>
+          <p class="desc">라벨 정의는 재설계와 동일. 본수집 라인 — 모든 학습·평가·배포·데모가 이걸 쓴다.</p>
+          <span class="status c">✔ 활성 · 배포 기준</span>
+        </div>
+
+      </div>
+
+      <h3 style="margin-top:2rem;">feature 변천</h3>
+      <div class="feat-evo">
+        <span class="box">4<span class="op"> 1학기</span></span>
+        <span class="op">▶</span>
+        <span class="box">9<span class="op"> 초기 v2</span></span>
+        <span class="op">▶ <span class="minus">−2</span> latency·jitter (leakage) &nbsp; <span class="minus">−1</span> tx_retries+tx_failed → tx_retry_ratio</span>
+        <span class="box">6</span>
+        <span class="op">▶ <span class="plus">+1</span> sta_tx_bitrate_mean</span>
+        <span class="box now">7 = 현행</span>
+      </div>
+      <p style="color:var(--ink-mute); font-size:0.78rem; margin:0.7rem 0 0;">9 − 2 − 1 + 1 = 7. <code>latency_ms</code>·<code>probe_jitter_ms</code>·<code>probe_loss_pct</code>는 <b>라벨을 만드는 축</b>이라 모델 입력에서 뺐다(정답 leakage). 상세: <code>model_features.html</code> §5.</p>
+    </div>
+
+    <div class="callout"><span>▸</span><span><b>1학기 라인과 2차 라인은 섞어서 비교하지 않는다.</b> 1학기는 4-feature 시뮬레이션, 2차는 7-feature 실측. 1학기 Raspberry Pi 실측 결과(<code>project/results/hojung/</code>)도 1학기 모델 기준이다.</span></div>
+
+    <p style="font-size:0.82rem; color:var(--ink-mute); margin-top:1rem;">정본: <code>CLAUDE.md</code> "배경" · <code>.work-log/current.md</code> · <code>docs/yongsang/capstone2_vacation_summary.html</code> (타임라인)</p>
+  </section>
+
+  <!-- ============ 2 ============ -->
+  <section id="label">
+    <h2><span class="step">02</span> 라벨 파이프라인 — congestion_score가 어떻게 라벨이 되나</h2>
+    <p class="lede">정답 라벨은 <b>규칙 기반</b>이다. 세 갈래 측정을 국제 표준 문턱(앵커)에 매핑해 축별 score를 만들고, 그중 <code>max</code>를 취해 4단계로 자른다. <b>모델은 이 파이프라인의 입력(victim 프로브·ping)을 못 본다</b> — 채널 상태만 보고 이 라벨을 예측하는 게 모델의 일.</p>
+
+    <div class="diagram">
+      <div class="cap">측정 → 앵커 매핑 → 축 score → max → 문턱</div>
+      <div class="pipe">
+
+        <div class="pipe-row">
+          <div class="pnode probe-src"><span class="h">채널 airtime</span><span class="s"><code>iw survey</code> busy/active, 3폴링 median</span></div>
+          <div class="pnode probe-src"><span class="h">victim 프로브</span><span class="s">300kbps UDP 스트림이 겪은 IPDV·손실 (<code>iperf3 -u -b 300k</code>)</span></div>
+          <div class="pnode probe-src"><span class="h">ping</span><span class="s">RTT → ÷2 편도 추정</span></div>
+        </div>
+
+        <div class="flowdown">▼ &nbsp; piecewise-linear 앵커 매핑 &nbsp;<code>경고 0.25 / 혼잡 0.50 / 심각 0.75 / 완전 1.0</code>, [0,1] clamp</div>
+
+        <div class="pipe-row">
+          <div class="pnode axis"><span class="h">occupancy_score</span><span class="s">40 / 55 / <b>75</b> / 90 %<br>Aruba WLAN 가이드</span></div>
+          <div class="pnode axis"><span class="h">jitter_score</span><span class="s">20 / 30 / <b>50</b> / 100 ms<br>ITU-T Y.1541 IPDV</span></div>
+          <div class="pnode axis"><span class="h">loss_score</span><span class="s">0.5 / 1 / <b>5</b> / 10 %<br>Cisco Enterprise QoS</span></div>
+          <div class="pnode axis"><span class="h">latency_score</span><span class="s">30 / 60 / <b>150</b> / 400 ms<br>ITU-T G.114 편도</span></div>
+        </div>
+
+        <div class="pipe-row">
+          <div class="pnode side"><span class="h">throughput_score</span><span class="s">÷150 Mbps — label 2/3 변별력 없음 → <b>max 제외</b></span></div>
+          <div class="pnode side"><span class="h">retry_score</span><span class="s">이 AP는 idle에도 retry 18% → QoS 피해의 독립 증거 아님 → <b>max 제외</b></span></div>
+          <div class="pnode side" style="border-left-color:var(--l0); opacity:1;"><span class="h" style="color:var(--l0)">↳ 둘 다 모델 입력 feature로는 유지</span><span class="s">모델이 채널 상태를 읽는 재료</span></div>
+        </div>
+
+        <div class="flowdown">▼</div>
+
+        <div class="maxbox">congestion_score = max( occupancy_score, jitter_score, loss_score, latency_score )</div>
+
+        <div class="flowdown">▼</div>
+
+        <div class="ladder">
+          <div class="rung l0">정상<span class="r">score &lt; 0.25</span></div>
+          <div class="rung l1">경고<span class="r">&lt; 0.50</span></div>
+          <div class="rung l2">혼잡<span class="r">&lt; 0.75</span></div>
+          <div class="rung l3">심각<span class="r">≥ 0.75</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="callout key"><span>▸</span><span><b>왜 <code>max</code>인가</b> — 표준은 "각 축이 언제 나쁜가"는 주지만 "어떻게 합치나"는 안 준다. <code>max</code>면 가중치 논쟁이 원천 봉쇄된다: <b>심각 = 최소 한 축이 표준 심각 문턱 돌파</b>. occupancy ≥ 75% (Aruba) OR jitter ≥ 50ms (Y.1541) OR loss ≥ 5% (Cisco) OR ping 편도 ≥ 150ms (G.114).</span></div>
+
+    <div class="callout warn"><span>⚑</span><span><b>"실패 = max" 오버라이드</b> — 채널이 실제로 바쁜데(<code>throughput ≥ 3Mbps OR occupancy ≥ 40%</code>) victim 경로가 완전히 죽으면(ping 무응답 / 프로브 stale) 그 축을 <code>1.0</code>으로 본다. 유선 SSH로 AP 텔레메트리를 방금 정상 파싱했으므로 AP는 살아있고 무선 채널만 막힌 것. 안 그러면 라벨이 조용히 occupancy 단독으로 되돌아간다.</span></div>
+
+    <div class="callout"><span>ℹ</span><span><b>핵심 — 왜 LSTM이 필요한가:</b> <code>max(표준 앵커)</code>는 그 자체로 규칙 기반 분류기다. 그런데 <b>배포 시스템엔 victim 프로브가 없다</b>(협조 싱크 + 지속 스트림 필요). 모델은 AP-side 텔레메트리(점유율·retry·RSSI·bitrate)만 보고 "지금 victim QoS가 깨지고 있는가"를 예측해야 한다 — 이건 규칙으로 못 한다. 거기에 시계열 추세 + Early Exit 효율.</span></div>
+
+    <p style="font-size:0.82rem; color:var(--ink-mute); margin-top:1rem;">정본: <code>docs/yongsang/congestion_label_redesign.html</code> §3~4 · 구현: <code>project/scripts/collect_metrics.py</code> <code>ANCHORS</code> / <code>calculate_scores()</code></p>
+  </section>
+
+  <!-- ============ 3 ============ -->
+  <section id="topology">
+    <h2><span class="step">03</span> 수집 토폴로지</h2>
+    <p class="lede">부하(혼잡 유발) · 프로브(QoS 피해 측정) · 관리(AP 텔레메트리 폴링)의 <b>세 경로가 분리</b>돼 있다. 핵심은 프로브·ping이 <b>AP→싱크 무선 홉</b>을 타서 폰들의 혼잡을 실제로 겪는다는 것.</p>
+
+    <div class="diagram">
+      <div class="cap">부하 = 빨강 · 프로브 = 파랑 점선 · 관리(유선 SSH) = 회색</div>
+      <div class="topo">
+
+        <div class="lane load">
+          <span class="lane-label">부하</span>
+          <div class="tbox stack">
+            <div><span class="h">폰 S21</span><span class="s">약신호</span></div>
+            <div><span class="h">폰 S26</span><span class="s">강신호</span></div>
+          </div>
+          <div class="conn load"><span class="t"><code>iperf3 -u -b</code></span><div class="line"></div><span class="cap2">▶ 채널 포화</span></div>
+          <div class="tbox ap"><span class="h">AP — Opal</span><span class="s">GL-SFT1200 · 2.4GHz</span></div>
+          <div class="conn load"><span class="t">무선 uplink</span><div class="line"></div><span class="cap2">▶</span></div>
+          <div class="tbox"><span class="h">싱크 (노트북)</span><span class="s"><code>iperf3 -s</code></span></div>
+        </div>
+
+        <div class="lane probe">
+          <span class="lane-label">프로브</span>
+          <div class="tbox"><span class="h">Raspberry Pi</span><span class="s"><code>ProbeRunner</code></span></div>
+          <div class="conn probe"><span class="t">300kbps UDP</span><div class="line"></div><span class="cap2">▶</span></div>
+          <div class="tbox ap"><span class="h">AP</span><span class="s">(같은 채널)</span></div>
+          <div class="conn probe"><span class="t">무선 downlink</span><div class="line"></div><span class="cap2">▶ 이 스트림의 jitter·loss</span></div>
+          <div class="tbox"><span class="h">싱크 (노트북)</span><span class="s">프로브 싱크</span></div>
+        </div>
+
+        <div class="lane mgmt">
+          <span class="lane-label">관리</span>
+          <div class="tbox"><span class="h">Raspberry Pi</span><span class="s"><code>APPoller</code> · ping</span></div>
+          <div class="conn mgmt"><span class="t">유선 SSH · ~1s</span><div class="line"></div><span class="cap2">◀▶ <code>iw survey / station dump</code></span></div>
+          <div class="tbox ap"><span class="h">AP</span><span class="s">텔레메트리</span></div>
+        </div>
+
+      </div>
+
+      <div class="legend">
+        <span><i class="load"></i> 부하 — 두 폰이 배경 트래픽으로 채널 포화 → occupancy 상승</span>
+        <span><i class="probe"></i> victim 프로브 — 300kbps UDP가 <b>AP→싱크 무선 홉</b>에서 겪는 IPDV·손실 = <code>jitter_score</code>·<code>loss_score</code></span>
+        <span><i class="wire"></i> 관리 — Pi가 AP에 유선 SSH로 <code>iw</code> 폴링 + ping RTT (무선 채널 밖)</span>
+      </div>
+    </div>
+
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>구성요소</th><th>역할</th><th>산출</th></tr></thead>
+      <tbody>
+        <tr><td>폰 S21 · S26</td><td>배경 부하 (<code>iperf3 -u</code>). <b>신호 대칭이 관건</b> — 약신호 폰이 굶으면 capture effect로 AP 크래시</td><td>occupancy 상승</td></tr>
+        <tr><td>AP (Opal)</td><td>측정 대상. 유선 SSH로 살아있는지 확인 + 무선으로 혼잡 발생</td><td><code>iw</code> 카운터</td></tr>
+        <tr><td>Pi — <code>ProbeRunner</code></td><td>300kbps UDP 스트림을 부하와 별개로 흘림 ("VoIP 통화 한 통")</td><td><code>probe_jitter_ms</code> · <code>probe_loss_pct</code></td></tr>
+        <tr><td>Pi — <code>APPoller</code></td><td>AP에 지속 SSH, <code>iw survey/station dump</code>를 ~1s 주기 폴링 + ping</td><td>7 feature 원천 + <code>latency_ms</code></td></tr>
+        <tr><td>싱크 (노트북)</td><td>부하·프로브 트래픽의 반대쪽 끝 (<code>iperf3 -s</code>)</td><td>—</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout"><span>▸</span><span><b>배포·라이브 추론에는 프로브가 없다.</b> <code>live_congestion.py</code>·데모는 <code>APPoller</code>만 재사용해서 7-feature → window 10 → scaler → ONNX INT8 → 라벨. victim 프로브(협조 싱크 필요)는 <b>라벨링 전용</b>. collector를 Pi로 옮긴 것도 관리 트래픽을 무선 채널에서 빼기 위함.</span></div>
+
+    <div class="callout warn"><span>⚑</span><span><b>AP 크래시</b> — "몇 대 붙었나"보다 "각 폰이 대칭적으로 붙었나"가 핵심. 신호 강한 S26이 채널 독점, 약한 S21이 굶는 Wi-Fi capture effect. 안전 구간 대략 60M/60M · 300~420초. 상세: <code>docs/yongsang/ap_crash_analysis.html</code>.</span></div>
+
+    <p style="font-size:0.82rem; color:var(--ink-mute); margin-top:1rem;">정본: <code>docs/yongsang/congestion_label_redesign.html</code> §2 · <code>project/scripts/collect_metrics.py</code> (<code>ProbeRunner</code> · <code>APPoller</code>) · <code>project/scripts/live_congestion.py</code></p>
+  </section>
+
+  <footer class="page-foot">
+    <span>이 문서는 <b>개요</b>다 — 수치·정의가 다른 문서와 어긋나면 각 절 하단의 정본이 맞다.</span>
+    <span>계보: <code>CLAUDE.md</code> · 라벨: <code>congestion_label_redesign.html</code> · feature: <code>model_features.html</code> · 모델 비교: <code>sdn_comparison.html</code> · 배포: <code>onnx_early_exit_redesign.html</code></span>
+    <span>문서 안내: <code>docs/README.html</code> · 최신 진행: <code>.work-log/current.md</code></span>
+  </footer>
+
+</main>

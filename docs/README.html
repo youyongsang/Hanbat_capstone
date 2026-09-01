@@ -82,7 +82,7 @@
   <p class="sub">문서가 많다. <b>뭘 알고 싶은지</b>에 따라 어느 문서를 보면 되는지만 정리한다.</p>
   <p class="sub">1학기 코드·문서는 <code>yongsang</code> 브랜치. 이 브랜치는 2차 실측 라인(<code>ap_metrics_v2_redesign2</code>, 7-feature).</p>
 
-  <h2><span class="dot"></span>처음 오면 이 4개</h2>
+  <h2><span class="dot"></span>처음 오면 이 5개</h2>
   <div class="cards">
     <div class="card"><span class="n">1</span><div>
       <div class="t"><code>CLAUDE.md</code> (레포 루트)</div>
@@ -93,10 +93,14 @@
       <div class="d">세션별 최신 진행·다음 할 일. <b>CLAUDE.md보다 최신</b> (수치가 어긋나면 이게 맞음).</div>
     </div></div>
     <div class="card"><span class="n">3</span><div>
+      <div class="t"><code>docs/yongsang/system_overview.html</code></div>
+      <div class="d">세 그림 한 장 — 데이터 계보 / 라벨 파이프라인 / 수집 토폴로지. 말로 된 걸 그림으로. 브라우저로.</div>
+    </div></div>
+    <div class="card"><span class="n">4</span><div>
       <div class="t"><code>docs/yongsang/capstone2_vacation_summary.html</code></div>
       <div class="d">방학(8/21~30) 개발 흐름 한 장 요약 — 6단계 타임라인 + 되돌린 결정 4건. 브라우저로.</div>
     </div></div>
-    <div class="card"><span class="n">4</span><div>
+    <div class="card"><span class="n">5</span><div>
       <div class="t"><code>docs/yongsang/congestion_label_redesign.{md,html}</code></div>
       <div class="d">라벨 정의의 <b>정본</b> (표준 앵커 + victim 프로브). HTML = 정의·근거 요약, MD = 전체 로그. 아래 "왜" 표의 절반이 이 문서.</div>
     </div></div>
@@ -123,7 +127,7 @@
       <tr><td class="q">ONNX를 왜 이렇게 배포했나 (staged→unified If→INT8)</td>
         <td><code>docs/yongsang/onnx_early_exit_redesign.{md,html}</code></td></tr>
       <tr><td class="q">SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가</td>
-        <td><code>project/models/sdn_lstm.py</code> docstring (Kaya et al. 2019 재구현) + <code>CLAUDE.md</code> "최신 평가 결과" + <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> + <code>.work-log/current.md</code> 9차</td></tr>
+        <td><code>docs/yongsang/sdn_comparison.html</code> — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 <code>project/models/sdn_lstm.py</code> docstring (Kaya et al. 2019 재구현) + <code>.work-log/current.md</code> 8~9차 + <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code></td></tr>
       <tr><td class="q">Fixed θ vs Dynamic θ 차이</td>
         <td><code>CLAUDE.md</code> "해석 기준" 6번</td></tr>
       <tr><td class="q">데모를 어떻게 돌리나</td>
@@ -171,7 +175,7 @@
 
   <h2><span class="dot"></span>HTML로 읽기 좋은 것</h2>
   <p class="sub">브라우저로 열면 표·차트가 렌더된다:
-    <code>capstone2_vacation_summary.html</code> · <code>congestion_label_redesign.html</code> · <code>model_features.html</code> · <code>onnx_early_exit_redesign.html</code> ·
+    <code>system_overview.html</code> · <code>capstone2_vacation_summary.html</code> · <code>congestion_label_redesign.html</code> · <code>model_features.html</code> · <code>sdn_comparison.html</code> · <code>onnx_early_exit_redesign.html</code> ·
     <code>ap_crash_analysis.html</code> · <code>congestion_label_criteria.html</code>(archived) ·
     <code>docs/capstone1_summary.html</code>(1학기)</p>
   <p class="sub">발행 아티팩트 (링크는 <code>.work-log/current.md</code>): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".</p>

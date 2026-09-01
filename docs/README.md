@@ -7,14 +7,15 @@
 
 ---
 
-## 처음 오면 이 4개
+## 처음 오면 이 5개
 
 | # | 문서 | 무엇 |
 |---|---|---|
 | 1 | **`CLAUDE.md`** (레포 루트) | 프로젝트 전체 맥락, 데이터 계보(1학기→1차→2차), 현재 수치, 자주 헷갈리는 점. **항상 여기부터.** |
 | 2 | **`.work-log/current.md`** | 세션별 최신 진행·다음 할 일. **CLAUDE.md보다 최신** (수치가 어긋나면 이게 맞음). |
-| 3 | **`docs/yongsang/capstone2_vacation_summary.html`** | 방학(8/21~30) 개발 흐름 한 장 요약 — 6단계 타임라인 + 되돌린 결정 4건. 브라우저로. |
-| 4 | **`docs/yongsang/congestion_label_redesign.{md,html}`** | 라벨 정의의 **정본** (표준 앵커 + victim 프로브). 아래 "왜" 표의 절반이 이 문서. HTML = 정의·근거 요약, MD = 전체 로그. |
+| 3 | **`docs/yongsang/system_overview.html`** | 세 그림 한 장 — 데이터 계보 / 라벨 파이프라인 / 수집 토폴로지. 말로 된 걸 그림으로 보고 싶을 때. 브라우저로. |
+| 4 | **`docs/yongsang/capstone2_vacation_summary.html`** | 방학(8/21~30) 개발 흐름 한 장 요약 — 6단계 타임라인 + 되돌린 결정 4건. 브라우저로. |
+| 5 | **`docs/yongsang/congestion_label_redesign.{md,html}`** | 라벨 정의의 **정본** (표준 앵커 + victim 프로브). 아래 "왜" 표의 절반이 이 문서. HTML = 정의·근거 요약, MD = 전체 로그. |
 
 ---
 
@@ -30,7 +31,7 @@
 | **왜 `class-weight-power=0.0`인가** | 아티팩트 "Class-Weight-Power Zero" (`.work-log/current.md` 4~5차 체크포인트에 링크·표) |
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
 | **ONNX를 왜 이렇게 배포했나** (staged→unified If→INT8 재조립) | `docs/yongsang/onnx_early_exit_redesign.{md,html}` |
-| **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | `project/models/sdn_lstm.py` docstring (Kaya et al. 2019 재구현) + `CLAUDE.md` "최신 평가 결과" + `project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}` + `.work-log/current.md` 9차 |
+| **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | **`docs/yongsang/sdn_comparison.html`** — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 `project/models/sdn_lstm.py` docstring (Kaya et al. 2019 재구현) + `.work-log/current.md` 8~9차 + `project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}` |
 | **Fixed θ vs Dynamic θ 차이** | `CLAUDE.md` "해석 기준" 6번 |
 | **데모를 어떻게 돌리나** | `project/demo/README.md` |
 | **데모를 (팀이) 어떻게 만드나** | `project/demo/API.md` — API·SSE 스키마·모델 계약·확장 항목 |
@@ -73,6 +74,6 @@
 ## HTML로 읽기 좋은 것
 
 브라우저로 열면 표·차트가 렌더된다:
-`capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
+`system_overview.html` · `capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `sdn_comparison.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
 
 발행 아티팩트 (링크는 `.work-log/current.md`): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".

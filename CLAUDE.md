@@ -75,6 +75,8 @@ docs/yongsang/model_features.{md,html}  7개 feature 레퍼런스 (계산·스�
 docs/yongsang/congestion_label_redesign.{md,html}  현행 라벨 정의 (max 앵커 + victim 프로브) ← 라벨 관련은 이 문서가 authoritative. html=근거 요약, md=전체 로그
 docs/yongsang/ap_crash_analysis.{md,html}      AP(Opal) 반복 크래시 원인 분석
 docs/yongsang/onnx_early_exit_redesign.{md,html}  ONNX Early Exit 배포 재설계 (staged → unified If 노드 → INT8 재조립)
+docs/yongsang/sdn_comparison.html      SDN 비교모델 한 장 요약 (SDN이 뭔지·통제 변수·3축 차이·5시드/배포/Pi 결과). 정본은 sdn_lstm.py docstring + work-log 8~9차
+docs/yongsang/system_overview.html     세 그림 한 장 (데이터 계보 / congestion_score 라벨 파이프라인 / 수집 토폴로지). 온보딩용 개요, 정본은 각 절 하단 링크
 .work-log/current.md                    세션별 최신 진행 상황 (이 문서보다 최신)
 ```
 
