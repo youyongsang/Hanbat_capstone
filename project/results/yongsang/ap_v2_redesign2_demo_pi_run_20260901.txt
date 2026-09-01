@@ -1,0 +1,31 @@
+데모 대시보드 Pi 실기기 검증 (2026-09-01) — window 12
+
+셋업
+  - demo_server.py: Pi(capstone@192.168.8.109, ~/ap_pi_v2/), w12 번들
+      모델 = ap_early_exit_fixed_unified_int8_v2.onnx (window 12)
+      python3 demo_server.py --iperf-target 192.168.8.109 --s21 s21 --s26 s26 --s21-port 5203 --s26-port 5204
+  - Pi ~/.ssh/config에 Host s21(u0_a29@192.168.8.191:8022) / s26(u0_a579@192.168.8.103:8022) 추가.
+    Pi 공개키(id_ed25519)를 두 폰 Termux ~/.ssh/authorized_keys에 등록 (노트북 경유).
+  - iperf3 서버는 5203/5204로 (시스템 iperf3 데몬이 5201 점유 중이라 기본 5201/5202 피함).
+  - AP: GL-SFT1200-a08, 2.4GHz 채널 1, 40MHz. 시작 시 up 4:41.
+
+신호 대칭 (/signal)
+  - S21 -55 dBm / S26 -34 dBm  → 21 dB 비대칭 (symmetric=false, 임계 12 dB).
+  - capture effect 크래시 리스크 → 부하를 10M 1스텝·25초로 보수적으로 제한 (10→20→30M 에스컬레이션 미실시).
+
+라이브 검증 (SSE /events, w12 모델)
+  idle:      정상(0) p≈0.996, exit1, occ ~20%, thr 0M
+  10M 부하 (25초):
+    occ 20% → 43~83%,  retry 18% → 44%,  thr 16~89M (채널 경합 시그니처)
+    raw label: 정상 → 경고 → 혼잡 → 심각 (raw p 최대 0.95)
+    확정 label (히스테리시스 CONFIRM=5): 경고 → 심각 (21:49:22)
+    ** 심각(3)을 occ 67~83%에서 탐지 ** — occ 67% 케이스는 occupancy 단독 문턱(75%)으론 못 잡는 구간 (발표 핵심 포인트 라이브 재현).
+  정지 (load off):
+    ~10초 내 정상(0) 복귀, occ 20~23%, thr 0M.
+  AP 크래시 없음 — 종료 시 up 4:48, SSID·채널 유지, channel utilization 23%.
+
+결론
+  - window 12 ONNX 파이프라인이 Pi 엣지에서 데모 대시보드로 end-to-end 동작 확인.
+  - 정상 → (부하) 경고/혼잡/심각 → (정지) 정상 복귀 전 구간 검증.
+  - 미완: 신호 대칭(폰 위치) 확보 후 10→20→30M 계단형 에스컬레이션 + 심각 지속 구간 재현.
+    (2026-08-30 노트북 데모 실측 ap_v2_redesign2_demo_full_run_20260830.txt에는 30M·심각 ~22초 지속 기록 있음 — 그건 window 10.)

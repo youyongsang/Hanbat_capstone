@@ -97,10 +97,15 @@
 ### on-Pi live_congestion 스모크 테스트 완료 (2026-09-01 후속4)
 - Pi에서 `live_congestion.py --raw` (w12 ONNX, `~/ap_pi_v2/`) — idle AP(occ ~20%, thr 0M) 상대로 **정상(0) p≈0.98, exit1/2 일관**. window 12 파이프라인 실기기 end-to-end 검증됨.
 
-### 남은 것 (데모 대시보드 = "자동 실험 웹사이트")
-- Pi(`demo_server.py`)·AP(up)·두 폰(S21 `.191` / S26 `.103` AP 와이파이 연결됨)·`demo.html`(Pi scp 완료) 준비됨.
-- **폰 3단계 (사용자가 폰에서 직접)**: ① S26 Termux `sshd` 시작(현재 포트 8022 거부) ② 두 폰 `~/.ssh/authorized_keys`에 Pi 키(`ssh-ed25519 AAAAC3...iCRt capstone@CapsTone`) 추가 ③ 폰 Termux `whoami`로 사용자명(`u0_aXXX`) 확인.
-- 그 뒤: `python3 ~/ap_pi_v2/demo_server.py --iperf-target 192.168.8.109 --s21 u0_aXXX@192.168.8.191 --s21-port 8022 --s26 u0_aYYY@192.168.8.103 --s26-port 8022` → `http://192.168.8.109:8000/` 부하 시나리오(10→20→30M→정지) 검증. occ 60~76%에서 심각(3) 뜨는지, 정지 후 정상 복귀, AP 크래시 없이 완주 확인. 결과 → `ap_v2_redesign2_demo_pi_run_20260901.txt`.
+### 데모 대시보드 Pi 실기기 검증 완료 (2026-09-01 후속5 — "자동 실험 웹사이트")
+- 폰 사용자명은 이미 있었음: **S21 `u0_a29@192.168.8.191:8022` / S26 `u0_a579@192.168.8.103:8022`** (노트북 `~/.ssh/config`, work-log 하단 체크포인트). Pi `~/.ssh/config`에 `Host s21/s26` 추가 + Pi 공개키를 두 폰 `authorized_keys`에 등록(노트북 경유).
+- **주의: `--s21-port`/`--s26-port`는 SSH 포트가 아니라 iperf3 -s 서버 포트.** 폰 SSH 포트(8022)는 ssh config alias로. 시스템 iperf3 데몬이 5201 점유 중이라 `--s21-port 5203 --s26-port 5204`로.
+- **신호 21 dB 비대칭** (S21 −55 / S26 −34) → capture effect 크래시 리스크 → **10M 1스텝·25초로 보수적 검증** (10→20→30M 에스컬레이션은 폰 위치 대칭 확보 후).
+- **결과** (`ap_v2_redesign2_demo_pi_run_20260901.txt`): idle 정상(0) → 10M 부하 시 occ 20→83%·retry→44%, raw 정상→경고→혼잡→심각, 확정 라벨 경고→**심각**(occ 67~83%, occ 67은 문턱 75%로 못 잡는 구간 — 발표 포인트 라이브 재현) → 정지 후 ~10초 내 정상 복귀. **AP 크래시 없음** (up 4:48 유지).
+- **window 12 ONNX 파이프라인이 Pi 엣지에서 데모로 end-to-end 동작 확인.**
+
+### 남은 것
+- 데모 10→20→30M 계단형 에스컬레이션 + 심각 지속 구간 재현 — **폰 위치 대칭**(12 dB 이내) 확보 후. (w10 노트북 데모엔 30M·심각 22초 기록 있음.)
 
 ### 재현
 ```powershell
