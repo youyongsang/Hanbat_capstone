@@ -25,11 +25,10 @@ REPO_ROOT = PROJECT_ROOT.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 
-WINDOW_SIZE = 12  # 2026-09-01 window sweep: 12 beat 10 on 5-seed acc (91.9 vs 91.0)
-STRIDE = 1        # and collapsed Label-3 F1 variance (1.9 vs 5.0). See .work-log.
+STRIDE = 1  # WINDOW_SIZE comes from utils.ap_features (single source; 10->12 on 2026-09-01)
 TRAIN_RATIO = 0.70
 VAL_RATIO = 0.15
 TEST_RATIO = 0.15

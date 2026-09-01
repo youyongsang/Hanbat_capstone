@@ -133,32 +133,32 @@
   <header class="page-head">
     <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
     <h1>모델 비교 결과 — 정확도 · 지연</h1>
-    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>와 <code>ap_v2_redesign2_pi_latency_comparison.txt</code>의 수치를 그래프로. 기준 = <b>5시드 평균</b>(power=0.0), 지연은 <b>Raspberry Pi INT8 실측</b>(test 310창).</p>
+    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. 기준 = <b>window 12 · 5시드 평균</b>(power=0.0, test 309창, 2026-09-01). ⚠ <b>지연 차트는 window 10 잠정치</b> — window 12 Pi 재측정 대기(Pi 오프라인).</p>
   </header>
 
   <section>
     <h2><span class="step">목표</span> 발표 정량 목표 대비</h2>
     <div class="kpis">
       <div class="kpi">
-        <div class="lab">목표 1 — Pi 환경 혼잡 분류 정확도 ≥ 95%</div>
-        <div class="val">90 ~ 92%</div>
-        <div class="sub miss">✗ 미달 — 5시드 평균 Baseline 92.0 / SDN 90.4 / Proposed 90.7%</div>
+        <div class="lab">목표 1 — Pi 환경 혼잡 분류 정확도 ≥ 95% (발표 시스템 = Early Exit 기준)</div>
+        <div class="val">Proposed 91.9 ~ 92.0%</div>
+        <div class="sub miss">✗ 미달 (~3pt) — EE Fixed 91.9 / Dynamic 92.0 (5시드). w10 대비 +1.2~1.3pt. 상한선 Baseline 92.0 / SDN 91.2.</div>
       </div>
       <div class="kpi">
         <div class="lab">목표 2 — 추론 지연 &lt; 1 ms</div>
         <div class="val">0.54 ~ 0.75 ms</div>
-        <div class="sub hit">✓ 달성 — 4개 모델 전부 &lt; 1 ms (Pi INT8)</div>
+        <div class="sub hit">✓ 달성 (window 10 기준) — 4개 모델 전부 &lt; 1 ms. window 12 재측정 대기, &lt;1ms 유지 전망.</div>
       </div>
     </div>
   </section>
 
   <section>
     <h2><span class="step">01</span> 정확도 vs 지연 — 한 장</h2>
-    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유.</p>
+    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유. (정확도 = window 12 5시드, 지연 = window 10 잠정.)</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>정확도 vs Pi INT8 지연</h3>
-        <p class="csub">세로 막대 = 5시드 표준편차(±1σ) · 가로축 잘림 주의(0.50 ms부터)</p>
+        <p class="csub">정확도 = w12 5시드 · 세로 막대 = ±1σ · 지연 = w10 잠정 · 가로축 0.50 ms부터</p>
         <svg id="c-scatter" viewBox="0 0 640 340" role="img" aria-label="정확도 대 지연 산점도"></svg>
       </div>
     </div>
@@ -166,7 +166,7 @@
 
   <section>
     <h2><span class="step">02</span> 정확도와 희소클래스 안정성</h2>
-    <p class="lede">전체 정확도(파랑)는 셋이 근소차. <b>Label 3(심각) F1</b>(주황)에서 SDN의 편차가 유독 크다(±8.1) — per-model 캘리브레이션 <code>T</code>가 작은 val 셋에서 시드마다 요동하기 때문. Proposed의 entropy θ는 그 캘리브레이션이 불필요.</p>
+    <p class="lede">전체 정확도(파랑)는 셋이 근소차. <b>Label 3(심각) F1</b>(주황)도 window 12에서 68~70%로 붙었다. window 10에선 SDN F1 편차가 ±8.1로 유독 컸는데(per-model 캘리브레이션 <code>T</code>가 작은 val에서 요동), <b>window 12로 전 모델 F1 분산이 절반 이하로</b> (SDN ±2.6, EE ±2.9).</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>정확도 · Label 3 F1 — 5시드 평균 ±표준편차</h3>
@@ -181,12 +181,12 @@
   </section>
 
   <section>
-    <h2><span class="step">03</span> Pi INT8 추론 지연</h2>
-    <p class="lede">전부 목표 2(&lt;1 ms) 달성. Early Exit가 Baseline보다 <b>−28%</b>. SDN(0.572)이 Proposed(0.540)보다 느린 건 pooling internal classifier(매 exit마다 ReduceMax+Mean)가 last-timestep linear head보다 무겁기 때문.</p>
+    <h2><span class="step">03</span> Pi INT8 추론 지연 <span style="font-size:0.8rem;color:var(--target);font-weight:600;">⚠ window 10 잠정치</span></h2>
+    <p class="lede">전부 목표 2(&lt;1 ms) 달성. Early Exit가 Baseline보다 <b>−28%</b>. SDN(0.572)이 Proposed(0.540)보다 느린 건 pooling internal classifier(매 exit마다 ReduceMax+Mean)가 last-timestep linear head보다 무겁기 때문. <b>이 수치는 window 10 기준</b> — window 12는 LSTM step 2회 추가라 소폭 증가 예상(여전히 &lt;1ms 전망), Pi 재측정 대기.</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
-        <h3>Pi INT8 평균 추론 지연 (ms / sample)</h3>
-        <p class="csub"><code>capstone@192.168.8.109</code> · test 310창 · 5회 반복 평균 · 2026-08-30</p>
+        <h3>Pi INT8 평균 추론 지연 (ms / sample) — window 10</h3>
+        <p class="csub"><code>capstone@192.168.8.109</code> · 5회 반복 평균 · 2026-08-30 · <b>window 12 재측정 대기</b></p>
         <svg id="c-lat" viewBox="0 0 640 300" role="img" aria-label="Pi INT8 지연 막대 그래프"></svg>
       </div>
     </div>
@@ -194,7 +194,7 @@
 
   <section>
     <h2><span class="step">04</span> Early Exit 종료 지점 분포</h2>
-    <p class="lede">Baseline은 조기종료가 없어 항상 exit 3(3개 LSTM 층 전부). Proposed는 대부분 exit 1~2에서 끝난다 — 이게 속도·연산량 이득의 실체. Dynamic θ는 Fixed보다 더 얕게 빠진다(exit 3 도달 10%).</p>
+    <p class="lede">Baseline은 조기종료가 없어 항상 exit 3(3개 LSTM 층 전부). Proposed는 대부분 exit 1~2에서 끝난다 — 이게 속도·연산량 이득의 실체. Dynamic θ는 Fixed보다 더 얕게 빠진다(exit 3 도달 15%). (window 12 배포 체크포인트 기준.)</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>샘플이 어느 exit에서 종료됐나 (%)</h3>
@@ -221,14 +221,14 @@
       <tbody id="tbl"></tbody>
     </table>
     </div>
-    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">Dynamic θ는 5시드 특성화 대상이 아님(EE 백본의 threshold 정책) — 값은 배포 체크포인트. 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
+    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">정확도·F1 = window 12 5시드 test 평균(2026-09-01). exit = 배포 체크포인트. <b>Pi 지연(avg/p95) = window 10 STALE</b> — window 12 Pi 재측정 대기(Pi 오프라인). Dynamic θ는 EE 백본의 threshold 정책이라 5시드 표는 참고치. 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
   </section>
 
-  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> 세 모델 정확도가 5시드 평균으로 사실상 동급(목표1은 셋 다 미달) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b>(목표2 &lt;1ms 달성, Baseline 대비 −28%) + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
+  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> window 10→12로 EE 정확도 90.7→91.9~92.0%(+1.2~1.3pt), Label 3 F1 분산은 전 모델 절반 이하로. 세 모델은 5시드 평균으로 여전히 동급(목표1은 셋 다 미달, ~3pt) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b> + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
 
   <footer class="page-foot">
     <span>발표용 이미지(SVG·PNG): <code>docs/yongsang/figures/</code> — 슬라이드·PDF에 바로 삽입</span>
-    <span>수치 정본: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · <code>project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt</code> · <code>.work-log/current.md</code> 7~9차</span>
+    <span>수치 정본: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · <code>.work-log/current.md</code> 15차 (window 12). 지연: <code>ap_v2_redesign2_pi_latency_comparison.txt</code> (window 10, 재측정 대기)</span>
     <span>관련: <code>docs/yongsang/sdn_comparison.html</code> (모델 3종 구조 차이) · <code>docs/yongsang/onnx_early_exit_redesign.html</code> (INT8 배포) · <code>docs/yongsang/system_overview.html</code> (전체 개요)</span>
   </footer>
 </main>
@@ -243,12 +243,15 @@
   function txt(e,s){e.appendChild(document.createTextNode(s));return e;}
   function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 
+  // window 12 (2026-09-01). acc/F1 = 5시드 test 평균 ±std. exit = 배포 체크포인트.
+  // pi/p95 = window 10 STALE — window 12 Pi 재측정 대기 (Pi 오프라인).
   var MODELS=[
-    {key:"baseline",name:"Baseline (EE 없음)",acc:92.0,accSd:0.7,f1:66.1,f1Sd:2.3,pi:0.746,p95:0.754,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
-    {key:"sdn",name:"SDN (논문 충실)",acc:90.4,accSd:1.4,f1:60.4,f1Sd:8.1,pi:0.572,p95:0.858,exits:[36,33,31],basis:"Kaya et al. ICML 2019",fam:"sdn"},
-    {key:"eef",name:"Proposed EE · Fixed θ",acc:90.7,accSd:0.7,f1:64.5,f1Sd:5.5,pi:0.540,p95:0.858,exits:[30,51,19],basis:"제안 — entropy θ 고정",fam:"proposed"},
-    {key:"eed",name:"Proposed EE · Dynamic θ",acc:91.0,accSd:null,f1:69.4,f1Sd:null,pi:0.555,p95:0.913,exits:[32,58,10],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
+    {key:"baseline",name:"Baseline (EE 없음)",acc:92.0,accSd:1.3,f1:68.7,f1Sd:3.1,pi:0.746,p95:0.754,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
+    {key:"sdn",name:"SDN (논문 충실)",acc:91.2,accSd:0.7,f1:70.3,f1Sd:2.6,pi:0.572,p95:0.858,exits:[51,32,18],basis:"Kaya et al. ICML 2019",fam:"sdn"},
+    {key:"eef",name:"Proposed EE · Fixed θ",acc:91.9,accSd:0.5,f1:69.9,f1Sd:2.9,pi:0.540,p95:0.858,exits:[31,43,26],basis:"제안 — entropy θ 고정",fam:"proposed"},
+    {key:"eed",name:"Proposed EE · Dynamic θ",acc:92.0,accSd:0.2,f1:69.6,f1Sd:3.6,char5:false,pi:0.555,p95:0.913,exits:[32,53,15],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
   ];
+  var PI_STALE=true;
   var FAMC={baseline:"--s-gray",sdn:"--s-orange",proposed:"--s-blue"};
 
   // ---- tooltip ----
@@ -283,7 +286,7 @@
     var svg=document.getElementById("c-scatter"); if(!svg) return;
     var W=640,H=340, L=52,R=18,T=18,B=44;
     var x0=0.50,x1=0.80, y0=88,y1=96;
-    var pts=MODELS.filter(function(m){return m.accSd!=null;});
+    var pts=MODELS.filter(function(m){return m.char5!==false;});
     function px(v){return L+(v-x0)/(x1-x0)*(W-L-R);}
     function py(v){return T+(1-(v-y0)/(y1-y0))*(H-T-B);}
     // grid + y ticks
@@ -330,7 +333,7 @@
     var svg=document.getElementById("c-acc"); if(!svg) return;
     var W=640,H=320,L=44,R=16,T=16,B=54;
     var y0=45,y1=95;
-    var rows=MODELS.filter(function(m){return m.accSd!=null;});
+    var rows=MODELS.filter(function(m){return m.char5!==false;});
     var n=rows.length, band=(W-L-R)/n, bw=22, gap=6;
     function py(v){return T+(1-(v-y0)/(y1-y0))*(H-T-B);}
     for(var yv=45;yv<=95;yv+=10){

@@ -62,12 +62,16 @@
 - EE 배포 seed 1은 val balanced 최고인 정직한 pick(seed 0이 test 92.6로 더 높지만 선택 안 함).
 - 배포 EE 단일 체크포인트 L3는 51.6%로 낮음 — seed 1의 test draw. 5시드 평균 L3 recall은 55.5%(w10 52.9 대비 개선).
 
-### 남은 것 (window 변경 ripple — 대부분 하드웨어 대기 / 후속 세션)
-- **ONNX 재수출** — `export_onnx_ap_{unified_int8_v2,sdn_unified_int8,baseline,unified}.py` 등이 입력 shape `[1,10,7]` 하드코딩 → `[1,12,7]`. staged/unified/INT8 재양자화. 배포 checkpoint dir의 옛 w10 ONNX는 삭제됨(archive에 보존).
-- **Pi latency 재측정** — Pi(`capstone@192.168.8.109`) 오프라인. `ap_v2_redesign2_pi_latency_comparison.txt`·`ap_model_comparison_redesign2` 지연 수치 전부 **w10 STALE**. window +2 = LSTM step 2회 추가 → 소폭 증가 예상, <1ms 유지 전망.
-- **비교 문서/그래프 갱신** — `ap_model_comparison_redesign2.{txt,csv}` 재생성함(acc/exit는 w12, Pi/5시드 문자열도 갱신). `docs/yongsang/sdn_comparison.html` §02·§04, `docs/yongsang/model_results.html` 차트·표, `docs/yongsang/figures/*` (build_figures.js `MODELS` 배열) 미갱신.
-- **런타임 window deque** — `live_congestion.py`·`demo_server.py`·`collect_metrics.py`의 window 길이 10→12 (repo + `deploy/raspberry_pi_ap_v2/` 번들 양쪽). ONNX 재수출과 함께.
-- **문서 잔여** — `CLAUDE.md`·`model_features.{md,html}`의 "window 10"·"[1,10,7]"·"test 310창" 일부.
+### 갱신 완료 (2026-09-01 후속)
+- `utils/ap_features.py`에 `WINDOW_SIZE = 12` 단일 상수 추가. `prepare_ap_metrics_dataset.py`·`ap_dataloader.py`가 이걸 import (단일 소스).
+- 런타임 window: `live_congestion.py`·`demo_server.py` 상수 10→12 (repo + Pi 번들 양쪽, 바이트 동일 유지). ⚠ ONNX가 아직 10이라 재수출 전엔 shape 불일치로 라이브 추론 불가 — 주석에 명시.
+- 비교 문서/그래프: `ap_model_comparison_redesign2.{txt,csv}` 재생성(acc/exit w12, Pi/5시드 문자열 갱신+STALE 표기). `sdn_comparison.html` §02·§04, `model_results.html` 차트·표+STALE 배지, `docs/yongsang/figures/*` (build_figures.js `MODELS` w12 + 부제 STALE 표기, SVG/PNG 재생성). `CLAUDE.md`·`model_features.{md,html}` window 언급.
+- `collect_metrics.py`는 window deque 없음 (raw 수집만) — 영향 없음.
+
+### 남은 것 (하드웨어 대기 — Pi 온라인 필요)
+- **ONNX 재수출** — `export_onnx_ap_{unified,unified_int8_v2,sdn,sdn_unified_int8,baseline}.py`가 입력 shape `torch.randn(1, 10, ...)` / `[1, 10, INPUT_SIZE]` 하드코딩 → 12로. staged/unified If/INT8 재양자화. 옛 w10 ONNX는 `*_w10_archived_20260901/`에 보존. PyTorch 대비 로컬 parity는 검증 가능하나 **on-Pi 검증·latency 재측정은 Pi 대기**.
+- **Pi latency 재측정** — Pi(`capstone@192.168.8.109`) 오프라인. `ap_v2_redesign2_pi_latency_comparison.txt`·비교표·그래프 지연 수치 전부 **w10 STALE**. window +2 = LSTM step 2회 추가 → 소폭 증가 예상, <1ms 유지 전망.
+- **Pi 번들 재배포** — ONNX 재수출 후 `deploy/raspberry_pi_ap_v2/` onnx 교체 + Pi scp.
 
 ### 재현
 ```powershell

@@ -15,6 +15,12 @@ AP_FEATURE_COLUMNS: Tuple[str, ...] = (
     "sta_tx_bitrate_mean",
 )
 
+# Sliding-window length (polls per model input). 2026-09-01: 10 -> 12
+# (window sweep — +1pt accuracy, Label-3 F1 variance halved; .work-log 15th).
+# Single source of truth: prepare/dataloader/live/demo import this.
+# ONNX exporters + Pi bundle still bake 10 — re-export pending (Pi offline).
+WINDOW_SIZE: int = 12
+
 # 2026-08-29: sta_tx_bitrate_mean 승격 (6 -> 7 feature).
 #   가설은 "혼잡할수록 속도가 떨어진다(rate collapse)"였으나 실측(2115행)은
 #   정반대: 혼잡할수록 값이 오히려 올라간다(부하 테스트라 혼잡 구간에서
