@@ -15,7 +15,7 @@
     "rssi_moving_avg_dbm",
     "sta_tx_bitrate_mean"
   ],
-  "window_size": 12,
+  "window_size": 10,
   "label_names": {
     "0": "정상",
     "1": "경고",
@@ -79,33 +79,33 @@
   },
   "splits": {
     "train": {
-      "rows": 17148,
-      "samples": 1429,
-      "shape": "(1429, 12, 7)",
+      "rows": 14370,
+      "samples": 1437,
+      "shape": "(1437, 10, 7)",
       "label_distribution": {
-        "0:정상": 436,
-        "1:경고": 310,
+        "0:정상": 442,
+        "1:경고": 312,
         "2:혼잡": 542,
         "3:심각": 141
       }
     },
     "val": {
-      "rows": 3660,
-      "samples": 305,
-      "shape": "(305, 12, 7)",
+      "rows": 3080,
+      "samples": 308,
+      "shape": "(308, 10, 7)",
       "label_distribution": {
-        "0:정상": 93,
-        "1:경고": 66,
+        "0:정상": 95,
+        "1:경고": 67,
         "2:혼잡": 116,
         "3:심각": 30
       }
     },
     "test": {
-      "rows": 3708,
-      "samples": 309,
-      "shape": "(309, 12, 7)",
+      "rows": 3100,
+      "samples": 310,
+      "shape": "(310, 10, 7)",
       "label_distribution": {
-        "0:정상": 94,
+        "0:정상": 95,
         "1:경고": 67,
         "2:혼잡": 117,
         "3:심각": 31

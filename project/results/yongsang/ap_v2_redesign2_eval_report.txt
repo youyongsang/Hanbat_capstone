@@ -3,43 +3,43 @@ Data Directory: project\data\ap_metrics_v2_redesign2
 Checkpoint: project\checkpoints\ap_v2_redesign2\ap_early_exit_lstm_best.pth
 
 === AP Early Exit + fixed theta ===
-Test Accuracy: 90.6%
+Test Accuracy: 91.9%
 Exit별 성능:
-  Exit 1 | Accuracy: 100.0% | Exit Rate: 30.0% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 91.1% | Exit Rate: 50.6% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 75.0% | Exit Rate: 19.4% | Avg Time: 8.0ms
-Overall Avg Inference Time: 4.174ms
-Measured Wall Time: 0.806ms
+  Exit 1 | Accuracy: 100.0% | Exit Rate: 31.1% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 92.5% | Exit Rate: 43.0% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 81.2% | Exit Rate: 25.9% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.414ms
+Measured Wall Time: 0.916ms
 Label별 정확도:
   Label 0 (정상): 97.9%
-  Label 1 (경고): 97.0%
-  Label 2 (혼잡): 90.6%
-  Label 3 (심각): 54.8%
+  Label 1 (경고): 100.0%
+  Label 2 (혼잡): 93.2%
+  Label 3 (심각): 51.6%
 시나리오별 정확도:
-  step_run1: 81.2%
-  step_run2: 95.8%
-  step_run3: 93.8%
-  step_run4: 93.4%
-  step_run5: 92.7%
-  step_run6: 87.3%
+  step_run1: 83.7%
+  step_run2: 94.2%
+  step_run3: 86.7%
+  step_run4: 96.7%
+  step_run5: 93.7%
+  step_run6: 90.7%
 
 === AP Early Exit + dynamic theta ===
-Test Accuracy: 91.0%
+Test Accuracy: 92.2%
 Exit별 성능:
-  Exit 1 | Accuracy: 100.0% | Exit Rate: 31.9% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 89.4% | Exit Rate: 57.7% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 71.9% | Exit Rate: 10.3% | Avg Time: 8.0ms
-Overall Avg Inference Time: 3.774ms
-Measured Wall Time: 0.930ms
+  Exit 1 | Accuracy: 99.0% | Exit Rate: 31.7% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 93.9% | Exit Rate: 53.1% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 72.3% | Exit Rate: 15.2% | Avg Time: 8.0ms
+Overall Avg Inference Time: 3.974ms
+Measured Wall Time: 0.855ms
 Label별 정확도:
   Label 0 (정상): 97.9%
-  Label 1 (경고): 97.0%
-  Label 2 (혼잡): 91.5%
-  Label 3 (심각): 54.8%
+  Label 1 (경고): 100.0%
+  Label 2 (혼잡): 94.0%
+  Label 3 (심각): 51.6%
 시나리오별 정확도:
-  step_run1: 81.2%
-  step_run2: 95.8%
-  step_run3: 93.8%
-  step_run4: 95.1%
-  step_run5: 92.7%
-  step_run6: 87.3%
+  step_run1: 83.7%
+  step_run2: 94.2%
+  step_run3: 86.7%
+  step_run4: 96.7%
+  step_run5: 94.9%
+  step_run6: 90.7%

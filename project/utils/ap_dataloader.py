@@ -21,7 +21,7 @@ def _read_rows(path: str | Path) -> list[dict[str, str]]:
 
 def load_ap_csv_windows(
     path: str | Path,
-    window_size: int = 10,
+    window_size: int = 12,
     feature_columns: Sequence[str] = AP_FEATURE_COLUMNS,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Load pre-windowed AP measurement CSV as model tensors."""
@@ -56,14 +56,14 @@ def get_ap_dataloader(
     data_path: str | Path,
     batch_size: int = 32,
     shuffle: bool = True,
-    window_size: int = 10,
+    window_size: int = 12,
 ) -> DataLoader:
     samples, labels = load_ap_csv_windows(data_path, window_size=window_size)
     dataset = TensorDataset(torch.from_numpy(samples), torch.from_numpy(labels))
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def validate_ap_dataset(path: str | Path, window_size: int = 10) -> dict[str, object]:
+def validate_ap_dataset(path: str | Path, window_size: int = 12) -> dict[str, object]:
     samples, labels = load_ap_csv_windows(path, window_size=window_size)
     unique_labels, label_counts = np.unique(labels, return_counts=True)
     feature_min = samples.min(axis=(0, 1))

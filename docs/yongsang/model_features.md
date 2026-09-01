@@ -22,7 +22,7 @@
 | 6 | `rssi_moving_avg_dbm` | RSSI 이동평균 | 4번을 5-폴링 평균 | **5-폴링 평균** | −53.6 / −27.93 |
 | 7 | `sta_tx_bitrate_mean` | 실제 송신한 station들의 PHY rate 평균 | `iw station dump` `tx bitrate` | 없음 (raw, 활성 station만) | 0.0 / 150.0 |
 
-폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 **10 폴링** (`[1, 10, 7]`). (4~6번 **RSSI** = 수신 신호 세기, §2에서 설명.)
+폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 **12 폴링** (`[1, 12, 7]`, 2026-09-01 10→12 — work-log 15차. ONNX/Pi는 재수출 전이라 아직 `[1,10,7]`). (4~6번 **RSSI** = 수신 신호 세기, §2에서 설명.)
 
 ---
 
@@ -133,7 +133,7 @@ retry_score, congestion_score
 
 - 방식: `(x − min) / (max − min)`, `[0, 1]` clip.
 - **min/max는 train split에서만** 구해서 `project/data/ap_metrics_v2_redesign2/scaler_params.json`에 저장. val/test·실시간 추론은 **그 파일을 그대로** 써야 한다 (재라벨링만 하고 재변환 안 하면 라벨과 스케일러가 어긋난다).
-- windowed 변환: window 10, stride 1, 시나리오별 첫 행 1개 drop. train 1437 / val 308 / test 310 샘플, shape `(N, 10, 7)`.
+- windowed 변환: window 12, stride 1, 시나리오별 첫 행 1개 drop. train 1429 / val 305 / test 309 샘플, shape `(N, 12, 7)`.
 
 ---
 

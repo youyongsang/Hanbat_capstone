@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-08-31 (Claude Code) — **문서 대청소·표준 인용 검증·새 문서 2종 (14차)**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
+최종 업데이트: 2026-09-01 (Claude Code) — **window size 스윕 → window 10→12 승격 (15차)**: 목표1(정확도 95%) 공략. window/lr/batch/EMA-입력스무딩 다중 시드 스윕에서 **window 12가 최적**. 세 모델 전부 w12 5시드 재학습·val-best 배포: **Baseline 91.6→93.5% / SDN 90.3→91.6% / EE Fixed 90.6→91.9% / EE Dynamic 91.0→92.2%** (배포 체크포인트 test). 5시드 평균은 Baseline 92.0±1.3 / SDN 91.2±0.7 / EE 91.9±0.5 — **여전히 동급이나 Label3 F1 전 모델 +3~10pt, 분산 절반 이하**(SDN std 8.1→2.6). canonical 데이터셋·`prepare`·`ap_dataloader` 기본값 10→12, w10 아카이브(`*_w10_archived_20260901`). **남은 것: ONNX 재수출([1,10,7]→[1,12,7])·Pi 지연 재측정(Pi 오프라인, 현 지연 수치 STALE)·비교 그래프/문서(sdn_comparison·model_results·figures) 갱신·런타임 deque(live/demo/collect) 10→12.** 아래 "15차" 참조. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
 ## ⭐ 다음 세션 시작 지점 — Pi 온라인 되면 데모 서버 실기기 검증 (내일)
 
@@ -29,6 +29,54 @@
 ### 그 밖에 다음 세션에 마무리할 것 (문서 관련, 급하지 않음)
 - **`ap_cleaned_strict` "인터넷 공개 데이터" 문구** — 14차에서 재검토 결과 근거 약함(증거: `metrics_cleaned.csv`가 호중 카톡 수신본, 생성 코드 미커밋, latency 0.05ms·RSSI −20dBm대로 물리적 비현실적). 다만 팀이 8/23~24에 "실측 아님 → archived"로 판단한 건 유효. **호중에게 `metrics_cleaned.csv` 원본 출처 직접 확인** 후 `CLAUDE.md`·`capstone2_vacation_summary.html`의 "인터넷 공개 데이터 가공" 문구를 "출처 불명·값 비현실적 → 실측 불인정"으로 톤 조정. (1학기 `data/real`은 확실히 Kaggle 6G Network Slicing — 별개 라인.)
 - **`README.html` 링크 실제 브라우저 클릭 확인** — 14차는 Claude-in-Chrome 확장 미연결이라 Node+DOM셰임 실행으로만 검증(콘솔 에러 없음, 링크 52개 정상 생성). 실제 `file://`로 열어 `.html` 상대링크·GitHub blob 링크 클릭 동작 확인 필요.
+
+## 15차 (2026-09-01) — window size 스윕 → **window 10 → 12 승격** (전 모델 재학습·배포)
+
+**동기**: 목표1(Pi 정확도 95%) 공략. CLAUDE.md가 "한 번도 스윕 안 함"으로 남긴 window size, "미시도"로 남긴 모델 입력 스무딩을 **다중 시드로** 검증(단일 실행 A/B가 노이즈였던 전례 준수).
+
+### 스윕 (in-process harness, 3시드 → 유망 config 5시드)
+| 축 | 값 | 결과 (EE Fixed θ, 5시드 test 평균) |
+|---|---|---|
+| **window** | 10(기준)/12/13/14/15/20 | **12 최적.** w10 acc 91.0±0.9·L3F1 66.2±5.0 → **w12 91.9±0.5·69.9±2.9**. w15 L3F1 71.4로 최고지만 acc 90.7(이득 없음)·L2 하락. w20 88.4로 악화. |
+| lr | 0.0005/0.001(기준)/0.002 | 0.0005 악화(88.9), 0.002 acc 91.3이나 L3 F1 62.5±9.7 불안정 |
+| batch | 16/32(기준)/64 | 16 소폭↑(91.3±0.3), 64 악화(89.5) |
+| **모델입력 EMA** | α 0.3/0.5/0.7 | **순효과 없음** (88~91%). 라벨링 스무딩(10차 이전 폐기)에 이어 **스무딩 방향 2연속 폐기** |
+
+- **window sweet spot이 12.** 10→12로 시계열 맥락(≈2폴링=2~4초)이 늘어 occ 60~72% 정보부족 구간·심각 판정이 안정화. 20은 과길어 오히려 악화.
+- 핵심 이득은 **희소클래스(Label 3) 안정성** — 전 모델 F1 분산이 절반 이하로. lr/batch/EMA는 이득 미미~노이즈.
+
+### 배포 (w12, 전 모델 5시드 재학습 → val balanced acc 최고 선택)
+- `prepare_ap_metrics_dataset.py` `WINDOW_SIZE` 10→12, `ap_dataloader.py` 기본값(3곳) 10→12.
+- 아카이브: `project/data/ap_metrics_v2_redesign2_w10_archived_20260901/`, `project/checkpoints/ap_v2_redesign2_w10_archived_20260901/`, `project/results/yongsang/*_w10_archived_20260901.*`.
+- w12 windowed: train 1429 / val 305 / **test 309** (label 0:94 / 1:67 / 2:117 / 3:31).
+
+| 모델 | 배포 seed | 배포 test acc (w10→**w12**) | 5시드 평균 acc | 5시드 L3 F1 (w10→w12) |
+|---|---|---|---|---|
+| Baseline | seed 4 | 91.6 → **93.5%** | 92.0 → 92.0 ±1.3 | 66.1±2.3 → **68.7 ±3.1** |
+| SDN (논문, T=0.71) | seed 2 | 90.3 → **91.6%** | 90.4 → **91.2 ±0.7** | 60.4±8.1 → **70.3 ±2.6** |
+| EE Fixed θ | seed 1 | 90.6 → **91.9%** | 90.7 → **91.9 ±0.5** | 64.5±5.5 → **69.9 ±2.9** |
+| EE Dynamic θ | seed 1 | 91.0 → **92.2%** | — → 92.0 ±0.2 | — → 69.6 ±3.6 |
+
+- **세 모델 5시드 평균 92.0 / 91.2 / 91.9 — 여전히 동급.** window 12의 가치는 **Label 3 F1 분산 붕괴** (SDN std 8.1→2.6이 극적 — per-model 캘리브레이션 T가 더 긴 window에서 안정).
+- **목표1(95%)**: Baseline 배포 체크포인트 93.5%가 가장 근접(5시드 평균은 92.0). 8/30 대비 +1.9pt, **여전히 미달**.
+- EE 배포 seed 1은 val balanced 최고인 정직한 pick(seed 0이 test 92.6로 더 높지만 선택 안 함).
+- 배포 EE 단일 체크포인트 L3는 51.6%로 낮음 — seed 1의 test draw. 5시드 평균 L3 recall은 55.5%(w10 52.9 대비 개선).
+
+### 남은 것 (window 변경 ripple — 대부분 하드웨어 대기 / 후속 세션)
+- **ONNX 재수출** — `export_onnx_ap_{unified_int8_v2,sdn_unified_int8,baseline,unified}.py` 등이 입력 shape `[1,10,7]` 하드코딩 → `[1,12,7]`. staged/unified/INT8 재양자화. 배포 checkpoint dir의 옛 w10 ONNX는 삭제됨(archive에 보존).
+- **Pi latency 재측정** — Pi(`capstone@192.168.8.109`) 오프라인. `ap_v2_redesign2_pi_latency_comparison.txt`·`ap_model_comparison_redesign2` 지연 수치 전부 **w10 STALE**. window +2 = LSTM step 2회 추가 → 소폭 증가 예상, <1ms 유지 전망.
+- **비교 문서/그래프 갱신** — `ap_model_comparison_redesign2.{txt,csv}` 재생성함(acc/exit는 w12, Pi/5시드 문자열도 갱신). `docs/yongsang/sdn_comparison.html` §02·§04, `docs/yongsang/model_results.html` 차트·표, `docs/yongsang/figures/*` (build_figures.js `MODELS` 배열) 미갱신.
+- **런타임 window deque** — `live_congestion.py`·`demo_server.py`·`collect_metrics.py`의 window 길이 10→12 (repo + `deploy/raspberry_pi_ap_v2/` 번들 양쪽). ONNX 재수출과 함께.
+- **문서 잔여** — `CLAUDE.md`·`model_features.{md,html}`의 "window 10"·"[1,10,7]"·"test 310창" 일부.
+
+### 재현
+```powershell
+# 스윕 harness / 배포 스크립트는 세션 스크래치(.../scratchpad/{exp.py,sweep.sh,deploy.sh}). 배포 요지:
+python project\scripts\prepare_ap_metrics_dataset.py --input project\scripts\metrics_v2_pi_redesign2_relabeled.csv --out-dir project\data\ap_metrics_v2_redesign2 --window-size 12 --overwrite
+python project\scripts\train_ap_early_exit.py   --data-dir project\data\ap_metrics_v2_redesign2 --checkpoint-dir project\checkpoints\ap_v2_redesign2 --epochs 50 --batch-size 32 --seed 1
+python project\scripts\train_ap_baseline_lstm.py --data-dir project\data\ap_metrics_v2_redesign2 --checkpoint-dir project\checkpoints\ap_v2_redesign2 --epochs 50 --batch-size 32 --seed 4
+python project\scripts\train_ap_sdn.py          --data-dir project\data\ap_metrics_v2_redesign2 --checkpoint-dir project\checkpoints\ap_v2_redesign2 --epochs 50 --batch-size 32 --seed 2
+```
 
 ## 14차 (2026-08-31) — 문서 대청소 · 표준 인용 검증 · 새 문서 2종
 

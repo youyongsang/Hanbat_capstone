@@ -137,7 +137,7 @@ def main() -> None:
             "exit3_rate": "100.0%",
             "pc_measured_ms_per_sample": f"{base_ms:.4f}",
             "simulated_layer_time_ms": "8.000",
-            "interpretation": "accuracy upper-bound baseline; no early stopping; real Pi INT8 latency 0.746ms (2026-08-30, power=0.0, 5-seed val-best); 5-seed mean acc 92.0%+-0.7%",
+            "interpretation": "accuracy upper-bound baseline; no early stopping; 5-seed mean acc 92.0%+-1.3 (w12, 2026-09-01); Pi INT8 latency 0.746ms is STALE w10 -- Pi re-measure pending (window 10->12).",
         },
         {
             "model": "SDN (Kaya et al. 2019, adapted)",
@@ -151,7 +151,7 @@ def main() -> None:
             "exit3_rate": sdn["e3"],
             "pc_measured_ms_per_sample": f"{sdn_ms:.4f}",
             "simulated_layer_time_ms": sdn["sim"],
-            "interpretation": "prior-art comparison: matches Proposed on overall accuracy (90.4%+-1.4 5-seed) but markedly less stable on label 3 (F1 60.4%+-8.1 vs Proposed 64.5%+-5.5) -- its per-model threshold calibration is unstable on a small val set. real Pi INT8 latency 0.572ms (pooling IC overhead vs Proposed 0.540ms).",
+            "interpretation": "prior-art comparison: matches Proposed on overall accuracy (w12 5-seed 91.2%+-0.7 vs EE 91.9%+-0.5). w12 (2026-09-01) collapsed the label-3 F1 gap: 70.3%+-2.6 vs EE 69.9%+-2.9 (was 60.4+-8.1 vs 64.5+-5.5 at w10). Pi INT8 latency 0.572ms is STALE w10 -- re-measure pending.",
         },
         {
             "model": "Proposed Early Exit Fixed theta",
@@ -165,7 +165,7 @@ def main() -> None:
             "exit3_rate": fixed["e3"],
             "pc_measured_ms_per_sample": f"{fixed_ms:.4f}",
             "simulated_layer_time_ms": fixed["sim"],
-            "interpretation": "proposed model without dynamic threshold; uniform exit-loss weights (0.3/0.3/0.4); real Pi unified INT8 latency 0.540ms (2026-08-30, power=0.0)",
+            "interpretation": "proposed model without dynamic threshold; uniform exit-loss weights (0.3/0.3/0.4); w12 5-seed mean acc 91.9%+-0.5 / L3 F1 69.9%+-2.9. Pi unified INT8 latency 0.540ms is STALE w10 -- re-measure pending.",
         },
         {
             "model": "Proposed Early Exit Dynamic theta",
@@ -179,7 +179,7 @@ def main() -> None:
             "exit3_rate": dynamic["e3"],
             "pc_measured_ms_per_sample": f"{dynamic_ms:.4f}",
             "simulated_layer_time_ms": dynamic["sim"],
-            "interpretation": "proposed method; uniform exit-loss weights (0.3/0.3/0.4); real Pi unified INT8 latency 0.555ms (2026-08-30, power=0.0)",
+            "interpretation": "proposed method; uniform exit-loss weights (0.3/0.3/0.4); w12 5-seed mean acc 92.0%+-0.2 / L3 F1 69.6%+-3.6. Pi unified INT8 latency 0.555ms is STALE w10 -- re-measure pending.",
         },
     ]
 
@@ -193,8 +193,8 @@ def main() -> None:
 
     lines = [
         "AP redesign2 데이터 모델 비교표 (Baseline / SDN / Proposed Early Exit)",
-        f"데이터: {DATA_DIR.relative_to(PROJECT_ROOT.parent)} (test 310창, label 3 31개)",
-        "모든 모델 class-weight-power=0.0으로 학습(2026-08-30 재스윕 — 클래스 가중치 없음이 정확도·label3 F1 둘 다 최고). 공정 비교를 위해 세 모델 동일 적용.",
+        f"데이터: {DATA_DIR.relative_to(PROJECT_ROOT.parent)} (window 12, test 309창, label 3 31개)",
+        "모든 모델 class-weight-power=0.0으로 학습. window 10→12 승격 (2026-09-01 스윕). 공정 비교를 위해 세 모델 동일 적용.",
         "",
         "| 모델 | 근거/역할 | 정확도 | Label 2 | Label 3 | Exit1 | Exit2 | Exit3 | PC 실측(ms/sample) | 구조상 평균(ms) |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -214,10 +214,11 @@ def main() -> None:
             f"- SDN(Kaya et al., ICML 2019)은 \"기존 조기종료 방법 vs 우리 방법\" 통제 비교를 위한 것. 3층 LSTM base·하이퍼파라미터는 Proposed와 완전 동일하게 고정하고, SDN이 실제로 규정하는 세 축만 논문대로 다르게 함: (1) pooling internal classifier, (2) 커리큘럼 램프 depth-weighted IC loss, (3) val 캘리브레이션된 confidence threshold(이 배포 체크포인트 T={sdn_model.confidence_threshold:.2f}). Proposed는 각각 last-timestep linear head / 균등 loss / entropy threshold(고정·변동).",
             "- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일한 학습 방식(class-weight-power=0.0)으로 학습했다 — 훈련 방식(class-weight-power)은 통제 변수로 고정 — 이제 SDN은 아키텍처(IC·loss·threshold)도 논문대로 다름.",
             "- Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.",
-            "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다 — 2026-08-30(power=0.0) Pi INT8 실측: Baseline 0.746ms / SDN 0.572ms / Proposed Fixed 0.540ms / Dynamic 0.555ms(전부 목표2 <1ms 달성, EE가 Baseline보다 -28%). power=1.0 대비 EE가 0.64->0.54ms로 빨라짐 — exit3 도달률이 52%->19%로 줄어든 결과. 상세: project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt.",
-            "- 2026-08-30: class-weight-power 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도·label3 F1 둘 다 최고 → 기본값 1.0→0.0. 세 모델 전부 재학습·5시드 특성화, val balanced acc 최고를 배포(Baseline seed3 / SDN seed3 / EE seed4). 5시드 test 평균: Baseline 92.0%±0.7 / SDN(논문 충실) 90.4%±1.4 / EE Fixed 90.7%±0.7. (SDN은 2026-08-30 후속에서 Kaya et al. 논문대로 재구현 — pooling IC·램프 loss·캘리브레이션 T.)",
-            "- 2026-08-29: sta_tx_bitrate_mean을 7번째 입력 feature로 승격(occ 60~72% 구간에서 label2/3을 가르는 유의미한 신호로 다중 시드 검증됨). 같은 세션에 학습 파이프라인에 --seed 옵션 추가.",
-            "- 5시드 특성화: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / Proposed EE Fixed 90.7%±0.7 정확도는 겹침. 갈리는 건 label3 안정성(SDN F1 60.4%±8.1 vs Proposed 64.5%±5.5)과 속도(SDN 0.572ms vs Proposed 0.540ms — SDN의 pooling IC가 무거움). 주장: \"기존 방법과 동급 정확도 + 더 가벼운 exit head + 더 안정적인 희소클래스 성능\"이지 \"SDN을 이겼다\"가 아님.",
+            "- PC Python 실측은 조기종료 판단 오버헤드 때문에 Early Exit에 불리하므로 최종 시간 주장은 Raspberry Pi + ONNX 재측정 기준이어야 한다. ⚠ 현재 Pi 지연 수치(Baseline 0.746 / SDN 0.572 / EE Fixed 0.540 / Dynamic 0.555ms)는 전부 **window 10 기준 STALE** — window 10→12 승격(2026-09-01) 후 ONNX 재수출·Pi 재측정 아직 못 함(Pi 오프라인). window +2 = LSTM step 2회 추가라 소폭 증가 예상, 여전히 <1ms일 것.",
+            "- **2026-09-01: window size 스윕 → 10→12 승격.** 10/12/13/14/15/20 × 다중 시드. 12가 최적: 5시드 평균 acc EE 90.7→91.9, SDN 90.4→91.2 (Baseline 92.0 유지), **Label3 F1 전 모델 +3~10pt·분산 절반 이하** (SDN F1 std 8.1→2.6, EE 5.5→2.9). 시계열 맥락↑ → occ 60~72% 정보부족 구간·심각 판정 안정화. 20은 과길어 악화. lr/batch/EMA 입력스무딩은 이득 없음. 세 모델 전부 w12 5시드 재학습·val-best 배포(Baseline seed4 91.6→93.5 / SDN seed2 T=0.71 90.3→91.6 / EE seed1 90.6→91.9).",
+            "- 2026-08-30: class-weight-power 재스윕에서 power=0.0이 정확도·label3 F1 둘 다 최고 → 기본값 1.0→0.0. SDN은 Kaya et al. 논문대로 재구현(pooling IC·램프 loss·캘리브레이션 T).",
+            "- 2026-08-29: sta_tx_bitrate_mean을 7번째 입력 feature로 승격(occ 60~72% 구간에서 label2/3을 가르는 유의미한 신호로 다중 시드 검증됨).",
+            "- **w12 5시드 test 평균: Baseline 92.0%±1.3 / SDN(논문) 91.2%±0.7 / EE Fixed 91.9%±0.5 / EE Dynamic 92.0%±0.2 — 여전히 동급.** 갈리는 건 label3 안정성(w12에서 SDN F1 70.3±2.6 vs EE 69.9±2.9로 거의 붙음)과 속도(재측정 필요). 주장: \"기존 방법과 동급 정확도 + 더 가벼운 exit head\"이지 \"SDN을 이겼다\"가 아님.",
         ]
     )
     txt_path.write_text("\n".join(lines), encoding="utf-8")

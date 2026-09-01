@@ -28,8 +28,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
 
 
-WINDOW_SIZE = 10
-STRIDE = 1
+WINDOW_SIZE = 12  # 2026-09-01 window sweep: 12 beat 10 on 5-seed acc (91.9 vs 91.0)
+STRIDE = 1        # and collapsed Label-3 F1 variance (1.9 vs 5.0). See .work-log.
 TRAIN_RATIO = 0.70
 VAL_RATIO = 0.15
 TEST_RATIO = 0.15
