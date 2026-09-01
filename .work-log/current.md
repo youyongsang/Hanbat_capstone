@@ -1,9 +1,14 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-09-01 (Claude Code) — **16차: 데이터 수집 → 2115→2551행 재학습·배포**. 15차(window 10→12)에 이어 목표1 재공략. **소패킷 UDP 부하(knee/step/light-bursty 3세그먼트, AP 크래시 없음)로 +436행 수집** (label 3 +116 → 202→318, L2 경계 +40). 재학습 결과 **EE Label 3 recall 55.5→69.6% (+14pt), F1 69.9→77.5%** (분산 ±2.9→±1.1). 전체 정확도는 5시드 평균 EE 91.4±0.4 / Baseline 91.4±1.7 / SDN 90.9±1.2 — **여전히 동급, L3 F1도 SDN 77.8 / EE 77.5로 동률**. 배포: EE seed1 91.8% (L3 70.8), Baseline seed4 88.5%(약한 draw), SDN seed2 91.0% T=0.63. ONNX 6개 재수출(fp32 366/366 parity), Pi 지연 재측정: Baseline 0.848 / SDN 0.638 / **EE Fixed 0.607** / Dynamic 0.632ms — 전부 <1ms, EE −28%. **결론: 데이터로 L3는 크게 개선, 전체 정확도 95%는 데이터만으론 어려움**(occ 55~57·60~72 경계는 라벨 fuzzy / feature 관측 한계 — 더 나은 AP·telemetry 필요). jitter 축 심각은 2폰+iperf3로 불가. w2115 아카이브: `*_2115_archived_20260901`. 15차 요약: window/lr/batch/EMA 스윕 → window 12만 이득 (EE +1.2pt, L3 F1 분산 절반), 전 계층 w12 반영. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
+최종 업데이트: 2026-09-02 (Claude Code) — **17차: 라벨 지속성 게이트 → 재배포**. 목표1 재공략 3연타(15차 window, 16차 데이터, 17차 라벨). 배포 EE 오답 31개를 test 366창에서 분해 → 최대 오답군 `3→2`(13개) 중 **8개가 victim 프로브 1폴링짜리 스파이크**(ping 851ms 한 번 / loss 16% 한 폴링 → 창 마지막 폴링 라벨만 3, 채널 상태는 label 2). `remeasure_redesign.py --persistence-gate`(기본 ON): occupancy 심각(≥0.75) 아닌데 non-occ 축으로 심각 붙은 label 3은 **그 축이 최근 3폴링 중 2폴링 이상 유지될 때만** label 3, 아니면 혼잡으로 강등. raw label 3 319→285(−34, 전부 occ 48~73). **3모델 5시드 재학습: 정확도 EE Fixed 91.4→92.1 / Dynamic →92.6 / Baseline 91.4→92.9 / SDN 90.9→93.3, L3 recall EE 69.6→75.2(Dynamic 78.1), L3 F1 EE 77.5→82.9(Dynamic 85.2) / SDN 77.8→84.2 — 전 모델 +1.5~2.4pt, L3 recall 안 떨어짐.** 배포(val bal acc 최고): EE seed1 **93.2%**(L3 R/F1 78.6/85.7, Dynamic 83.3/87.5), Baseline seed2 93.7%, SDN seed2 **94.8%**(T=0.7). ONNX 6개 재수출: EE unified fp32 **365/365** PyTorch 일치, INT8 362/365(acc 92.9), Baseline INT8 364/365(94.0), SDN INT8 365/365(94.8). Pi 지연(w12, test 365): Baseline 0.851 / EE Fixed 0.662 / Dynamic 0.658 / SDN 0.516ms — 전부 avg <1ms(목표2), EE Fixed=Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.326/0.657/0.978 vs 0.338/0.661/0.991); SDN 평균이 낮은 건 T=0.7이 exit1을 56%로 front-load한 것. **결론: 라벨 게이트로 5시드 평균 92~93%까지(단일 배포 SDN 94.8), 95% 문턱 근접. 남은 오답 = 지속형 3↔2 + occ 72~73 경계 — 관측 한계.** pre-gate 아카이브: `*_nogate_archived_20260902`. 16차 요약: 소패킷 UDP 부하 +436행(2115→2551) → EE L3 recall 55.5→69.6%, 전체 정확도는 안 움직임(게이트가 그 벽을 부분 돌파). 15차: window/lr/batch/EMA 스윕 → window 10→12만 이득 (EE +1.2pt, L3 F1 분산 절반), 전 계층 w12 반영. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
-## ⭐ 다음 세션 시작 지점 — 데이터 더 수집 (목표1 계속) / 밴드 스티어링
+## ⭐ 다음 세션 시작 지점 — 데이터 더 수집 (목표1 계속) / 게이트 k·m 튜닝 / 밴드 스티어링
 
-**16차까지 완료**: window 12 + 2551행 배포, ONNX·Pi·데모·문서·그래프 전 계층 일관. 목표2 달성, 목표1(95%) 미달 91~92%.
+**17차까지 완료**: 라벨 지속성 게이트 + 2551행 재배포, ONNX·Pi·문서·그래프 전 계층 일관. 목표2 달성, **목표1 5시드 평균 92~93%**(단일 배포 SDN 94.8, EE 93.2) — 95% 문턱 근접.
+
+### 다음에 해볼 것 (목표1)
+- **게이트 k·m 스윕** — 지금 k=3 m=2. m=3(전 폴링 심각 요구) 더 엄격, k=5 등. 5시드로. `remeasure_redesign.py --gate-k --gate-m`.
+- **데이터 더 수집** (아래 16차 레시피) — 게이트 후 남은 오답은 occ 60~73 지속형 3↔2 + occ 72~73 경계라, 그 구간 집중 수집이 효과 있을지 미검증.
+- **`collect_metrics.py`에 게이트 이식** — 현재 게이트는 `remeasure_redesign.py`(오프라인 재라벨)에만. 라이브 수집 label 컬럼은 informational이고 학습 전 항상 remeasure를 거치므로 급하진 않으나, rolling deque로 collector에도 넣으면 일관.
 
 ### 데이터 수집 재개 방법 (16차 검증됨 — AP 크래시 없이)
 1. **노트북 iperf3 서버**: `for p in 5201 5202 5203; do iperf3 -s -p $p & done` (5201/5202=폰 부하, 5203=victim 프로브 싱크).
@@ -19,6 +24,60 @@
 ### 그 밖에 마무리할 것 (문서 관련, 급하지 않음)
 - **`ap_cleaned_strict` "인터넷 공개 데이터" 문구** — 14차에서 재검토 결과 근거 약함(증거: `metrics_cleaned.csv`가 호중 카톡 수신본, 생성 코드 미커밋, latency 0.05ms·RSSI −20dBm대로 물리적 비현실적). 다만 팀이 8/23~24에 "실측 아님 → archived"로 판단한 건 유효. **호중에게 `metrics_cleaned.csv` 원본 출처 직접 확인** 후 `CLAUDE.md`·`capstone2_vacation_summary.html`의 "인터넷 공개 데이터 가공" 문구를 "출처 불명·값 비현실적 → 실측 불인정"으로 톤 조정. (1학기 `data/real`은 확실히 Kaggle 6G Network Slicing — 별개 라인.)
 - **`README.html` 링크 실제 브라우저 클릭 확인** — 14차는 Claude-in-Chrome 확장 미연결이라 Node+DOM셰임 실행으로만 검증(콘솔 에러 없음, 링크 52개 정상 생성). 실제 `file://`로 열어 `.html` 상대링크·GitHub blob 링크 클릭 동작 확인 필요.
+
+## 17차 (2026-09-02) — 라벨 지속성 게이트 → 재배포 (목표1 재공략)
+
+**동기**: 16차 후 "라벨 정의 다시 손봐서 정확도 올릴 방법?" (사용자). 배포 EE(seed1 91.8%)를 test 366창에 직접 돌려 오답 31개 분해:
+
+| 오답 (true→pred) | 개수 | 정체 |
+|---|---|---|
+| 3→2 | 13 | 최대 병목 — 8개 단발 스파이크 / 5개 지속형 |
+| 2→3 | 4 | occ 72~73, congestion_score 0.72~0.73 (심각 앵커 바로 밑) |
+| 1↔2 | 6 | occ 55~57 측정 노이즈 |
+| 0↔1 / 1↔3 | 8 | 산발 (1↔3 = 유일 ≥2등급, 4개) |
+
+within-1 정확도 98.9%, ≥2등급 오답 4/366뿐 (순서형 척도).
+
+### 게이트 (`remeasure_redesign.py --persistence-gate`, 기본 ON)
+- label 3 & occupancy_score < 0.75 & non-occ 축(jitter/loss/latency)으로 심각:
+  - `max(jitter_s, loss_s, latency_s)`가 최근 **k=3폴링 중 m=2폴링 이상 ≥0.75** → label 3 유지
+  - 아니면 그 축을 0.749로 캡 → `max(occ_s, 캡)`으로 재라벨 → 대개 혼잡(2)
+- occupancy 주도 심각·"실패=max" 심각도 결과 축 점수를 보므로 자연 포함 (단발 ping timeout → 강등)
+- **명분**: label 3 = victim QoS 붕괴. 패킷 1폴링 드랍은 붕괴 아님. `max(앵커)` 원칙 유지한 채 "실패=max"의 시간적 정제. LSTM은 window 12로 흐름 보는데 정답만 마지막 폴링 스냅샷이라 어긋나 있던 것.
+- **효과**: raw label 3 319→285 (−34, 전부 3→2, 전부 occ 48~73). windowed test L3 48→42.
+
+### 5시드 재학습 (train 스크립트 3종, 게이트 데이터)
+| 모델 | acc | L3 recall | L3 F1 | (pre-gate) |
+|---|---:|---:|---:|---|
+| Baseline | 92.9 ±1.2 | 78.1 ±1.0 | 81.3 ±3.1 | 91.4 / — / 74.7 |
+| SDN (T-cal) | **93.3 ±0.9** | 78.6 ±2.6 | 84.2 ±1.5 | 90.9 / — / 77.8 |
+| EE Fixed θ | 92.1 ±0.6 | 75.2 ±2.9 | 82.9 ±2.0 | 91.4 / 69.6 / 77.5 |
+| EE Dynamic θ | 92.6 ±0.7 | 78.1 ±2.8 | **85.2 ±1.8** | — |
+
+- 전 모델 +1.5~2.4pt. **L3 recall 안 떨어짐 — label 2와 구분 불가능한 단발 창 제거로 남은 심각 클래스가 학습 가능해짐.**
+- EE Fixed가 5시드 평균으론 근소 최저(92.1)지만 전부 ±1σ 겹침, Dynamic은 중위. Proposed 가치 주장은 여전히 속도.
+
+### 배포 (val balanced acc 최고)
+| 모델 | seed | val bal | 배포 test | L3 R/F1 | exit | ONNX INT8 parity |
+|---|---|---|---|---|---|---|
+| EE Fixed θ | 1 | 91.1 | **93.2%** | 78.6 / 85.7 | 28/41/31 | fp32 365/365, INT8 362/365 (92.9%) |
+| EE Dynamic θ | 1 | — | 93.2% | 83.3 / 87.5 | 30/53/16 | 〃 |
+| Baseline | 2 | 90.7 | 93.7% | 78.6 / 82.5 | — | INT8 364/365 (94.0%) |
+| SDN | 2 | 90.4 | **94.8%** | 81.0 / 86.1 | 56/34/11 | INT8 365/365 (94.8%), T=0.7 |
+
+### Pi 지연 (INT8, w12, test 365 — `ap_v2_redesign2_pi_latency_comparison.txt` 8차)
+Baseline 0.851 / EE Fixed 0.662 (p95 0.994) / EE Dynamic 0.658 (p95 1.038) / SDN 0.516ms — 전부 avg <1ms(목표2). EE Fixed = Baseline −22%.
+- **per-exit는 EE가 SDN보다 전 stage 가벼움**: exit1 0.326 vs 0.338, exit2 0.657 vs 0.661, exit3 0.978 vs 0.991ms (head 구조 차이, 구조적).
+- SDN 평균이 더 낮은 건 이번 라운드 T=0.7이 exit1을 56%로 front-load한 것 — threshold 정책 artifact이지 구조 아님.
+
+### 아카이브 / 파일
+- pre-gate: `metrics_v2_pi_redesign2_relabeled_nogate_archived_20260902.csv`, `data/ap_metrics_v2_redesign2_nogate_archived_20260902/`, `checkpoints/ap_v2_redesign2_nogate_archived_20260902/`.
+- `remeasure_redesign.py` — 게이트 로직 + `argparse.BooleanOptionalAction`(기본 ON). `train_ap_*.py` 3종 — `val_balanced_accuracy` 체크포인트 키 추가.
+
+### 남은 목표1 벽 (게이트 후)
+- 지속형 3→2 (loss 10~12% 3폴링 유지, occ 57~69 — 채널 상태가 label 2와 동일) + occ 72~73 경계 2↔3. 관측 한계 — per-station airtime·MCS 분포 telemetry나 forecast 재프레이밍 필요.
+
+---
 
 ## 16차 (2026-09-01) — 데이터 수집 → **2115 → 2551행 재학습·배포** (목표1 재공략)
 

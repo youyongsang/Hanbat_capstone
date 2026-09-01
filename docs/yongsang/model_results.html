@@ -133,7 +133,7 @@
   <header class="page-head">
     <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
     <h1>모델 비교 결과 — 정확도 · 지연</h1>
-    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. window 12 · <b>2551행 데이터</b> · 5시드 평균(정확도·F1, test 366) + Raspberry Pi INT8 실측(지연) — 2026-09-01.</p>
+    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. window 12 · <b>2551행 + 라벨 지속성 게이트</b> · 5시드 평균(정확도·F1, test 365) + Raspberry Pi INT8 실측(지연) — 2026-09-02.</p>
   </header>
 
   <section>
@@ -141,38 +141,37 @@
     <div class="kpis">
       <div class="kpi">
         <div class="lab">목표 1 — Pi 환경 혼잡 분류 정확도 ≥ 95% (발표 시스템 = Early Exit 기준)</div>
-        <div class="val">Proposed 91.4 ~ 91.8%</div>
-        <div class="sub miss">✗ 미달 (~3.5pt) — EE 5시드 91.4 / 배포 91.8. window·데이터로 91~92%가 상한, 95%는 AP·telemetry 필요. 상한선 Baseline 91.4 / SDN 90.9.</div>
+        <div class="val">Proposed 92.1 ~ 93.2%</div>
+        <div class="sub miss">✗ 미달 (~2pt) — EE Fixed 5시드 92.1 / Dynamic 92.6 / 배포 93.2. 단일 배포 SDN 94.8 · Baseline 93.7. 남은 벽은 관측 한계(지속형 3↔2 + occ 72~73 경계).</div>
       </div>
       <div class="kpi">
         <div class="lab">목표 2 — 추론 지연 &lt; 1 ms</div>
-        <div class="val">0.61 ~ 0.85 ms</div>
-        <div class="sub hit">✓ 달성 (Pi INT8, test 366) — 4개 모델 전부 avg &lt; 1 ms. EE Fixed 0.607 = Baseline(0.848) −28%.</div>
+        <div class="val">0.52 ~ 0.85 ms</div>
+        <div class="sub hit">✓ 달성 (Pi INT8, test 365) — 4개 모델 전부 avg &lt; 1 ms. EE Fixed 0.662 = Baseline(0.851) −22%.</div>
       </div>
     </div>
   </section>
 
   <section>
-    <h2><span class="step">변경</span> 2026-09-01 — 무엇이 바뀌었나 (목표1 재공략)</h2>
-    <p class="lede"><b>(1) window 10→12</b> (스윕 — lr·batch·EMA는 이득 없음). <b>(2) 소패킷 부하로 데이터 수집</b> — 2115→2551행, label 3 +116·L2 경계 +40. 시계열 맥락↑ + L3 표본↑ → occ 60~72 정보 부족 구간·심각 판정 안정화. 상세: <code>.work-log/current.md</code> 15·16차.</p>
+    <h2><span class="step">변경</span> 2026-09-02 — 무엇이 바뀌었나 (목표1 재공략)</h2>
+    <p class="lede"><b>라벨 지속성 게이트</b> — 배포 EE 오답을 test 366창에서 분해하니 최대 오답군(3→2 13개) 중 8개가 victim 프로브 <b>1폴링짜리 스파이크</b>였다 (ping 851ms 한 번 / loss 16% 한 폴링 → 창 마지막 폴링 라벨만 3, 채널 상태는 label 2). occupancy 심각이 아닌데 non-occ 축으로 label 3 붙은 행은 <b>그 축이 최근 3폴링 중 2폴링 이상 유지될 때만</b> label 3, 아니면 혼잡으로 강등 (raw label 3 319→285). 이전 유효했던 것: window 10→12(15차) · 소패킷 부하 +436행(16차, L3만). 상세: <code>.work-log/current.md</code> 17차.</p>
     <div class="tw">
     <table class="grid">
-            <thead><tr><th>지표 (EE Fixed θ)</th><th class="n">시작 (w10, 2115)</th><th class="n">w12, 2115</th><th class="n">w12, 2551 (현행)</th></tr></thead>
+            <thead><tr><th>지표 (5시드)</th><th class="n">EE Fixed θ</th><th class="n">EE Dynamic θ</th><th class="n">Baseline</th><th class="n">SDN</th></tr></thead>
       <tbody>
-        <tr><td>정확도 (5시드)</td><td class="n">90.7 ±0.7</td><td class="n">91.9 ±0.5</td><td class="n">91.4 ±0.4</td></tr>
-        <tr><td><b>Label 3 recall</b></td><td class="n">51.0 ±6.6</td><td class="n">55.5 ±3.8</td><td class="n"><b>69.6 ±1.7</b></td></tr>
-        <tr><td><b>Label 3 F1</b></td><td class="n">64.5 ±5.5</td><td class="n">69.9 ±2.9</td><td class="n"><b>77.5 ±1.1</b></td></tr>
-        <tr><td>Pi INT8 지연 (ms)</td><td class="n">0.540</td><td class="n">0.624</td><td class="n">0.607</td></tr>
-        <tr><td>목표2 (&lt;1 ms)</td><td class="n">달성</td><td class="n">달성</td><td class="n">달성</td></tr>
+        <tr><td>정확도 (게이트 전 → 후)</td><td class="n">91.4 → <b>92.1</b></td><td class="n">— → 92.6</td><td class="n">91.4 → 92.9</td><td class="n">90.9 → 93.3</td></tr>
+        <tr><td><b>Label 3 recall</b></td><td class="n">69.6 → <b>75.2</b></td><td class="n">— → 78.1</td><td class="n">— → 78.1</td><td class="n">— → 78.6</td></tr>
+        <tr><td><b>Label 3 F1</b></td><td class="n">77.5 → <b>82.9</b></td><td class="n">— → <b>85.2</b></td><td class="n">74.7 → 81.3</td><td class="n">77.8 → 84.2</td></tr>
+        <tr><td>Pi INT8 지연 (ms)</td><td class="n">0.662</td><td class="n">0.658</td><td class="n">0.851</td><td class="n">0.516</td></tr>
       </tbody>
     </table>
     </div>
-    <p class="axis note"><b>결론</b>: 데이터로 Label 3는 크게 개선(recall 55→70), 전체 정확도는 안 움직임 — 남은 오답은 occ 55~57·60~72 경계의 라벨 fuzzy / feature 관측 한계. 95%는 데이터만으론 어렵고 더 나은 AP·telemetry 필요. ONNX 366/366 parity, Pi 데모 10→30M 검증(AP 크래시 없음).</p>
+    <p class="axis note"><b>결론</b>: 게이트로 <b>전 모델 +1.5~2.4pt</b>, L3 recall 안 떨어짐 (label 2와 구분 불가능한 단발 창 제거 → 남은 심각 클래스가 학습 가능). 단일 배포는 SDN 94.8 / Baseline 93.7 / EE 93.2 — 95% 문턱 근접. 남은 오답 = 지속형 3↔2 (occ 57~69, loss 3폴링 유지 — 채널 상태가 label 2와 동일) + occ 72~73 경계. 관측 한계 — per-station telemetry나 forecast 재프레이밍 필요. ONNX EE unified fp32 365/365 parity.</p>
   </section>
 
   <section>
     <h2><span class="step">01</span> 정확도 vs 지연 — 한 장</h2>
-    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유. (전부 window 12 — 정확도 5시드, 지연 Pi INT8 실측 2026-09-01.)</p>
+    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭, SDN 근소 선두). 갈리는 건 지연(가로). EE Fixed는 Baseline 대비 −22%, per-exit로는 SDN보다 전 stage 가벼움 — SDN 평균이 이번 라운드 더 낮은 건 캘리브레이션 T=0.70이 exit1을 앞당긴 것. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율 + 트래픽 적응형 임계값"인 이유. (전부 window 12 — 정확도 5시드, 지연 Pi INT8 실측 2026-09-02.)</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>정확도 vs Pi INT8 지연</h3>
@@ -184,11 +183,11 @@
 
   <section>
     <h2><span class="step">02</span> 정확도와 희소클래스 안정성</h2>
-    <p class="lede">전체 정확도(파랑)는 셋이 근소차. <b>Label 3(심각) F1</b>(주황)도 window 12에서 68~70%로 붙었다. window 10에선 SDN F1 편차가 ±8.1로 유독 컸는데(per-model 캘리브레이션 <code>T</code>가 작은 val에서 요동), <b>window 12로 전 모델 F1 분산이 절반 이하로</b> (SDN ±2.6, EE ±2.9).</p>
+    <p class="lede">전체 정확도(파랑)는 넷이 근소차(SDN 근소 선두). <b>Label 3(심각) F1</b>(주황)은 라벨 지속성 게이트로 81~85%까지 올라 붙었다 (게이트 전 74~78). 게이트가 label 2와 구분 불가능한 단발 스파이크 창을 제거하니 recall도 함께 올라(EE Fixed 69.6→75.2, Dynamic 78.1), F1 분산은 EE ±1.1→±2.0 수준.</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>정확도 · Label 3 F1 — 5시드 평균 ±표준편차</h3>
-        <p class="csub">막대 위 수염 = ±1σ · y축 55%부터</p>
+        <p class="csub">막대 위 수염 = ±1σ · y축 45%부터</p>
         <svg id="c-acc" viewBox="0 0 640 320" role="img" aria-label="정확도와 Label3 F1 막대 그래프"></svg>
         <div class="legend">
           <span><i style="background:var(--s-blue)"></i> 전체 정확도</span>
@@ -200,11 +199,11 @@
 
   <section>
     <h2><span class="step">03</span> Pi INT8 추론 지연 <span style="font-size:0.8rem;color:var(--ink-mute);font-weight:600;">window 12 실측</span></h2>
-    <p class="lede">전부 avg 목표 2(&lt;1 ms) 달성. Early Exit(0.624)가 Baseline(0.858)보다 <b>−27%</b>. SDN(0.695)이 Proposed(0.624)보다 느린 건 pooling internal classifier(매 exit마다 ReduceMax+Mean)가 last-timestep linear head보다 무겁기 때문 — window 12로 이 격차가 −6%→−10%로 벌어졌다. window 10→12로 avg +0.08~0.12ms.</p>
+    <p class="lede">전부 avg 목표 2(&lt;1 ms) 달성. Early Exit Fixed(0.662)가 Baseline(0.851)보다 <b>−22%</b>. per-exit 지연은 EE가 SDN보다 전 stage 가벼움 (exit1 0.326 vs 0.338 / exit2 0.657 vs 0.661 / exit3 0.978 vs 0.991) — last-timestep linear head < pooling internal classifier(ReduceMax+Mean). 이번 라운드 SDN 평균(0.516)이 더 낮은 건 val 캘리브레이션 T가 0.63→0.70으로 올라 exit1 비중이 56%로 앞당겨진 것(threshold 정책 artifact).</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>Pi INT8 평균 추론 지연 (ms / sample) — window 12</h3>
-        <p class="csub"><code>capstone@192.168.8.109</code> · test 309창 · 5회 반복 평균 · 2026-09-01</p>
+        <p class="csub"><code>capstone@192.168.8.109</code> · test 365창 · 5회 반복 평균 · 2026-09-02</p>
         <svg id="c-lat" viewBox="0 0 640 300" role="img" aria-label="Pi INT8 지연 막대 그래프"></svg>
       </div>
     </div>
@@ -212,7 +211,7 @@
 
   <section>
     <h2><span class="step">04</span> Early Exit 종료 지점 분포</h2>
-    <p class="lede">Baseline은 조기종료가 없어 항상 exit 3(3개 LSTM 층 전부). Proposed는 대부분 exit 1~2에서 끝난다 — 이게 속도·연산량 이득의 실체. Dynamic θ는 Fixed보다 더 얕게 빠진다(exit 3 도달 15%). (window 12 배포 체크포인트 기준.)</p>
+    <p class="lede">Baseline은 조기종료가 없어 항상 exit 3(3개 LSTM 층 전부). Proposed·SDN은 대부분 exit 1~2에서 끝난다 — 이게 속도·연산량 이득의 실체. Dynamic θ는 Fixed보다 더 얕게 빠지고(exit 3 도달 16%), SDN은 T=0.70이라 exit 1에서 56% 종료. EE Fixed는 라벨 게이트 후 남은 test가 어려워져(occ 60~73 경계) exit 3 도달이 31%로 늘었다. (window 12 배포 체크포인트 기준.)</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>샘플이 어느 exit에서 종료됐나 (%)</h3>
@@ -239,10 +238,10 @@
       <tbody id="tbl"></tbody>
     </table>
     </div>
-    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">정확도·F1 = window 12 5시드 test 평균(2026-09-01). exit = 배포 체크포인트. Pi 지연(avg/p95) = window 12 실측(2026-09-01, test 309창). Dynamic θ는 EE 백본의 threshold 정책이라 5시드 표는 참고치. 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
+    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">정확도·F1 = window 12 + 라벨 게이트 5시드 test 평균(2026-09-02, test 365). exit = 배포 체크포인트. Pi 지연(avg/p95) = 실측(2026-09-02). 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
   </section>
 
-  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> window 10→12로 EE 정확도 90.7→91.9~92.0%(+1.2~1.3pt), Label 3 F1 분산은 전 모델 절반 이하로. 세 모델은 5시드 평균으로 여전히 동급(목표1은 셋 다 미달, ~3pt) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b>(Pi에서 Baseline −27%, 목표2 &lt;1ms) + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
+  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> 목표1 재공략 3연타 — window 10→12(15차) → 소패킷 데이터 +436행(16차, L3만) → 라벨 지속성 게이트(17차, 전 모델 +1.5~2.4pt). EE Fixed 5시드 91.4→92.1, 배포 93.2, 단일 배포 SDN 94.8. 세 모델은 여전히 ±1σ 동급(목표1 ~2pt 미달) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b>(Pi에서 Baseline −22%, per-exit로 SDN보다 가벼움, 목표2 &lt;1ms) + 트래픽 적응형 임계값 + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
 
   <footer class="page-foot">
     <span>발표용 이미지(SVG·PNG): <code>docs/yongsang/figures/</code> — 슬라이드·PDF에 바로 삽입</span>
@@ -261,13 +260,12 @@
   function txt(e,s){e.appendChild(document.createTextNode(s));return e;}
   function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 
-  // window 12 (2026-09-01). acc/F1 = 5시드 test 평균 ±std. exit = 배포 체크포인트.
-  // window 12, 2551행 (2026-09-01 소패킷 부하 수집 +436행). acc/F1 = 5시드 test 366 평균.
+  // window 12, 2551행 + 라벨 지속성 게이트 (2026-09-02). acc/F1 = 5시드 test 365 평균. exit = 배포 체크포인트.
   var MODELS=[
-    {key:"baseline",name:"Baseline (EE 없음)",acc:91.4,accSd:1.7,f1:74.7,f1Sd:5.5,pi:0.848,p95:0.9,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
-    {key:"sdn",name:"SDN (논문 충실)",acc:90.9,accSd:1.2,f1:77.8,f1Sd:0.6,pi:0.638,p95:1.001,exits:[51,32,18],basis:"Kaya et al. ICML 2019",fam:"sdn"},
-    {key:"eef",name:"Proposed EE · Fixed θ",acc:91.4,accSd:0.4,f1:77.5,f1Sd:1.1,pi:0.607,p95:0.964,exits:[35,41,24],basis:"제안 — entropy θ 고정",fam:"proposed"},
-    {key:"eed",name:"Proposed EE · Dynamic θ",acc:92.0,accSd:0.2,f1:69.6,f1Sd:3.6,char5:false,pi:0.635,p95:1.027,exits:[32,53,15],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
+    {key:"baseline",name:"Baseline (EE 없음)",acc:92.9,accSd:1.2,f1:81.3,f1Sd:3.1,pi:0.851,p95:0.909,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
+    {key:"sdn",name:"SDN (논문 충실)",acc:93.3,accSd:0.9,f1:84.2,f1Sd:1.5,pi:0.516,p95:0.982,exits:[56,34,11],basis:"Kaya et al. ICML 2019",fam:"sdn"},
+    {key:"eef",name:"Proposed EE · Fixed θ",acc:92.1,accSd:0.6,f1:82.9,f1Sd:2.0,pi:0.662,p95:0.994,exits:[28,41,31],basis:"제안 — entropy θ 고정",fam:"proposed"},
+    {key:"eed",name:"Proposed EE · Dynamic θ",acc:92.6,accSd:0.7,f1:85.2,f1Sd:1.8,pi:0.658,p95:1.038,exits:[30,53,16],basis:"제안 — 트래픽 적응형 θ",fam:"proposed",scatter:false}
   ];
   var FAMC={baseline:"--s-gray",sdn:"--s-orange",proposed:"--s-blue"};
 
@@ -302,8 +300,8 @@
   (function(){
     var svg=document.getElementById("c-scatter"); if(!svg) return;
     var W=640,H=340, L=52,R=18,T=18,B=44;
-    var x0=0.55,x1=0.90, y0=88,y1=96;
-    var pts=MODELS.filter(function(m){return m.char5!==false;});
+    var x0=0.45,x1=0.90, y0=88,y1=96;
+    var pts=MODELS.filter(function(m){return m.scatter!==false;});
     function px(v){return L+(v-x0)/(x1-x0)*(W-L-R);}
     function py(v){return T+(1-(v-y0)/(y1-y0))*(H-T-B);}
     // grid + y ticks
@@ -312,7 +310,7 @@
       var tk=E("text",{x:L-8,y:py(yv)+4,"text-anchor":"end","font-size":11,class:"axlab"}); txt(tk,yv+"%"); svg.appendChild(tk);
     }
     // x ticks
-    [0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9].forEach(function(xv){
+    [0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9].forEach(function(xv){
       var t=E("text",{x:px(xv),y:H-B+18,"text-anchor":"middle","font-size":11,class:"axlab"}); txt(t,xv.toFixed(2)); svg.appendChild(t);
     });
     svg.appendChild(E("line",{x1:L,y1:H-B,x2:W-R,y2:H-B,class:"axis-l"}));
@@ -325,8 +323,8 @@
     var SHORT={baseline:"Baseline",sdn:"SDN",eef:"Proposed (Early Exit)"};
     // label placement: [name dy, value dy, dx, anchor] — staggered so the two close points don't collide
     var LP={
-      baseline:{nameDy:-4,valDy:10,dx:-14,anch:"end"},
-      sdn:{nameDy:-28,valDy:-15,dx:0,anch:"middle"},
+      baseline:{nameDy:-12,valDy:2,dx:-14,anch:"end"},
+      sdn:{nameDy:-12,valDy:2,dx:12,anch:"start"},
       eef:{nameDy:24,valDy:37,dx:0,anch:"middle"}
     };
     pts.forEach(function(m){

@@ -403,7 +403,7 @@
     <ul style="color:var(--ink-2); font-size:0.9rem; max-width:70ch;">
       <li><b>min/max는 train split에서만</b> 구해서 <code>data/ap_metrics_v2_redesign2/scaler_params.json</code>에 저장. val/test·실시간 추론은 <b>그 파일을 그대로</b> 써야 한다 — 재라벨링만 하고 재변환 안 하면 라벨과 스케일러가 어긋난다.</li>
       <li>windowed 변환: window 12, stride 1, 시나리오별 첫 행 1개 drop.</li>
-      <li>train 1710 / val 367 / test 366 샘플, shape <code>(N, 12, 7)</code>. test label 분포 0:109 · 1:82 · 2:127 · 3:48. (2551행 — 2026-09-01 소패킷 부하 수집 +436행.)</li>
+      <li>train 1711 / val 367 / test 365 샘플, shape <code>(N, 12, 7)</code>. test label 분포 0:109 · 1:82 · 2:132 · 3:42. (2551행 — 2026-09-02 라벨 지속성 게이트: 단발 프로브 스파이크 label 3 → 혼잡, 3→2 6창 이동.)</li>
     </ul>
   </section>
 

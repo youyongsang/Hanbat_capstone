@@ -169,18 +169,18 @@
   <h1>규칙으로 못 잡는 혼잡을, 학습으로 — 방학 동안의 흐름</h1>
   <p class="lede">
     <b>GL.iNet Opal AP</b>에서 직접 수집한 실측 데이터로, 채널 상태 시계열만 보고 무선 혼잡도를
-    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 9월 1일 <b>window 스윕 + 데이터 수집(2115→2551행)</b>까지, <b>재설계 두 번과 되돌린 결정 다섯 번</b>을 거친 기록.
+    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 9월 2일 <b>목표1 재공략 3연타(window · 데이터 · 라벨 게이트)</b>까지, <b>재설계 두 번과 되돌린 결정 다섯 번</b>을 거친 기록.
   </p>
-  <p class="span">2026-08-21 → 09-01 · 브랜치 <code style="font-family:var(--f-mono)">capstoneDesign2</code></p>
+  <p class="span">2026-08-21 → 09-02 · 브랜치 <code style="font-family:var(--f-mono)">capstoneDesign2</code></p>
 
   <div class="stats">
     <div class="stat">
-      <p class="k">분류 정확도 (5시드 평균, test 366, window 12 · 2551행)</p>
-      <p class="v">91~92% <small>Base 91.4 · EE 91.4 · SDN 90.9</small></p>
+      <p class="k">분류 정확도 (5시드 평균, test 365, window 12 · 2551행 + 라벨 게이트)</p>
+      <p class="v">92~93% <small>Base 92.9 · EE Fixed 92.1 · EE Dyn 92.6 · SDN 93.3 · 단일 배포 SDN 94.8</small></p>
     </div>
     <div class="stat">
       <p class="k">추론 지연 (Raspberry Pi INT8)</p>
-      <p class="v">0.61 ms <small>EE Fixed θ · Baseline −28% · 전부 &lt;1ms</small></p>
+      <p class="v">0.66 ms <small>EE Fixed θ · Baseline −22% · 전부 &lt;1ms</small></p>
     </div>
     <div class="stat">
       <p class="k">라이브 감지</p>
@@ -192,12 +192,12 @@
     <div class="goal no">
       <span class="tag">목표 1</span>
       <span class="txt">Raspberry Pi 환경에서 혼잡 분류 정확도 <b>95% 이상</b></span>
-      <span class="mark">미달 · EE 91.4% (데이터·window로 상한)</span>
+      <span class="mark">미달 ~2pt · EE 5시드 92.1~92.6 / 배포 93.2 / 단일 배포 SDN 94.8</span>
     </div>
     <div class="goal ok">
       <span class="tag">목표 2</span>
       <span class="txt">추론 지연 <b>&lt; 1 ms</b></span>
-      <span class="mark">달성 · 0.61~0.85ms</span>
+      <span class="mark">달성 · 0.52~0.85ms</span>
     </div>
   </div>
 
@@ -388,8 +388,8 @@
   </div>
 
 
-  <h2><span class="n">07</span>목표1 재공략 — window 스윕 + 데이터 수집 (2026-09-01)</h2>
-  <p class="sec-sub">window/lr/batch/EMA 스윕 → window 12만 이득. 이어서 소패킷 부하로 데이터를 더 모았다.</p>
+  <h2><span class="n">07</span>목표1 재공략 — window · 데이터 · 라벨 게이트 (2026-09-01~02)</h2>
+  <p class="sec-sub">3연타: window 10→12 스윕 → 소패킷 부하 데이터 +436행(L3만) → 라벨 지속성 게이트(전 모델 +1.5~2.4pt).</p>
 
   <div class="tl">
     <div class="ev">
@@ -409,15 +409,25 @@
       <div class="hd">데이터 수집 — 소패킷 부하로 +436행</div>
       <p>"데이터를 더 모으면 label 3 오르지 않나" (사용자). knee/step/light-bursty 3세그먼트, AP 크래시 없이 수집.
       <b>2115 → 2551행</b> (label 3 202→318, L2 경계 +40). 재학습: <b>EE Label 3 recall 55.5→69.6% (+14pt), F1 69.9→77.5%</b>.
-      전체 정확도는 유지(91.4). <b>결론: 데이터로 L3는 개선되지만 95%는 데이터만으론 어렵다</b> — occ 55~57·60~72 경계는
-      라벨 fuzzy / feature 관측 한계. jitter 축 심각은 2폰+iperf3로 불가.</p>
+      전체 정확도는 이 시점까진 유지(91.4). <b>데이터로 L3는 개선, 전체 정확도의 벽(occ 경계)은 다음 단계(라벨 게이트)에서 부분 돌파</b>.
+      jitter 축 심각은 2폰+iperf3로 불가.</p>
     </div>
     <div class="ev">
-      <span class="date">2026-09-01</span>
-      <div class="hd">ONNX 재수출 · Pi 재측정 · 데모 검증</div>
-      <p>ONNX 6개 <code>[1,12,7]</code> 재수출, PyTorch parity 366/366(fp32). Pi INT8: Baseline 0.848 / SDN 0.638 /
-      <b>EE Fixed θ 0.607</b> / Dynamic 0.632 ms — 전부 &lt;1ms, EE −28%. Pi 데모 대시보드 10→30M 계단 부하 →
-      전 구간 심각(3) → 정지 후 정상 복귀, <b>AP 크래시 없음</b>.</p>
+      <span class="date">2026-09-02</span>
+      <div class="hd">라벨 지속성 게이트 → 재배포</div>
+      <p>"라벨 정의를 손봐서 정확도 올릴 방법?" (사용자). 배포 EE 오답 31개를 test 366창에서 분해 → 최대 오답군(<code>3→2</code> 13개) 중
+      <b>8개가 victim 프로브 1폴링짜리 스파이크</b> (ping 851ms 한 번 / loss 16% 한 폴링 → 창 마지막 폴링 라벨만 3). occupancy 심각이 아닌데
+      non-occ 축으로 label 3 붙은 행은 <b>그 축이 최근 3폴링 중 2폴링 이상 유지될 때만</b> label 3, 아니면 혼잡으로 강등 (raw 319→285).
+      3모델 5시드 재학습: <b>정확도 EE Fixed 91.4→92.1 / Dynamic →92.6 / Baseline 91.4→92.9 / SDN 90.9→93.3</b>,
+      L3 recall EE 69.6→75.2(Dynamic 78.1), L3 F1 EE 77.5→82.9(Dynamic 85.2). <b>L3 recall 안 떨어짐</b> — label 2와 구분 불가능한 단발 창 제거로
+      남은 심각 클래스가 학습 가능해짐. 단일 배포 SDN 94.8% / Baseline 93.7% / EE 93.2% — 95% 문턱 근접.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-09-02</span>
+      <div class="hd">ONNX 재수출 · Pi 재측정</div>
+      <p>ONNX 6개 <code>[1,12,7]</code> 재수출, EE unified fp32 parity 365/365, INT8 362/365. Pi INT8: Baseline 0.851 / SDN 0.516 /
+      <b>EE Fixed θ 0.662</b> / Dynamic 0.658 ms — 전부 &lt;1ms, EE = Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움
+      (SDN 평균이 낮은 건 T=0.70이 exit1 front-load).</p>
     </div>
   </div>
 
@@ -430,7 +440,7 @@
     <ul>
       <li><span class="x">✗</span><span><b>SDN 스타일 exit-loss 가중치 승격</b> → 단일 실행 비교였고 시드만 바꾸니 F1이 66.7%→51.1%로 요동. 다중 시드에서 균등 가중치와 차이가 표준편차 이하 → 철회. (이 사건이 <code>--seed</code> 추가의 계기.)</span></li>
       <li><span class="x">✗</span><span><b>occupancy 라벨링 스무딩</b>(window 5·3) → 경계 노이즈는 절반 줄었지만 같은 스무딩 값이 다른 앵커 경계에도 쓰여 새 오답 발생. 순효과 없음(두더지 잡기) → 폐기.</span></li>
-      <li><span class="x">✗</span><span><b>모델 입력 EMA 스무딩</b>(α 0.3/0.5/0.7, 2026-09-01) → 다중 시드에서 순효과 없음. 스무딩 방향 2연속 폐기 — 대신 <b>window 10→12</b>가 같은 경계 노이즈에 유효했다.</span></li>
+      <li><span class="x">✗</span><span><b>모델 입력 EMA 스무딩</b>(α 0.3/0.5/0.7, 2026-09-01) + <b>mode(last-3폴링) 재라벨</b>(2026-09-02) → 다중 시드에서 순효과 없음. 균등 스무딩 방향 3연속 폐기 — 유효했던 건 <b>window 10→12</b>와 <b>단발-심각축만 겨냥한 지속성 게이트</b>(균등 스무딩이 아님).</span></li>
       <li><span class="x">✗</span><span><b><code>class-weight-power=1.0</code>의 "절벽" 가정</b> → 4-feature·23샘플 시절 근거. 데이터가 6배 늘며 절벽 소멸 — 재검증 안 해 계속 손해. → 0.0.</span></li>
       <li><span class="x">✗</span><span><b>1차 데이터 재사용</b> → <code>ap_cleaned_strict</code>가 실측이 아님을 확인, 재라벨링 포기하고 2차 라인으로.</span></li>
     </ul>

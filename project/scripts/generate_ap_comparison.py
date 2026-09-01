@@ -137,7 +137,7 @@ def main() -> None:
             "exit3_rate": "100.0%",
             "pc_measured_ms_per_sample": f"{base_ms:.4f}",
             "simulated_layer_time_ms": "8.000",
-            "interpretation": "accuracy upper-bound baseline; no early stopping; 5-seed mean acc 91.4%+-1.7 (2551 data); deploy seed4 drew low (88.5%). Pi INT8 latency 0.848ms.",
+            "interpretation": "accuracy upper-bound baseline; no early stopping; 5-seed mean acc 92.9%+-1.2 (2551+gate); deploy seed2 93.7%. Pi INT8 latency 0.851ms.",
         },
         {
             "model": "SDN (Kaya et al. 2019, adapted)",
@@ -151,7 +151,7 @@ def main() -> None:
             "exit3_rate": sdn["e3"],
             "pc_measured_ms_per_sample": f"{sdn_ms:.4f}",
             "simulated_layer_time_ms": sdn["sim"],
-            "interpretation": "prior-art comparison: matches Proposed on accuracy (5-seed 90.9%+-1.2 vs EE 91.4%+-0.4); label-3 F1 now 77.8%+-0.6 vs EE 77.5%+-1.1 (2551 data collection lifted L3 recall 55->70). Pi INT8 latency 0.638ms vs EE 0.607ms.",
+            "interpretation": "prior-art comparison: matches/slightly leads Proposed on accuracy (5-seed 93.3%+-0.9 vs EE Fixed 92.1%+-0.6 / Dynamic 92.6%+-0.7); label-3 F1 84.2%+-1.5 vs EE 82.9/85.2 (label persistence gate lifted all 3 models +1.5~2.4pt). Pi INT8 latency 0.516ms this round (T=0.70 front-loads exit1 56%); per-exit EE is lighter at every stage.",
         },
         {
             "model": "Proposed Early Exit Fixed theta",
@@ -165,7 +165,7 @@ def main() -> None:
             "exit3_rate": fixed["e3"],
             "pc_measured_ms_per_sample": f"{fixed_ms:.4f}",
             "simulated_layer_time_ms": fixed["sim"],
-            "interpretation": "proposed model without dynamic threshold; uniform exit-loss weights (0.3/0.3/0.4); 5-seed mean acc 91.4%+-0.4 / L3 F1 77.5%+-1.1 / L3 recall 69.6%+-1.7 (up from 55.5 pre-collection). Pi INT8 latency 0.607ms -- -28% vs Baseline 0.848ms.",
+            "interpretation": "proposed model without dynamic threshold; uniform exit-loss weights (0.3/0.3/0.4); 5-seed mean acc 92.1%+-0.6 / L3 F1 82.9%+-2.0 / L3 recall 75.2%+-2.9 (label gate, up from 69.6). Pi INT8 latency 0.662ms -- -22% vs Baseline 0.851ms.",
         },
         {
             "model": "Proposed Early Exit Dynamic theta",
@@ -179,7 +179,7 @@ def main() -> None:
             "exit3_rate": dynamic["e3"],
             "pc_measured_ms_per_sample": f"{dynamic_ms:.4f}",
             "simulated_layer_time_ms": dynamic["sim"],
-            "interpretation": "proposed method; uniform exit-loss weights (0.3/0.3/0.4); deploy acc 91.8% / L3 70.8%. Pi INT8 latency 0.632ms (p95 1.03ms).",
+            "interpretation": "proposed method; uniform exit-loss weights (0.3/0.3/0.4); 5-seed mean acc 92.6%+-0.7 / L3 F1 85.2%+-1.8 (project best); deploy acc 93.2% / L3 recall 83.3 / F1 87.5. Pi INT8 latency 0.658ms (p95 1.04ms).",
         },
     ]
 
@@ -193,8 +193,8 @@ def main() -> None:
 
     lines = [
         "AP redesign2 데이터 모델 비교표 (Baseline / SDN / Proposed Early Exit)",
-        f"데이터: {DATA_DIR.relative_to(PROJECT_ROOT.parent)} (window 12, 2551행, test 366창, label 3 48개)",
-        "모든 모델 class-weight-power=0.0, window 12. 2026-09-01: 소패킷 부하로 label 3·L2경계 데이터 +436행 수집 → 2115→2551행 재학습.",
+        f"데이터: {DATA_DIR.relative_to(PROJECT_ROOT.parent)} (window 12, 2551행+라벨 지속성 게이트, test 365창, label 3 42개)",
+        "모든 모델 class-weight-power=0.0, window 12. 2026-09-02: 라벨 지속성 게이트(단발 프로브 스파이크 label3 → 혼잡 강등, raw 319→285) → 3모델 5시드 재학습.",
         "",
         "| 모델 | 근거/역할 | 정확도 | Label 2 | Label 3 | Exit1 | Exit2 | Exit3 | PC 실측(ms/sample) | 구조상 평균(ms) |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -214,11 +214,12 @@ def main() -> None:
             f"- SDN(Kaya et al., ICML 2019)은 \"기존 조기종료 방법 vs 우리 방법\" 통제 비교를 위한 것. 3층 LSTM base·하이퍼파라미터는 Proposed와 완전 동일하게 고정하고, SDN이 실제로 규정하는 세 축만 논문대로 다르게 함: (1) pooling internal classifier, (2) 커리큘럼 램프 depth-weighted IC loss, (3) val 캘리브레이션된 confidence threshold(이 배포 체크포인트 T={sdn_model.confidence_threshold:.2f}). Proposed는 각각 last-timestep linear head / 균등 loss / entropy threshold(고정·변동).",
             "- 1학기(ap_cleaned_strict)와 달리 이번엔 Baseline/SDN도 Proposed와 동일한 학습 방식(class-weight-power=0.0)으로 학습했다 — 훈련 방식(class-weight-power)은 통제 변수로 고정 — 이제 SDN은 아키텍처(IC·loss·threshold)도 논문대로 다름.",
             "- Proposed Fixed는 우리 Early Exit 구조에서 dynamic threshold만 제거한 entropy-threshold ablation이다.",
-            "- Raspberry Pi INT8 실측 (window 12, 2551행 데이터, test 366창, 2026-09-01): Baseline 0.848 / SDN 0.638 / EE Fixed 0.607 / Dynamic 0.632ms — 전부 avg <1ms(목표2). EE Fixed가 Baseline -28%.",
-            "- **2026-09-01: (1) window 10→12 승격** (스윕, EE 정확도 +1.2pt, Label3 F1 분산 절반). **(2) 소패킷 부하 데이터 수집** — knee/step/light-bursty 3세그먼트, +436행 (label 3 +116, L2 경계 +40). 2115→2551행 재학습. **Label 3 recall 55.5→69.6% (+14pt), F1 69.9→77.5%.** 전체 정확도는 ~91.4%로 유지. jitter 축 심각은 이 하드웨어(2폰+iperf3)로 불가 — 간섭원 필요.",
+            "- Raspberry Pi INT8 실측 (window 12, 2551+게이트, test 365창, 2026-09-02): Baseline 0.851 / SDN 0.516 / EE Fixed 0.662 / Dynamic 0.658ms — 전부 avg <1ms(목표2). EE Fixed가 Baseline -22%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.326/0.657/0.978 vs 0.338/0.661/0.991) — SDN 평균이 낮은 건 T=0.70이 exit1을 56%로 front-load한 것.",
+            "- **2026-09-02: 라벨 지속성 게이트** — 배포 EE 오답을 test 366창에서 분해하니 최대 오답군(3→2 13개) 중 8개가 victim 프로브 1폴링짜리 스파이크였다. occupancy 심각이 아닌데 non-occ 축으로 label 3이 붙은 행은 그 축이 최근 3폴링 중 2폴링 이상 유지될 때만 label 3, 아니면 혼잡으로 강등(raw 319→285). **3모델 5시드 재학습 결과 전 모델 +1.5~2.4pt** (Baseline 91.4→92.9 / SDN 90.9→93.3 / EE Fixed 91.4→92.1 / Dynamic →92.6), **L3 recall 안 떨어짐**(EE 69.6→75.2, Dynamic 78.1).",
+            "- 2026-09-01: window 10→12 승격 + 소패킷 부하 +436행(2115→2551) — L3 recall 55.5→69.6%, 전체 정확도는 게이트 전까진 안 움직였음.",
             "- 2026-08-30: class-weight-power 재스윕에서 power=0.0이 정확도·label3 F1 둘 다 최고 → 기본값 1.0→0.0. SDN은 Kaya et al. 논문대로 재구현(pooling IC·램프 loss·캘리브레이션 T).",
             "- 2026-08-29: sta_tx_bitrate_mean을 7번째 입력 feature로 승격(occ 60~72% 구간에서 label2/3을 가르는 유의미한 신호로 다중 시드 검증됨).",
-            "- **5시드 test 평균 (2551 data): Baseline 91.4%±1.7 / SDN 90.9%±1.2 / EE Fixed 91.4%±0.4 — 동급.** Label3 F1은 SDN 77.8±0.6 / EE 77.5±1.1로 거의 동률. 갈리는 건 속도(EE 0.607 vs SDN 0.638ms). 배포 단일: EE Fixed 91.8% / SDN 91.0% / Baseline 88.5%(seed4 약한 draw, 5시드 평균 91.4).",
+            "- **5시드 test 평균 (2551+게이트): Baseline 92.9%±1.2 / SDN 93.3%±0.9 / EE Fixed 92.1%±0.6 / EE Dynamic 92.6%±0.7 — 여전히 ±1σ 동급(SDN 근소 선두).** Label3 F1은 SDN 84.2±1.5 / EE Dynamic 85.2±1.8 / EE Fixed 82.9±2.0. 배포 단일: SDN 94.8% / Baseline 93.7% / EE 93.2%. Proposed 가치 주장은 정확도가 아니라 속도(EE per-exit가 SDN보다 가벼움) + 트래픽 적응형 임계값 + 간섭 감지 EE 최초 적용.",
         ]
     )
     txt_path.write_text("\n".join(lines), encoding="utf-8")

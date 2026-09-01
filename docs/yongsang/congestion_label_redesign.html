@@ -272,6 +272,19 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
       <li><b>왜 채널 포화로 보나</b>: 이 판정에 도달했다는 건 유선 SSH로 AP 텔레메트리를 방금 정상 파싱했다는 뜻 — AP는 살아있고 무선 채널만 막힌 것.</li>
       <li><b>idle 안전장치</b>: <code>channel_active</code> 게이트 + <code>ever_ok</code> 게이트 (무부하 셋업 문제를 혼잡으로 오인 안 함).</li>
     </ul>
+
+    <h3>지속성 게이트 <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-02, <code>remeasure_redesign.py --persistence-gate</code>, 기본 ON)</span></h3>
+    <p class="lede"><b>동기</b>: 배포 EE를 test 366창에 돌려 오답 31개를 분해하니 최대 오답군 <code>3→2</code>(13개)의 8개가 <b>victim 프로브 1폴링짜리 스파이크</b>였다 — ping이 한 번 851ms를 찍거나 UDP loss가 한 폴링만 16%로 튀어서 그 창의 마지막 폴링 라벨이 3으로 찍혔는데, 앞뒤 폴링과 채널 상태는 전부 <span class="lbl l2">혼잡</span> 수준. <b>모델이 맞고 라벨이 과민한</b> 케이스. (<code>prepare_ap_metrics_dataset.py</code>는 창 라벨 = 마지막 폴링 스냅샷 하나라서 단발 스파이크에 그대로 노출된다.)</p>
+    <pre class="block">label 3 &amp; occupancy_score &lt; 0.75 &amp; non-occ 축(jitter/loss/latency) 주도:
+  max(jitter_s, loss_s, latency_s) 가 최근 k=3폴링 중 m=2폴링 이상 ≥ 0.75  → label 3 유지
+  아니면  → 그 축을 0.749로 캡,  congestion_score = max(occupancy_score, 캡)  으로 재라벨 (→ 대개 혼잡)</pre>
+    <ul>
+      <li><b>occupancy 주도 심각은 절대 게이트 안 함</b> — 바쁜 채널은 바쁜 채널. "실패=max"로 붙은 심각도 결과 축 점수를 보므로 자연히 포함 (단발 ping timeout → 강등).</li>
+      <li><b>근거</b>: <span class="lbl l3">심각</span> = "victim QoS가 붕괴했다". 패킷 한 번 드랍은 붕괴가 아니라 지터. <code>max(표준 앵커)</code> 원칙을 유지한 채 <b>"실패=max"의 시간적 정제</b>이지 새 임계값이 아니다. LSTM은 이미 window 12로 흐름을 보는데 정답만 마지막 폴링 스냅샷이라 어긋나 있던 것.</li>
+      <li><b>효과 (2551행)</b>: raw label 3 319 → 285 (−34, 전부 <code>3→2</code>, 전부 occ 48~73). 5시드 재학습 — EE Fixed 정확도 91.4→<b>92.1%</b>, Label 3 recall 69.6→<b>75.2%</b>, F1 77.5→<b>82.9%</b> (EE Dynamic F1 85.2). Baseline·SDN도 +1.5~2.4pt. <b>L3 recall이 안 떨어지고 오히려 오름</b> — label 2와 구분 불가능한 단발 창을 걷어내니 남은 심각 클래스가 학습 가능해짐.</li>
+      <li><b>한계</b>: 지속형 <code>3→2</code> 5개 + occ 72~73 경계 <code>2→3</code> 4개는 그대로 — 게이트 밖의 관측 한계.</li>
+      <li>pre-gate 라벨/체크포인트/데이터: <code>*_nogate_archived_20260902</code>.</li>
+    </ul>
   </section>
 
   <section>

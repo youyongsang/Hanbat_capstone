@@ -133,7 +133,7 @@ retry_score, congestion_score
 
 - 방식: `(x − min) / (max − min)`, `[0, 1]` clip.
 - **min/max는 train split에서만** 구해서 `project/data/ap_metrics_v2_redesign2/scaler_params.json`에 저장. val/test·실시간 추론은 **그 파일을 그대로** 써야 한다 (재라벨링만 하고 재변환 안 하면 라벨과 스케일러가 어긋난다).
-- windowed 변환: window 12, stride 1, 시나리오별 첫 행 1개 drop. train 1710 / val 367 / test 366 샘플, shape `(N, 12, 7)` (2551행, 2026-09-01 수집 +436).
+- windowed 변환: window 12, stride 1, 시나리오별 첫 행 1개 drop. train 1711 / val 367 / test 365 샘플, shape `(N, 12, 7)` (2551행, 2026-09-02 라벨 지속성 게이트 적용 — 단발 프로브 스파이크 label 3 → 혼잡, `remeasure_redesign.py --persistence-gate`).
 
 ---
 

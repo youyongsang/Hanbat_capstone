@@ -4,7 +4,7 @@
 
 > 브라우저로 보기 좋은 버전: [`congestion_label_redesign.html`](congestion_label_redesign.html) — 정의·근거 중심 요약(§1~5 + 캘리브레이션). 이 markdown이 세션 로그·열린 항목까지 담은 전체본.
 
-> **현재 상태 (2026-08-31)**: 이 설계는 **전부 구현·본수집·배포 완료**. 데이터 `ap_metrics_v2_redesign2`(2115행, feature는 이후 7개로), 세 모델 학습·ONNX·Pi 실측까지. §3 표준 앵커는 원문 대조 완료(§3 표). §6~8의 "구현 순서/열린 항목/남은 것"은 **2026-08-27 시점 기록**이며 대부분 완료됐다 — 최신 진행은 `.work-log/current.md`.
+> **현재 상태 (2026-09-02)**: 이 설계는 **전부 구현·본수집·배포 완료**. 데이터 `ap_metrics_v2_redesign2`(2551행, 7-feature), 세 모델 학습·ONNX·Pi 실측까지. §3 표준 앵커는 원문 대조 완료(§3 표). **§4에 지속성 게이트 추가(2026-09-02) — 단발 프로브 스파이크로 붙은 label 3을 혼잡으로 강등, 5시드 정확도 전 모델 +1.5~2.4pt.** §6~8의 "구현 순서/열린 항목/남은 것"은 **2026-08-27 시점 기록**이며 대부분 완료됐다 — 최신 진행은 `.work-log/current.md` 17차.
 
 **상태 (2026-08-27 밤, 원문 보존)**: `collect_metrics.py`·`ap_features.py`·`prepare_ap_metrics_dataset.py` 구현 완료. Pi 캘리브레이션: idle(v6: 77/77 label 0) + 60/60·소패킷·45/45 부하 — **occupancy 포화 아닌 occ 60~72%에서 latency/loss 주도 label 3 확인**(45/45 런 22행). "실패=max" 채점 추가(§4) — victim 경로가 죽으면 occupancy 단독으로 안 되돌아감. **남은 것: 여러 시나리오 재수집(새 파일, 누적) → 재변환 → 재학습 → 평가.** 기존 5574행은 레거시(프로브·tx_packets 없음 + retry 3× 버그).
 
@@ -186,6 +186,26 @@ probe_hard_fail = channel_active AND  프로브가 한 번은 됐었음(ever_ok)
 - **왜 AP 다운이 아니라 채널 포화로 보나**: 이 판정에 도달했다는 건 유선 SSH로 AP 텔레메트리(`iw station/survey`)를 방금 정상 파싱했다는 뜻. AP는 살아있고 무선 채널만 막힌 것.
 - **idle 안전장치**: `channel_active` 게이트. 무부하에 ping/프로브가 실패하는 건 셋업 문제(방화벽·로밍)지 혼잡이 아님 → override 안 함. `ever_ok` 게이트로 "프로브 서버 미기동" 케이스도 배제.
 - **45/45 런 재처리 결과**: occ<75% label 3이 11 → 22행으로. 전부 `2→3` 전이(0/1→3 없음), 전부 부하 구간(throughput 27~142 Mbps), idle 행 라벨 변화 0. → CSV에서 `probe_ok==0 & loss_score==1.0` / `latency_ms==0 & latency_score==1.0`으로 override 행 식별 가능(별도 컬럼 없음).
+
+### 지속성 게이트 (2026-09-02, `remeasure_redesign.py --persistence-gate`, 기본 ON)
+
+**동기**: 배포 EE를 test 366창에 돌려 오답 31개를 하나씩 분해한 결과, 최대 오답군은 `3→2`(13개)였고 그중 **8개가 victim 프로브 1폴링짜리 스파이크**였다 — ping이 한 번 851ms를 찍거나 UDP loss가 한 폴링만 16%로 튀어서 그 창의 마지막 폴링 라벨이 3으로 찍혔는데, 앞뒤 폴링과 채널 상태(점유율·retry·RSSI·bitrate)는 전부 label 2 수준. **모델이 맞고 라벨이 과민한** 케이스. (`prepare_ap_metrics_dataset.py`는 창 라벨 = `window.iloc[-1].label`, 즉 마지막 폴링 스냅샷 하나라서 단발 스파이크에 그대로 노출된다.)
+
+**규칙**: label 3 행 중 **occupancy가 심각(≥0.75)이 아닌데** non-occ 축(jitter/loss/latency)으로 심각이 붙은 경우 —
+
+```
+그 축(=max(jitter_score, loss_score, latency_score))이
+최근 k=3폴링 중 m=2폴링 이상 ≥0.75 유지  → label 3 유지 (지속형 QoS 붕괴)
+아니면                                     → 그 축을 0.749로 캡,
+                                             congestion_score = max(occupancy_score, 캡된 축)
+                                             으로 재라벨 (→ 대개 혼잡 2로 강등)
+```
+
+- **occupancy 주도 심각은 절대 게이트 안 함** — 바쁜 채널은 바쁜 채널. "실패=max"로 붙은 심각도 결과 축 점수를 보므로 자연히 포함된다(단발 ping timeout → latency_score 1.0 한 폴링 → 강등).
+- **근거**: label 3 = "victim QoS가 붕괴했다". 패킷 한 번 드랍은 붕괴가 아니라 지터다. 이건 `max(표준 앵커)` 원칙을 유지한 채 **"실패=max"의 시간적 정제**이지 새 임계값 도입이 아니다. LSTM은 이미 window 12로 흐름을 보는데 정답만 마지막 폴링 스냅샷이라 어긋나 있던 것을, 라벨 정의도 흐름을 보게 맞춘 것.
+- **효과 (2551행)**: raw label 3 319 → 285 (−34, 전부 `3→2`, 전부 occ 48~73). 5시드 재학습(EE Fixed) — 정확도 91.4→**92.1%**, Label 3 recall 69.6→**75.2%**, F1 77.5→**82.9%** (EE Dynamic F1 85.2). Baseline·SDN도 동반 상승(+1.5~2.4pt). **L3 recall이 안 떨어지고 오히려 오름** — label 2와 구분 불가능한 단발 창을 걷어내니 남은 심각 클래스가 학습 가능해짐.
+- **한계**: 지속형 `3→2` 5개 + occ 72~73 경계 `2→3` 4개는 그대로 남는다 — 게이트 밖의 관측 한계.
+- 옛 (pre-gate) 라벨/체크포인트/데이터: `*_nogate_archived_20260902`.
 
 ## 5. 모델 입력 feature 재정의
 

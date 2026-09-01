@@ -21,8 +21,8 @@
 | 3 | 심각 |
 
 **발표자료(`docs/캡스톤디자인I_최종발표.pptx`) 슬라이드 8 "정량적 목표"**:
-- 목표1 = Raspberry Pi 환경에서 **혼잡 분류 정확도 95% 이상** — 발표 시스템 = Early Exit(Proposed) 기준. 2026-09-01: window 10→12 + 소패킷 부하 데이터 수집(2115→2551행) → **EE 배포 91.8% / 5시드 평균 91.4±0.4**. **아직 미달 (~3.5pt) — 데이터로 Label 3는 recall 55→70% 개선했으나 전체 정확도는 안 움직임.** 남은 오답은 occ 55~57·60~72 경계의 라벨 fuzzy / feature 관측 한계 → 데이터만으론 95% 어려움, 더 나은 AP·telemetry 필요 (16차 결론). 상한선: Baseline 5시드 91.4±1.7, SDN 90.9±1.2.
-- 목표2 = **추론 지연 < 1ms** — 달성. **2026-09-01 Pi 재측정 (window 12, 2551행, test 366창)**: Baseline 0.848 / EE Fixed 0.607 / EE Dynamic 0.632 / SDN 0.638ms — 전부 avg <1ms. EE Fixed가 Baseline −28%.
+- 목표1 = Raspberry Pi 환경에서 **혼잡 분류 정확도 95% 이상** — 발표 시스템 = Early Exit(Proposed) 기준. 2026-09-02(17차): window 12 + 데이터 2551 + **라벨 지속성 게이트** → **EE 배포 93.2% / 5시드 평균 EE Fixed 92.1±0.6 · Dynamic 92.6±0.7**. 단일 배포는 SDN seed2 **94.8%**, Baseline seed2 93.7%. **미달 폭 ~2pt로 축소.** 남은 오답은 지속형 3↔2(loss 10~12% 3폴링 유지, occ 57~69 — 채널 상태가 label 2와 동일) + occ 72~73 경계 — 관측 한계(per-station airtime·MCS telemetry 필요) 또는 forecast 재프레이밍. 상한선: Baseline 5시드 92.9±1.2, SDN 93.3±0.9.
+- 목표2 = **추론 지연 < 1ms** — 달성. **2026-09-02 Pi 재측정 (window 12, 2551+게이트, test 365창)**: Baseline 0.851 / EE Fixed 0.662 / EE Dynamic 0.658 / SDN 0.516ms — 전부 avg <1ms. EE Fixed가 Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.326/0.657/0.978 vs 0.338/0.661/0.991) — SDN 평균이 낮은 건 T=0.7이 exit1을 front-load한 것.
 - SDN 비교는 원래 정량 목표가 아니다. 핵심 기여 주장은 "간섭 감지에 Early Exit LSTM 구조를 최초 적용"이고, "혼잡 판단 → 채널 전환 필요 여부 + 전환 명령 후보 생성"까지가 최종 목표 문장(슬라이드 7).
 
 ## 배경 (1학기 → 1차 → 2차)
@@ -47,9 +47,9 @@
 
 ```text
 project/scripts/collect_metrics.py                     라이브 수집 (victim 프로브 ProbeRunner + 지속 SSH APPoller + congestion_score 계산)
-project/scripts/live_congestion.py                     실시간 혼잡 감지 라이브 추론 루프 (APPoller 재사용 → 7-feature → window 12 → scaler → ONNX INT8 → 라벨. victim 프로브 없음. 라벨 히스테리시스로 스파이크 억제). repo·Pi 번들 양쪽 동작. 2026-09-01 window 10→12 반영 완료 (Pi scp만 대기)
+project/scripts/live_congestion.py                     실시간 혼잡 감지 라이브 추론 루프 (APPoller 재사용 → 7-feature → window 12 → scaler → ONNX INT8 → 라벨. victim 프로브 없음. 라벨 히스테리시스로 스파이크 억제). repo·Pi 번들 양쪽 동작. window 12 + 게이트 ONNX Pi scp 완료 (2026-09-02)
 project/demo/demo_server.py + demo.html                 데모 웹 대시보드 — 버튼으로 계단형 부하(두 폰 iperf3) 걸고 모델 실시간 혼잡 예측을 SSE로 표시. live_congestion 로직 재사용. `python project/demo/demo_server.py` → localhost:8000. 상세: project/demo/README.md
-project/scripts/metrics_v2_pi_redesign2_relabeled.csv  현행 raw CSV (2551행, raw label 3 318개) ← canonical. 2026-09-01 소패킷 부하로 +436행 (metrics_collect_smallpkt_*_20260901.csv)
+project/scripts/metrics_v2_pi_redesign2_relabeled.csv  현행 raw CSV (2551행, 게이트 후 raw label 3 285개) ← canonical. 2026-09-01 소패킷 부하로 +436행 (metrics_collect_smallpkt_*_20260901.csv), 2026-09-02 라벨 지속성 게이트 적용 (pre-gate: *_nogate_archived_20260902.csv)
 project/scripts/metrics_v2.csv                         레거시 raw (5574행, 프로브·tx_packets 없음 + retry 3× 버그) — 사전학습/ablation용으로만
 project/scripts/remeasure_redesign.py                  raw feature에서 sub-score·라벨 전부 재계산 (재설계 공식 적용)
 project/scripts/prepare_ap_metrics_dataset.py          windowed train/val/test 변환
@@ -121,6 +121,7 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 - `jitter_score`·`loss_score`는 **victim 프로브**(부하와 별개로 흘리는 300kbps 경량 UDP 스트림, `iperf3 -u -b 300k`)가 그 스트림 자체에서 겪은 IPDV/손실을 측정한 값. "이 혼잡 속에서 VoIP 통화 한 통이 얼마나 깨지나". `latency_score`는 ping RTT/2 (편도 추정).
 - **조합이 `max`인 이유**: 표준은 "각 축이 언제 나쁜가"는 주지만 "어떻게 합치나"는 안 준다. `max`면 가중치 논쟁이 원천 봉쇄됨 — `label 3 = 최소 한 축이 표준 심각 문턱 돌파`.
 - **"실패 = max"**: 채널이 실제로 바쁜 상태(`throughput ≥ 3Mbps or occupancy ≥ 40%`)에서 victim 경로가 완전히 죽으면(ping 무응답 / 프로브 stale) 해당 축을 1.0으로 본다 — 안 그러면 occupancy 단독으로 조용히 되돌아감. 유선 SSH로 AP 텔레메트리를 방금 정상 파싱했으므로 AP는 살아있고 무선 채널만 막힌 것.
+- **지속성 게이트 (2026-09-02, `--persistence-gate` 기본 ON)**: occupancy 심각(≥0.75)이 아닌데 non-occ 축(jitter/loss/latency)으로 label 3이 붙은 행은, 그 축이 **최근 3폴링 중 2폴링 이상 ≥0.75 유지**될 때만 label 3. 아니면 그 축을 0.749로 캡 → 재라벨(대개 혼잡 2). 단발 ping timeout / 1폴링 loss 스파이크 = 지터이지 QoS 붕괴 아님. raw label 3 319→285, 5시드 정확도 전 모델 +1.5~2.4pt. 상세: `congestion_label_redesign.{md,html}` §4.
 - **`throughput_score`·`retry_score`는 라벨 축 아님** (label 2/3 변별력 없음 / 이 2.4GHz AP는 idle에도 retry_ratio med 18%라 QoS 피해의 독립 증거가 아님) — 계산은 하되 `max`에서 제외, 모델 입력 feature로는 유지.
 
 **핵심 논리 — LSTM이 왜 필요한가**: `max(표준 앵커)`는 그 자체로 규칙 기반 분류기다. 그런데 배포 시스템엔 victim 프로브가 없다(협조 싱크 + 지속 스트림 필요). 모델은 **AP-side 텔레메트리(점유율·retry·RSSI·bitrate)만 보고 "지금 victim QoS가 깨지고 있는가"를 예측**해야 한다 — 이건 규칙으로 못 한다. 거기에 시계열 추세 + Early Exit 효율.
@@ -128,49 +129,52 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 ### 학습 설정
 
 - 아키텍처: hidden_size 128, num_layers 3, dropout 0.2, num_classes 4. (김호중 baseline과 동일하게 맞춤. hidden/dropout은 2026-08-30 스윕 — 128/0.2 최적.)
-- **window size 12** (`prepare_ap_metrics_dataset.py` `WINDOW_SIZE`, `ap_dataloader.py` 기본값). 2026-09-01 스윕에서 10→12 승격 (10/12/13/14/15/20 다중 시드, 12가 최적 — acc·Label3 F1 분산 개선). 15차 참조.
-- Optimizer Adam, lr 0.001, batch 32, epochs 50. 체크포인트 선택 기준 = **val balanced accuracy** (raw accuracy 아님 — 다수 클래스 찍는 에폭 선택 방지).
+- **window size 12** (`utils/ap_features.py` `WINDOW_SIZE` 단일 소스, `prepare_ap_metrics_dataset.py`·`ap_dataloader.py`·ONNX export 6개·Pi 번들이 전부 import). 2026-09-01 스윕에서 10→12 승격 (10/12/13/14/15/20 다중 시드, 12가 최적 — acc·Label3 F1 분산 개선). 15차 참조.
+- Optimizer Adam, lr 0.001, batch 32, epochs 50. 체크포인트 선택 기준 = **val balanced accuracy** (raw accuracy 아님 — 다수 클래스 찍는 에폭 선택 방지). 2026-09-02: `train_ap_*.py` 3종이 `val_balanced_accuracy`를 체크포인트에 저장하므로 다시드 배포 선택은 그 키로.
 - **multi-exit loss 가중치 = 균등 0.3/0.3/0.4** (`--exit-loss-weights`). SDN 스타일 0.15/0.30/0.55로 바꾸면 exit3 심각 탐지에 유리하다는 가설이 있었으나, 다중 시드(5개) 검증에서 차이가 표준편차보다 작아 **노이즈로 판명 → 균등 유지**. (별도로, SDN 비교모델은 2026-08-30에 논문 충실 재구현되어 백본만 공유하고 IC·loss·threshold가 실제로 다름 — 아래 참조.)
 - **class weight power = 0.0** (`--class-weight-power`, `compute_class_weights`) — 클래스 가중치를 아예 안 씀(plain CE). **2026-08-30 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도(91.3%±0.5% vs power=1.0의 87.0%±1.1%)·Label3 F1(69.8% vs 63.2%) 둘 다 최고, 트레이드오프 없음**이라 기본값을 1.0→0.0으로 변경. 옛 1.0은 2026-08-23에 4-feature·train label3=23개 시절 "power≤0.85면 label3 recall 절벽" 때문에 정한 값인데, 7-feature·train label3=141개가 되면서 그 절벽이 사라짐(옛 결정을 재검증 안 해 계속 손해보고 있었음). 상세: work-log 4~5차 체크포인트(2026-08-30).
 - `train_*.py` 전부에 `--seed` 옵션 있음(기본 `None` = 기존 동작). **하이퍼파라미터 A/B 비교는 반드시 여러 시드로** — 단일 실행 비교가 노이즈였던 전례가 여러 번 있었다.
 
-### 최신 평가 결과 (2026-09-01, 7-feature `ap_metrics_v2_redesign2`, **window 12 + 데이터 2115→2551행**)
+### 최신 평가 결과 (2026-09-02, 7-feature `ap_metrics_v2_redesign2`, **window 12 + 데이터 2551 + 라벨 지속성 게이트**)
 
-정확한 최신 수치는 `.work-log/current.md` 16차 체크포인트. windowed test **366** 샘플 (label 분포 0:109 / 1:82 / 2:127 / 3:48).
+정확한 최신 수치는 `.work-log/current.md` 17차 체크포인트. windowed test **365** 샘플 (label 분포 0:109 / 1:82 / 2:132 / 3:42 — 게이트로 3→2 6창 이동).
 
-- **5시드 특성화 (window 12, 2551행, test 366, 각 모델 시드 0~4 평균 — 배포보다 이걸 기준 수치로 인용)**:
-  - Baseline: acc **91.4%±1.7** / L3 F1 74.7%±5.5
-  - SDN (Kaya et al. 2019, 논문 충실): acc **90.9%±1.2** / L3 F1 **77.8%±0.6**
-  - Early Exit Fixed θ: acc **91.4%±0.4** / L3 F1 **77.5%±1.1** / L3 recall 69.6%±1.7
-  - → **셋이 ±1 안에서 동급. Label3 F1도 74~78%로 동률** (SDN·EE 거의 붙음). L3 F1은 window 12(15차)와 데이터 수집(16차, recall 55→70)이 겹쳐 프로젝트 역대 최고.
+- **5시드 특성화 (게이트 데이터, test 365, 각 모델 시드 0~4 평균 — 배포보다 이걸 기준 수치로 인용)**:
+  - Baseline: acc **92.9%±1.2** / L3 recall 78.1%±1.0 / L3 F1 81.3%±3.1  (pre-gate 91.4 / — / 74.7)
+  - SDN (Kaya et al. 2019, val 캘리브레이션 T): acc **93.3%±0.9** / L3 recall 78.6%±2.6 / L3 F1 **84.2%±1.5**  (pre-gate 90.9 / — / 77.8)
+  - Early Exit Fixed θ: acc **92.1%±0.6** / L3 recall 75.2%±2.9 / L3 F1 82.9%±2.0  (pre-gate 91.4 / 69.6 / 77.5)
+  - Early Exit Dynamic θ: acc **92.6%±0.7** / L3 recall 78.1%±2.8 / L3 F1 **85.2%±1.8**
+  - → **전 모델 게이트로 +1.5~2.4pt.** 여전히 ±1σ 안에서 동급(SDN 근소 선두). EE Fixed가 5시드 평균으론 근소 최저지만 Dynamic은 중위, L3 F1은 EE Dynamic·SDN이 프로젝트 역대 최고(85). **L3 recall 안 떨어짐 — 게이트가 label 2와 구분 불가능한 단발 창을 제거해 남은 심각 클래스가 학습 가능해짐.**
 - **배포 단일 체크포인트 (val balanced acc 최고, fp32 eval)**:
-  - **EE Fixed θ seed1** (val bal 86.2%): **91.8%**, L0 98.2 / L1 91.5 / L2 94.5 / **L3 70.8** (2115 seed1은 51.6였음 — 데이터로 개선). Exit 35/41/24%. **Dynamic θ: 91.8%**, Exit 36/50/14%. ← 발표 평가 대상.
-  - Baseline seed4 (val bal 87.4%): **88.5%** — 약한 test draw (5시드 평균 91.4). L3 68.8. 상한선 참고용.
-  - SDN seed2 (val bal 87.7%, T=0.63): 91.0%, L3 recall 68.8%.
+  - **EE Fixed θ seed1** (val bal 91.1%): **93.2%**, L0 97.2 / L1 92.7 / L2 94.7 / **L3 recall 78.6 / F1 85.7**. Exit 28/41/31%. **Dynamic θ: 93.2%**, L3 recall 83.3 / F1 87.5, Exit 30/53/16%. ← 발표 평가 대상.
+  - Baseline seed2 (val bal 90.7%): **93.7%**, L3 recall 78.6 / F1 82.5.
+  - SDN seed2 (val bal 90.4%, T=0.70): **94.8%**, L3 recall 81.0 / F1 86.1. Exit 56/34/11%. ← 단일 배포 최고, 95% 문턱.
+- **라벨 지속성 게이트 (17차)**: label 3 & occupancy_score<0.75 & non-occ 축(jitter/loss/latency) 주도 → 그 축이 최근 3폴링 중 2폴링 이상 심각(≥0.75) 유지될 때만 label 3, 아니면 혼잡으로 강등. raw label 3 319→285. 근거: label 3 = victim QoS 붕괴, 패킷 1폴링 드랍은 붕괴 아님. 상세: `docs/yongsang/congestion_label_redesign.{md,html}` §4.
 - **power=1.0 → 0.0 효과** (2026-08-30): 5시드 평균 정확도 +2~4pt. label2 정상화.
-- **서사**: 세 모델 정확도 동급 → Proposed(Early Exit)의 가치 주장은 정확도가 아니라 **속도·효율**(목표2 <1ms, Baseline 대비 −28%) + "간섭 감지에 EE 최초 적용". 목표1 미달은 데이터·window로 91~92%까지, 그 이상은 AP·telemetry 필요.
-- **ONNX 재수출 완료 (2026-09-01, 2551행)**: EE unified fp32 = PyTorch 366/366, INT8 v2 = 365~366/366. Baseline INT8 365/366. SDN INT8 350/366 (T=0.63 경계 노이즈). Pi 번들 sync 완료.
-- **Pi 지연 재측정 (2026-09-01, window 12, 2551행, test 366)**: Baseline 0.848 / SDN 0.638 / EE Fixed **0.607** / Dynamic 0.632ms — 전부 avg <1ms(목표2). EE Fixed가 Baseline −28%. 상세: `ap_v2_redesign2_pi_latency_comparison.txt` 7차.
-- **속도 원리**: SDN pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear head보다 무거움 — EE가 SDN보다 빠른 이유. window·데이터와 무관하게 유지되는 구조적 차이.
-- **SDN 비교모델 = "기존 조기종료 방법 vs 우리 방법" 통제 비교**: base 3층 LSTM·하이퍼파라미터는 Proposed와 완전 동일, SDN이 규정하는 3축만 논문(Kaya et al. ICML 2019)대로 다름 — (1) pooling IC, (2) 커리큘럼 램프 depth-weighted loss, (3) val 캘리브레이션 confidence T. 결과: 정확도 동급(5시드 EE 91.4 / SDN 90.9), Label3 F1도 동률(EE 77.5 / SDN 77.8), 속도만 EE 우위(0.607 vs 0.638ms). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".
-- **남은 오답의 정체 (16차)**: label 1↔2 (occ 55~57 앵커 경계 — 측정 노이즈로 라벨 fuzzy) + label 2↔3 (occ 60~72 — feature 평균이 두 라벨 사이 동일, 관측 한계). 데이터 추가로도 안 줄어듦. 이게 목표1 95%의 벽.
+- **서사**: 세 모델 정확도 여전히 동급 → Proposed(Early Exit)의 가치 주장은 정확도가 아니라 **속도·효율**(목표2 <1ms, Baseline 대비 −22%) + "간섭 감지에 EE 최초 적용". 목표1은 window·데이터·게이트로 92~93%(단일 배포 94.8)까지, 그 이상은 AP·telemetry 또는 forecast 재프레이밍.
+- **ONNX 재수출 완료 (2026-09-02, 게이트)**: EE unified fp32 = PyTorch 365/365, INT8 v2 = 362/365. Baseline INT8 364/365. SDN INT8 365/365 (T=0.70). Pi 번들 sync + scp 완료.
+- **Pi 지연 재측정 (2026-09-02, window 12, 게이트, test 365)**: Baseline 0.851 / SDN 0.516 / EE Fixed **0.662** / Dynamic 0.658ms — 전부 avg <1ms(목표2). EE Fixed가 Baseline −22%. 상세: `ap_v2_redesign2_pi_latency_comparison.txt` 8차.
+- **속도 원리**: SDN pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear head보다 무거움 — **per-exit 지연은 EE가 SDN보다 전 stage 가벼움**(0.326/0.657/0.978 vs 0.338/0.661/0.991ms). 8차에서 SDN 평균(0.516)이 EE(0.662)보다 낮은 건 T=0.70이 exit1 비중을 56%로 front-load한 threshold 정책 artifact이지 구조 우위 아님.
+- **SDN 비교모델 = "기존 조기종료 방법 vs 우리 방법" 통제 비교**: base 3층 LSTM·하이퍼파라미터는 Proposed와 완전 동일, SDN이 규정하는 3축만 논문(Kaya et al. ICML 2019)대로 다름 — (1) pooling IC, (2) 커리큘럼 램프 depth-weighted loss, (3) val 캘리브레이션 confidence T. 결과: 정확도 동급(5시드 EE Fixed 92.1 / Dynamic 92.6 / SDN 93.3), Label3 F1도 동률~SDN·EE Dynamic 선두(SDN 84.2 / EE Dynamic 85.2 / EE Fixed 82.9). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".
+- **남은 오답의 정체 (17차, 게이트 후)**: 지속형 label 2↔3 (occ 57~69, loss 10~12%가 3폴링 유지 — 채널 상태가 label 2와 동일) + occ 72~73 경계 (congestion_score 0.72~0.73, 심각 앵커 바로 밑). 관측 한계 — 이게 목표1 95%의 벽.
 - **조기경보(forecasting) 프레이밍** (`forecast_eval_redesign.py`): k=3폴링(≈3~6s) 앞 escalation(현재 not-severe → k 뒤 severe) recall 61.5%, occupancy 규칙은 구조적으로 0/13. "점 분류 95%"와는 다른 지표라 발표 목표1을 직접 만족하진 않지만 대안 서사로 유효.
 
 ### 알려진 한계
 
-- **Label 3(심각)**: 2026-09-01 소패킷 부하 수집으로 raw 202→318, test 31→48. **5시드 recall 55.5→69.6%, F1 69.9→77.5%, 분산 ±2.9→±1.1** — 얇음/흔들림 문제 크게 완화. jitter 축 심각은 이 하드웨어(2폰+iperf3)로 불가.
-- **occupancy 55~57·60~72 경계 노이즈 = 목표1의 벽.** label 1↔2는 같은 채널 상태에서 측정 노이즈로 뒤집히고(라벨 fuzzy), label 2↔3 occ 60~72는 feature 평균이 동일(관측 한계). **데이터 추가(16차, +436행)로도 전체 정확도는 안 움직임** — L3만 개선. 라벨링 스무딩·모델입력 EMA 둘 다 폐기(순효과 0). window 10→12만 유효(15차). 95%는 더 나은 AP·telemetry 필요.
+- **Label 3(심각)**: 16차 데이터 수집(raw 202→318) + 17차 게이트(319→285 데이터, 단발 스파이크 제거). **5시드 recall 55.5→75.2%(EE Fixed) / 78.1%(Dynamic), F1 69.9→82.9/85.2%** — 얇음/흔들림 문제 크게 완화. jitter 축 심각은 이 하드웨어(2폰+iperf3)로 불가.
+- **게이트 후 남은 벽 = 지속형 2↔3 (occ 57~69, loss 10~12% 3폴링 유지) + occ 72~73 경계.** 전자는 채널 상태가 label 2와 동일(관측 한계), 후자는 심각 앵커 바로 밑. **데이터 추가(16차)로 전체 정확도 안 움직였고, 게이트(17차)로 +1.5~2.4pt.** 라벨링 스무딩·모델입력 EMA·mode 재라벨 폐기(순효과 0), 유효했던 것: window 10→12(15차)·데이터 수집 L3만(16차)·지속성 게이트(17차). 95% 완주는 더 나은 AP·telemetry(per-station airtime·MCS) 또는 forecast 재프레이밍.
 - **AP(Opal) 반복 크래시**: "몇 대 붙었나"보다 "각 폰이 대칭적으로 붙었나"가 핵심 변수 — 신호 강한 S26이 채널 독점하고 약한 191이 굶는 Wi-Fi capture effect. 부하 스위트스팟 191=60M/S26=60M, 안전 구간 대략 300~420초 (60/60도 500초 넘기면 완전 크래시, 80/80은 10분 시도에서 물리 재부팅). 상세: `docs/yongsang/ap_crash_analysis.{md,html}`.
 - **유선 관리채널**: `collect_metrics.py`가 지속 SSH(`APPoller`)로 전환됐고 victim 프로브(`ProbeRunner`)가 추가됨. collector를 라즈베리 파이로 옮겨 관리 트래픽을 무선 채널에서 분리하는 구조 확정.
 - **ONNX/Pi 배포**: staged(세션 3개) → `torch.jit.script`+ONNX `If` 노드 단일 그래프(`export_onnx_ap_unified.py`) → INT8은 staged(flat)로 먼저 양자화 후 손수 재조립(`export_onnx_ap_unified_int8_v2.py`, `If` 서브그래프 안 LSTM을 양자화 도구가 건너뛰는 한계 우회). baseline 대비 대략 -60% 내외 (1학기 4-feature 자료로 두 현상 교차검증). Pi latency 주장 시 `docs/yongsang/onnx_early_exit_redesign.{md,html}`의 결론을 따르고 staged/fp32-only 수치를 최종 결과로 인용하지 않는다.
-- hidden_size·dropout 스윕 완료(2026-08-30, 128/0.2 최적). class-weight-power 재스윕 완료(2026-08-30 → 0.0). **window·lr·batch·모델입력 EMA 스윕 완료(2026-09-01 — window 10→12만 승격, 나머지는 이득 없음)**. epochs 스윕은 미실시.
+- hidden_size·dropout 스윕 완료(2026-08-30, 128/0.2 최적). class-weight-power 재스윕 완료(2026-08-30 → 0.0). **window·lr·batch·모델입력 EMA 스윕 완료(2026-09-01 — window 10→12만 승격)**. **라벨 지속성 게이트 k=3/m=2 채택(2026-09-02) — k·m 스윕은 미실시.** epochs 스윕은 미실시.
 
 ### 재현 명령어
 
-라벨 재계산(공식/앵커가 바뀌었을 때, raw feature에서 전부):
+라벨 재계산(공식/앵커가 바뀌었을 때, raw feature에서 전부 — 지속성 게이트 기본 ON):
 
 ```powershell
-python project\scripts\remeasure_redesign.py
+python project\scripts\remeasure_redesign.py -i project\scripts\metrics_v2_pi_redesign2_relabeled_nogate_archived_20260902.csv -o project\scripts\metrics_v2_pi_redesign2_relabeled.csv
+# 게이트 끄려면 --no-persistence-gate, k/m 조절은 --gate-k --gate-m
 ```
 
 windowed 데이터 변환:
@@ -200,7 +204,7 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 ### 정확도가 이상하게 낮게 나올 때 의심할 점
 
-1. raw CSV를 그대로 넣지 않았는지 확인 — 모델은 window size **12**로 변환된 `test.csv`를 쓴다. ONNX(`[1,12,7]`)·Pi 번들·Pi 지연 재측정 전부 완료 (2026-09-01, 2551행).
+1. raw CSV를 그대로 넣지 않았는지 확인 — 모델은 window size **12**로 변환된 `test.csv`를 쓴다. ONNX(`[1,12,7]`)·Pi 번들·Pi 지연 재측정 전부 완료 (2026-09-02, 2551+게이트).
 2. feature 개수/순서가 `ap_features.py`의 **7개** 정의와 동일한지 확인. (ONNX 재조립 스크립트가 `[1,10,6]`으로 하드코딩돼 있던 버그 전례 — Pi에서 "Got 7 Expected 6" 에러.)
 3. `label`, `congestion_score`, sub-score, `probe_*`, `latency_ms`, `jitter_ms`가 입력 feature에 섞이지 않았는지 확인.
 4. `scaler_params.json` 기준이 다른지 확인 (재라벨링만 하고 재변환을 안 하면 라벨과 스케일러가 어긋난다).
@@ -226,4 +230,4 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 4. 하이퍼파라미터/가중치 A/B 비교 수치는 **다중 시드로 검증됐는지** 먼저 확인한다. 단일 실행 비교가 노이즈였던 전례가 여러 번 있었다(SDN 가중치 승격 → 철회 등).
 5. PC wall-time만으로 Early Exit 속도 우위를 주장하면 위험하다 — 최종 속도 주장은 Raspberry Pi INT8 실측 기준(현재 0.6~0.8ms, 목표2 <1ms 달성).
 6. Fixed/Dynamic은 별도 backbone을 새로 학습하는 것이 아니라, 같은 Early Exit backbone에서 threshold 정책(고정 θ vs 변동률 기반 θ)만 바꿔 평가하는 구조이다. **SDN은 다르다** — 2026-08-30 논문 충실 재구현으로 pooling IC head + 램프 loss + 캘리브레이션 T를 실제로 별도 학습(base 백본만 공유). "SDN-style이 EE와 사실상 같은 네트워크"라는 옛 서술은 이 재구현 이전 기준이며 stale.
-7. 남은 핵심 숙제는 **Pi 정확도 95%**(2026-08-30 power=0.0 승격 후 5시드 평균 Baseline 92.0% / SDN 90.4% / EE 90.7% — 사실상 동급). Proposed의 가치 주장은 정확도가 아니라 속도·효율(Pi에서 Baseline 대비 -28%).
+7. 남은 핵심 숙제는 **Pi 정확도 95%**(17차 게이트 후 5시드 평균 Baseline 92.9% / SDN 93.3% / EE Fixed 92.1% / EE Dynamic 92.6% — 사실상 동급, 단일 배포 SDN 94.8%). Proposed의 가치 주장은 정확도가 아니라 속도·효율(Pi에서 Baseline 대비 -22%).

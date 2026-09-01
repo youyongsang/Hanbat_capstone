@@ -150,6 +150,7 @@ def main() -> None:
                 "input_size": len(AP_FEATURE_COLUMNS),
                 "feature_columns": list(AP_FEATURE_COLUMNS),
                 "val_accuracy": best_val_acc,
+                "val_balanced_accuracy": best_val_balanced_acc,
                 "class_weight_power": args.class_weight_power,
             }
             torch.save(checkpoint, checkpoint_path)

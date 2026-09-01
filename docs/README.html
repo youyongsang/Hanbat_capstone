@@ -111,7 +111,9 @@
     <thead><tr><th>알고 싶은 것</th><th>어디를 보면 되나</th></tr></thead>
     <tbody>
       <tr class="star"><td class="q"><span class="star">★</span> 왜 이런 라벨(정상/경고/혼잡/심각)을 정했나</td>
-        <td><code>congestion_label_redesign.{md,html}</code> — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max"</td></tr>
+        <td><code>congestion_label_redesign.{md,html}</code> — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max" + "지속성 게이트"(2026-09-02)</td></tr>
+      <tr><td class="q">왜 지속성 게이트인가 (단발 프로브 스파이크 label 3 → 혼잡)</td>
+        <td><code>congestion_label_redesign.{md,html}</code> §4 "지속성 게이트" + <code>.work-log/current.md</code> 17차 — 배포 EE 오답의 최대군이 1폴링짜리 스파이크, 게이트로 전 모델 +1.5~2.4pt</td></tr>
       <tr><td class="q">congestion_score는 어떻게 계산하나</td>
         <td><code>congestion_label_redesign.{md,html}</code> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
       <tr class="star"><td class="q"><span class="star">★</span> 7개 feature 각각이 뭔가 / 계산·스무딩·스케일러</td>
@@ -124,6 +126,8 @@
         <td>아티팩트 "Class-Weight-Power Zero" (<code>.work-log/current.md</code> 4~5차 체크포인트에 링크·표)</td></tr>
       <tr><td class="q">왜 window size 12인가 (10→12)</td>
         <td><code>.work-log/current.md</code> 15차 — window/lr/batch/EMA 스윕에서 12만 이득 (EE 정확도 +1.2pt, Label3 F1 분산 절반). <code>docs/yongsang/capstone2_vacation_summary.html</code> §07</td></tr>
+      <tr><td class="q">목표1(95%) 재공략 3연타</td>
+        <td><code>.work-log/current.md</code> 15차(window)·16차(데이터 +436행, L3만)·17차(라벨 지속성 게이트, 전 모델 +1.5~2.4pt). <code>docs/yongsang/model_results.html</code> "변경" 절</td></tr>
       <tr><td class="q">AP가 왜 자꾸 크래시하나 / 부하는 얼마까지</td>
         <td><code>docs/yongsang/ap_crash_analysis.{md,html}</code> — 신호 비대칭(capture effect)이 핵심</td></tr>
       <tr><td class="q">ONNX를 왜 이렇게 배포했나 (staged→unified If→INT8)</td>

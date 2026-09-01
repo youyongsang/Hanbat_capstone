@@ -46,6 +46,8 @@ DERIVED_COLUMNS = [
 
 LABEL_NAMES = {0: "정상", 1: "경고", 2: "혼잡", 3: "심각"}
 
+SEVERE = 0.75
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -57,7 +59,65 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="scenario names to drop entirely (dud runs)",
     )
+    p.add_argument(
+        "--persistence-gate",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "ON by default (labelling policy since 2026-09-02). Demote a label-3 "
+            "row to label 2 when its severe verdict comes from a non-occupancy "
+            "(victim-probe) axis that spiked for fewer than --gate-m of the last "
+            "--gate-k polls. Single-poll jitter/loss/ping spikes are noise, not a "
+            "sustained QoS collapse; occupancy-driven severe is never gated. "
+            "Pass --no-persistence-gate to reproduce pre-gate runs."
+        ),
+    )
+    p.add_argument("--gate-k", type=int, default=3, help="persistence window (polls)")
+    p.add_argument("--gate-m", type=int, default=2, help="min severe polls in the window")
     return p.parse_args()
+
+
+def _score_to_label(score: float) -> int:
+    if score < 0.25:
+        return 0
+    if score < 0.50:
+        return 1
+    if score < 0.75:
+        return 2
+    return 3
+
+
+def apply_persistence_gate(df: pd.DataFrame, k: int, m: int) -> tuple[pd.DataFrame, int]:
+    """Post-pass on the per-poll labels: a label-3 row whose 심각 comes from a
+    non-occupancy axis (jitter/loss/latency) only counts if that axis was
+    severe (>=0.75) in at least ``m`` of the trailing ``k`` polls of the same
+    scenario. Otherwise the transient axis is capped just below severe and the
+    row is relabelled from ``max(occupancy_score, capped non-occ)``.
+
+    Rationale: label 3 == "victim QoS collapsed". One dropped-packet poll or one
+    ping timeout is jitter, not collapse. This aligns the label with the
+    temporal signal the LSTM already sees (window 12), instead of a last-poll
+    snapshot that a single spike can flip.
+    """
+    out = df.copy()
+    demoted = 0
+    nonocc_cols = ["jitter_score", "loss_score", "latency_score"]
+    for _, group in out.groupby("scenario", sort=False):
+        idx = group.index.to_numpy()
+        occ = group["occupancy_score"].to_numpy()
+        sev_nonocc = group[nonocc_cols].to_numpy().max(axis=1)
+        for pos, row_idx in enumerate(idx):
+            if out.at[row_idx, "label"] != 3 or occ[pos] >= SEVERE:
+                continue
+            lo = max(0, pos - k + 1)
+            if int((sev_nonocc[lo : pos + 1] >= SEVERE).sum()) >= m:
+                continue
+            capped = min(float(sev_nonocc[pos]), SEVERE - 1e-3)
+            new_score = round(max(float(occ[pos]), capped), 4)
+            out.at[row_idx, "congestion_score"] = new_score
+            out.at[row_idx, "label"] = _score_to_label(new_score)
+            demoted += 1
+    return out, demoted
 
 
 def remeasure(df: pd.DataFrame) -> pd.DataFrame:
@@ -119,6 +179,13 @@ def main() -> None:
     old_label = df["label"].copy()
     df = remeasure(df)
     changed = int((old_label.to_numpy() != df["label"].to_numpy()).sum())
+
+    if args.persistence_gate:
+        df, demoted = apply_persistence_gate(df, args.gate_k, args.gate_m)
+        print(
+            f"persistence gate (k={args.gate_k}, m={args.gate_m}): "
+            f"demoted {demoted} transient label-3 rows -> 혼잡"
+        )
 
     df.to_csv(args.output, index=False)
 

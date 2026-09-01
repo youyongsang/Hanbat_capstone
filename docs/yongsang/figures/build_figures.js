@@ -19,10 +19,10 @@ const FONT = '-apple-system, "Segoe UI", "Malgun Gothic", "Noto Sans KR", system
 // window 12, 2551-row data (2026-09-01 collection). acc/F1 = 5-seed test mean +-std (test 366).
 // exits = deploy checkpoint. pi = Pi INT8 (2026-09-01, test 366).
 const MODELS = [
-  { key:"baseline", name:"Baseline (EE 없음)", short:"Baseline", acc:91.4, accSd:1.7, f1:74.7, f1Sd:5.5, pi:0.848, exits:[0,0,100], fam:"gray" },
-  { key:"sdn", name:"SDN (논문 충실)", short:"SDN", acc:90.9, accSd:1.2, f1:77.8, f1Sd:0.6, pi:0.638, exits:[51,32,18], fam:"orange" },
-  { key:"eef", name:"Proposed EE · Fixed θ", short:"EE Fixed θ", acc:91.4, accSd:0.4, f1:77.5, f1Sd:1.1, pi:0.607, exits:[35,41,24], fam:"blue" },
-  { key:"eed", name:"Proposed EE · Dynamic θ", short:"EE Dynamic θ", acc:91.8, accSd:null, f1:70.8, f1Sd:null, pi:0.632, exits:[36,50,14], fam:"blue" },
+  { key:"baseline", name:"Baseline (EE 없음)", short:"Baseline", acc:92.9, accSd:1.2, f1:81.3, f1Sd:3.1, pi:0.851, exits:[0,0,100], fam:"gray", scatter:true },
+  { key:"sdn", name:"SDN (논문 충실)", short:"SDN", acc:93.3, accSd:0.9, f1:84.2, f1Sd:1.5, pi:0.516, exits:[56,34,11], fam:"orange", scatter:true },
+  { key:"eef", name:"Proposed EE · Fixed θ", short:"EE Fixed θ", acc:92.1, accSd:0.6, f1:82.9, f1Sd:2.0, pi:0.662, exits:[28,41,31], fam:"blue", scatter:true },
+  { key:"eed", name:"Proposed EE · Dynamic θ", short:"EE Dynamic θ", acc:92.6, accSd:0.7, f1:85.2, f1Sd:1.8, pi:0.658, exits:[30,53,16], fam:"blue", scatter:false },
 ];
 const FAMC = { gray:C.gray, orange:C.orange, blue:C.blue };
 
@@ -63,16 +63,16 @@ ${body}
 // ============ 1. scatter: accuracy vs latency ============
 function figScatter() {
   const W = 660, H = 380, L = 58, R = 24, TOP = 66, B = 52;
-  const x0 = 0.55, x1 = 0.90, y0 = 88, y1 = 96;
+  const x0 = 0.45, x1 = 0.90, y0 = 88, y1 = 96;
   const px = v => L + (v - x0) / (x1 - x0) * (W - L - R);
   const py = v => TOP + (1 - (v - y0) / (y1 - y0)) * (H - TOP - B);
-  const pts = MODELS.filter(m => m.accSd != null);
+  const pts = MODELS.filter(m => m.accSd != null && m.scatter);
   const g = [];
   for (let yv = 88; yv <= 96; yv += 2) {
     g.push(line(L, py(yv), W - R, py(yv), C.grid, 1));
     g.push(T(L - 10, py(yv) + 4, yv + "%", { anchor: "end", size: 11 }));
   }
-  [0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9].forEach(xv =>
+  [0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9].forEach(xv =>
     g.push(T(px(xv), H - B + 18, xv.toFixed(2), { anchor: "middle", size: 11 })));
   g.push(line(L, H - B, W - R, H - B, C.axis, 1));
   g.push(T((L + W - R) / 2, H - 8, "Pi INT8 지연 (ms / sample) — 낮을수록 좋음", { anchor: "middle", size: 11.5 }));
@@ -81,9 +81,9 @@ function figScatter() {
   g.push(line(L, py(95), W - R, py(95), C.target, 1.5));
   g.push(T(W - R, py(95) - 6, "목표 1 — 95%", { anchor: "end", size: 11, fill: C.target, weight: 600 }));
   const LP = {
-    baseline: { nameDy: -6, valDy: 9, dx: -14, anch: "end" },
-    eef: { nameDy: -12, valDy: 2, dx: 13, anch: "start" },
-    sdn: { nameDy: 22, valDy: 35, dx: 13, anch: "start" },
+    baseline: { nameDy: -12, valDy: 2, dx: -14, anch: "end" },
+    eef: { nameDy: 24, valDy: 37, dx: 0, anch: "middle" },
+    sdn: { nameDy: -12, valDy: 2, dx: 13, anch: "start" },
   };
   pts.forEach(m => {
     const cx = px(m.pi), cy = py(m.acc), col = FAMC[m.fam], p = LP[m.key];
@@ -96,7 +96,7 @@ function figScatter() {
     g.push(T(cx + p.dx, cy + p.valDy, `${m.acc.toFixed(1)}% · ${m.pi.toFixed(3)} ms`, { anchor: p.anch, size: 10.5 }));
   });
   return wrap(W, H, "정확도 vs Pi INT8 지연",
-    "정확도 = window 12 5시드 ±1σ · 지연 = window 12 Pi INT8 실측 · 가로축 0.55 ms부터",
+    "5시드 ±1σ (window 12 + 라벨 게이트) · Pi INT8 실측 · 가로축 0.45 ms · EE Dynamic(92.6%·0.658ms)은 Fixed와 겹쳐 생략",
     g.join("\n"));
 }
 
@@ -136,8 +136,8 @@ function figAcc() {
   g.push(T(L + 18, ly + 1, "전체 정확도", { size: 11, fill: C.ink2 }));
   g.push(el("rect", { x: L + 110, y: ly - 9, width: 12, height: 12, rx: 3, fill: C.orange }));
   g.push(T(L + 128, ly + 1, "Label 3 (심각) F1", { size: 11, fill: C.ink2 }));
-  return wrap(W, H, "정확도 · Label 3 F1 — 5시드 평균 ±표준편차 (window 12, 2551행)",
-    "정확도 근소차 · Label 3 F1도 74~78%로 붙음 (window 12 + 데이터 수집으로 L3 recall 55→70)",
+  return wrap(W, H, "정확도 · Label 3 F1 — 5시드 평균 ±표준편차 (window 12 + 라벨 게이트)",
+    "정확도 근소차(SDN 근소 선두) · Label 3 F1 81~85%로 붙음 · 라벨 지속성 게이트로 전 모델 +1.5~2.4pt",
     g.join("\n"));
 }
 
@@ -164,7 +164,7 @@ function figLat() {
     g.push(T(cx, H - B + 20, m.short, { anchor: "middle", size: 11 }));
   });
   return wrap(W, H, "Pi INT8 평균 추론 지연 (ms / sample) — window 12",
-    "capstone@192.168.8.109 · test 366창 · 5회 반복 평균 · 2026-09-01 · 전부 avg <1 ms · EE Fixed = Baseline -28%",
+    "test 365창 · 5회 반복 평균 · 2026-09-02 · 전부 avg <1 ms · EE Fixed = Baseline -22% · SDN 저지연은 T=0.70의 exit1 front-load",
     g.join("\n"));
 }
 
@@ -201,7 +201,7 @@ function figExit() {
     g.push(T(lx + 18, ly + 1, `${names[j]} (LSTM ${j + 1}층${j === 2 ? ", 최종" : ""})`, { size: 10.5, fill: C.ink2 }));
   });
   return wrap(W, H, "샘플이 어느 exit에서 종료됐나 (%)",
-    "window 12 · 2551행 배포 체크포인트 · Baseline은 항상 exit 3 · Proposed는 대부분 exit 1~2에서 종료",
+    "window 12 · 2551+게이트 배포 체크포인트 · Baseline은 항상 exit 3 · Proposed·SDN은 대부분 exit 1~2에서 종료",
     g.join("\n"));
 }
 
