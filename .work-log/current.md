@@ -105,8 +105,16 @@
 - **2차 (폰 위치 조정 → 대칭 S21 −32/S26 −27, 10→20→30M 계단)**: 대칭 강신호면 10M만으로 채널 즉시 포화(occ 80%) → 전 부하 레벨 **심각(3) 지속** (30M에서 p 0.96~0.98). 정지 후 ~5초 내 정상(0) 복귀. **30M×2=60M ~90초에도 AP 크래시 없음** (up 4:54, 채널 유지).
 - **window 12 ONNX 파이프라인이 Pi 엣지에서 데모로 end-to-end 완전 검증.** 데모 = "자동 실험 웹사이트" 팀 시연 가능 상태. 결과: `ap_v2_redesign2_demo_pi_run_20260901.txt`.
 
+### 문서·그래프 최신화 (2026-09-01 후속6)
+- `capstone2_vacation_summary.html` §07 신규(window 스윕), stats/goals/§05표/§06 전부 w12. "되돌린 결정" 5번째(EMA 스무딩) 추가.
+- `model_results.html` "window 10→12: 무엇이 바뀌었나" before/after 표 추가.
+- `system_overview.html` feature 변천에 window 언급 + 토폴로지 window 12.
+- `README.{md,html}` "왜 window 12인가" 행 추가.
+- `docs/yongsang/figures/*` SVG+PNG 4장 w12 재생성·육안 확인 완료.
+
 ### 남은 것
-- (없음 — window 12 승격 관련 모든 항목 완료.) 발표 목표1(정확도 95%)은 미달 유지 — 데이터 추가 수집 or 아키텍처 재설계가 필요한 별개 숙제.
+- **발행 아티팩트 2개 stale** (w10): "AP 혼잡 분류 모델 비교" `fc9c86b1-...`, "방학 개발 흐름" `d3948502-...`. `model_results.html`(repo, w12)가 사실상 전자를 대체. 갱신하려면 read → artifact-design → 재포맷 → republish 필요.
+- window 12 승격 관련 나머지 항목 완료. 발표 목표1(정확도 95%)은 미달 유지 — 데이터 추가 수집 or 아키텍처 재설계가 필요한 별개 숙제.
 
 ### 재현
 ```powershell
