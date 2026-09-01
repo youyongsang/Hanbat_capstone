@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_sdn_lstm import APSDNLSTM  # noqa: E402
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 INPUT_SIZE = len(AP_FEATURE_COLUMNS)
 
@@ -95,13 +95,13 @@ def main() -> None:
 
     prefix = args.checkpoint_dir / "ap_sdn"
     stages = [
-        (Stage1Wrapper(model).eval(), torch.randn(1, 10, INPUT_SIZE), f"{prefix}_stage1.onnx",
+        (Stage1Wrapper(model).eval(), torch.randn(1, WINDOW_SIZE, INPUT_SIZE), f"{prefix}_stage1.onnx",
          ["input"], ["hidden1", "exit1"],
          {"input": {0: "batch_size"}, "hidden1": {0: "batch_size"}, "exit1": {0: "batch_size"}}),
-        (Stage2Wrapper(model).eval(), torch.randn(1, 10, 128), f"{prefix}_stage2.onnx",
+        (Stage2Wrapper(model).eval(), torch.randn(1, WINDOW_SIZE, 128), f"{prefix}_stage2.onnx",
          ["hidden1"], ["hidden2", "exit2"],
          {"hidden1": {0: "batch_size"}, "hidden2": {0: "batch_size"}, "exit2": {0: "batch_size"}}),
-        (Stage3Wrapper(model).eval(), torch.randn(1, 10, 128), f"{prefix}_stage3.onnx",
+        (Stage3Wrapper(model).eval(), torch.randn(1, WINDOW_SIZE, 128), f"{prefix}_stage3.onnx",
          ["hidden2"], ["exit3"],
          {"hidden2": {0: "batch_size"}, "exit3": {0: "batch_size"}}),
     ]

@@ -258,7 +258,7 @@
 
   <section>
     <h2><span class="step">01</span> 7개 feature (순서 고정)</h2>
-    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>12 폴링</b> — 텐서 shape <code>[1, 12, 7]</code> (2026-09-01 10→12 승격, work-log 15차). ⚠ ONNX/Pi 번들은 재수출 전이라 아직 <code>[1, 10, 7]</code>. (4~6번 <b>RSSI</b> = 수신 신호 세기, §2에서 설명.)</p>
+    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>12 폴링</b> — 텐서 shape <code>[1, 12, 7]</code> (2026-09-01 10→12 승격, work-log 15차. ONNX 재수출·PyTorch parity 검증 완료, Pi latency 재측정만 대기). (4~6번 <b>RSSI</b> = 수신 신호 세기, §2에서 설명.)</p>
     <div class="tw">
     <table class="grid">
       <thead>

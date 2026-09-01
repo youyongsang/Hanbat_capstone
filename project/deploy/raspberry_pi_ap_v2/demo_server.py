@@ -62,7 +62,7 @@ FEATURES = (
     "throughput_mbps", "channel_occupancy_percent", "tx_retry_ratio",
     "rssi_dbm", "rssi_delta_db", "rssi_moving_avg_dbm", "sta_tx_bitrate_mean",
 )
-WINDOW = 12  # match utils.ap_features.WINDOW_SIZE (10->12, 2026-09-01). ONNX re-export pending.
+WINDOW = 12  # matches utils.ap_features.WINDOW_SIZE + the [1,12,7] ONNX (10->12, 2026-09-01).
 CONFIRM = 5                              # 라벨 히스테리시스 (표시/제어용 후처리, 모델·평가엔 없음)
 LABELS = ["정상", "경고", "혼잡", "심각"]
 ALLOWED_RATES = {"10M", "20M", "30M", "off"}

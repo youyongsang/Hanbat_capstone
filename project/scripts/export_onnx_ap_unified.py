@@ -35,7 +35,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_early_exit_lstm import APEarlyExitLSTM  # noqa: E402
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2"
 INPUT_SIZE = len(AP_FEATURE_COLUMNS)
@@ -167,7 +167,7 @@ def export_unified(checkpoint_path: Path, onnx_path: Path, dynamic: bool) -> Non
     wrapped = wrapper_cls(model, theta_1, theta_2).eval()
 
     scripted = torch.jit.script(wrapped)
-    dummy_input = torch.randn(1, 10, INPUT_SIZE, dtype=torch.float32)
+    dummy_input = torch.randn(1, WINDOW_SIZE, INPUT_SIZE, dtype=torch.float32)
 
     onnx_path.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(

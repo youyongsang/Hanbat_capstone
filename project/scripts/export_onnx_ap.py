@@ -25,7 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_early_exit_lstm import APEarlyExitLSTM  # noqa: E402
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 
 CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2"
@@ -139,7 +139,7 @@ def load_ee_model(checkpoint_path: Path) -> APEarlyExitLSTM:
 def export_ee_full(checkpoint_path: Path, onnx_path: Path, name: str) -> None:
     model = load_ee_model(checkpoint_path)
     wrapped = EarlyExitOnnxWrapper(model).eval()
-    dummy_input = torch.randn(1, 10, INPUT_SIZE, dtype=torch.float32)
+    dummy_input = torch.randn(1, WINDOW_SIZE, INPUT_SIZE, dtype=torch.float32)
 
     export_graph(
         wrapped,
@@ -162,7 +162,7 @@ def export_ee_staged(checkpoint_path: Path, output_prefix: Path, name: str) -> N
     stages = [
         (
             Stage1Wrapper(model).eval(),
-            torch.randn(1, 10, INPUT_SIZE, dtype=torch.float32),
+            torch.randn(1, WINDOW_SIZE, INPUT_SIZE, dtype=torch.float32),
             output_prefix.with_name(f"{output_prefix.name}_stage1.onnx"),
             ["input"],
             ["hidden1", "exit1"],
@@ -170,7 +170,7 @@ def export_ee_staged(checkpoint_path: Path, output_prefix: Path, name: str) -> N
         ),
         (
             Stage2Wrapper(model).eval(),
-            torch.randn(1, 10, 128, dtype=torch.float32),
+            torch.randn(1, WINDOW_SIZE, 128, dtype=torch.float32),
             output_prefix.with_name(f"{output_prefix.name}_stage2.onnx"),
             ["hidden1"],
             ["hidden2", "exit2"],
@@ -178,7 +178,7 @@ def export_ee_staged(checkpoint_path: Path, output_prefix: Path, name: str) -> N
         ),
         (
             Stage3Wrapper(model).eval(),
-            torch.randn(1, 10, 128, dtype=torch.float32),
+            torch.randn(1, WINDOW_SIZE, 128, dtype=torch.float32),
             output_prefix.with_name(f"{output_prefix.name}_stage3.onnx"),
             ["hidden2"],
             ["exit3"],

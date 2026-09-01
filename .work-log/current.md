@@ -68,10 +68,18 @@
 - 비교 문서/그래프: `ap_model_comparison_redesign2.{txt,csv}` 재생성(acc/exit w12, Pi/5시드 문자열 갱신+STALE 표기). `sdn_comparison.html` §02·§04, `model_results.html` 차트·표+STALE 배지, `docs/yongsang/figures/*` (build_figures.js `MODELS` w12 + 부제 STALE 표기, SVG/PNG 재생성). `CLAUDE.md`·`model_features.{md,html}` window 언급.
 - `collect_metrics.py`는 window deque 없음 (raw 수집만) — 영향 없음.
 
-### 남은 것 (하드웨어 대기 — Pi 온라인 필요)
-- **ONNX 재수출** — `export_onnx_ap_{unified,unified_int8_v2,sdn,sdn_unified_int8,baseline}.py`가 입력 shape `torch.randn(1, 10, ...)` / `[1, 10, INPUT_SIZE]` 하드코딩 → 12로. staged/unified If/INT8 재양자화. 옛 w10 ONNX는 `*_w10_archived_20260901/`에 보존. PyTorch 대비 로컬 parity는 검증 가능하나 **on-Pi 검증·latency 재측정은 Pi 대기**.
+### ONNX 재수출 완료 (2026-09-01 후속2)
+- `export_onnx_ap_{,_baseline,_sdn,_sdn_unified_int8,_unified,_unified_int8_v2}.py` 6개 전부 `torch.randn(1, 10, ...)` / `[1, 10, INPUT_SIZE]` → `WINDOW_SIZE`(`utils.ap_features`) 로 파라미터화. 옛 w10 ONNX는 `*_w10_archived_20260901/` 보존.
+- 재수출 파이프라인: EE staged → unified fp32 → INT8 v2 재조립 / Baseline / SDN staged → unified int8. 전부 성공.
+- **로컬 parity (test 309창, PyTorch vs ONNX)**:
+  - EE unified fp32 = PyTorch **309/309** (fixed·dynamic 둘 다). INT8 v2 = **308/309** (양자화 노이즈 1개).
+  - Baseline INT8 = **309/309**. SDN INT8 = 305/309 (캘리브레이션 T 경계 근처 4개).
+  - INT8 직접 정확도: EE fixed 91.6% / dynamic 91.9% / Baseline 93.5% / SDN 92.2%. (w10 패턴과 동일 수준.)
+- Pi 번들(`deploy/raspberry_pi_ap_v2/`) ONNX 27개 sync 완료. 옛 v1 `_unified_int8.onnx`(v2로 대체됨) 제거.
+
+### 남은 것 (Pi 온라인 필요 — 이것만)
 - **Pi latency 재측정** — Pi(`capstone@192.168.8.109`) 오프라인. `ap_v2_redesign2_pi_latency_comparison.txt`·비교표·그래프 지연 수치 전부 **w10 STALE**. window +2 = LSTM step 2회 추가 → 소폭 증가 예상, <1ms 유지 전망.
-- **Pi 번들 재배포** — ONNX 재수출 후 `deploy/raspberry_pi_ap_v2/` onnx 교체 + Pi scp.
+- **Pi 번들 scp** — `scp -r project/deploy/raspberry_pi_ap_v2 capstone@192.168.8.109:~/ap_pi_v2` (또는 기존 위치 갱신). on-Pi live_congestion 스모크 테스트.
 
 ### 재현
 ```powershell

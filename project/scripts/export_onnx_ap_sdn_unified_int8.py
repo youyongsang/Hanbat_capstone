@@ -27,7 +27,7 @@ CKPT_DIR = PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2"
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 INPUT_SIZE = len(AP_FEATURE_COLUMNS)
 
@@ -154,7 +154,7 @@ def build(checkpoint_dir: Path, threshold: float, out_path: Path) -> None:
     main_nodes = list(stage1_nodes) + cond1_nodes + [exit1_const, if1_node]
     main_graph = helper.make_graph(
         main_nodes, "sdn_unified_int8",
-        [helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 10, INPUT_SIZE])],
+        [helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, WINDOW_SIZE, INPUT_SIZE])],
         [
             helper.make_tensor_value_info("logits", TensorProto.FLOAT, [1, 4]),
             helper.make_tensor_value_info("exit_point", TensorProto.INT64, []),

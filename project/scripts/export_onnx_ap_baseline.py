@@ -20,7 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.ap_baseline_lstm import APBaselineLSTM  # noqa: E402
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 INPUT_SIZE = len(AP_FEATURE_COLUMNS)
 
@@ -46,7 +46,7 @@ def main() -> None:
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
-    dummy = torch.randn(1, 10, INPUT_SIZE, dtype=torch.float32)
+    dummy = torch.randn(1, WINDOW_SIZE, INPUT_SIZE, dtype=torch.float32)
     torch.onnx.export(
         model,
         dummy,

@@ -466,8 +466,9 @@
   <br>· <b>2026-08-29</b>: <code class="mono">sta_tx_bitrate_mean</code>을 7번째 입력 feature로 승격, Baseline/SDN/Proposed 전부 재학습·재수출. 학습 파이프라인에 <code class="mono">--seed</code> 추가. 한때 시도했던 SDN-스타일 exit-loss 가중치 승격은 다중 시드 검증에서 노이즈로 판명 → 균등(0.3/0.3/0.4) 유지.
   <br>· <b>2026-08-30</b>: <code class="mono">--class-weight-power</code> 기본값 1.0 → 0.0 (재스윕에서 정확도·Label3 F1 둘 다 최고). 세 모델 재학습·5시드 특성화. Baseline 배포를 seed0→seed3으로 교체(val-best, seed0의 92.3%는 운 좋은 test draw였음).
   <br>· <b>2026-08-30 후속</b>: <b>SDN 비교모델을 Kaya et al.(ICML 2019) 논문대로 재구현</b> — pooling internal classifier + 커리큘럼 램프 depth-weighted loss + val 캘리브레이션 confidence T. base 백본만 Proposed와 공유(통제 변수). 옛 "SDN-style"은 백본·헤드가 Proposed와 100% 같아 비교 모델로 성립 안 했음.
-  <br>· <b>최신 Pi INT8 실측 (2026-08-30, power=0.0, test 310창)</b>: Baseline <b>0.746ms</b> / SDN(논문) <b>0.572ms</b> / Proposed Fixed <b>0.540ms</b> / Dynamic 0.555ms — 전부 목표2(&lt;1ms), EE가 Baseline보다 −28%. 5시드 평균 정확도는 셋이 겹침(92.0 / 90.4 / 90.7%); 갈리는 건 label3 안정성(SDN F1 std 8.1 vs 5.5)과 속도(SDN pooling IC가 더 무거움).
-  <br>· 최신 수치·경위: <code class="mono">.work-log/current.md</code> 7~9차, <code class="mono">project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt</code>, <code class="mono">ap_model_comparison_redesign2.txt</code>, 아티팩트 "Class-Weight-Power Zero" · "AP 혼잡 분류 모델 비교".</span></div>
+  <br>· <b>2026-09-01: window size 10 → 12 승격</b> (스윕 — EE 정확도 90.7→91.9~92.0%, Label3 F1 분산 전 모델 절반 이하). <b>ONNX 6개 스크립트 전부 <code class="mono">WINDOW_SIZE</code>로 파라미터화 → <code class="mono">[1,12,7]</code>로 재수출</b>. 로컬 parity: EE unified fp32 = PyTorch 309/309, INT8 v2 = 308/309, Baseline INT8 309/309, SDN INT8 305/309 (test 309창). Pi 번들 sync 완료.
+  <br>· <b>Pi INT8 실측 (2026-08-30, power=0.0, test 310창, ⚠ window 10 기준)</b>: Baseline <b>0.746ms</b> / SDN <b>0.572ms</b> / Proposed Fixed <b>0.540ms</b> / Dynamic 0.555ms — 전부 목표2(&lt;1ms). <b>window 12 Pi 재측정은 Pi 오프라인으로 대기</b> (step 2회 추가 → 소폭 증가 예상, &lt;1ms 유지 전망).
+  <br>· 최신 수치·경위: <code class="mono">.work-log/current.md</code> 15차, <code class="mono">project/results/yongsang/ap_model_comparison_redesign2.txt</code>, <code class="mono">docs/yongsang/model_results.html</code>.</span></div>
 
   <section id="problem">
     <h2><span class="step">01</span> 문제: Early Exit이 오히려 느렸다</h2>

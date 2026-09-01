@@ -60,7 +60,7 @@ AP_FEATURE_COLUMNS = (
     "sta_tx_bitrate_mean",
 )
 
-WINDOW_SIZE = 12  # match utils.ap_features.WINDOW_SIZE (10->12, 2026-09-01). ONNX re-export pending.
+WINDOW_SIZE = 12  # matches utils.ap_features.WINDOW_SIZE + the [1,12,7] ONNX (10->12, 2026-09-01).
 LABEL_NAMES = {0: "정상", 1: "경고", 2: "혼잡", 3: "심각"}
 
 
