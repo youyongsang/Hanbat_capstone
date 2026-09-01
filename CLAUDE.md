@@ -157,7 +157,7 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 - **속도 원리**: SDN pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear head보다 무거움 — **per-exit 지연은 EE가 SDN보다 전 stage 가벼움**(0.326/0.657/0.978 vs 0.338/0.661/0.991ms). 8차에서 SDN 평균(0.516)이 EE(0.662)보다 낮은 건 T=0.70이 exit1 비중을 56%로 front-load한 threshold 정책 artifact이지 구조 우위 아님.
 - **SDN 비교모델 = "기존 조기종료 방법 vs 우리 방법" 통제 비교**: base 3층 LSTM·하이퍼파라미터는 Proposed와 완전 동일, SDN이 규정하는 3축만 논문(Kaya et al. ICML 2019)대로 다름 — (1) pooling IC, (2) 커리큘럼 램프 depth-weighted loss, (3) val 캘리브레이션 confidence T. 결과: 정확도 동급(5시드 EE Fixed 92.1 / Dynamic 92.6 / SDN 93.3), Label3 F1도 동률~SDN·EE Dynamic 선두(SDN 84.2 / EE Dynamic 85.2 / EE Fixed 82.9). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".
 - **남은 오답의 정체 (17차, 게이트 후)**: 지속형 label 2↔3 (occ 57~69, loss 10~12%가 3폴링 유지 — 채널 상태가 label 2와 동일) + occ 72~73 경계 (congestion_score 0.72~0.73, 심각 앵커 바로 밑). 관측 한계 — 이게 목표1 95%의 벽.
-- **조기경보(forecasting) 프레이밍** (`forecast_eval_redesign.py`): k=3폴링(≈3~6s) 앞 escalation(현재 not-severe → k 뒤 severe) recall 61.5%, occupancy 규칙은 구조적으로 0/13. "점 분류 95%"와는 다른 지표라 발표 목표1을 직접 만족하진 않지만 대안 서사로 유효.
+- **조기경보(forecasting) 프레이밍** (`forecast_eval_redesign.py`, W=12·게이트 재실행 2026-09-02): k≥3폴링에서 LSTM이 반응형 baseline보다 severe F1 우위(k=3 65.9 vs occ규칙 54.3/persistence 64.2). **하지만 escalation(현재 not-severe→k 뒤 severe) recall은 5/18=27.8%로 떨어짐** (게이트 전 61.5%) — 게이트가 "예측이 쉬웠던" 단발 스파이크 severe 창을 제거해서. 남은 escalation은 진짜 어려운 케이스. 대안 서사로서의 힘 제한적.
 
 ### 알려진 한계
 

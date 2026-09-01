@@ -75,7 +75,8 @@ Baseline 0.851 / EE Fixed 0.662 (p95 0.994) / EE Dynamic 0.658 (p95 1.038) / SDN
 - `remeasure_redesign.py` — 게이트 로직 + `argparse.BooleanOptionalAction`(기본 ON). `train_ap_*.py` 3종 — `val_balanced_accuracy` 체크포인트 키 추가.
 
 ### 남은 목표1 벽 (게이트 후)
-- 지속형 3→2 (loss 10~12% 3폴링 유지, occ 57~69 — 채널 상태가 label 2와 동일) + occ 72~73 경계 2↔3. 관측 한계 — per-station airtime·MCS 분포 telemetry나 forecast 재프레이밍 필요.
+- 지속형 3→2 (loss 10~12% 3폴링 유지, occ 57~69 — 채널 상태가 label 2와 동일) + occ 72~73 경계 2↔3. 관측 한계 — per-station airtime·MCS 분포 telemetry 필요.
+- **forecast 재프레이밍은 약해짐**: W=12·게이트 재실행에서 escalation recall 61.5→27.8% (게이트가 "예측이 쉬웠던" 단발 스파이크 severe 창을 제거). k≥3에서 반응형 baseline보다 severe F1 우위는 유지(k=3 65.9 vs 54.3/64.2). `ap_v2_redesign2_forecast_eval.txt`.
 
 ---
 

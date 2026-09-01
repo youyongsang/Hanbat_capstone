@@ -25,11 +25,11 @@ if str(ROOT) not in sys.path:
 
 from models.ap_early_exit_lstm import APEarlyExitLSTM  # noqa: E402
 from models.early_exit_lstm import multi_exit_loss  # noqa: E402
-from utils.ap_features import AP_FEATURE_COLUMNS  # noqa: E402
+from utils.ap_features import AP_FEATURE_COLUMNS, WINDOW_SIZE  # noqa: E402
 
 CSV = ROOT / "scripts" / "metrics_v2_pi_redesign2_relabeled.csv"
 FEAT = list(AP_FEATURE_COLUMNS)
-W = 10
+W = WINDOW_SIZE  # single source (utils.ap_features); 10 -> 12 on 2026-09-01
 HORIZONS = (0, 3, 5)
 torch.manual_seed(0)
 np.random.seed(0)
