@@ -1,5 +1,5 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-09-01 (Claude Code) — **window size 스윕 → window 10→12 승격 (15차)**: 목표1(정확도 95%) 공략. window/lr/batch/EMA-입력스무딩 다중 시드 스윕에서 **window 12가 최적**. 발표 시스템 = Early Exit이므로 **EE 기준: 배포 Fixed 90.6→91.9% / Dynamic 91.0→92.2%** (5시드 평균 91.9±0.5 / 92.0±0.2). 상한선 참고: Baseline 91.6→93.5%, SDN 90.3→91.6%. 5시드 평균은 Baseline 92.0±1.3 / SDN 91.2±0.7 / EE 91.9±0.5 — **여전히 동급이나 Label3 F1 전 모델 +3~10pt, 분산 절반 이하**(SDN std 8.1→2.6). canonical 데이터셋·`prepare`·`ap_dataloader` 기본값 10→12, w10 아카이브(`*_w10_archived_20260901`). **남은 것: ONNX 재수출([1,10,7]→[1,12,7])·Pi 지연 재측정(Pi 오프라인, 현 지연 수치 STALE)·비교 그래프/문서(sdn_comparison·model_results·figures) 갱신·런타임 deque(live/demo/collect) 10→12.** 아래 "15차" 참조. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
+최종 업데이트: 2026-09-01 (Claude Code) — **window size 스윕 → window 10→12 승격 (15차)**: 목표1(정확도 95%) 공략. window/lr/batch/EMA-입력스무딩 다중 시드 스윕에서 **window 12가 최적**. 발표 시스템 = Early Exit이므로 **EE 기준: 배포 Fixed 90.6→91.9% / Dynamic 91.0→92.2%** (5시드 평균 91.9±0.5 / 92.0±0.2). 상한선 참고: Baseline 91.6→93.5%, SDN 90.3→91.6%. **ONNX 6개 재수출·parity 검증 완료. Pi(온라인 복귀) window 12 지연 재측정 완료: Baseline 0.858 / EE Fixed 0.624 / Dynamic 0.635 / SDN 0.695ms — 전부 <1ms(목표2), EE가 Baseline −27%.** 남은 것: on-Pi 라이브 스모크 테스트. 5시드 평균은 Baseline 92.0±1.3 / SDN 91.2±0.7 / EE 91.9±0.5 — **여전히 동급이나 Label3 F1 전 모델 +3~10pt, 분산 절반 이하**(SDN std 8.1→2.6). canonical 데이터셋·`prepare`·`ap_dataloader` 기본값 10→12, w10 아카이브(`*_w10_archived_20260901`). **남은 것: ONNX 재수출([1,10,7]→[1,12,7])·Pi 지연 재측정(Pi 오프라인, 현 지연 수치 STALE)·비교 그래프/문서(sdn_comparison·model_results·figures) 갱신·런타임 deque(live/demo/collect) 10→12.** 아래 "15차" 참조. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
 ## ⭐ 다음 세션 시작 지점 — Pi 온라인 되면 데모 서버 실기기 검증 (내일)
 
@@ -77,9 +77,26 @@
   - INT8 직접 정확도: EE fixed 91.6% / dynamic 91.9% / Baseline 93.5% / SDN 92.2%. (w10 패턴과 동일 수준.)
 - Pi 번들(`deploy/raspberry_pi_ap_v2/`) ONNX 27개 sync 완료. 옛 v1 `_unified_int8.onnx`(v2로 대체됨) 제거.
 
-### 남은 것 (Pi 온라인 필요 — 이것만)
-- **Pi latency 재측정** — Pi(`capstone@192.168.8.109`) 오프라인. `ap_v2_redesign2_pi_latency_comparison.txt`·비교표·그래프 지연 수치 전부 **w10 STALE**. window +2 = LSTM step 2회 추가 → 소폭 증가 예상, <1ms 유지 전망.
-- **Pi 번들 scp** — `scp -r project/deploy/raspberry_pi_ap_v2 capstone@192.168.8.109:~/ap_pi_v2` (또는 기존 위치 갱신). on-Pi live_congestion 스모크 테스트.
+### Pi 지연 재측정 완료 (2026-09-01 후속3 — Pi 온라인 복귀!)
+- 세션 후반 Pi(`capstone@192.168.8.109`, up 4h) 온라인. 번들 scp(`~/ap_pi_v2/`) + w12 `test.csv` + bench 스크립트 `WINDOW_SIZE` 10→12.
+- **6차 재측정 (window 12, INT8, test 309창)**:
+
+| 모델 | w12 avg(ms) | p50 | p95 | w10(5차) | Δ | exit 1/2/3 |
+|---|---:|---:|---:|---:|---:|---|
+| Baseline           | 0.858 | 0.858 | 0.869 | 0.746 | +0.11 | -/-/100% |
+| SDN (unified int8) | 0.695 | 0.674 | 0.984 | 0.572 | +0.12 | 32/25/43% |
+| Proposed Fixed θ   | 0.624 | 0.631 | 0.949 | 0.540 | +0.08 | 31/42/26% |
+| Proposed Dynamic θ | 0.635 | 0.686 | 1.027 | 0.555 | +0.08 | 32/53/15% |
+
+- **전부 avg <1ms — 목표2 유지.** window +2로 +0.08~0.12ms (예상대로).
+- **EE Fixed 0.624 = Baseline −27%** (w10 −28%). SDN(0.695)보다 −10% (w10 −6%에서 확대 — window 길수록 SDN pooling IC 오버헤드↑).
+- EE Dynamic p95 1.03ms로 순간 초과하나 avg 0.635 여유. exit 분포 배포 체크포인트와 일치.
+- 재현성: Baseline 0.860/0.856, EE Fixed 0.620/0.628 (2회).
+- 반영: `ap_v2_redesign2_pi_latency_comparison.txt` 6차, `generate_ap_comparison.py` + 비교표, `CLAUDE.md`, `sdn_comparison.html`·`model_results.html`·`figures/*`.
+
+### 남은 것 (Pi 관련)
+- **on-Pi live_congestion / demo 스모크 테스트** — 번들은 최신(scp 완료). AP(`root@192.168.8.1`) 연결 확인 후 idle/부하 라이브 검증.
+- ~~Pi latency 재측정~~ ✅ 완료 (위 6차).
 
 ### 재현
 ```powershell

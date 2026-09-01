@@ -364,13 +364,13 @@
 
     <div class="callout warn"><span>⚑</span><span><b>SDN이 뒤처지는 축 ①: 희소 클래스 안정성.</b> window 10에선 SDN의 Label3 F1 편차가 <code>±8.1</code>로 우리(<code>±5.5</code>)의 1.5배였다(per-model 캘리브레이션 <code>T</code>가 작은 val에서 시드마다 <code>0.71~0.86</code>으로 요동). <b>window 12로 SDN <code>±2.6</code>·우리 <code>±2.9</code>로 거의 붙었다</b> — 하지만 우리 entropy <code>θ</code>는 애초에 그 캘리브레이션이 필요 없다는 구조적 이점은 유지.</span></div>
 
-    <div class="callout warn"><span>⚑</span><span><b>SDN이 뒤처지는 축 ②: 속도.</b> Pi INT8 실측 <code>0.572 ms</code> vs 우리 <code>0.540 ms</code> (−6%). 원인은 축 ① — SDN의 pooling IC는 매 exit마다 <code>ReduceMax + Mean</code>을 시퀀스 전체에 수행하는데, 우리 exit head는 마지막 timestep 하나만 Linear에 통과시켜 더 가볍다. ⚠ <b>이 지연 수치는 window 10 기준</b> — window 12 Pi 재측정 대기(Pi 오프라인). 셋 다 <code>&lt;1 ms</code>는 유지 전망.</span></div>
+    <div class="callout warn"><span>⚑</span><span><b>SDN이 뒤처지는 축 ②: 속도.</b> Pi INT8 실측(window 12, 2026-09-01) <code>0.695 ms</code> vs 우리 <code>0.624 ms</code> (<b>−10%</b>). 원인은 축 ① — SDN의 pooling IC는 매 exit마다 <code>ReduceMax + Mean</code>을 시퀀스 전체에 수행하는데, 우리 exit head는 마지막 timestep 하나만 Linear에 통과시켜 더 가볍다. window가 10→12로 길어지자 이 격차가 −6%→−10%로 벌어졌다(pooling 대상이 커짐). 둘 다 목표2 <code>&lt;1 ms</code> 유지 (Baseline 0.858).</span></div>
   </section>
 
   <section>
     <h2><span class="step">05</span> 한 줄 결론</h2>
-    <div class="callout good"><span>✔</span><span><b>"기존 조기종료 방법(SDN)과 정확도는 동급인데, exit head가 더 가벼워 더 빠르고(Pi −6%), per-model 캘리브레이션 없이도 희소 클래스에서 더 안정적이며, 트래픽 적응형 임계값(Dynamic θ)까지 쓸 수 있다."</b> — 우리 설계 선택(단순 last-step head · 균등 loss · entropy θ)의 효과를 보여주는 통제 비교이지, "SDN을 이겼다"는 주장이 아니다.</span></div>
-    <p class="axis note" style="margin-top:1rem;">발표에서 Proposed의 가치 주장은 <b>정확도가 아니라 속도·효율</b> (목표2 <code>&lt;1 ms</code> 달성, Baseline 대비 −28% — w10 기준) + "간섭 감지에 Early Exit LSTM 최초 적용". 남은 숙제는 Pi 정확도 95% (window 12로 EE 91.9~92.0%, 세 모델 공통 91~92%).</p>
+    <div class="callout good"><span>✔</span><span><b>"기존 조기종료 방법(SDN)과 정확도는 동급인데, exit head가 더 가벼워 더 빠르고(Pi −10%), per-model 캘리브레이션 없이도 희소 클래스에서 더 안정적이며, 트래픽 적응형 임계값(Dynamic θ)까지 쓸 수 있다."</b> — 우리 설계 선택(단순 last-step head · 균등 loss · entropy θ)의 효과를 보여주는 통제 비교이지, "SDN을 이겼다"는 주장이 아니다.</span></div>
+    <p class="axis note" style="margin-top:1rem;">발표에서 Proposed의 가치 주장은 <b>정확도가 아니라 속도·효율</b> (목표2 <code>&lt;1 ms</code> 달성, Baseline 대비 <b>−27%</b> — window 12 Pi 재측정 2026-09-01) + "간섭 감지에 Early Exit LSTM 최초 적용". 남은 숙제는 Pi 정확도 95% (window 12로 EE 91.9~92.0%, 세 모델 공통 91~92%).</p>
   </section>
 
   <footer class="page-foot">

@@ -17,12 +17,12 @@ const C = {
 const FONT = '-apple-system, "Segoe UI", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif';
 
 // window 12 (2026-09-01). acc/F1 = 5-seed test mean +-std. exits = deploy checkpoint.
-// pi = window 10 STALE (Pi offline -> window 12 latency not re-measured).
+// pi = window 12 Pi INT8 re-measure (2026-09-01, test 309 windows).
 const MODELS = [
-  { key:"baseline", name:"Baseline (EE 없음)", short:"Baseline", acc:92.0, accSd:1.3, f1:68.7, f1Sd:3.1, pi:0.746, exits:[0,0,100], fam:"gray" },
-  { key:"sdn", name:"SDN (논문 충실)", short:"SDN", acc:91.2, accSd:0.7, f1:70.3, f1Sd:2.6, pi:0.572, exits:[51,32,18], fam:"orange" },
-  { key:"eef", name:"Proposed EE · Fixed θ", short:"EE Fixed θ", acc:91.9, accSd:0.5, f1:69.9, f1Sd:2.9, pi:0.540, exits:[31,43,26], fam:"blue" },
-  { key:"eed", name:"Proposed EE · Dynamic θ", short:"EE Dynamic θ", acc:92.0, accSd:null, f1:69.6, f1Sd:null, pi:0.555, exits:[32,53,15], fam:"blue" },
+  { key:"baseline", name:"Baseline (EE 없음)", short:"Baseline", acc:92.0, accSd:1.3, f1:68.7, f1Sd:3.1, pi:0.858, exits:[0,0,100], fam:"gray" },
+  { key:"sdn", name:"SDN (논문 충실)", short:"SDN", acc:91.2, accSd:0.7, f1:70.3, f1Sd:2.6, pi:0.695, exits:[51,32,18], fam:"orange" },
+  { key:"eef", name:"Proposed EE · Fixed θ", short:"EE Fixed θ", acc:91.9, accSd:0.5, f1:69.9, f1Sd:2.9, pi:0.624, exits:[31,43,26], fam:"blue" },
+  { key:"eed", name:"Proposed EE · Dynamic θ", short:"EE Dynamic θ", acc:92.0, accSd:null, f1:69.6, f1Sd:null, pi:0.635, exits:[32,53,15], fam:"blue" },
 ];
 const FAMC = { gray:C.gray, orange:C.orange, blue:C.blue };
 
@@ -63,7 +63,7 @@ ${body}
 // ============ 1. scatter: accuracy vs latency ============
 function figScatter() {
   const W = 660, H = 380, L = 58, R = 24, TOP = 66, B = 52;
-  const x0 = 0.50, x1 = 0.80, y0 = 88, y1 = 96;
+  const x0 = 0.55, x1 = 0.90, y0 = 88, y1 = 96;
   const px = v => L + (v - x0) / (x1 - x0) * (W - L - R);
   const py = v => TOP + (1 - (v - y0) / (y1 - y0)) * (H - TOP - B);
   const pts = MODELS.filter(m => m.accSd != null);
@@ -72,7 +72,7 @@ function figScatter() {
     g.push(line(L, py(yv), W - R, py(yv), C.grid, 1));
     g.push(T(L - 10, py(yv) + 4, yv + "%", { anchor: "end", size: 11 }));
   }
-  [0.5,0.55,0.6,0.65,0.7,0.75,0.8].forEach(xv =>
+  [0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9].forEach(xv =>
     g.push(T(px(xv), H - B + 18, xv.toFixed(2), { anchor: "middle", size: 11 })));
   g.push(line(L, H - B, W - R, H - B, C.axis, 1));
   g.push(T((L + W - R) / 2, H - 8, "Pi INT8 지연 (ms / sample) — 낮을수록 좋음", { anchor: "middle", size: 11.5 }));
@@ -96,7 +96,7 @@ function figScatter() {
     g.push(T(cx + p.dx, cy + p.valDy, `${m.acc.toFixed(1)}% · ${m.pi.toFixed(3)} ms`, { anchor: p.anch, size: 10.5 }));
   });
   return wrap(W, H, "정확도 vs Pi INT8 지연",
-    "정확도 = window 12 5시드 ±1σ · 지연 = window 10 잠정(Pi 재측정 대기) · 가로축 0.50 ms부터",
+    "정확도 = window 12 5시드 ±1σ · 지연 = window 12 Pi INT8 실측 · 가로축 0.55 ms부터",
     g.join("\n"));
 }
 
@@ -163,8 +163,8 @@ function figLat() {
     g.push(T(cx, top - 8, m.pi.toFixed(3), { anchor: "middle", size: 12, weight: 600, fill: C.ink }));
     g.push(T(cx, H - B + 20, m.short, { anchor: "middle", size: 11 }));
   });
-  return wrap(W, H, "Pi INT8 평균 추론 지연 (ms / sample) — window 10 잠정",
-    "capstone@192.168.8.109 · 5회 반복 평균 · 2026-08-30 · window 10 기준 (window 12 Pi 재측정 대기) · 전부 <1 ms",
+  return wrap(W, H, "Pi INT8 평균 추론 지연 (ms / sample) — window 12",
+    "capstone@192.168.8.109 · test 309창 · 5회 반복 평균 · 2026-09-01 · 전부 avg <1 ms · EE Fixed = Baseline -27%",
     g.join("\n"));
 }
 

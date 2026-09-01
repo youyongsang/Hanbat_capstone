@@ -24,7 +24,7 @@ FEATURE_COLUMNS = [
     "rssi_moving_avg_dbm",
     "sta_tx_bitrate_mean",
 ]
-WINDOW_SIZE = 10
+WINDOW_SIZE = 12  # 2026-09-01: 10 -> 12 (matches ap_features.WINDOW_SIZE + [1,12,7] ONNX)
 
 
 def main() -> None:

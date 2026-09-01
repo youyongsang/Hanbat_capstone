@@ -133,7 +133,7 @@
   <header class="page-head">
     <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
     <h1>모델 비교 결과 — 정확도 · 지연</h1>
-    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. 기준 = <b>window 12 · 5시드 평균</b>(power=0.0, test 309창, 2026-09-01). ⚠ <b>지연 차트는 window 10 잠정치</b> — window 12 Pi 재측정 대기(Pi 오프라인).</p>
+    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. window 12 · 5시드 평균(정확도·F1) + Raspberry Pi INT8 실측(지연) — test 309창, 2026-09-01.</p>
   </header>
 
   <section>
@@ -146,19 +146,19 @@
       </div>
       <div class="kpi">
         <div class="lab">목표 2 — 추론 지연 &lt; 1 ms</div>
-        <div class="val">0.54 ~ 0.75 ms</div>
-        <div class="sub hit">✓ 달성 (window 10 기준) — 4개 모델 전부 &lt; 1 ms. window 12 재측정 대기, &lt;1ms 유지 전망.</div>
+        <div class="val">0.62 ~ 0.86 ms</div>
+        <div class="sub hit">✓ 달성 (window 12 Pi 실측) — 4개 모델 전부 avg &lt; 1 ms. EE Fixed 0.624 = Baseline(0.858) −27%.</div>
       </div>
     </div>
   </section>
 
   <section>
     <h2><span class="step">01</span> 정확도 vs 지연 — 한 장</h2>
-    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유. (정확도 = window 12 5시드, 지연 = window 10 잠정.)</p>
+    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유. (전부 window 12 — 정확도 5시드, 지연 Pi INT8 실측 2026-09-01.)</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
         <h3>정확도 vs Pi INT8 지연</h3>
-        <p class="csub">정확도 = w12 5시드 · 세로 막대 = ±1σ · 지연 = w10 잠정 · 가로축 0.50 ms부터</p>
+        <p class="csub">정확도 = w12 5시드 · 세로 막대 = ±1σ · 지연 = w12 Pi 실측 · 가로축 0.55 ms부터</p>
         <svg id="c-scatter" viewBox="0 0 640 340" role="img" aria-label="정확도 대 지연 산점도"></svg>
       </div>
     </div>
@@ -181,12 +181,12 @@
   </section>
 
   <section>
-    <h2><span class="step">03</span> Pi INT8 추론 지연 <span style="font-size:0.8rem;color:var(--target);font-weight:600;">⚠ window 10 잠정치</span></h2>
-    <p class="lede">전부 목표 2(&lt;1 ms) 달성. Early Exit가 Baseline보다 <b>−28%</b>. SDN(0.572)이 Proposed(0.540)보다 느린 건 pooling internal classifier(매 exit마다 ReduceMax+Mean)가 last-timestep linear head보다 무겁기 때문. <b>이 수치는 window 10 기준</b> — window 12는 LSTM step 2회 추가라 소폭 증가 예상(여전히 &lt;1ms 전망), Pi 재측정 대기.</p>
+    <h2><span class="step">03</span> Pi INT8 추론 지연 <span style="font-size:0.8rem;color:var(--ink-mute);font-weight:600;">window 12 실측</span></h2>
+    <p class="lede">전부 avg 목표 2(&lt;1 ms) 달성. Early Exit(0.624)가 Baseline(0.858)보다 <b>−27%</b>. SDN(0.695)이 Proposed(0.624)보다 느린 건 pooling internal classifier(매 exit마다 ReduceMax+Mean)가 last-timestep linear head보다 무겁기 때문 — window 12로 이 격차가 −6%→−10%로 벌어졌다. window 10→12로 avg +0.08~0.12ms.</p>
     <div class="charts">
       <div class="chart" style="grid-column:1 / -1;">
-        <h3>Pi INT8 평균 추론 지연 (ms / sample) — window 10</h3>
-        <p class="csub"><code>capstone@192.168.8.109</code> · 5회 반복 평균 · 2026-08-30 · <b>window 12 재측정 대기</b></p>
+        <h3>Pi INT8 평균 추론 지연 (ms / sample) — window 12</h3>
+        <p class="csub"><code>capstone@192.168.8.109</code> · test 309창 · 5회 반복 평균 · 2026-09-01</p>
         <svg id="c-lat" viewBox="0 0 640 300" role="img" aria-label="Pi INT8 지연 막대 그래프"></svg>
       </div>
     </div>
@@ -221,14 +221,14 @@
       <tbody id="tbl"></tbody>
     </table>
     </div>
-    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">정확도·F1 = window 12 5시드 test 평균(2026-09-01). exit = 배포 체크포인트. <b>Pi 지연(avg/p95) = window 10 STALE</b> — window 12 Pi 재측정 대기(Pi 오프라인). Dynamic θ는 EE 백본의 threshold 정책이라 5시드 표는 참고치. 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
+    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">정확도·F1 = window 12 5시드 test 평균(2026-09-01). exit = 배포 체크포인트. Pi 지연(avg/p95) = window 12 실측(2026-09-01, test 309창). Dynamic θ는 EE 백본의 threshold 정책이라 5시드 표는 참고치. 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
   </section>
 
-  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> window 10→12로 EE 정확도 90.7→91.9~92.0%(+1.2~1.3pt), Label 3 F1 분산은 전 모델 절반 이하로. 세 모델은 5시드 평균으로 여전히 동급(목표1은 셋 다 미달, ~3pt) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b> + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
+  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> window 10→12로 EE 정확도 90.7→91.9~92.0%(+1.2~1.3pt), Label 3 F1 분산은 전 모델 절반 이하로. 세 모델은 5시드 평균으로 여전히 동급(목표1은 셋 다 미달, ~3pt) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b>(Pi에서 Baseline −27%, 목표2 &lt;1ms) + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
 
   <footer class="page-foot">
     <span>발표용 이미지(SVG·PNG): <code>docs/yongsang/figures/</code> — 슬라이드·PDF에 바로 삽입</span>
-    <span>수치 정본: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · <code>.work-log/current.md</code> 15차 (window 12). 지연: <code>ap_v2_redesign2_pi_latency_comparison.txt</code> (window 10, 재측정 대기)</span>
+    <span>수치 정본: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · <code>.work-log/current.md</code> 15차 (window 12). 지연: <code>ap_v2_redesign2_pi_latency_comparison.txt</code> 6차 (window 12)</span>
     <span>관련: <code>docs/yongsang/sdn_comparison.html</code> (모델 3종 구조 차이) · <code>docs/yongsang/onnx_early_exit_redesign.html</code> (INT8 배포) · <code>docs/yongsang/system_overview.html</code> (전체 개요)</span>
   </footer>
 </main>
@@ -244,14 +244,13 @@
   function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 
   // window 12 (2026-09-01). acc/F1 = 5시드 test 평균 ±std. exit = 배포 체크포인트.
-  // pi/p95 = window 10 STALE — window 12 Pi 재측정 대기 (Pi 오프라인).
+  // pi/p95 = window 12 Pi INT8 실측 (2026-09-01, test 309창, capstone@192.168.8.109).
   var MODELS=[
-    {key:"baseline",name:"Baseline (EE 없음)",acc:92.0,accSd:1.3,f1:68.7,f1Sd:3.1,pi:0.746,p95:0.754,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
-    {key:"sdn",name:"SDN (논문 충실)",acc:91.2,accSd:0.7,f1:70.3,f1Sd:2.6,pi:0.572,p95:0.858,exits:[51,32,18],basis:"Kaya et al. ICML 2019",fam:"sdn"},
-    {key:"eef",name:"Proposed EE · Fixed θ",acc:91.9,accSd:0.5,f1:69.9,f1Sd:2.9,pi:0.540,p95:0.858,exits:[31,43,26],basis:"제안 — entropy θ 고정",fam:"proposed"},
-    {key:"eed",name:"Proposed EE · Dynamic θ",acc:92.0,accSd:0.2,f1:69.6,f1Sd:3.6,char5:false,pi:0.555,p95:0.913,exits:[32,53,15],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
+    {key:"baseline",name:"Baseline (EE 없음)",acc:92.0,accSd:1.3,f1:68.7,f1Sd:3.1,pi:0.858,p95:0.869,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
+    {key:"sdn",name:"SDN (논문 충실)",acc:91.2,accSd:0.7,f1:70.3,f1Sd:2.6,pi:0.695,p95:0.984,exits:[51,32,18],basis:"Kaya et al. ICML 2019",fam:"sdn"},
+    {key:"eef",name:"Proposed EE · Fixed θ",acc:91.9,accSd:0.5,f1:69.9,f1Sd:2.9,pi:0.624,p95:0.949,exits:[31,43,26],basis:"제안 — entropy θ 고정",fam:"proposed"},
+    {key:"eed",name:"Proposed EE · Dynamic θ",acc:92.0,accSd:0.2,f1:69.6,f1Sd:3.6,char5:false,pi:0.635,p95:1.027,exits:[32,53,15],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
   ];
-  var PI_STALE=true;
   var FAMC={baseline:"--s-gray",sdn:"--s-orange",proposed:"--s-blue"};
 
   // ---- tooltip ----
@@ -285,7 +284,7 @@
   (function(){
     var svg=document.getElementById("c-scatter"); if(!svg) return;
     var W=640,H=340, L=52,R=18,T=18,B=44;
-    var x0=0.50,x1=0.80, y0=88,y1=96;
+    var x0=0.55,x1=0.90, y0=88,y1=96;
     var pts=MODELS.filter(function(m){return m.char5!==false;});
     function px(v){return L+(v-x0)/(x1-x0)*(W-L-R);}
     function py(v){return T+(1-(v-y0)/(y1-y0))*(H-T-B);}
@@ -295,7 +294,7 @@
       var tk=E("text",{x:L-8,y:py(yv)+4,"text-anchor":"end","font-size":11,class:"axlab"}); txt(tk,yv+"%"); svg.appendChild(tk);
     }
     // x ticks
-    [0.5,0.55,0.6,0.65,0.7,0.75,0.8].forEach(function(xv){
+    [0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9].forEach(function(xv){
       var t=E("text",{x:px(xv),y:H-B+18,"text-anchor":"middle","font-size":11,class:"axlab"}); txt(t,xv.toFixed(2)); svg.appendChild(t);
     });
     svg.appendChild(E("line",{x1:L,y1:H-B,x2:W-R,y2:H-B,class:"axis-l"}));

@@ -22,7 +22,7 @@
 
 **발표자료(`docs/캡스톤디자인I_최종발표.pptx`) 슬라이드 8 "정량적 목표"**:
 - 목표1 = Raspberry Pi 환경에서 **혼잡 분류 정확도 95% 이상** — 발표 시스템은 Early Exit(Proposed)이므로 **EE 기준**으로 본다. 2026-09-01 window 10→12 승격 후 **EE 배포 Fixed 91.9% / Dynamic 92.2%** (5시드 평균 Fixed 91.9±0.5 / Dynamic 92.0±0.2). w10 대비 +1.2~1.3pt. **아직 미달 (진짜 남은 숙제, ~3pt)**. 참고 상한선: Baseline 배포 93.5% / 5시드 92.0±1.3, SDN 91.6% / 91.2±0.7 — 셋 다 동급.
-- 목표2 = **추론 지연 < 1ms** — 달성 (2026-08-30 Pi INT8: Baseline 0.74 / EE 0.54 / SDN 0.57ms). ⚠ window 12 재측정 대기(Pi 오프라인) — step 2회 추가라 소폭 증가 예상, <1ms 유지 전망.
+- 목표2 = **추론 지연 < 1ms** — 달성. **2026-09-01 window 12 Pi 재측정 (test 309창)**: Baseline 0.858 / EE Fixed 0.624 / EE Dynamic 0.635 / SDN 0.695ms — 전부 avg <1ms. w10 대비 +0.08~0.12ms (window +2). EE Fixed가 Baseline −27% / SDN −10%.
 - SDN 비교는 원래 정량 목표가 아니다. 핵심 기여 주장은 "간섭 감지에 Early Exit LSTM 구조를 최초 적용"이고, "혼잡 판단 → 채널 전환 필요 여부 + 전환 명령 후보 생성"까지가 최종 목표 문장(슬라이드 7).
 
 ## 배경 (1학기 → 1차 → 2차)
@@ -150,8 +150,8 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
   - SDN seed2 (val bal 88.1%, T=0.71): 91.6%, L3 recall 61.3%. Exit 51/32/18%.
 - **power=1.0 → 0.0 효과** (2026-08-30): 5시드 평균 정확도 +2~4pt. label2 정상화.
 - **서사**: 세 모델 정확도가 5시드 평균으로 사실상 동급 → Proposed(Early Exit)의 가치 주장은 정확도가 아니라 **속도·효율**(목표2 <1ms, Baseline 대비 -28% — ⚠ w10 기준, w12 Pi 재측정 대기) + "간섭 감지에 EE 최초 적용".
-- **ONNX 재수출 완료 (w12, 2026-09-01)**: EE unified fp32 = PyTorch 309/309 일치, INT8 v2 = 308/309 (fixed·dynamic). Baseline INT8 309/309. SDN INT8 305/309. INT8 직접 정확도 EE fixed 91.6 / dynamic 91.9 / Baseline 93.5 / SDN 92.2%. Pi 번들 sync 완료.
-- ⚠ **Pi 지연 수치만 w10 STALE** — Pi 오프라인이라 window 12 재측정·번들 scp 미완. 15차 "남은 것" 참조.
+- **ONNX 재수출 완료 (w12, 2026-09-01)**: EE unified fp32 = PyTorch 309/309, INT8 v2 = 308/309. Baseline INT8 309/309. SDN INT8 305/309. INT8 직접 정확도 EE fixed 91.6 / dynamic 91.9 / Baseline 93.5 / SDN 92.2%.
+- **Pi 지연 재측정 완료 (w12, 2026-09-01, test 309창)**: Baseline 0.858 / SDN 0.695 / EE Fixed **0.624** / Dynamic 0.635ms — 전부 avg <1ms(목표2). w10 대비 +0.08~0.12ms. EE Fixed가 Baseline −27% / SDN −10%. 상세: `ap_v2_redesign2_pi_latency_comparison.txt` 6차.
 - **Pi INT8 재측정 완료** (2026-08-30, power=0.0, `capstone@192.168.8.109`, test 310창): Baseline **0.746ms** / SDN(논문) **0.572** / Proposed Fixed **0.540** / Dynamic 0.555. 전부 목표2(<1ms). power=1.0 대비 EE Fixed 0.641→0.540(-16%), **EE가 Baseline보다 -28% 빠름**. SDN(0.572) > Proposed(0.540) — SDN의 pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear head보다 무거움.
 - **SDN 비교모델 = "기존 조기종료 방법 vs 우리 방법" 통제 비교**: base 3층 LSTM·하이퍼파라미터는 Proposed와 완전 동일, SDN이 규정하는 3축만 논문(Kaya et al. ICML 2019)대로 다름 — (1) pooling IC, (2) 커리큘럼 램프 depth-weighted loss, (3) val 캘리브레이션 confidence T. 결과: 정확도 동급(90.4 vs 90.7), 그러나 **label3에서 덜 안정(F1 std 8.1 vs 5.5)**하고 **더 느림(0.572 vs 0.540)**. 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 희소클래스 안정성 + 트래픽 적응형 임계값".
 - **Confusion matrix 분해 (power=1.0 시절)**: label 2 오답이 label 3보다 개수가 많았음. power=0.0에서 label2가 상당히 정상화됨(94.0%). label2→1 오답은 occ 55~57% 앵커 경계 측정 노이즈, label2→3 오답은 occ 60~72% 정보 부족 구간.
