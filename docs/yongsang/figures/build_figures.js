@@ -16,13 +16,13 @@ const C = {
 };
 const FONT = '-apple-system, "Segoe UI", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif';
 
-// window 12 (2026-09-01). acc/F1 = 5-seed test mean +-std. exits = deploy checkpoint.
-// pi = window 12 Pi INT8 re-measure (2026-09-01, test 309 windows).
+// window 12, 2551-row data (2026-09-01 collection). acc/F1 = 5-seed test mean +-std (test 366).
+// exits = deploy checkpoint. pi = Pi INT8 (2026-09-01, test 366).
 const MODELS = [
-  { key:"baseline", name:"Baseline (EE 없음)", short:"Baseline", acc:92.0, accSd:1.3, f1:68.7, f1Sd:3.1, pi:0.858, exits:[0,0,100], fam:"gray" },
-  { key:"sdn", name:"SDN (논문 충실)", short:"SDN", acc:91.2, accSd:0.7, f1:70.3, f1Sd:2.6, pi:0.695, exits:[51,32,18], fam:"orange" },
-  { key:"eef", name:"Proposed EE · Fixed θ", short:"EE Fixed θ", acc:91.9, accSd:0.5, f1:69.9, f1Sd:2.9, pi:0.624, exits:[31,43,26], fam:"blue" },
-  { key:"eed", name:"Proposed EE · Dynamic θ", short:"EE Dynamic θ", acc:92.0, accSd:null, f1:69.6, f1Sd:null, pi:0.635, exits:[32,53,15], fam:"blue" },
+  { key:"baseline", name:"Baseline (EE 없음)", short:"Baseline", acc:91.4, accSd:1.7, f1:74.7, f1Sd:5.5, pi:0.848, exits:[0,0,100], fam:"gray" },
+  { key:"sdn", name:"SDN (논문 충실)", short:"SDN", acc:90.9, accSd:1.2, f1:77.8, f1Sd:0.6, pi:0.638, exits:[51,32,18], fam:"orange" },
+  { key:"eef", name:"Proposed EE · Fixed θ", short:"EE Fixed θ", acc:91.4, accSd:0.4, f1:77.5, f1Sd:1.1, pi:0.607, exits:[35,41,24], fam:"blue" },
+  { key:"eed", name:"Proposed EE · Dynamic θ", short:"EE Dynamic θ", acc:91.8, accSd:null, f1:70.8, f1Sd:null, pi:0.632, exits:[36,50,14], fam:"blue" },
 ];
 const FAMC = { gray:C.gray, orange:C.orange, blue:C.blue };
 
@@ -136,8 +136,8 @@ function figAcc() {
   g.push(T(L + 18, ly + 1, "전체 정확도", { size: 11, fill: C.ink2 }));
   g.push(el("rect", { x: L + 110, y: ly - 9, width: 12, height: 12, rx: 3, fill: C.orange }));
   g.push(T(L + 128, ly + 1, "Label 3 (심각) F1", { size: 11, fill: C.ink2 }));
-  return wrap(W, H, "정확도 · Label 3 F1 — window 12 · 5시드 평균 ±표준편차",
-    "window 12: 정확도 근소차 · Label 3 F1도 68~70%로 붙음 (w10 SDN F1 ±8.1 → w12 ±2.6)",
+  return wrap(W, H, "정확도 · Label 3 F1 — 5시드 평균 ±표준편차 (window 12, 2551행)",
+    "정확도 근소차 · Label 3 F1도 74~78%로 붙음 (window 12 + 데이터 수집으로 L3 recall 55→70)",
     g.join("\n"));
 }
 
@@ -164,7 +164,7 @@ function figLat() {
     g.push(T(cx, H - B + 20, m.short, { anchor: "middle", size: 11 }));
   });
   return wrap(W, H, "Pi INT8 평균 추론 지연 (ms / sample) — window 12",
-    "capstone@192.168.8.109 · test 309창 · 5회 반복 평균 · 2026-09-01 · 전부 avg <1 ms · EE Fixed = Baseline -27%",
+    "capstone@192.168.8.109 · test 366창 · 5회 반복 평균 · 2026-09-01 · 전부 avg <1 ms · EE Fixed = Baseline -28%",
     g.join("\n"));
 }
 
@@ -201,7 +201,7 @@ function figExit() {
     g.push(T(lx + 18, ly + 1, `${names[j]} (LSTM ${j + 1}층${j === 2 ? ", 최종" : ""})`, { size: 10.5, fill: C.ink2 }));
   });
   return wrap(W, H, "샘플이 어느 exit에서 종료됐나 (%)",
-    "window 12 배포 체크포인트 · Baseline은 항상 exit 3 · Proposed는 대부분 exit 1~2에서 종료 — 속도·연산량 이득의 실체",
+    "window 12 · 2551행 배포 체크포인트 · Baseline은 항상 exit 3 · Proposed는 대부분 exit 1~2에서 종료",
     g.join("\n"));
 }
 

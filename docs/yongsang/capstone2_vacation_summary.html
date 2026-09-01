@@ -169,18 +169,18 @@
   <h1>규칙으로 못 잡는 혼잡을, 학습으로 — 방학 동안의 흐름</h1>
   <p class="lede">
     <b>GL.iNet Opal AP</b>에서 직접 수집한 실측 데이터로, 채널 상태 시계열만 보고 무선 혼잡도를
-    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 9월 1일 <b>window 스윕(10→12)</b>까지, <b>재설계 두 번과 되돌린 결정 다섯 번</b>을 거친 기록.
+    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 9월 1일 <b>window 스윕 + 데이터 수집(2115→2551행)</b>까지, <b>재설계 두 번과 되돌린 결정 다섯 번</b>을 거친 기록.
   </p>
   <p class="span">2026-08-21 → 09-01 · 브랜치 <code style="font-family:var(--f-mono)">capstoneDesign2</code></p>
 
   <div class="stats">
     <div class="stat">
-      <p class="k">분류 정확도 (5시드 평균, test 309창, window 12)</p>
-      <p class="v">91~92% <small>Base 92.0 · EE 91.9 · SDN 91.2</small></p>
+      <p class="k">분류 정확도 (5시드 평균, test 366, window 12 · 2551행)</p>
+      <p class="v">91~92% <small>Base 91.4 · EE 91.4 · SDN 90.9</small></p>
     </div>
     <div class="stat">
-      <p class="k">추론 지연 (Raspberry Pi INT8, window 12)</p>
-      <p class="v">0.62 ms <small>EE Fixed θ · Baseline −27% · 전부 &lt;1ms</small></p>
+      <p class="k">추론 지연 (Raspberry Pi INT8)</p>
+      <p class="v">0.61 ms <small>EE Fixed θ · Baseline −28% · 전부 &lt;1ms</small></p>
     </div>
     <div class="stat">
       <p class="k">라이브 감지</p>
@@ -192,12 +192,12 @@
     <div class="goal no">
       <span class="tag">목표 1</span>
       <span class="txt">Raspberry Pi 환경에서 혼잡 분류 정확도 <b>95% 이상</b></span>
-      <span class="mark">미달 · 91~92% (EE)</span>
+      <span class="mark">미달 · EE 91.4% (데이터·window로 상한)</span>
     </div>
     <div class="goal ok">
       <span class="tag">목표 2</span>
       <span class="txt">추론 지연 <b>&lt; 1 ms</b></span>
-      <span class="mark">달성 · 0.62~0.86ms</span>
+      <span class="mark">달성 · 0.61~0.85ms</span>
     </div>
   </div>
 
@@ -388,8 +388,8 @@
   </div>
 
 
-  <h2><span class="n">07</span>window 스윕 — 목표1 재공략 (2026-09-01)</h2>
-  <p class="sec-sub">"한 번도 스윕 안 함"으로 남아 있던 window size와 "미시도"로 남아 있던 모델 입력 스무딩을 다중 시드로 검증.</p>
+  <h2><span class="n">07</span>목표1 재공략 — window 스윕 + 데이터 수집 (2026-09-01)</h2>
+  <p class="sec-sub">window/lr/batch/EMA 스윕 → window 12만 이득. 이어서 소패킷 부하로 데이터를 더 모았다.</p>
 
   <div class="tl">
     <div class="ev">
@@ -406,10 +406,18 @@
     </div>
     <div class="ev">
       <span class="date">2026-09-01</span>
+      <div class="hd">데이터 수집 — 소패킷 부하로 +436행</div>
+      <p>"데이터를 더 모으면 label 3 오르지 않나" (사용자). knee/step/light-bursty 3세그먼트, AP 크래시 없이 수집.
+      <b>2115 → 2551행</b> (label 3 202→318, L2 경계 +40). 재학습: <b>EE Label 3 recall 55.5→69.6% (+14pt), F1 69.9→77.5%</b>.
+      전체 정확도는 유지(91.4). <b>결론: 데이터로 L3는 개선되지만 95%는 데이터만으론 어렵다</b> — occ 55~57·60~72 경계는
+      라벨 fuzzy / feature 관측 한계. jitter 축 심각은 2폰+iperf3로 불가.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-09-01</span>
       <div class="hd">ONNX 재수출 · Pi 재측정 · 데모 검증</div>
-      <p>ONNX 6개 스크립트 <code>[1,12,7]</code> 재수출, PyTorch parity 309/309(fp32). Pi INT8 재측정:
-      Baseline 0.858 / SDN 0.695 / <b>EE Fixed θ 0.624</b> / Dynamic 0.635 ms — 전부 &lt;1ms, EE가 Baseline −27%.
-      Pi 데모 대시보드로 10→20→30M 계단 부하 → 전 구간 심각(3) → 정지 후 정상 복귀, <b>AP 크래시 없음</b>.</p>
+      <p>ONNX 6개 <code>[1,12,7]</code> 재수출, PyTorch parity 366/366(fp32). Pi INT8: Baseline 0.848 / SDN 0.638 /
+      <b>EE Fixed θ 0.607</b> / Dynamic 0.632 ms — 전부 &lt;1ms, EE −28%. Pi 데모 대시보드 10→30M 계단 부하 →
+      전 구간 심각(3) → 정지 후 정상 복귀, <b>AP 크래시 없음</b>.</p>
     </div>
   </div>
 

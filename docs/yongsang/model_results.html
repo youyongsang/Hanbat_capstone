@@ -133,7 +133,7 @@
   <header class="page-head">
     <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
     <h1>모델 비교 결과 — 정확도 · 지연</h1>
-    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. window 12 · 5시드 평균(정확도·F1) + Raspberry Pi INT8 실측(지연) — test 309창, 2026-09-01.</p>
+    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. window 12 · <b>2551행 데이터</b> · 5시드 평균(정확도·F1, test 366) + Raspberry Pi INT8 실측(지연) — 2026-09-01.</p>
   </header>
 
   <section>
@@ -141,35 +141,33 @@
     <div class="kpis">
       <div class="kpi">
         <div class="lab">목표 1 — Pi 환경 혼잡 분류 정확도 ≥ 95% (발표 시스템 = Early Exit 기준)</div>
-        <div class="val">Proposed 91.9 ~ 92.0%</div>
-        <div class="sub miss">✗ 미달 (~3pt) — EE Fixed 91.9 / Dynamic 92.0 (5시드). w10 대비 +1.2~1.3pt. 상한선 Baseline 92.0 / SDN 91.2.</div>
+        <div class="val">Proposed 91.4 ~ 91.8%</div>
+        <div class="sub miss">✗ 미달 (~3.5pt) — EE 5시드 91.4 / 배포 91.8. window·데이터로 91~92%가 상한, 95%는 AP·telemetry 필요. 상한선 Baseline 91.4 / SDN 90.9.</div>
       </div>
       <div class="kpi">
         <div class="lab">목표 2 — 추론 지연 &lt; 1 ms</div>
-        <div class="val">0.62 ~ 0.86 ms</div>
-        <div class="sub hit">✓ 달성 (window 12 Pi 실측) — 4개 모델 전부 avg &lt; 1 ms. EE Fixed 0.624 = Baseline(0.858) −27%.</div>
+        <div class="val">0.61 ~ 0.85 ms</div>
+        <div class="sub hit">✓ 달성 (Pi INT8, test 366) — 4개 모델 전부 avg &lt; 1 ms. EE Fixed 0.607 = Baseline(0.848) −28%.</div>
       </div>
     </div>
   </section>
 
   <section>
-    <h2><span class="step">변경</span> window 10 → 12 (2026-09-01) — 무엇이 바뀌었나</h2>
-    <p class="lede">목표1 재공략. window/lr/batch/모델입력 EMA 스윕에서 <b>window 12만 이득</b> (lr·batch·EMA는 노이즈/악화, window 20은 과길어 악화). 시계열 맥락이 늘어(≈2폴링=2~4초) occ 60~72% 정보 부족 구간·심각 판정이 안정화. 상세: <code>.work-log/current.md</code> 15차 · <code>capstone2_vacation_summary.html</code> §07.</p>
+    <h2><span class="step">변경</span> 2026-09-01 — 무엇이 바뀌었나 (목표1 재공략)</h2>
+    <p class="lede"><b>(1) window 10→12</b> (스윕 — lr·batch·EMA는 이득 없음). <b>(2) 소패킷 부하로 데이터 수집</b> — 2115→2551행, label 3 +116·L2 경계 +40. 시계열 맥락↑ + L3 표본↑ → occ 60~72 정보 부족 구간·심각 판정 안정화. 상세: <code>.work-log/current.md</code> 15·16차.</p>
     <div class="tw">
     <table class="grid">
-      <thead><tr><th>지표 (기준)</th><th class="n">window 10</th><th class="n">window 12</th><th class="n">Δ</th></tr></thead>
+            <thead><tr><th>지표 (EE Fixed θ)</th><th class="n">시작 (w10, 2115)</th><th class="n">w12, 2115</th><th class="n">w12, 2551 (현행)</th></tr></thead>
       <tbody>
-        <tr><td>EE 정확도 (5시드 평균)</td><td class="n">90.7% ±0.7</td><td class="n">91.9% ±0.5</td><td class="n">+1.2pt</td></tr>
-        <tr><td>EE Label 3 F1 (5시드)</td><td class="n">64.5% ±5.5</td><td class="n">69.9% ±2.9</td><td class="n">+5.4pt · 분산 절반</td></tr>
-        <tr><td>SDN Label 3 F1 분산</td><td class="n">±8.1</td><td class="n">±2.6</td><td class="n">1/3</td></tr>
-        <tr><td>EE Fixed θ 배포 체크포인트</td><td class="n">90.6%</td><td class="n">91.9%</td><td class="n">+1.3pt</td></tr>
-        <tr><td>Baseline 배포 체크포인트</td><td class="n">91.6%</td><td class="n">93.5%</td><td class="n">+1.9pt</td></tr>
-        <tr><td>EE Fixed θ Pi INT8 지연</td><td class="n">0.540 ms</td><td class="n">0.624 ms</td><td class="n">+0.08 (step +2)</td></tr>
-        <tr><td>목표2 (&lt; 1 ms)</td><td class="n">달성</td><td class="n">달성</td><td class="n">유지</td></tr>
+        <tr><td>정확도 (5시드)</td><td class="n">90.7 ±0.7</td><td class="n">91.9 ±0.5</td><td class="n">91.4 ±0.4</td></tr>
+        <tr><td><b>Label 3 recall</b></td><td class="n">51.0 ±6.6</td><td class="n">55.5 ±3.8</td><td class="n"><b>69.6 ±1.7</b></td></tr>
+        <tr><td><b>Label 3 F1</b></td><td class="n">64.5 ±5.5</td><td class="n">69.9 ±2.9</td><td class="n"><b>77.5 ±1.1</b></td></tr>
+        <tr><td>Pi INT8 지연 (ms)</td><td class="n">0.540</td><td class="n">0.624</td><td class="n">0.607</td></tr>
+        <tr><td>목표2 (&lt;1 ms)</td><td class="n">달성</td><td class="n">달성</td><td class="n">달성</td></tr>
       </tbody>
     </table>
     </div>
-    <p class="axis note">ONNX 6개 파이프라인 <code>[1,12,7]</code> 재수출 (PyTorch parity fp32 309/309), Pi 번들 sync, Pi 데모 대시보드 10→30M 계단 부하 검증(AP 크래시 없음) — 코드·데이터·ONNX·문서·발표자료 전 계층 w12 일관.</p>
+    <p class="axis note"><b>결론</b>: 데이터로 Label 3는 크게 개선(recall 55→70), 전체 정확도는 안 움직임 — 남은 오답은 occ 55~57·60~72 경계의 라벨 fuzzy / feature 관측 한계. 95%는 데이터만으론 어렵고 더 나은 AP·telemetry 필요. ONNX 366/366 parity, Pi 데모 10→30M 검증(AP 크래시 없음).</p>
   </section>
 
   <section>
@@ -264,11 +262,11 @@
   function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 
   // window 12 (2026-09-01). acc/F1 = 5시드 test 평균 ±std. exit = 배포 체크포인트.
-  // pi/p95 = window 12 Pi INT8 실측 (2026-09-01, test 309창, capstone@192.168.8.109).
+  // window 12, 2551행 (2026-09-01 소패킷 부하 수집 +436행). acc/F1 = 5시드 test 366 평균.
   var MODELS=[
-    {key:"baseline",name:"Baseline (EE 없음)",acc:92.0,accSd:1.3,f1:68.7,f1Sd:3.1,pi:0.858,p95:0.869,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
-    {key:"sdn",name:"SDN (논문 충실)",acc:91.2,accSd:0.7,f1:70.3,f1Sd:2.6,pi:0.695,p95:0.984,exits:[51,32,18],basis:"Kaya et al. ICML 2019",fam:"sdn"},
-    {key:"eef",name:"Proposed EE · Fixed θ",acc:91.9,accSd:0.5,f1:69.9,f1Sd:2.9,pi:0.624,p95:0.949,exits:[31,43,26],basis:"제안 — entropy θ 고정",fam:"proposed"},
+    {key:"baseline",name:"Baseline (EE 없음)",acc:91.4,accSd:1.7,f1:74.7,f1Sd:5.5,pi:0.848,p95:0.9,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
+    {key:"sdn",name:"SDN (논문 충실)",acc:90.9,accSd:1.2,f1:77.8,f1Sd:0.6,pi:0.638,p95:1.001,exits:[51,32,18],basis:"Kaya et al. ICML 2019",fam:"sdn"},
+    {key:"eef",name:"Proposed EE · Fixed θ",acc:91.4,accSd:0.4,f1:77.5,f1Sd:1.1,pi:0.607,p95:0.964,exits:[35,41,24],basis:"제안 — entropy θ 고정",fam:"proposed"},
     {key:"eed",name:"Proposed EE · Dynamic θ",acc:92.0,accSd:0.2,f1:69.6,f1Sd:3.6,char5:false,pi:0.635,p95:1.027,exits:[32,53,15],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
   ];
   var FAMC={baseline:"--s-gray",sdn:"--s-orange",proposed:"--s-blue"};

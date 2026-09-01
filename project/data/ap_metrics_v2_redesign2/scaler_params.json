@@ -4,7 +4,7 @@
     "max": 177.83
   },
   "channel_occupancy_percent": {
-    "min": 13.33,
+    "min": 8.62,
     "max": 93.1
   },
   "tx_retry_ratio": {

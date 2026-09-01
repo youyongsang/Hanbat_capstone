@@ -1,34 +1,75 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-09-01 (Claude Code) — **window size 스윕 → window 10→12 승격 (15차)**: 목표1(정확도 95%) 공략. window/lr/batch/EMA-입력스무딩 다중 시드 스윕에서 **window 12가 최적**. 발표 시스템 = Early Exit이므로 **EE 기준: 배포 Fixed 90.6→91.9% / Dynamic 91.0→92.2%** (5시드 평균 91.9±0.5 / 92.0±0.2). 상한선 참고: Baseline 91.6→93.5%, SDN 90.3→91.6%. **ONNX 6개 재수출·parity 검증 완료. Pi(온라인 복귀) window 12 지연 재측정: Baseline 0.858 / EE Fixed 0.624 / Dynamic 0.635 / SDN 0.695ms — 전부 <1ms(목표2), EE가 Baseline −27%. Pi에서 live_congestion 스모크 + 데모 대시보드(부하 10~30M → 심각 → 정상 복귀, AP 크래시 없음) 실기기 검증 완료.** window 12 승격 관련 모든 항목 완료. 목표1(정확도 95%)만 미달 유지. 5시드 평균은 Baseline 92.0±1.3 / SDN 91.2±0.7 / EE 91.9±0.5 — **여전히 동급이나 Label3 F1 전 모델 +3~10pt, 분산 절반 이하**(SDN std 8.1→2.6). canonical 데이터셋·`prepare`·`ap_dataloader` 기본값 10→12, w10 아카이브(`*_w10_archived_20260901`). **남은 것: ONNX 재수출([1,10,7]→[1,12,7])·Pi 지연 재측정(Pi 오프라인, 현 지연 수치 STALE)·비교 그래프/문서(sdn_comparison·model_results·figures) 갱신·런타임 deque(live/demo/collect) 10→12.** 아래 "15차" 참조. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
+최종 업데이트: 2026-09-01 (Claude Code) — **16차: 데이터 수집 → 2115→2551행 재학습·배포**. 15차(window 10→12)에 이어 목표1 재공략. **소패킷 UDP 부하(knee/step/light-bursty 3세그먼트, AP 크래시 없음)로 +436행 수집** (label 3 +116 → 202→318, L2 경계 +40). 재학습 결과 **EE Label 3 recall 55.5→69.6% (+14pt), F1 69.9→77.5%** (분산 ±2.9→±1.1). 전체 정확도는 5시드 평균 EE 91.4±0.4 / Baseline 91.4±1.7 / SDN 90.9±1.2 — **여전히 동급, L3 F1도 SDN 77.8 / EE 77.5로 동률**. 배포: EE seed1 91.8% (L3 70.8), Baseline seed4 88.5%(약한 draw), SDN seed2 91.0% T=0.63. ONNX 6개 재수출(fp32 366/366 parity), Pi 지연 재측정: Baseline 0.848 / SDN 0.638 / **EE Fixed 0.607** / Dynamic 0.632ms — 전부 <1ms, EE −28%. **결론: 데이터로 L3는 크게 개선, 전체 정확도 95%는 데이터만으론 어려움**(occ 55~57·60~72 경계는 라벨 fuzzy / feature 관측 한계 — 더 나은 AP·telemetry 필요). jitter 축 심각은 2폰+iperf3로 불가. w2115 아카이브: `*_2115_archived_20260901`. 15차 요약: window/lr/batch/EMA 스윕 → window 12만 이득 (EE +1.2pt, L3 F1 분산 절반), 전 계층 w12 반영. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
-## ⭐ 다음 세션 시작 지점 — Pi 온라인 되면 데모 서버 실기기 검증 (내일)
+## ⭐ 다음 세션 시작 지점 — 데이터 더 수집 (목표1 계속) / 밴드 스티어링
 
-**전제**: 코드·번들·문서 다 됨(13차). Pi(`capstone@192.168.8.109`)·AP(`root@192.168.8.1`)가 이 세션 내내 오프라인이라 실기기 테스트만 남음. Opal 망에 붙은 뒤 진행.
+**16차까지 완료**: window 12 + 2551행 배포, ONNX·Pi·데모·문서·그래프 전 계층 일관. 목표2 달성, 목표1(95%) 미달 91~92%.
 
-0. **연결 확인**: `ssh root@192.168.8.1 uptime` (AP 살아있나 + 안 크래시 상태인가), `ssh capstone@192.168.8.109 "hostname -I; which iperf3; python3 -c 'import numpy,onnxruntime'"` (Pi deps). iperf3 없으면 `sudo apt install -y iperf3`.
-1. **번들 배포**: `scp -r project/deploy/raspberry_pi_ap_v2 capstone@192.168.8.109:~/demo` (기존 `~/ap_pi_v2/`와 별개 폴더로. onnx·scaler·collect_metrics 이미 번들에 포함).
-2. **Pi→폰 SSH 셋업** (지금은 노트북 키만 폰에 등록됨): Pi에서 `cat ~/.ssh/id_ed25519.pub` 없으면 `ssh-keygen -t ed25519 -N ""` → 그 pub키를 두 폰 Termux `~/.ssh/authorized_keys`에 추가 → `ssh <user@폰IP> echo ok` 양쪽 확인. 폰 IP·user(`u0_aXXX`)는 AP `cat /tmp/dhcp.leases` 또는 폰 Termux `whoami`/`ip addr`로 확인.
-3. **실행**: Pi에서
-   ```bash
-   cd ~/demo
-   python3 demo_server.py --iperf-target 192.168.8.109 --s21 <user@폰1IP> --s26 <user@폰2IP>
-   ```
-   (`--iperf-target`이 Pi 자신 IP라 `iperf3 -s` 자동 기동. 부하 경로 = 폰→AP→Pi.)
-4. **브라우저**: 노트북에서 `http://192.168.8.109:8000/` 열기.
-5. **신호 대칭 확인 먼저** (`/signal` 또는 UI 하단) — 두 폰 12dBm 이내. 비대칭이면 폰 위치 조정 (S21 약신호 → capture effect → 저부하 크래시).
-6. **부하 시나리오**: 버튼 10M→20M→30M→정지. 확인할 것:
-   - occ 60~76% 구간에서 **심각(3)** 뜨는가 (occupancy 단독 문턱 75%로 못 잡는 구간).
-   - 정지 후 정상(0) 복귀.
-   - AP 크래시 없이 완주 (30M×2=60M, 대칭 강신호면 안전. up 시간·SSID 유지 확인).
-   - 원시 패널 vs 안정화(CONFIRM=5) 패널 둘 다 정상 갱신.
-7. **결과 저장**: 콘솔 로그 → `project/results/yongsang/ap_v2_redesign2_demo_pi_run_YYYYMMDD.txt`. work-log 13차에 "Pi 실기기 검증 완료" 추가.
-8. **(선택) Pi latency 재확인**: 데모 추론이 Pi에서 도는 김에 `time` 몇 폴링 재보면 목표2(<1ms) 라이브 재확인 가능. 필수 아님 — test 310창 벤치가 이미 있음.
+### 데이터 수집 재개 방법 (16차 검증됨 — AP 크래시 없이)
+1. **노트북 iperf3 서버**: `for p in 5201 5202 5203; do iperf3 -s -p $p & done` (5201/5202=폰 부하, 5203=victim 프로브 싱크).
+2. **Pi 수집기**: `ssh capstone@192.168.8.109 "cd ~/ap_pi_v2 && setsid python3 -u collect_metrics.py <scenario> > ~/c.log 2>&1 < /dev/null &"` — ⚠ `COLLECT_CSV_FILE` env가 setsid로 안 넘어감 → 기본 `~/ap_pi_v2/metrics_v2.csv`에 쌓임, 나중에 rename. (혹은 foreground SSH를 run_in_background 툴로.)
+3. **폰 부하** (노트북에서, `~/.ssh/config` alias s21=u0_a29@192.168.8.191:8022 / s26=u0_a579@192.168.8.103:8022):
+   - occ 포화 심각: `ramp_load_remote.sh knee 192.168.8.226 200` (22M 소패킷 ×2, 240s)
+   - occ<75 하드 케이스: `ramp_load_remote.sh step 192.168.8.226 300` (10→40M 계단, 40M 스텝 전 정지 권장)
+   - L2 경계 (occ 55~73): 직접 `ssh s21/s26 "iperf3 -u -c 192.168.8.226 -p 5201/5202 -b 5M -l 200 -t 180"`
+4. **주의**: 부하 중 Pi SSH가 순간 타임아웃 뜸(채널 경합) — 재부팅 아님. AP 크래시 실제 신호는 `ssh root@192.168.8.1 uptime` 무응답 + throughput 붕괴 + retry 폭주.
+5. **머지·재학습**: `remeasure_redesign.py --input <old+new merged> --output metrics_v2_pi_redesign2_relabeled.csv` → `prepare_ap_metrics_dataset.py` → 5시드 재학습.
+6. **jitter 축 심각은 이 하드웨어로 불가** — 간섭원(3번째 기기 동일 채널) or 더 나은 AP 필요.
 
-**주의**: AP 크래시 시 물리 재부팅. 30M×2가 500초 넘거나 신호 비대칭이면 위험 (`docs/yongsang/ap_crash_analysis.{md,html}`). 이상하면 즉시 정지 버튼.
-
-### 그 밖에 다음 세션에 마무리할 것 (문서 관련, 급하지 않음)
+### 그 밖에 마무리할 것 (문서 관련, 급하지 않음)
 - **`ap_cleaned_strict` "인터넷 공개 데이터" 문구** — 14차에서 재검토 결과 근거 약함(증거: `metrics_cleaned.csv`가 호중 카톡 수신본, 생성 코드 미커밋, latency 0.05ms·RSSI −20dBm대로 물리적 비현실적). 다만 팀이 8/23~24에 "실측 아님 → archived"로 판단한 건 유효. **호중에게 `metrics_cleaned.csv` 원본 출처 직접 확인** 후 `CLAUDE.md`·`capstone2_vacation_summary.html`의 "인터넷 공개 데이터 가공" 문구를 "출처 불명·값 비현실적 → 실측 불인정"으로 톤 조정. (1학기 `data/real`은 확실히 Kaggle 6G Network Slicing — 별개 라인.)
 - **`README.html` 링크 실제 브라우저 클릭 확인** — 14차는 Claude-in-Chrome 확장 미연결이라 Node+DOM셰임 실행으로만 검증(콘솔 에러 없음, 링크 52개 정상 생성). 실제 `file://`로 열어 `.html` 상대링크·GitHub blob 링크 클릭 동작 확인 필요.
+
+## 16차 (2026-09-01) — 데이터 수집 → **2115 → 2551행 재학습·배포** (목표1 재공략)
+
+**동기**: 15차 후 "데이터를 더 모으면 label 3 정확도 오르지 않나" (사용자). 문서(`ap_crash_analysis` §14)가 목표1의 유일 남은 레버로 지목한 것.
+
+### 수집 (Pi·AP·폰 온라인, 소패킷 UDP 부하)
+| 세그먼트 | 부하 | 행 | 결과 |
+|---|---|---|---|
+| `smallpkt_knee` | 22M `-l 200` ×2, 240s | 121 | L3 54 — occ 포화형 (occ p50 87%) |
+| `smallpkt_step` | 10→40M 계단 `-l 300` | 141 | L3 61 — occ<75 하드 케이스 12개 포함 |
+| `smallpkt_lightbursty` | 5M `-l 200` 지속 + 20M 버스트 | 175 | **L2 경계 40개 (occ 55~73)**, L3 2 |
+
+- 신규 총 **436행** (raw label 3 202→318, L2 경계 대량). `metrics_collect_smallpkt_*_20260901.csv` repo 저장.
+- **jitter 축 심각 못 만듦** — 전 세그먼트 probe jitter max 14.6ms < 20ms(경고 앵커). 2폰+협조 iperf3로는 airtime만 포화됨, IPDV 스파이크는 간섭원/열악 RF 필요.
+- **AP 크래시 없음** (전 세션 up 5:50 유지). 부하 중 Pi SSH 순간 타임아웃 있었으나 재부팅 아님.
+
+### 재학습 (2551행, w12)
+`remeasure_redesign.py`로 old(2115) + new(436) 통합 재라벨 → `prepare` w12 → windowed train 1710 / val 367 / **test 366** (L3 31→48).
+
+**EE Fixed θ 5시드 test 평균 진행:**
+| | 수집 전 | +knee,step (2376행) | **+lightbursty (2551행)** |
+|---|---:|---:|---:|
+| 정확도 | 91.9±0.5 | 92.0±0.7 | 91.4±0.4 |
+| Label 3 recall | 55.5±3.8 | 64.3±2.1 | **69.6±1.7** |
+| Label 3 F1 | 69.9±2.9 | 74.9±0.7 | **77.5±1.1** |
+| L2 acc | ~95 | ~94 | 93.9±2.2 |
+
+- **Label 3 recall +14pt, F1 +7.6pt, 분산 1/3.** 전체 정확도는 유지(mc3 넣으니 −0.5, 오차범위).
+- 3모델 5시드: Baseline 91.4±1.7 / SDN 90.9±1.2 / EE 91.4±0.4 — 동급. **Label3 F1: SDN 77.8±0.6 / EE 77.5±1.1 — 동률** (window 12 때 붙은 게 유지).
+
+### 배포 (val balanced acc 최고)
+| 모델 | seed | val bal | 배포 test | L3 | Pi INT8 |
+|---|---|---|---|---|---|
+| EE Fixed θ | seed1 | 86.2 | **91.8%** | L3 70.8 (2115 seed1은 51.6였음 — 데이터로 개선) | 0.607 ms |
+| EE Dynamic θ | seed1 | — | 91.8% | 70.8 | 0.632 ms (p95 1.03) |
+| Baseline | seed4 | 87.4 | 88.5% (약한 test draw — 5시드 91.4) | 68.8 | 0.848 ms |
+| SDN | seed2 | 87.7 | 91.0% (T=0.63) | 68.8 | 0.638 ms |
+
+- ONNX 6개 재수출: EE unified fp32 **366/366** PyTorch 일치, INT8 v2 365~366/366. Baseline INT8 365/366. SDN INT8 350/366 (T 낮아 경계 노이즈↑).
+- Pi 번들 sync + scp. 지연: window 12라 2115 때와 사실상 동일 (더 많은 데이터가 추론비용 안 바꿈). EE Fixed **0.607ms = Baseline −28%**.
+- 아카이브: `checkpoints/ap_v2_redesign2_2115_archived_20260901/`, `metrics_v2_pi_redesign2_relabeled_w2115_archived_20260901.csv`, `results/yongsang/*_2115_archived_20260901.*`.
+
+### 결론 — 95%는 데이터만으론 어렵다 (사용자 질문 "데이터 더 모으면 가능?")
+- **데이터로 L3는 크게 개선** (recall 55→70). 하지만 **전체 정확도는 안 움직임** (91.9→91.4). 남은 오답은 데이터 부족이 아니라:
+  1. occ 55~57 경계 (label 1↔2): 물리적으로 같은 채널 상태, 측정 노이즈 2%로 라벨 뒤집힘 — 데이터 더 주면 모순 예시만 늘어남 (mc3 L2 경계 40개 넣으니 정확도 −0.5).
+  2. occ 60~72 (label 2↔3): AP-side feature 평균이 두 라벨 사이에 동일 — feature 관측성 한계.
+  3. `max(앵커)` piecewise-linear 라벨은 앵커 근처가 정의상 fuzzy.
+- **95% 노리려면**: 더 나은 AP(호중 — 크래시 없이 지속 심각 + 깨끗한 RF) + 새 telemetry(per-station airtime, MCS 분포) + 조기경보 프레이밍. 데이터 추가는 ~93~94%에서 수확 체감.
+
+### 커밋
+(이 세션 커밋 — 아래 참조)
 
 ## 15차 (2026-09-01) — window size 스윕 → **window 10 → 12 승격** (전 모델 재학습·배포)
 

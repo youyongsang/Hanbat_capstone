@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="660" height="344" viewBox="0 0 660 344" font-family='-apple-system, "Segoe UI", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif'>
-<rect x="0" y="0" width="660" height="344" fill="#ffffff"></rect><text x="20" y="30" text-anchor="start" font-size="15" font-weight="700" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">Pi INT8 평균 추론 지연 (ms / sample) — window 12</text><text x="20" y="48" text-anchor="start" font-size="11.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">capstone@192.168.8.109 · test 309창 · 5회 반복 평균 · 2026-09-01 · 전부 avg &lt;1 ms · EE Fixed = Baseline -27%</text>
+<rect x="0" y="0" width="660" height="344" fill="#ffffff"></rect><text x="20" y="30" text-anchor="start" font-size="15" font-weight="700" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">Pi INT8 평균 추론 지연 (ms / sample) — window 12</text><text x="20" y="48" text-anchor="start" font-size="11.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">capstone@192.168.8.109 · test 366창 · 5회 반복 평균 · 2026-09-01 · 전부 avg &lt;1 ms · EE Fixed = Baseline -28%</text>
 <line x1="50" y1="292" x2="640" y2="292" stroke="#e1e0d9" stroke-width="1"></line>
 <text x="40" y="296" text-anchor="end" font-size="11" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.00</text>
 <line x1="50" y1="240.63636363636363" x2="640" y2="240.63636363636363" stroke="#e1e0d9" stroke-width="1"></line>
@@ -15,20 +15,20 @@
 <line x1="50" y1="86.54545454545456" x2="640" y2="86.54545454545456" stroke="#d03b3b" stroke-width="1.5"></line>
 <text x="640" y="80.54545454545456" text-anchor="end" font-size="11" font-weight="600" fill="#d03b3b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">목표 2 — 1.0 ms</text>
 <text x="16" y="179" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="rotate(-90 16 179)">ms / sample</text>
-<rect x="100.75" y="115.72000000000003" width="46" height="176.27999999999997" rx="4" fill="#8a9099"></rect>
+<rect x="100.75" y="117.77454545454546" width="46" height="174.22545454545454" rx="4" fill="#8a9099"></rect>
 <rect x="100.75" y="289" width="46" height="3" fill="#8a9099"></rect>
-<text x="123.75" y="107.72000000000003" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.858</text>
+<text x="123.75" y="109.77454545454546" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.848</text>
 <text x="123.75" y="312" text-anchor="middle" font-size="11" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">Baseline</text>
-<rect x="248.25" y="149.20909090909095" width="46" height="142.79090909090905" rx="4" fill="#eb6834"></rect>
+<rect x="248.25" y="160.92000000000002" width="46" height="131.07999999999998" rx="4" fill="#eb6834"></rect>
 <rect x="248.25" y="289" width="46" height="3" fill="#eb6834"></rect>
-<text x="271.25" y="141.20909090909095" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.695</text>
+<text x="271.25" y="152.92000000000002" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.638</text>
 <text x="271.25" y="312" text-anchor="middle" font-size="11" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">SDN</text>
-<rect x="395.75" y="163.79636363636365" width="46" height="128.20363636363635" rx="4" fill="#2a78d6"></rect>
+<rect x="395.75" y="167.28909090909093" width="46" height="124.71090909090907" rx="4" fill="#2a78d6"></rect>
 <rect x="395.75" y="289" width="46" height="3" fill="#2a78d6"></rect>
-<text x="418.75" y="155.79636363636365" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.624</text>
+<text x="418.75" y="159.28909090909093" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.607</text>
 <text x="418.75" y="312" text-anchor="middle" font-size="11" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">EE Fixed θ</text>
-<rect x="543.25" y="161.53636363636363" width="46" height="130.46363636363637" rx="4" fill="#2a78d6"></rect>
+<rect x="543.25" y="162.1527272727273" width="46" height="129.8472727272727" rx="4" fill="#2a78d6"></rect>
 <rect x="543.25" y="289" width="46" height="3" fill="#2a78d6"></rect>
-<text x="566.25" y="153.53636363636363" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.635</text>
+<text x="566.25" y="154.1527272727273" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">0.632</text>
 <text x="566.25" y="312" text-anchor="middle" font-size="11" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">EE Dynamic θ</text>
 </svg>

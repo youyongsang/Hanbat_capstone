@@ -258,7 +258,7 @@
 
   <section>
     <h2><span class="step">01</span> 7개 feature (순서 고정)</h2>
-    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>12 폴링</b> — 텐서 shape <code>[1, 12, 7]</code> (2026-09-01 10→12 승격, work-log 15차. ONNX 재수출·PyTorch parity 검증 완료, Pi latency 재측정만 대기). (4~6번 <b>RSSI</b> = 수신 신호 세기, §2에서 설명.)</p>
+    <p class="lede">폴링 주기는 파이 유선 수집 기준 대략 1초. window는 최근 <b>12 폴링</b> — 텐서 shape <code>[1, 12, 7]</code> (2026-09-01 10→12 승격, work-log 15·16차. ONNX·Pi 지연 재측정 완료). (4~6번 <b>RSSI</b> = 수신 신호 세기, §2에서 설명.)</p>
     <div class="tw">
     <table class="grid">
       <thead>
@@ -403,7 +403,7 @@
     <ul style="color:var(--ink-2); font-size:0.9rem; max-width:70ch;">
       <li><b>min/max는 train split에서만</b> 구해서 <code>data/ap_metrics_v2_redesign2/scaler_params.json</code>에 저장. val/test·실시간 추론은 <b>그 파일을 그대로</b> 써야 한다 — 재라벨링만 하고 재변환 안 하면 라벨과 스케일러가 어긋난다.</li>
       <li>windowed 변환: window 12, stride 1, 시나리오별 첫 행 1개 drop.</li>
-      <li>train 1429 / val 305 / test 309 샘플, shape <code>(N, 12, 7)</code>. test label 분포 0:94 · 1:67 · 2:117 · 3:31.</li>
+      <li>train 1710 / val 367 / test 366 샘플, shape <code>(N, 12, 7)</code>. test label 분포 0:109 · 1:82 · 2:127 · 3:48. (2551행 — 2026-09-01 소패킷 부하 수집 +436행.)</li>
     </ul>
   </section>
 

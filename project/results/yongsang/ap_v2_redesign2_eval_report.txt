@@ -3,43 +3,49 @@ Data Directory: project\data\ap_metrics_v2_redesign2
 Checkpoint: project\checkpoints\ap_v2_redesign2\ap_early_exit_lstm_best.pth
 
 === AP Early Exit + fixed theta ===
-Test Accuracy: 91.9%
+Test Accuracy: 91.8%
 Exit별 성능:
-  Exit 1 | Accuracy: 100.0% | Exit Rate: 31.1% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 92.5% | Exit Rate: 43.0% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 81.2% | Exit Rate: 25.9% | Avg Time: 8.0ms
-Overall Avg Inference Time: 4.414ms
-Measured Wall Time: 0.916ms
+  Exit 1 | Accuracy: 99.2% | Exit Rate: 34.7% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 92.0% | Exit Rate: 41.0% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 80.9% | Exit Rate: 24.3% | Avg Time: 8.0ms
+Overall Avg Inference Time: 4.279ms
+Measured Wall Time: 0.850ms
 Label별 정확도:
-  Label 0 (정상): 97.9%
-  Label 1 (경고): 100.0%
-  Label 2 (혼잡): 93.2%
-  Label 3 (심각): 51.6%
+  Label 0 (정상): 98.2%
+  Label 1 (경고): 91.5%
+  Label 2 (혼잡): 94.5%
+  Label 3 (심각): 70.8%
 시나리오별 정확도:
-  step_run1: 83.7%
-  step_run2: 94.2%
-  step_run3: 86.7%
-  step_run4: 96.7%
-  step_run5: 93.7%
-  step_run6: 90.7%
+  smallpkt_knee_20260901: 100.0%
+  smallpkt_light_bursty_20260901: 96.3%
+  smallpkt_step_20260901: 100.0%
+  step_run1: 89.2%
+  step_run2: 92.0%
+  step_run3: 87.5%
+  step_run4: 94.0%
+  step_run5: 90.5%
+  step_run6: 85.4%
 
 === AP Early Exit + dynamic theta ===
-Test Accuracy: 92.2%
+Test Accuracy: 91.8%
 Exit별 성능:
-  Exit 1 | Accuracy: 99.0% | Exit Rate: 31.7% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 93.9% | Exit Rate: 53.1% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 72.3% | Exit Rate: 15.2% | Avg Time: 8.0ms
-Overall Avg Inference Time: 3.974ms
-Measured Wall Time: 0.855ms
+  Exit 1 | Accuracy: 97.7% | Exit Rate: 36.1% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 91.8% | Exit Rate: 50.0% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 76.5% | Exit Rate: 13.9% | Avg Time: 8.0ms
+Overall Avg Inference Time: 3.836ms
+Measured Wall Time: 0.710ms
 Label별 정확도:
-  Label 0 (정상): 97.9%
-  Label 1 (경고): 100.0%
-  Label 2 (혼잡): 94.0%
-  Label 3 (심각): 51.6%
+  Label 0 (정상): 98.2%
+  Label 1 (경고): 91.5%
+  Label 2 (혼잡): 94.5%
+  Label 3 (심각): 70.8%
 시나리오별 정확도:
-  step_run1: 83.7%
-  step_run2: 94.2%
-  step_run3: 86.7%
-  step_run4: 96.7%
-  step_run5: 94.9%
-  step_run6: 90.7%
+  smallpkt_knee_20260901: 100.0%
+  smallpkt_light_bursty_20260901: 96.3%
+  smallpkt_step_20260901: 100.0%
+  step_run1: 89.2%
+  step_run2: 92.0%
+  step_run3: 87.5%
+  step_run4: 94.0%
+  step_run5: 90.5%
+  step_run6: 85.4%

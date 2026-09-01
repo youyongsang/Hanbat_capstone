@@ -3,22 +3,25 @@ Data Directory: project\data\ap_metrics_v2_redesign2
 Checkpoint: project\checkpoints\ap_v2_redesign2\ap_baseline_lstm_best.pth
 
 === AP Baseline (always runs all 3 LSTM layers) ===
-Test Accuracy: 93.5%
+Test Accuracy: 88.5%
 Exit별 성능:
   Exit 1 | Accuracy: 0.0% | Exit Rate: 0.0% | Avg Time: 2.0ms
   Exit 2 | Accuracy: 0.0% | Exit Rate: 0.0% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 93.5% | Exit Rate: 100.0% | Avg Time: 8.0ms
+  Exit 3 | Accuracy: 88.5% | Exit Rate: 100.0% | Avg Time: 8.0ms
 Overall Avg Inference Time: 8.000ms
-Measured Wall Time: 0.321ms
+Measured Wall Time: 0.070ms
 Label별 정확도:
-  Label 0 (정상): 98.9%
-  Label 1 (경고): 95.5%
-  Label 2 (혼잡): 96.6%
-  Label 3 (심각): 61.3%
+  Label 0 (정상): 98.2%
+  Label 1 (경고): 82.9%
+  Label 2 (혼잡): 91.3%
+  Label 3 (심각): 68.8%
 시나리오별 정확도:
-  step_run1: 89.8%
-  step_run2: 94.2%
-  step_run3: 86.7%
-  step_run4: 96.7%
-  step_run5: 93.7%
-  step_run6: 94.4%
+  smallpkt_knee_20260901: 94.7%
+  smallpkt_light_bursty_20260901: 96.3%
+  smallpkt_step_20260901: 92.9%
+  step_run1: 83.8%
+  step_run2: 90.0%
+  step_run3: 75.0%
+  step_run4: 91.0%
+  step_run5: 87.4%
+  step_run6: 85.4%

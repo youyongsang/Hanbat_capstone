@@ -1,8 +1,8 @@
 {
   "source": {
     "input_file": "project\\scripts\\metrics_v2_pi_redesign2_relabeled.csv",
-    "raw_rows": 2115,
-    "prepared_rows": 2109,
+    "raw_rows": 2551,
+    "prepared_rows": 2542,
     "dropped_first_row_per_scenario": true,
     "stride": 1
   },
@@ -28,7 +28,7 @@
       "max": 177.83
     },
     "channel_occupancy_percent": {
-      "min": 13.33,
+      "min": 8.62,
       "max": 93.1
     },
     "tx_retry_ratio": {
@@ -54,7 +54,7 @@
   },
   "preprocessing": {
     "dropped_first_row_per_scenario": true,
-    "occupancy_outlier_fixes": 12,
+    "occupancy_outlier_fixes": 13,
     "model_excluded_columns": [
       "timestamp",
       "scenario",
@@ -79,36 +79,36 @@
   },
   "splits": {
     "train": {
-      "rows": 17148,
-      "samples": 1429,
-      "shape": "(1429, 12, 7)",
+      "rows": 20520,
+      "samples": 1710,
+      "shape": "(1710, 12, 7)",
       "label_distribution": {
-        "0:정상": 436,
-        "1:경고": 310,
-        "2:혼잡": 542,
-        "3:심각": 141
+        "0:정상": 512,
+        "1:경고": 380,
+        "2:혼잡": 595,
+        "3:심각": 223
       }
     },
     "val": {
-      "rows": 3660,
-      "samples": 305,
-      "shape": "(305, 12, 7)",
+      "rows": 4404,
+      "samples": 367,
+      "shape": "(367, 12, 7)",
       "label_distribution": {
-        "0:정상": 93,
-        "1:경고": 66,
-        "2:혼잡": 116,
-        "3:심각": 30
+        "0:정상": 110,
+        "1:경고": 81,
+        "2:혼잡": 128,
+        "3:심각": 48
       }
     },
     "test": {
-      "rows": 3708,
-      "samples": 309,
-      "shape": "(309, 12, 7)",
+      "rows": 4392,
+      "samples": 366,
+      "shape": "(366, 12, 7)",
       "label_distribution": {
-        "0:정상": 94,
-        "1:경고": 67,
-        "2:혼잡": 117,
-        "3:심각": 31
+        "0:정상": 109,
+        "1:경고": 82,
+        "2:혼잡": 127,
+        "3:심각": 48
       }
     }
   }
