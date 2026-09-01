@@ -94,9 +94,13 @@
 - 재현성: Baseline 0.860/0.856, EE Fixed 0.620/0.628 (2회).
 - 반영: `ap_v2_redesign2_pi_latency_comparison.txt` 6차, `generate_ap_comparison.py` + 비교표, `CLAUDE.md`, `sdn_comparison.html`·`model_results.html`·`figures/*`.
 
-### 남은 것 (Pi 관련)
-- **on-Pi live_congestion / demo 스모크 테스트** — 번들은 최신(scp 완료). AP(`root@192.168.8.1`) 연결 확인 후 idle/부하 라이브 검증.
-- ~~Pi latency 재측정~~ ✅ 완료 (위 6차).
+### on-Pi live_congestion 스모크 테스트 완료 (2026-09-01 후속4)
+- Pi에서 `live_congestion.py --raw` (w12 ONNX, `~/ap_pi_v2/`) — idle AP(occ ~20%, thr 0M) 상대로 **정상(0) p≈0.98, exit1/2 일관**. window 12 파이프라인 실기기 end-to-end 검증됨.
+
+### 남은 것 (데모 대시보드 = "자동 실험 웹사이트")
+- Pi(`demo_server.py`)·AP(up)·두 폰(S21 `.191` / S26 `.103` AP 와이파이 연결됨)·`demo.html`(Pi scp 완료) 준비됨.
+- **폰 3단계 (사용자가 폰에서 직접)**: ① S26 Termux `sshd` 시작(현재 포트 8022 거부) ② 두 폰 `~/.ssh/authorized_keys`에 Pi 키(`ssh-ed25519 AAAAC3...iCRt capstone@CapsTone`) 추가 ③ 폰 Termux `whoami`로 사용자명(`u0_aXXX`) 확인.
+- 그 뒤: `python3 ~/ap_pi_v2/demo_server.py --iperf-target 192.168.8.109 --s21 u0_aXXX@192.168.8.191 --s21-port 8022 --s26 u0_aYYY@192.168.8.103 --s26-port 8022` → `http://192.168.8.109:8000/` 부하 시나리오(10→20→30M→정지) 검증. occ 60~76%에서 심각(3) 뜨는지, 정지 후 정상 복귀, AP 크래시 없이 완주 확인. 결과 → `ap_v2_redesign2_demo_pi_run_20260901.txt`.
 
 ### 재현
 ```powershell
