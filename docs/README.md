@@ -32,6 +32,7 @@
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
 | **ONNX를 왜 이렇게 배포했나** (staged→unified If→INT8 재조립) | `docs/yongsang/onnx_early_exit_redesign.{md,html}` |
 | **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | **`docs/yongsang/sdn_comparison.html`** — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 `project/models/sdn_lstm.py` docstring (Kaya et al. 2019 재구현) + `.work-log/current.md` 8~9차 + `project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}` |
+| **정확도·지연 결과 그래프로** | **`docs/yongsang/model_results.html`** — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. 수치 정본은 `ap_model_comparison_redesign2.{txt,csv}` + `ap_v2_redesign2_pi_latency_comparison.txt` |
 | **Fixed θ vs Dynamic θ 차이** | `CLAUDE.md` "해석 기준" 6번 |
 | **데모를 어떻게 돌리나** | `project/demo/README.md` |
 | **데모를 (팀이) 어떻게 만드나** | `project/demo/API.md` — API·SSE 스키마·모델 계약·확장 항목 |
@@ -47,8 +48,8 @@
 |---|---|
 | `ap_v2_redesign2_eval_report.txt` | 최신 Early Exit 평가 (fixed/dynamic θ) |
 | `ap_baseline_lstm_redesign2_eval_report.txt` · `ap_sdn_redesign2_eval_report.txt` | Baseline · SDN 평가 |
-| `ap_model_comparison_redesign2.{txt,csv}` | Baseline / SDN / Proposed 비교표 |
-| `ap_v2_redesign2_pi_latency_comparison.txt` | Raspberry Pi INT8 지연 실측 (3~5차 + 이전 차수 보존) |
+| `ap_model_comparison_redesign2.{txt,csv}` | Baseline / SDN / Proposed 비교표. **그래프 버전 = `docs/yongsang/model_results.html`** |
+| `ap_v2_redesign2_pi_latency_comparison.txt` | Raspberry Pi INT8 지연 실측 (3~5차 + 이전 차수 보존). 그래프 버전 위 동일 |
 | `ap_v2_redesign2_threshold_comparison.txt` | 학습 모델 vs occupancy 단일 문턱 (심각 탐지) |
 | `ap_v2_redesign2_forecast_eval.txt` | 조기경보(k폴링 뒤 라벨) 프레이밍 |
 | `ap_v2_redesign2_pi_bench_power0_20260830.txt` | Pi INT8 벤치 raw 로그 |
@@ -74,6 +75,6 @@
 ## HTML로 읽기 좋은 것
 
 브라우저로 열면 표·차트가 렌더된다:
-`system_overview.html` · `capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `sdn_comparison.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
+`system_overview.html` · `capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `sdn_comparison.html` · `model_results.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
 
 발행 아티팩트 (링크는 `.work-log/current.md`): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".

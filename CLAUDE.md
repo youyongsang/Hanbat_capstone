@@ -77,6 +77,7 @@ docs/yongsang/ap_crash_analysis.{md,html}      AP(Opal) 반복 크래시 원인 
 docs/yongsang/onnx_early_exit_redesign.{md,html}  ONNX Early Exit 배포 재설계 (staged → unified If 노드 → INT8 재조립)
 docs/yongsang/sdn_comparison.html      SDN 비교모델 한 장 요약 (SDN이 뭔지·통제 변수·3축 차이·5시드/배포/Pi 결과). 정본은 sdn_lstm.py docstring + work-log 8~9차
 docs/yongsang/system_overview.html     세 그림 한 장 (데이터 계보 / congestion_score 라벨 파이프라인 / 수집 토폴로지). 온보딩용 개요, 정본은 각 절 하단 링크
+docs/yongsang/model_results.html       비교 결과 그래프 (정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포). 수치 정본은 ap_model_comparison_redesign2.{txt,csv} + ap_v2_redesign2_pi_latency_comparison.txt
 .work-log/current.md                    세션별 최신 진행 상황 (이 문서보다 최신)
 ```
 

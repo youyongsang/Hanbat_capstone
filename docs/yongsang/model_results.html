@@ -1,0 +1,447 @@
+<title>모델 비교 결과 (정확도·지연)</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#f5f7fa; --panel:#fcfcfb; --panel-raise:#ffffff;
+    --ink:#12151b; --ink-2:#4b5566; --ink-mute:#7c8494;
+    --rule:#e2e6ec; --rule-strong:#c9d0da;
+    --accent:#2a78d6;
+    /* dataviz tokens */
+    --surface:#fcfcfb;
+    --grid:#e1e0d9; --axis:#c3c2b7;
+    --s-blue:#2a78d6; --s-orange:#eb6834; --s-gray:#8a9099;
+    --exit1:#86b6ef; --exit2:#2a78d6; --exit3:#104281;
+    --target:#d03b3b; --ok:#0ca30c;
+    --shadow:0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5;
+      --surface:#1a1a19;
+      --grid:#2c2c2a; --axis:#383835;
+      --s-blue:#3987e5; --s-orange:#d95926; --s-gray:#8890a0;
+      --exit1:#86b6ef; --exit2:#3987e5; --exit3:#184f95;
+      --target:#e0565b; --ok:#3ec13e;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5;
+    --surface:#1a1a19;
+    --grid:#2c2c2a; --axis:#383835;
+    --s-blue:#3987e5; --s-orange:#d95926; --s-gray:#8890a0;
+    --exit1:#86b6ef; --exit2:#3987e5; --exit3:#184f95;
+    --target:#e0565b; --ok:#3ec13e;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  main { max-width:960px; margin:0 auto; padding:4rem 1.75rem 6rem; }
+  header.page-head { max-width:760px; margin-bottom:2.5rem; }
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:0.78rem; letter-spacing:0.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 0.9rem; }
+  h1 { font-size:clamp(1.9rem,1.5rem + 1.6vw,2.5rem); font-weight:700; letter-spacing:-0.01em;
+    line-height:1.18; margin:0 0 0.9rem; text-wrap:balance; }
+  .page-head p { color:var(--ink-2); font-size:1.03rem; margin:0; max-width:66ch; }
+
+  section { margin-top:3.5rem; }
+  section > h2 { font-size:1.05rem; font-weight:700; margin:0 0 0.35rem;
+    display:flex; align-items:baseline; gap:0.6rem; }
+  section > h2 .step { font-family:"IBM Plex Mono",monospace; font-size:0.78rem; color:var(--ink-mute); font-weight:500; }
+  section > .lede { color:var(--ink-2); max-width:74ch; margin:0 0 1.5rem; }
+
+  code { font-family:"IBM Plex Mono",monospace; font-size:0.86em; background:var(--panel);
+    border:1px solid var(--rule); border-radius:3px; padding:0.05em 0.32em; color:var(--ink-2); }
+
+  /* KPI tiles */
+  .kpis { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .kpi { background:var(--panel); border:1px solid var(--rule); border-radius:8px;
+    padding:1.1rem 1.25rem; box-shadow:var(--shadow); }
+  .kpi .lab { font-size:0.8rem; color:var(--ink-mute); margin-bottom:0.35rem; }
+  .kpi .val { font-size:1.5rem; font-weight:700; letter-spacing:-0.01em; }
+  .kpi .sub { font-size:0.82rem; margin-top:0.3rem; }
+  .kpi .sub.miss { color:var(--target); }
+  .kpi .sub.hit { color:var(--ok); }
+
+  /* chart cards */
+  .charts { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-top:1rem; }
+  @media (max-width:760px){ .charts { grid-template-columns:1fr; } .kpis { grid-template-columns:1fr; } }
+  .chart { background:var(--panel); border:1px solid var(--rule); border-radius:8px;
+    padding:1.1rem 1.2rem 1.25rem; box-shadow:var(--shadow); min-width:0; }
+  .chart h3 { font-size:0.9rem; margin:0 0 0.15rem; }
+  .chart .csub { font-size:0.76rem; color:var(--ink-mute); margin:0 0 0.7rem; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; }
+  .chart svg text { font-family:"IBM Plex Sans KR",system-ui,sans-serif; }
+  .tick text, .axlab { fill:var(--ink-mute); }
+  .val-lab { fill:var(--ink); font-weight:600; }
+  .grid-l { stroke:var(--grid); stroke-width:1; }
+  .axis-l { stroke:var(--axis); stroke-width:1; }
+  .target-l { stroke:var(--target); stroke-width:1.5; }
+  .target-t { fill:var(--target); font-weight:600; }
+  .whisker { stroke:var(--ink-2); stroke-width:1.5; }
+
+  .legend { display:flex; flex-wrap:wrap; gap:0.9rem; margin-top:0.7rem; font-size:0.75rem; color:var(--ink-2); }
+  .legend span { display:inline-flex; align-items:center; gap:0.4rem; }
+  .legend i { width:12px; height:12px; border-radius:3px; flex:0 0 12px; }
+
+  /* tooltip */
+  #tip { position:fixed; pointer-events:none; z-index:50; background:var(--panel-raise);
+    border:1px solid var(--rule-strong); border-radius:6px; padding:0.5rem 0.7rem;
+    font-size:0.78rem; box-shadow:var(--shadow); opacity:0; transition:opacity .1s; max-width:240px; }
+  #tip .tv { font-weight:700; font-size:0.92rem; }
+  #tip .tk { color:var(--ink-mute); }
+
+  .hit { cursor:default; }
+  .hit:focus { outline:2px solid var(--accent); outline-offset:2px; }
+
+  table.grid { width:100%; border-collapse:collapse; font-size:0.83rem; margin-top:0.6rem; }
+  table.grid th, table.grid td { text-align:left; padding:0.55rem 0.7rem;
+    border-bottom:1px solid var(--rule); vertical-align:top; }
+  table.grid thead th { font-weight:600; color:var(--ink-mute); font-size:0.72rem;
+    text-transform:uppercase; letter-spacing:0.03em; border-bottom:1px solid var(--rule-strong); }
+  table.grid td.n, table.grid th.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tw { overflow-x:auto; }
+
+  .callout { display:flex; gap:0.85rem; background:var(--panel); border:1px solid var(--rule);
+    border-left:3px solid var(--accent); border-radius:4px; padding:1rem 1.2rem;
+    font-size:0.9rem; color:var(--ink-2); margin-top:1.5rem; }
+  .callout b { color:var(--ink); }
+
+  footer.page-foot { margin-top:4rem; padding-top:1.6rem; border-top:1px solid var(--rule);
+    font-size:0.82rem; color:var(--ink-mute); display:flex; flex-direction:column; gap:0.4rem; }
+  footer.page-foot code { background:var(--panel); }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+  <header class="page-head">
+    <p class="eyebrow">AP 트래픽 혼잡 분류 — Capstone 2026</p>
+    <h1>모델 비교 결과 — 정확도 · 지연</h1>
+    <p><code>ap_model_comparison_redesign2.{txt,csv}</code>와 <code>ap_v2_redesign2_pi_latency_comparison.txt</code>의 수치를 그래프로. 기준 = <b>5시드 평균</b>(power=0.0), 지연은 <b>Raspberry Pi INT8 실측</b>(test 310창).</p>
+  </header>
+
+  <section>
+    <h2><span class="step">목표</span> 발표 정량 목표 대비</h2>
+    <div class="kpis">
+      <div class="kpi">
+        <div class="lab">목표 1 — Pi 환경 혼잡 분류 정확도 ≥ 95%</div>
+        <div class="val">90 ~ 92%</div>
+        <div class="sub miss">✗ 미달 — 5시드 평균 Baseline 92.0 / SDN 90.4 / Proposed 90.7%</div>
+      </div>
+      <div class="kpi">
+        <div class="lab">목표 2 — 추론 지연 &lt; 1 ms</div>
+        <div class="val">0.54 ~ 0.75 ms</div>
+        <div class="sub hit">✓ 달성 — 4개 모델 전부 &lt; 1 ms (Pi INT8)</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">01</span> 정확도 vs 지연 — 한 장</h2>
+    <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유.</p>
+    <div class="charts">
+      <div class="chart" style="grid-column:1 / -1;">
+        <h3>정확도 vs Pi INT8 지연</h3>
+        <p class="csub">세로 막대 = 5시드 표준편차(±1σ) · 가로축 잘림 주의(0.50 ms부터)</p>
+        <svg id="c-scatter" viewBox="0 0 640 340" role="img" aria-label="정확도 대 지연 산점도"></svg>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">02</span> 정확도와 희소클래스 안정성</h2>
+    <p class="lede">전체 정확도(파랑)는 셋이 근소차. <b>Label 3(심각) F1</b>(주황)에서 SDN의 편차가 유독 크다(±8.1) — per-model 캘리브레이션 <code>T</code>가 작은 val 셋에서 시드마다 요동하기 때문. Proposed의 entropy θ는 그 캘리브레이션이 불필요.</p>
+    <div class="charts">
+      <div class="chart" style="grid-column:1 / -1;">
+        <h3>정확도 · Label 3 F1 — 5시드 평균 ±표준편차</h3>
+        <p class="csub">막대 위 수염 = ±1σ · y축 55%부터</p>
+        <svg id="c-acc" viewBox="0 0 640 320" role="img" aria-label="정확도와 Label3 F1 막대 그래프"></svg>
+        <div class="legend">
+          <span><i style="background:var(--s-blue)"></i> 전체 정확도</span>
+          <span><i style="background:var(--s-orange)"></i> Label 3 F1</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">03</span> Pi INT8 추론 지연</h2>
+    <p class="lede">전부 목표 2(&lt;1 ms) 달성. Early Exit가 Baseline보다 <b>−28%</b>. SDN(0.572)이 Proposed(0.540)보다 느린 건 pooling internal classifier(매 exit마다 ReduceMax+Mean)가 last-timestep linear head보다 무겁기 때문.</p>
+    <div class="charts">
+      <div class="chart" style="grid-column:1 / -1;">
+        <h3>Pi INT8 평균 추론 지연 (ms / sample)</h3>
+        <p class="csub"><code>capstone@192.168.8.109</code> · test 310창 · 5회 반복 평균 · 2026-08-30</p>
+        <svg id="c-lat" viewBox="0 0 640 300" role="img" aria-label="Pi INT8 지연 막대 그래프"></svg>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">04</span> Early Exit 종료 지점 분포</h2>
+    <p class="lede">Baseline은 조기종료가 없어 항상 exit 3(3개 LSTM 층 전부). Proposed는 대부분 exit 1~2에서 끝난다 — 이게 속도·연산량 이득의 실체. Dynamic θ는 Fixed보다 더 얕게 빠진다(exit 3 도달 10%).</p>
+    <div class="charts">
+      <div class="chart" style="grid-column:1 / -1;">
+        <h3>샘플이 어느 exit에서 종료됐나 (%)</h3>
+        <p class="csub">배포 단일 체크포인트 기준</p>
+        <svg id="c-exit" viewBox="0 0 640 260" role="img" aria-label="exit 종료 분포 스택 막대"></svg>
+        <div class="legend">
+          <span><i style="background:var(--exit1)"></i> exit 1 (LSTM 1층)</span>
+          <span><i style="background:var(--exit2)"></i> exit 2 (2층)</span>
+          <span><i style="background:var(--exit3)"></i> exit 3 (3층, 최종)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">표</span> 데이터 (그래프의 표 버전)</h2>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr>
+        <th>모델</th><th class="n">정확도<br>5시드</th><th class="n">Label3 F1<br>5시드</th>
+        <th class="n">Pi INT8<br>avg ms</th><th class="n">p95 ms</th>
+        <th class="n">exit 1/2/3 %</th><th>근거</th>
+      </tr></thead>
+      <tbody id="tbl"></tbody>
+    </table>
+    </div>
+    <p style="font-size:0.8rem;color:var(--ink-mute);margin-top:0.8rem;">Dynamic θ는 5시드 특성화 대상이 아님(EE 백본의 threshold 정책) — 값은 배포 체크포인트. 배포 단일 체크포인트 정확도는 test draw 편차로 5시드 평균과 ±1pt 다를 수 있어 <b>5시드 평균을 기준 수치로 인용</b>.</p>
+  </section>
+
+  <div class="callout"><span>▸</span><span><b>서사 한 줄:</b> 세 모델 정확도가 5시드 평균으로 사실상 동급(목표1은 셋 다 미달) → Proposed(Early Exit)의 가치는 정확도가 아니라 <b>속도·효율</b>(목표2 &lt;1ms 달성, Baseline 대비 −28%) + "간섭 감지에 Early Exit LSTM 최초 적용". 모델 3종의 구조적 차이는 <code>sdn_comparison.html</code>.</span></div>
+
+  <footer class="page-foot">
+    <span>수치 정본: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · <code>project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt</code> · <code>.work-log/current.md</code> 7~9차</span>
+    <span>관련: <code>docs/yongsang/sdn_comparison.html</code> (모델 3종 구조 차이) · <code>docs/yongsang/onnx_early_exit_redesign.html</code> (INT8 배포) · <code>docs/yongsang/system_overview.html</code> (전체 개요)</span>
+  </footer>
+</main>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+  var NS="http://www.w3.org/2000/svg";
+  function E(t,a){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);return e;}
+  function txt(e,s){e.appendChild(document.createTextNode(s));return e;}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  var MODELS=[
+    {key:"baseline",name:"Baseline (EE 없음)",acc:92.0,accSd:0.7,f1:66.1,f1Sd:2.3,pi:0.746,p95:0.754,exits:[0,0,100],basis:"standard full-depth LSTM",fam:"baseline"},
+    {key:"sdn",name:"SDN (논문 충실)",acc:90.4,accSd:1.4,f1:60.4,f1Sd:8.1,pi:0.572,p95:0.858,exits:[36,33,31],basis:"Kaya et al. ICML 2019",fam:"sdn"},
+    {key:"eef",name:"Proposed EE · Fixed θ",acc:90.7,accSd:0.7,f1:64.5,f1Sd:5.5,pi:0.540,p95:0.858,exits:[30,51,19],basis:"제안 — entropy θ 고정",fam:"proposed"},
+    {key:"eed",name:"Proposed EE · Dynamic θ",acc:91.0,accSd:null,f1:69.4,f1Sd:null,pi:0.555,p95:0.913,exits:[32,58,10],basis:"제안 — 트래픽 적응형 θ",fam:"proposed"}
+  ];
+  var FAMC={baseline:"--s-gray",sdn:"--s-orange",proposed:"--s-blue"};
+
+  // ---- tooltip ----
+  var tip=document.getElementById("tip");
+  function showTip(html,x,y){
+    tip.textContent="";
+    html.forEach(function(r){
+      var d=document.createElement("div");
+      if(r.k){var s=document.createElement("span");s.className="tk";s.textContent=r.k+"  ";d.appendChild(s);}
+      var v=document.createElement("span");v.className=r.big?"tv":"";v.textContent=r.v;d.appendChild(v);
+      tip.appendChild(d);
+    });
+    tip.style.opacity="1";
+    var w=tip.offsetWidth,h=tip.offsetHeight;
+    tip.style.left=Math.min(window.innerWidth-w-8,Math.max(8,x+14))+"px";
+    tip.style.top=Math.max(8,y-h-12)+"px";
+  }
+  function hideTip(){tip.style.opacity="0";}
+  function bind(el,rows){
+    el.classList.add("hit"); el.setAttribute("tabindex","0"); el.setAttribute("role","img");
+    el.setAttribute("aria-label",rows.map(function(r){return (r.k?r.k+" ":"")+r.v;}).join(", "));
+    function mv(ev){var p=ev.touches?ev.touches[0]:ev;showTip(rows,p.clientX,p.clientY);}
+    el.addEventListener("pointermove",mv);
+    el.addEventListener("pointerenter",mv);
+    el.addEventListener("pointerleave",hideTip);
+    el.addEventListener("focus",function(){var b=el.getBoundingClientRect();showTip(rows,b.left+b.width/2,b.top+b.height/2);});
+    el.addEventListener("blur",hideTip);
+  }
+
+  // ================= 01 scatter: acc vs latency =================
+  (function(){
+    var svg=document.getElementById("c-scatter"); if(!svg) return;
+    var W=640,H=340, L=52,R=18,T=18,B=44;
+    var x0=0.50,x1=0.80, y0=88,y1=96;
+    var pts=MODELS.filter(function(m){return m.accSd!=null;});
+    function px(v){return L+(v-x0)/(x1-x0)*(W-L-R);}
+    function py(v){return T+(1-(v-y0)/(y1-y0))*(H-T-B);}
+    // grid + y ticks
+    for(var yv=88;yv<=96;yv+=2){
+      svg.appendChild(E("line",{x1:L,y1:py(yv),x2:W-R,y2:py(yv),class:"grid-l"}));
+      var tk=E("text",{x:L-8,y:py(yv)+4,"text-anchor":"end","font-size":11,class:"axlab"}); txt(tk,yv+"%"); svg.appendChild(tk);
+    }
+    // x ticks
+    [0.5,0.55,0.6,0.65,0.7,0.75,0.8].forEach(function(xv){
+      var t=E("text",{x:px(xv),y:H-B+18,"text-anchor":"middle","font-size":11,class:"axlab"}); txt(t,xv.toFixed(2)); svg.appendChild(t);
+    });
+    svg.appendChild(E("line",{x1:L,y1:H-B,x2:W-R,y2:H-B,class:"axis-l"}));
+    var xl=E("text",{x:(L+W-R)/2,y:H-6,"text-anchor":"middle","font-size":11.5,class:"axlab"}); txt(xl,"Pi INT8 지연 (ms / sample) — 낮을수록 좋음"); svg.appendChild(xl);
+    var yl=E("text",{x:14,y:(T+H-B)/2,"text-anchor":"middle","font-size":11.5,class:"axlab",transform:"rotate(-90 14 "+((T+H-B)/2)+")"}); txt(yl,"정확도 (%) — 5시드 평균"); svg.appendChild(yl);
+    // target 95%
+    svg.appendChild(E("line",{x1:L,y1:py(95),x2:W-R,y2:py(95),class:"target-l"}));
+    var tt=E("text",{x:W-R,y:py(95)-6,"text-anchor":"end","font-size":11,class:"target-t"}); txt(tt,"목표 1 — 95%"); svg.appendChild(tt);
+    // points
+    var SHORT={baseline:"Baseline",sdn:"SDN",eef:"Proposed (Early Exit)"};
+    // label placement: [name dy, value dy, dx, anchor] — staggered so the two close points don't collide
+    var LP={
+      baseline:{nameDy:-4,valDy:10,dx:-14,anch:"end"},
+      sdn:{nameDy:-28,valDy:-15,dx:0,anch:"middle"},
+      eef:{nameDy:24,valDy:37,dx:0,anch:"middle"}
+    };
+    pts.forEach(function(m){
+      var cx=px(m.pi),cy=py(m.acc),col="var("+FAMC[m.fam]+")";
+      // whisker (±sd on y)
+      svg.appendChild(E("line",{x1:cx,y1:py(m.acc-m.accSd),x2:cx,y2:py(m.acc+m.accSd),class:"whisker"}));
+      svg.appendChild(E("line",{x1:cx-4,y1:py(m.acc-m.accSd),x2:cx+4,y2:py(m.acc-m.accSd),class:"whisker"}));
+      svg.appendChild(E("line",{x1:cx-4,y1:py(m.acc+m.accSd),x2:cx+4,y2:py(m.acc+m.accSd),class:"whisker"}));
+      var ring=E("circle",{cx:cx,cy:cy,r:7,fill:"var(--surface)"}); svg.appendChild(ring);
+      var dot=E("circle",{cx:cx,cy:cy,r:5.5,fill:col}); svg.appendChild(dot);
+      var hit=E("circle",{cx:cx,cy:cy,r:18,fill:"transparent"}); svg.appendChild(hit);
+      var p=LP[m.key];
+      var lab=E("text",{x:cx+p.dx,y:cy+p.nameDy,"text-anchor":p.anch,"font-size":11.5,class:"val-lab"}); txt(lab,SHORT[m.key]); svg.appendChild(lab);
+      var lab2=E("text",{x:cx+p.dx,y:cy+p.valDy,"text-anchor":p.anch,"font-size":10.5,class:"axlab"}); txt(lab2,m.acc.toFixed(1)+"% · "+m.pi.toFixed(3)+" ms"); svg.appendChild(lab2);
+      bind(hit,[{v:m.name,big:true},{k:"정확도",v:m.acc.toFixed(1)+"% ±"+m.accSd},{k:"Pi INT8",v:m.pi.toFixed(3)+" ms"},{k:"Label3 F1",v:m.f1.toFixed(1)+"% ±"+m.f1Sd}]);
+    });
+  })();
+
+  // ================= 02 grouped bar: acc + f1 =================
+  (function(){
+    var svg=document.getElementById("c-acc"); if(!svg) return;
+    var W=640,H=320,L=44,R=16,T=16,B=54;
+    var y0=45,y1=95;
+    var rows=MODELS.filter(function(m){return m.accSd!=null;});
+    var n=rows.length, band=(W-L-R)/n, bw=22, gap=6;
+    function py(v){return T+(1-(v-y0)/(y1-y0))*(H-T-B);}
+    for(var yv=45;yv<=95;yv+=10){
+      svg.appendChild(E("line",{x1:L,y1:py(yv),x2:W-R,y2:py(yv),class:"grid-l"}));
+      var tk=E("text",{x:L-8,y:py(yv)+4,"text-anchor":"end","font-size":11,class:"axlab"}); txt(tk,yv+"%"); svg.appendChild(tk);
+    }
+    svg.appendChild(E("line",{x1:L,y1:py(y0),x2:W-R,y2:py(y0),class:"axis-l"}));
+    // target 95
+    svg.appendChild(E("line",{x1:L,y1:py(95),x2:W-R,y2:py(95),class:"target-l"}));
+    var tt=E("text",{x:L+2,y:py(95)-5,"font-size":11,class:"target-t"}); txt(tt,"목표 1 — 95%"); svg.appendChild(tt);
+    rows.forEach(function(m,i){
+      var cx=L+band*i+band/2;
+      var series=[{v:m.acc,sd:m.accSd,c:"--s-blue",lab:"정확도"},{v:m.f1,sd:m.f1Sd,c:"--s-orange",lab:"Label3 F1"}];
+      series.forEach(function(s,j){
+        var bx=cx - (bw+gap/2) + j*(bw+gap);
+        var top=py(s.v), h=py(y0)-top;
+        var rect=E("rect",{x:bx,y:top,width:bw,height:Math.max(0,h),rx:4,fill:"var("+s.c+")"}); svg.appendChild(rect);
+        svg.appendChild(E("rect",{x:bx,y:py(y0)-3,width:bw,height:3,fill:"var("+s.c+")"})); // square base
+        // whisker
+        if(s.sd){
+          var wx=bx+bw/2;
+          svg.appendChild(E("line",{x1:wx,y1:py(s.v-s.sd),x2:wx,y2:py(s.v+s.sd),class:"whisker"}));
+          svg.appendChild(E("line",{x1:wx-4,y1:py(s.v+s.sd),x2:wx+4,y2:py(s.v+s.sd),class:"whisker"}));
+          svg.appendChild(E("line",{x1:wx-4,y1:py(s.v-s.sd),x2:wx+4,y2:py(s.v-s.sd),class:"whisker"}));
+        }
+        var vl=E("text",{x:bx+bw/2,y:py(s.v+ (s.sd||0))-7,"text-anchor":"middle","font-size":10.5,class:"val-lab"}); txt(vl,s.v.toFixed(1)); svg.appendChild(vl);
+        var hit=E("rect",{x:bx-2,y:T,width:bw+4,height:H-T-B,fill:"transparent"}); svg.appendChild(hit);
+        bind(hit,[{v:m.name,big:true},{k:s.lab,v:s.v.toFixed(1)+"%"+(s.sd?" ±"+s.sd:"")}]);
+      });
+      var nl=E("text",{x:cx,y:H-B+18,"text-anchor":"middle","font-size":11,class:"axlab"}); txt(nl,m.name.replace("Proposed EE · ","EE ").replace(" (EE 없음)","")); svg.appendChild(nl);
+    });
+  })();
+
+  // ================= 03 latency bar =================
+  (function(){
+    var svg=document.getElementById("c-lat"); if(!svg) return;
+    var W=640,H=300,L=44,R=16,T=16,B=52;
+    var y1=1.1;
+    var n=MODELS.length, band=(W-L-R)/n, bw=42;
+    function py(v){return T+(1-v/y1)*(H-T-B);}
+    for(var yv=0;yv<=1.0;yv+=0.25){
+      svg.appendChild(E("line",{x1:L,y1:py(yv),x2:W-R,y2:py(yv),class:"grid-l"}));
+      var tk=E("text",{x:L-8,y:py(yv)+4,"text-anchor":"end","font-size":11,class:"axlab"}); txt(tk,yv.toFixed(2)); svg.appendChild(tk);
+    }
+    svg.appendChild(E("line",{x1:L,y1:py(0),x2:W-R,y2:py(0),class:"axis-l"}));
+    // target 1 ms
+    svg.appendChild(E("line",{x1:L,y1:py(1.0),x2:W-R,y2:py(1.0),class:"target-l"}));
+    var tt=E("text",{x:W-R,y:py(1.0)-6,"text-anchor":"end","font-size":11,class:"target-t"}); txt(tt,"목표 2 — 1.0 ms"); svg.appendChild(tt);
+    MODELS.forEach(function(m,i){
+      var cx=L+band*i+band/2, bx=cx-bw/2, top=py(m.pi);
+      var col="var("+FAMC[m.fam]+")";
+      svg.appendChild(E("rect",{x:bx,y:top,width:bw,height:py(0)-top,rx:4,fill:col}));
+      svg.appendChild(E("rect",{x:bx,y:py(0)-3,width:bw,height:3,fill:col}));
+      var vl=E("text",{x:cx,y:top-7,"text-anchor":"middle","font-size":11.5,class:"val-lab"}); txt(vl,m.pi.toFixed(3)); svg.appendChild(vl);
+      var nl=E("text",{x:cx,y:H-B+18,"text-anchor":"middle","font-size":11,class:"axlab"}); txt(nl,m.name.replace("Proposed EE · ","EE ").replace(" (EE 없음)","")); svg.appendChild(nl);
+      var hit=E("rect",{x:bx-3,y:T,width:bw+6,height:H-T-B,fill:"transparent"}); svg.appendChild(hit);
+      bind(hit,[{v:m.name,big:true},{k:"Pi INT8 avg",v:m.pi.toFixed(3)+" ms"},{k:"p95",v:m.p95.toFixed(3)+" ms"}]);
+    });
+    var yl=E("text",{x:14,y:(T+H-B)/2,"text-anchor":"middle","font-size":11.5,class:"axlab",transform:"rotate(-90 14 "+((T+H-B)/2)+")"}); txt(yl,"ms / sample"); svg.appendChild(yl);
+  })();
+
+  // ================= 04 exit stacked (horizontal) =================
+  (function(){
+    var svg=document.getElementById("c-exit"); if(!svg) return;
+    var W=640,H=260,L=150,R=40,T=10,B=30;
+    var rowH=36, gap=(H-T-B - rowH*MODELS.length)/(MODELS.length-1);
+    var cols=["--exit1","--exit2","--exit3"], names=["exit 1","exit 2","exit 3"];
+    function px(v){return L+v/100*(W-L-R);}
+    // x gridlines + ticks first (behind bars)
+    [0,25,50,75,100].forEach(function(xv){
+      svg.appendChild(E("line",{x1:px(xv),y1:T,x2:px(xv),y2:H-B,class:"grid-l"}));
+      var t=E("text",{x:px(xv),y:H-B+18,"text-anchor":"middle","font-size":10.5,class:"axlab"}); txt(t,xv+"%"); svg.appendChild(t);
+    });
+    MODELS.forEach(function(m,i){
+      var y=T+i*(rowH+gap);
+      var nl=E("text",{x:L-10,y:y+rowH/2+4,"text-anchor":"end","font-size":11.5,class:"val-lab"}); txt(nl,m.name.replace("Proposed EE · ","EE ").replace(" (EE 없음)","")); svg.appendChild(nl);
+      var acc=0;
+      m.exits.forEach(function(v,j){
+        if(v<=0){acc+=v;return;}
+        var xs=px(acc), xe=px(acc+v);
+        var w=xe-xs-2; // 2px surface gap
+        var rect=E("rect",{x:xs,y:y,width:Math.max(0,w),height:rowH,fill:"var("+cols[j]+")",rx:j===0?"3":(j===2?"3":"0")});
+        svg.appendChild(rect);
+        if(v>=10){
+          var lab=E("text",{x:xs+(xe-xs)/2,y:y+rowH/2+4,"text-anchor":"middle","font-size":11,fill:j===0?"#12151b":"#ffffff","font-weight":"600"}); txt(lab,v+"%"); svg.appendChild(lab);
+        }
+        var hit=E("rect",{x:xs,y:y,width:Math.max(0,xe-xs),height:rowH,fill:"transparent"}); svg.appendChild(hit);
+        bind(hit,[{v:m.name,big:true},{k:names[j],v:v+"% 에서 종료"}]);
+        acc+=v;
+      });
+    });
+  })();
+
+  // ================= table view =================
+  (function(){
+    var tb=document.getElementById("tbl"); if(!tb) return;
+    MODELS.forEach(function(m){
+      var tr=document.createElement("tr");
+      function td(s,cls){var d=document.createElement("td");if(cls)d.className=cls;d.textContent=s;tr.appendChild(d);}
+      td(m.name);
+      td(m.accSd!=null?m.acc.toFixed(1)+" ±"+m.accSd:m.acc.toFixed(1)+" *","n");
+      td(m.f1Sd!=null?m.f1.toFixed(1)+" ±"+m.f1Sd:m.f1.toFixed(1)+" *","n");
+      td(m.pi.toFixed(3),"n");
+      td(m.p95.toFixed(3),"n");
+      td(m.exits.join(" / "),"n");
+      td(m.basis);
+      tb.appendChild(tr);
+    });
+    var note=document.createElement("tr");
+    var c=document.createElement("td"); c.colSpan=7; c.style.color="var(--ink-mute)"; c.style.fontSize="0.78rem";
+    c.textContent="* Dynamic θ는 배포 체크포인트 값 (5시드 특성화 대상 아님).";
+    note.appendChild(c); tb.appendChild(note);
+  })();
+})();
+</script>
