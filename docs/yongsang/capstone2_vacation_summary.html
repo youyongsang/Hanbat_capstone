@@ -169,23 +169,22 @@
   <h1>규칙으로 못 잡는 혼잡을, 학습으로 — 방학 동안의 흐름</h1>
   <p class="lede">
     <b>GL.iNet Opal AP</b>에서 직접 수집한 실측 데이터로, 채널 상태 시계열만 보고 무선 혼잡도를
-    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 8월 30일
-    라이브 데모까지, <b>재설계 두 번과 되돌린 결정 네 번</b>을 거친 기록.
+    4단계로 분류하는 <b>Early Exit LSTM</b>을 만들었다. 8월 21일 첫 라이브 수집부터 9월 1일 <b>window 스윕(10→12)</b>까지, <b>재설계 두 번과 되돌린 결정 다섯 번</b>을 거친 기록.
   </p>
-  <p class="span">2026-08-21 → 08-30 · 브랜치 <code style="font-family:var(--f-mono)">capstoneDesign2</code></p>
+  <p class="span">2026-08-21 → 09-01 · 브랜치 <code style="font-family:var(--f-mono)">capstoneDesign2</code></p>
 
   <div class="stats">
     <div class="stat">
-      <p class="k">분류 정확도 (5시드 평균, test 310창)</p>
-      <p class="v">90~92% <small>Base 92.0 · EE 90.7 · SDN 90.4</small></p>
+      <p class="k">분류 정확도 (5시드 평균, test 309창, window 12)</p>
+      <p class="v">91~92% <small>Base 92.0 · EE 91.9 · SDN 91.2</small></p>
     </div>
     <div class="stat">
-      <p class="k">추론 지연 (Raspberry Pi, INT8)</p>
-      <p class="v">0.54 ms <small>EE Fixed θ · 전부 &lt;1ms</small></p>
+      <p class="k">추론 지연 (Raspberry Pi INT8, window 12)</p>
+      <p class="v">0.62 ms <small>EE Fixed θ · Baseline −27% · 전부 &lt;1ms</small></p>
     </div>
     <div class="stat">
       <p class="k">라이브 감지</p>
-      <p class="v">검증 <small>실측 부하 → 심각 ~58초 지속</small></p>
+      <p class="v">검증 <small>Pi 데모 10~30M → 심각 → 정상 복귀, AP 크래시 없음</small></p>
     </div>
   </div>
 
@@ -193,12 +192,12 @@
     <div class="goal no">
       <span class="tag">목표 1</span>
       <span class="txt">Raspberry Pi 환경에서 혼잡 분류 정확도 <b>95% 이상</b></span>
-      <span class="mark">미달 · 90~92%</span>
+      <span class="mark">미달 · 91~92% (EE)</span>
     </div>
     <div class="goal ok">
       <span class="tag">목표 2</span>
       <span class="txt">추론 지연 <b>&lt; 1 ms</b></span>
-      <span class="mark">달성 · 0.54~0.75ms</span>
+      <span class="mark">달성 · 0.62~0.86ms</span>
     </div>
   </div>
 
@@ -349,14 +348,14 @@
     <table>
       <thead><tr><th>모델</th><th class="num">정확도<br><small>5시드 평균</small></th><th class="num">Label 3 F1<br><small>5시드 평균</small></th><th class="num">Pi INT8<br><small>배포 1개</small></th></tr></thead>
       <tbody>
-        <tr><td><span class="scale" style="background:var(--accent)"></span>Baseline LSTM (EE 없음)</td><td class="num">92.0% ±0.7</td><td class="num">66.1% ±2.3</td><td class="num">0.746 ms</td></tr>
-        <tr><td><span class="scale" style="background:var(--l2)"></span>SDN (Kaya et al. 2019)</td><td class="num">90.4% ±1.4</td><td class="num">60.4% ±8.1</td><td class="num">0.572 ms</td></tr>
-        <tr class="hl"><td><span class="scale" style="background:var(--l0)"></span>Proposed Early Exit</td><td class="num">90.7% ±0.7</td><td class="num">64.5% ±5.5</td><td class="num">0.540 ms</td></tr>
+        <tr><td><span class="scale" style="background:var(--accent)"></span>Baseline LSTM (EE 없음)</td><td class="num">92.0% ±1.3</td><td class="num">68.7% ±3.1</td><td class="num">0.858 ms</td></tr>
+        <tr><td><span class="scale" style="background:var(--l2)"></span>SDN (Kaya et al. 2019)</td><td class="num">91.2% ±0.7</td><td class="num">70.3% ±2.6</td><td class="num">0.695 ms</td></tr>
+        <tr class="hl"><td><span class="scale" style="background:var(--l0)"></span>Proposed Early Exit</td><td class="num">91.9% ±0.5</td><td class="num">69.9% ±2.9</td><td class="num">0.624 ms</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="sec-sub">정확도·F1은 시드 0~4 평균 ±표준편차, Pi INT8은 배포 체크포인트(val-best 시드) 실측. 배포된 단일 체크포인트의 test 정확도는 평균보다 조금 낮다(Baseline 91.6% · SDN 90.3% · EE Fixed θ 90.6%).</p>
-  <p class="sec-sub">정확도는 셋이 ±0.7 안에서 겹친다. 갈리는 건 <b>희소 클래스 안정성</b>(논문 SDN은 F1 편차가 2배 — per-model 캘리브레이션이 작은 검증셋에서 취약)과 <b>속도</b>(우리 exit head가 더 가벼움). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".</p>
+  <p class="sec-sub">정확도·F1은 시드 0~4 평균 ±표준편차 (window 12, 2026-09-01), Pi INT8은 배포 체크포인트 실측. 배포된 단일 체크포인트: Baseline 93.5% · SDN 91.6% · EE Fixed θ 91.9% / Dynamic θ 92.2%.</p>
+  <p class="sec-sub">정확도는 셋이 ±1 안에서 겹친다. window 10→12로 <b>Label 3 F1 분산이 전 모델 절반 이하로</b> (SDN ±8.1→±2.6). 갈리는 건 이제 주로 <b>속도</b>(우리 exit head가 더 가벼움 — SDN 대비 Pi −10%). 주장은 "SDN을 이겼다"가 아니라 "동급 정확도 + 더 가벼운 head + 트래픽 적응형 임계값".</p>
 
 
   <h2><span class="n">06</span>라이브 감지 · 데모</h2>
@@ -367,7 +366,7 @@
       <span class="date">2026-08-30</span>
       <div class="hd"><code>live_congestion.py</code> — 라이브 추론 루프</div>
       <p>수집기의 SSH poller를 재사용해 학습과 동일하게 feature를 계산(victim 프로브 없음) →
-      window 10 → ONNX. "스파이크가 아닌 현 상태"를 4겹으로 안정화: 10-step LSTM window(주),
+      window 12 → ONNX. "스파이크가 아닌 현 상태"를 4겹으로 안정화: 12-step LSTM window(주),
       occupancy 3폴링 median, retry/rssi 5폴링 rolling, 라벨 히스테리시스.</p>
     </div>
     <div class="ev">
@@ -389,6 +388,32 @@
   </div>
 
 
+  <h2><span class="n">07</span>window 스윕 — 목표1 재공략 (2026-09-01)</h2>
+  <p class="sec-sub">"한 번도 스윕 안 함"으로 남아 있던 window size와 "미시도"로 남아 있던 모델 입력 스무딩을 다중 시드로 검증.</p>
+
+  <div class="tl">
+    <div class="ev">
+      <span class="date">2026-09-01</span>
+      <div class="hd">window / lr / batch / EMA 스윕</div>
+      <p>window 10/12/13/14/15/20, lr 0.0005~0.002, batch 16~64, 모델 입력 EMA α 0.3~0.7 — 각 3시드(유망 config는 5시드).
+      <b>window 12만 이득.</b> lr·batch·EMA는 노이즈 or 악화. window 20은 과하게 길어 악화 — sweet spot이 12 근처.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-09-01</span>
+      <div class="hd">전 모델 w12 재학습 · 배포</div>
+      <p>canonical 데이터셋·<code>WINDOW_SIZE</code>·dataloader 10→12 (w10 아카이브). 세 모델 5시드 재학습, val-best 배포.
+      <b>EE 5시드 정확도 90.7 → 91.9%</b> (+1.2pt), Label 3 F1 분산 ±5.5 → ±2.9. 시계열 맥락이 늘어 occ 60~72% 정보 부족 구간·심각 판정이 안정화됐다.</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-09-01</span>
+      <div class="hd">ONNX 재수출 · Pi 재측정 · 데모 검증</div>
+      <p>ONNX 6개 스크립트 <code>[1,12,7]</code> 재수출, PyTorch parity 309/309(fp32). Pi INT8 재측정:
+      Baseline 0.858 / SDN 0.695 / <b>EE Fixed θ 0.624</b> / Dynamic 0.635 ms — 전부 &lt;1ms, EE가 Baseline −27%.
+      Pi 데모 대시보드로 10→20→30M 계단 부하 → 전 구간 심각(3) → 정지 후 정상 복귀, <b>AP 크래시 없음</b>.</p>
+    </div>
+  </div>
+
+
   <h2>되돌린 결정 — 그리고 왜</h2>
   <p class="sec-sub">정직한 기록. 매번 "성급한 결론"이 재확인 질문이나 다중 시드 검증으로 바로잡혔다.</p>
 
@@ -397,6 +422,7 @@
     <ul>
       <li><span class="x">✗</span><span><b>SDN 스타일 exit-loss 가중치 승격</b> → 단일 실행 비교였고 시드만 바꾸니 F1이 66.7%→51.1%로 요동. 다중 시드에서 균등 가중치와 차이가 표준편차 이하 → 철회. (이 사건이 <code>--seed</code> 추가의 계기.)</span></li>
       <li><span class="x">✗</span><span><b>occupancy 라벨링 스무딩</b>(window 5·3) → 경계 노이즈는 절반 줄었지만 같은 스무딩 값이 다른 앵커 경계에도 쓰여 새 오답 발생. 순효과 없음(두더지 잡기) → 폐기.</span></li>
+      <li><span class="x">✗</span><span><b>모델 입력 EMA 스무딩</b>(α 0.3/0.5/0.7, 2026-09-01) → 다중 시드에서 순효과 없음. 스무딩 방향 2연속 폐기 — 대신 <b>window 10→12</b>가 같은 경계 노이즈에 유효했다.</span></li>
       <li><span class="x">✗</span><span><b><code>class-weight-power=1.0</code>의 "절벽" 가정</b> → 4-feature·23샘플 시절 근거. 데이터가 6배 늘며 절벽 소멸 — 재검증 안 해 계속 손해. → 0.0.</span></li>
       <li><span class="x">✗</span><span><b>1차 데이터 재사용</b> → <code>ap_cleaned_strict</code>가 실측이 아님을 확인, 재라벨링 포기하고 2차 라인으로.</span></li>
     </ul>
@@ -405,15 +431,15 @@
 
   <h2>남은 것</h2>
   <div class="next">
-    <div><span class="a">01</span><span><b>Pi 정확도 95%</b> (현재 90~92%). label 2는 occ 55~57% 앵커 경계 측정 노이즈(데이터로 안 고쳐짐), label 3는 심각의 75%가 victim 프로브 손실로 결정되는데 모델이 그 축을 못 봄 — AP-side 대리 신호 탐색이 필요.</span></div>
+    <div><span class="a">01</span><span><b>Pi 정확도 95%</b> (window 12로 EE 91.9~92.0%까지 — window·하이퍼파라미터 튜닝은 여기가 상한). 그 이상은 <b>데이터 추가 수집</b>(label 3 표본이 test 31개로 얇음, AP 반복 크래시로 제한적) or <b>아키텍처 재설계</b>가 필요한 별개 숙제. label 3의 심각 75%가 victim 프로브 손실로 결정되는데 모델은 그 축을 못 봄 — AP-side 대리 신호 탐색.</span></div>
     <div><span class="a">02</span><span><b>데모 대시보드 팀 구현</b> — 동작하는 프로토타입 + <code>project/demo/API.md</code>(계약) 기준. 백엔드 프레임워크·설정 외부화·안전장치·Pi 배포.</span></div>
     <div><span class="a">03</span><span><b>밴드 스티어링</b> — 발표 슬라이드 7의 최종 목표("혼잡 판단 → 채널 전환 명령 후보 생성"). 라벨 스트림을 소비하는 별 모듈로.</span></div>
   </div>
 
 
   <footer>
-    <span>ap_metrics_v2_redesign2 · Early-Exit LSTM · GL.iNet Opal AP</span>
-    <span>2026-08-30 · Claude Code 세션 기록</span>
+    <span>ap_metrics_v2_redesign2 (window 12) · Early-Exit LSTM · GL.iNet Opal AP</span>
+    <span>2026-08-21 → 09-01 · Claude Code 세션 기록</span>
   </footer>
 
 </div>

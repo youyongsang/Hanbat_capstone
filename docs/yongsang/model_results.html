@@ -153,6 +153,26 @@
   </section>
 
   <section>
+    <h2><span class="step">변경</span> window 10 → 12 (2026-09-01) — 무엇이 바뀌었나</h2>
+    <p class="lede">목표1 재공략. window/lr/batch/모델입력 EMA 스윕에서 <b>window 12만 이득</b> (lr·batch·EMA는 노이즈/악화, window 20은 과길어 악화). 시계열 맥락이 늘어(≈2폴링=2~4초) occ 60~72% 정보 부족 구간·심각 판정이 안정화. 상세: <code>.work-log/current.md</code> 15차 · <code>capstone2_vacation_summary.html</code> §07.</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>지표 (기준)</th><th class="n">window 10</th><th class="n">window 12</th><th class="n">Δ</th></tr></thead>
+      <tbody>
+        <tr><td>EE 정확도 (5시드 평균)</td><td class="n">90.7% ±0.7</td><td class="n">91.9% ±0.5</td><td class="n">+1.2pt</td></tr>
+        <tr><td>EE Label 3 F1 (5시드)</td><td class="n">64.5% ±5.5</td><td class="n">69.9% ±2.9</td><td class="n">+5.4pt · 분산 절반</td></tr>
+        <tr><td>SDN Label 3 F1 분산</td><td class="n">±8.1</td><td class="n">±2.6</td><td class="n">1/3</td></tr>
+        <tr><td>EE Fixed θ 배포 체크포인트</td><td class="n">90.6%</td><td class="n">91.9%</td><td class="n">+1.3pt</td></tr>
+        <tr><td>Baseline 배포 체크포인트</td><td class="n">91.6%</td><td class="n">93.5%</td><td class="n">+1.9pt</td></tr>
+        <tr><td>EE Fixed θ Pi INT8 지연</td><td class="n">0.540 ms</td><td class="n">0.624 ms</td><td class="n">+0.08 (step +2)</td></tr>
+        <tr><td>목표2 (&lt; 1 ms)</td><td class="n">달성</td><td class="n">달성</td><td class="n">유지</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="axis note">ONNX 6개 파이프라인 <code>[1,12,7]</code> 재수출 (PyTorch parity fp32 309/309), Pi 번들 sync, Pi 데모 대시보드 10→30M 계단 부하 검증(AP 크래시 없음) — 코드·데이터·ONNX·문서·발표자료 전 계층 w12 일관.</p>
+  </section>
+
+  <section>
     <h2><span class="step">01</span> 정확도 vs 지연 — 한 장</h2>
     <p class="lede">세 모델의 정확도는 오차범위 안에서 겹친다(세로 폭). 갈리는 건 지연(가로) — <b>Proposed(Early Exit)가 가장 빠르다</b>. Proposed의 가치 주장이 "정확도"가 아니라 "속도·효율"인 이유. (전부 window 12 — 정확도 5시드, 지연 Pi INT8 실측 2026-09-01.)</p>
     <div class="charts">

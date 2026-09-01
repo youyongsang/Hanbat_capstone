@@ -348,7 +348,7 @@
         <span class="op">▶ <span class="plus">+1</span> sta_tx_bitrate_mean</span>
         <span class="box now">7 = 현행</span>
       </div>
-      <p style="color:var(--ink-mute); font-size:0.78rem; margin:0.7rem 0 0;">9 − 2 − 1 + 1 = 7. <code>latency_ms</code>·<code>probe_jitter_ms</code>·<code>probe_loss_pct</code>는 <b>라벨을 만드는 축</b>이라 모델 입력에서 뺐다(정답 leakage). 상세: <code>model_features.html</code> §5.</p>
+      <p style="color:var(--ink-mute); font-size:0.78rem; margin:0.7rem 0 0;">9 − 2 − 1 + 1 = 7. <code>latency_ms</code>·<code>probe_jitter_ms</code>·<code>probe_loss_pct</code>는 <b>라벨을 만드는 축</b>이라 모델 입력에서 뺐다(정답 leakage). 상세: <code>model_features.html</code> §5.<br><b>sliding window: 10 → 12</b> (2026-09-01 스윕 — EE 정확도 +1.2pt, Label3 F1 분산 절반). 텐서 <code>[1, 12, 7]</code>.</p>
     </div>
 
     <div class="callout"><span>▸</span><span><b>1학기 라인과 2차 라인은 섞어서 비교하지 않는다.</b> 1학기는 4-feature 시뮬레이션, 2차는 7-feature 실측. 1학기 Raspberry Pi 실측 결과(<code>project/results/hojung/</code>)도 1학기 모델 기준이다.</span></div>
@@ -470,7 +470,7 @@
     </table>
     </div>
 
-    <div class="callout"><span>▸</span><span><b>배포·라이브 추론에는 프로브가 없다.</b> <code>live_congestion.py</code>·데모는 <code>APPoller</code>만 재사용해서 7-feature → window 10 → scaler → ONNX INT8 → 라벨. victim 프로브(협조 싱크 필요)는 <b>라벨링 전용</b>. collector를 Pi로 옮긴 것도 관리 트래픽을 무선 채널에서 빼기 위함.</span></div>
+    <div class="callout"><span>▸</span><span><b>배포·라이브 추론에는 프로브가 없다.</b> <code>live_congestion.py</code>·데모는 <code>APPoller</code>만 재사용해서 7-feature → window 12 → scaler → ONNX INT8 → 라벨. victim 프로브(협조 싱크 필요)는 <b>라벨링 전용</b>. collector를 Pi로 옮긴 것도 관리 트래픽을 무선 채널에서 빼기 위함.</span></div>
 
     <div class="callout warn"><span>⚑</span><span><b>AP 크래시</b> — "몇 대 붙었나"보다 "각 폰이 대칭적으로 붙었나"가 핵심. 신호 강한 S26이 채널 독점, 약한 S21이 굶는 Wi-Fi capture effect. 안전 구간 대략 60M/60M · 300~420초. 상세: <code>docs/yongsang/ap_crash_analysis.html</code>.</span></div>
 
