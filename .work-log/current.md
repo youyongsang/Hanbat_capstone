@@ -1,12 +1,28 @@
 # Capstone-Design 현재 상태
 최종 업데이트: 2026-09-02 (Claude Code) — **17차: 라벨 지속성 게이트 → 재배포**. 목표1 재공략 3연타(15차 window, 16차 데이터, 17차 라벨). 배포 EE 오답 31개를 test 366창에서 분해 → 최대 오답군 `3→2`(13개) 중 **8개가 victim 프로브 1폴링짜리 스파이크**(ping 851ms 한 번 / loss 16% 한 폴링 → 창 마지막 폴링 라벨만 3, 채널 상태는 label 2). `remeasure_redesign.py --persistence-gate`(기본 ON): occupancy 심각(≥0.75) 아닌데 non-occ 축으로 심각 붙은 label 3은 **그 축이 최근 3폴링 중 2폴링 이상 유지될 때만** label 3, 아니면 혼잡으로 강등. raw label 3 319→285(−34, 전부 occ 48~73). **3모델 5시드 재학습: 정확도 EE Fixed 91.4→92.1 / Dynamic →92.6 / Baseline 91.4→92.9 / SDN 90.9→93.3, L3 recall EE 69.6→75.2(Dynamic 78.1), L3 F1 EE 77.5→82.9(Dynamic 85.2) / SDN 77.8→84.2 — 전 모델 +1.5~2.4pt, L3 recall 안 떨어짐.** 배포(val bal acc 최고): EE seed1 **93.2%**(L3 R/F1 78.6/85.7, Dynamic 83.3/87.5), Baseline seed2 93.7%, SDN seed2 **94.8%**(T=0.7). ONNX 6개 재수출: EE unified fp32 **365/365** PyTorch 일치, INT8 362/365(acc 92.9), Baseline INT8 364/365(94.0), SDN INT8 365/365(94.8). Pi 지연(w12, test 365): Baseline 0.851 / EE Fixed 0.662 / Dynamic 0.658 / SDN 0.516ms — 전부 avg <1ms(목표2), EE Fixed=Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.326/0.657/0.978 vs 0.338/0.661/0.991); SDN 평균이 낮은 건 T=0.7이 exit1을 56%로 front-load한 것. **결론: 라벨 게이트로 5시드 평균 92~93%까지(단일 배포 SDN 94.8), 95% 문턱 근접. 남은 오답 = 지속형 3↔2 + occ 72~73 경계 — 관측 한계.** pre-gate 아카이브: `*_nogate_archived_20260902`. 16차 요약: 소패킷 UDP 부하 +436행(2115→2551) → EE L3 recall 55.5→69.6%, 전체 정확도는 안 움직임(게이트가 그 벽을 부분 돌파). 15차: window/lr/batch/EMA 스윕 → window 10→12만 이득 (EE +1.2pt, L3 F1 분산 절반), 전 계층 w12 반영. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
-## ⭐ 다음 세션 시작 지점 — 데이터 더 수집 (목표1 계속) / 게이트 k·m 튜닝 / 밴드 스티어링
+## ⭐ 다음 세션 시작 지점 — ⏸ 게이트 k·m 스윕 이어서 (k2m2가 유망) / 데이터 더 수집 / 밴드 스티어링
 
 **17차까지 완료**: 라벨 지속성 게이트 + 2551행 재배포, ONNX·Pi·문서·그래프 전 계층 일관. 목표2 달성, **목표1 5시드 평균 92~93%**(단일 배포 SDN 94.8, EE 93.2) — 95% 문턱 근접.
 
+### ⏸ 게이트 k·m 스윕 — 2026-09-02 시작, 노트북 닫아야 해서 중단. 내일 이어서.
+6개 config × 5시드(EE Fixed, exp.py 하네스, w12, 게이트 데이터). **nogate·k2m2만 완료:**
+
+| config | 강등 | test L3 | acc (5시드) | L3 recall | L3 F1 | 상태 |
+|---|---|---|---|---|---|---|
+| nogate | 0 | 48 | 91.6 ±0.9 | 70.4 ±2.0 | 78.4 ±1.6 | ✅ |
+| **k=2 m=2** | 35 | 42 | ~92.3 (seed 0~3: 94.2/91.8/92.6/90.7) | ~88 (86/88/90/88) | **~85 (86/83/85/86)** | ⚠ seed 4 미완 |
+| k=3 m=2 (현행 배포) | 34 | 42 | 92.1 ±0.6 | 75.2 ±2.9 | 82.9 ±2.0 | (17차 배포 수치 — 재확인) |
+| k=3 m=3 | 68 | 37 | — | — | — | ⬜ 미실행 |
+| k=5 m=2 | 32 | 43 | — | — | — | ⬜ 미실행 |
+| k=5 m=3 | 64 | 39 | — | — | — | ⬜ 미실행 |
+
+- **k2m2 4시드가 L3 F1 ~85·recall ~88로 배포 config(k3m2)보다 좋아 보임** — seed 4 마저 돌려서 확인 필요. "최근 2폴링 둘 다 심각" = 매우 국소적 지속성 요구.
+- **재개 방법**: config별로 `python project/scripts/remeasure_redesign.py -i project/scripts/metrics_v2_pi_redesign2_relabeled_nogate_archived_20260902.csv -o <tmp>.csv --persistence-gate --gate-k K --gate-m M` → `prepare_ap_metrics_dataset.py --input <tmp>.csv --out-dir <tmp_dir>` → `train_ap_early_exit.py --data-dir <tmp_dir> --checkpoint-dir project/.tmp/km_KmM_sN --seed N` 5시드 → `evaluate_ap_early_exit.py`. (또는 scratchpad/exp.py 하네스 — 세션 날아갔으면 재작성. exp.py = train 스크립트의 val-bal 선택 + fixed-θ stepwise 평가 in-process 복제.)
+- k·m 후보: k3m2(현행)·k2m2·k3m3(엄격, 강등 2배)·k5m2(느슨). m=3 계열은 심각 클래스가 절반 가까이 줄어 위험.
+- 결정 나면 최적 config로 3모델 재배포 (18차).
+
 ### 다음에 해볼 것 (목표1)
-- **게이트 k·m 스윕** — 지금 k=3 m=2. m=3(전 폴링 심각 요구) 더 엄격, k=5 등. 5시드로. `remeasure_redesign.py --gate-k --gate-m`.
 - **데이터 더 수집** (아래 16차 레시피) — 게이트 후 남은 오답은 occ 60~73 지속형 3↔2 + occ 72~73 경계라, 그 구간 집중 수집이 효과 있을지 미검증.
 - **`collect_metrics.py`에 게이트 이식** — 현재 게이트는 `remeasure_redesign.py`(오프라인 재라벨)에만. 라이브 수집 label 컬럼은 informational이고 학습 전 항상 remeasure를 거치므로 급하진 않으나, rolling deque로 collector에도 넣으면 일관.
 
