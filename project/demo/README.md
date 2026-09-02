@@ -16,8 +16,9 @@ python project/demo/demo_server.py
 ## 실행 (라즈베리 파이 — 엣지 추론)
 
 추론·AP폴링·부하대상을 전부 Pi 로. 번들에 필요한 파일이 이미 다 있다
-(`project/deploy/raspberry_pi_ap_v2/` : `demo_server.py` `demo.html` `collect_metrics.py`
-`scaler_params.json` `*_int8_v2.onnx`).
+(`project/deploy/raspberry_pi_ap_v2/` : `demo_server.py` `demo_state.py` `demo_inference.py`
+`demo_load.py` `demo_api.py` `demo.html` `collect_metrics.py`
+`scaler_params.json` `*_int8_v2.onnx` — 2026-09-02부터 `demo_*.py` 5개 전부 있어야 동작).
 
 ```bash
 # 1) 번들 복사 (한 번)
@@ -70,6 +71,14 @@ python3 demo_server.py \
 
 ## 구조
 
-`demo_server.py` 는 `scripts/collect_metrics.py` 의 `APPoller` + 파서를 재사용해
-`scripts/live_congestion.py` 와 동일하게 feature 를 계산한다(victim 프로브 없음).
-백엔드 SSE + `POST /load`(폰별) + `GET /check`(연결확인) 를 추가한 얇은 래퍼. `demo.html` 은 서버가 서빙(동일 출처).
+**2026-09-02부터 5개 파일로 분리**(API가 한 파일에 다 있어서 혼잡하다는 피드백 반영):
+
+| 파일 | 역할 |
+|---|---|
+| `demo_server.py` | 진입점 — 인자 파싱은 `demo_state`에 맡기고 여기선 iperf3 -s 기동·추론 스레드 시작·HTTP 서버 구동만 |
+| `demo_state.py` | 설정·공유 상태(`_state`/`_load_state`)·`collect_metrics` dual-import. 나머지 4개가 전부 이걸 가져다 씀 |
+| `demo_inference.py` | `scripts/collect_metrics.py` 의 `APPoller` + 파서를 재사용해 `scripts/live_congestion.py` 와 동일하게 feature 계산(victim 프로브 없음) → ONNX 추론 |
+| `demo_load.py` | 폰별 부하 제어(SSH iperf3) + 연결확인 |
+| `demo_api.py` | **HTTP API** — `Handler`(GET/POST 라우팅)만, 로직은 위 두 모듈에 위임 |
+
+`demo.html` 은 서버가 서빙(동일 출처). 상세 계약은 `API.md` §6.5.

@@ -1,7 +1,7 @@
 # 데모 시스템 명세 — 팀 구현용
 
 > 대상: 데모 대시보드를 만드는 팀원.
-> 레퍼런스 구현: `project/demo/demo_server.py` + `demo.html` (동작·검증 완료, 아래 §7).
+> 레퍼런스 구현: `project/demo/demo_server.py`(진입점) + `demo_state.py`/`demo_inference.py`/`demo_load.py`/`demo_api.py`(2026-09-02 모듈 분리) + `demo.html` (동작·검증 완료, 아래 §7). 모듈 구성은 §6.5 참고.
 > 이 문서는 그 레퍼런스의 **계약(API·스키마·모델 입출력)** 을 고정한다. 프로덕션급으로
 > 다시 짜더라도 이 계약을 지키면 프론트/모델/부하 파트가 서로 안 깨진다.
 
@@ -215,10 +215,30 @@ python3 demo_server.py \
 | Python | `onnxruntime`, `numpy`. 노트북=capstone conda 환경, Pi=시스템 python3 (onnxruntime 1.26) |
 | ONNX/scaler | 저장소 경로에 없으면 스크립트 옆(Pi 번들)에서 자동 로드 |
 
-**Pi 번들** (`project/deploy/raspberry_pi_ap_v2/`): `demo_server.py` `demo.html`
+**Pi 번들** (`project/deploy/raspberry_pi_ap_v2/`): `demo_server.py` `demo_state.py`
+`demo_inference.py` `demo_load.py` `demo_api.py` `demo.html`
 `collect_metrics.py` `scaler_params.json` `ap_early_exit_fixed_unified_int8_v2.onnx`
-전부 포함. `scp -r` 후 위 명령으로 실행. `demo_server.py` 는 저장소/번들 양쪽에서
-같은 파일로 도는 dual-import 구조 (`live_congestion.py` 와 동일).
+전부 포함. `scp -r` 후 위 명령으로 실행(5개 `demo_*.py` 전부 필요 — 하나라도 빠지면 import 실패).
+`collect_metrics.py`와 마찬가지로 저장소/번들 양쪽에서 같은 파일로 도는 dual-import 구조
+(`demo_state.py`가 이 부분을 전담, `live_congestion.py` 와 동일 패턴).
+
+### 6.5 모듈 구성 (2026-09-02, 단일 파일이 혼잡하다는 피드백으로 분리)
+
+| 파일 | 역할 |
+|---|---|
+| `demo_server.py` | **진입점.** 인자 파싱은 `demo_state`에 위임하고, 여기선 iperf3 -s 기동 여부 판단 → 추론 스레드 시작 → `ThreadingHTTPServer` 구동만. |
+| `demo_state.py` | 설정(`parse_args()`, 상수)·공유 가변 상태(`_state`, `_load_state`, `_load_timers`, `_lock`, `_clients`)·`_broadcast()`·sys.path 부트스트랩 + `collect_metrics` dual-import. 다른 4개 모듈이 전부 이 모듈을 가져다 쓴다. |
+| `demo_inference.py` | AP 폴링 → 7-feature → window 12 → ONNX 추론 루프(`inference_loop()`). `demo_state._state`를 갱신. |
+| `demo_load.py` | 폰별 부하 제어(SSH iperf3, `set_phone_load()`)·연결확인(`check_connectivity()`)·신호세기(`phone_signals()`). |
+| `demo_api.py` | **HTTP API.** `Handler`(`BaseHTTPRequestHandler`) 하나만 있고, GET/POST 라우팅과 직렬화만 한다 — 실제 로직은 전부 `demo_load`/`demo_state`에 위임. |
+
+의존 방향은 `demo_server → {demo_inference, demo_load, demo_api} → demo_state` 한 방향이라 순환
+참조가 없다. `demo_state._state`처럼 재할당(rebind)이 필요한 공유 상태는 `import demo_state` 로
+모듈째 들고 `demo_state._state = ...`로 접근해야 다른 모듈에서도 새 값이 보인다(`from demo_state
+import _state`로 이름만 가져오면 그 안에서의 재할당이 공유 안 됨) — `demo_inference.py`가 이 패턴.
+
+리팩터링 전후 curl로 동일 시나리오 재검증 완료(연결확인·폰별 독립 부하·자동종료·동시 부하·수동
+정지) — 동작 동일. 상세: `.work-log/current.md` 20차.
 
 ---
 
@@ -270,7 +290,7 @@ python3 demo_server.py \
 레퍼런스는 **동작하는 프로토타입**이다. 프로덕션/발표용으로 팀이 정할 것:
 
 1. **백엔드 프레임워크** — 레퍼런스는 stdlib `http.server`(의존성 0). FastAPI/Flask 로 다시 짜도 되나 §3 계약 유지. 추론 루프는 별 스레드/프로세스로 분리 권장.
-2. **설정 외부화** — AP/폰 IP, 포트, `IPERF_TARGET`, `CONFIRM`, 모델 경로를 `config.json`/env 로. (지금 `demo_server.py` 상단 상수.)
+2. **설정 외부화** — AP/폰 IP, 포트, `IPERF_TARGET`, `CONFIRM`, 모델 경로를 `config.json`/env 로. (지금 `demo_state.py` 상단 상수 + `parse_args()`.)
 3. **대시보드 강화** — 레퍼런스 `demo.html` 은 최소. 팀이: 큰 게이지/애니메이션, feature별 시계열, 오답 하이라이트, 세션 녹화/리플레이, 발표용 풀스크린 모드.
 4. **부하 프로파일** — 지금은 고정 rate 버튼. 계단 자동 진행(10→20→30, N초씩), knee, 커스텀 rate 입력.
 5. **안전장치** — 신호 비대칭 시 버튼 비활성화, AP 무응답 시 자동 부하 정지, 부하 최대 지속시간 워치독.
