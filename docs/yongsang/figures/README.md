@@ -7,8 +7,8 @@
 | 파일 | 내용 | 발표에서 쓸 곳 |
 |---|---|---|
 | `01_accuracy_vs_latency` | 정확도 vs Pi INT8 지연 산점도 (5시드 평균, ±1σ) | "정확도는 동급, Proposed가 더 빠르다" 한 장 |
-| `02_accuracy_and_f1` | 전체 정확도 · Label 3(심각) F1 막대 (±표준편차) | "정확도 근소차 / SDN은 희소클래스에서 불안정(±8.1)" |
-| `03_pi_latency` | Pi INT8 평균 추론 지연 막대 (+1ms 목표선) | "목표2(<1ms) 달성, EE가 Baseline −22%" |
+| `02_accuracy_and_f1` | 전체 정확도 · Label 3(심각) F1 막대 (±표준편차) | "정확도 근소차 / 라벨 게이트 재튜닝(k2m2)으로 Label 3 F1 84~87%까지 개선" |
+| `03_pi_latency` | Pi INT8 평균 추론 지연 막대 (+1ms 목표선) | "목표2(<1ms) 달성, EE가 Baseline −28%" |
 | `04_exit_distribution` | Early Exit 종료 지점 분포 (가로 스택) | "Proposed는 대부분 exit 1~2에서 끝난다 = 속도 이득의 실체" |
 
 ## 형식
@@ -27,4 +27,4 @@ node docs/yongsang/figures/build_figures.js docs/yongsang/figures   # .svg 재�
 # PNG는 headless Chrome로: chrome --headless --screenshot=out.png --window-size=W,H fig.svg
 ```
 
-기준: `class-weight-power=0.0` · 5시드 평균 · Pi INT8 실측(`capstone@192.168.8.109`, test 310창, 2026-08-30).
+기준: `class-weight-power=0.0` · window 12 · 라벨 지속성 게이트 k=2/m=2(18차) · 5시드 평균 · Pi INT8 실측(`capstone@192.168.8.109`, test 365창, 2026-09-02).

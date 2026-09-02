@@ -100,39 +100,51 @@
     "rssi_moving_avg_dbm": -35.0,
     "sta_tx_bitrate_mean": 60.0
   },
-  "load": "30M"                         // 현재 걸려있는 부하 ("off"|"10M"|"20M"|"30M")
+  "load": { "s21": "off", "s26": "30M" }  // 폰별 현재 부하 ("off"|"10M"|"20M"|"30M"|"40M"), 2026-09-02부터 폰별 독립
 }
 ```
 
 > **`label` vs `raw_label`**: `raw_label` 이 모델의 실제 출력이다. `label` 은
 > "원시 예측이 N폴링(레퍼런스 5) 연속 같을 때만 갱신"하는 **후처리 debounce** —
 > 모델·학습·평가에는 없다. 리포트의 모든 정확도 수치(90~92% 등)는 `raw_label` 기준.
-> 프론트는 둘 다 표시해야 정직하다(레퍼런스 `demo.html` 은 좌우 2패널).
+> 프론트는 둘 다 표시해야 정직하다(레퍼런스 `demo.html` 은 좌우 2패널 + 우측 상단 배지).
 
-### `POST /load`  — 부하 제어
+### `POST /load`  — 부하 제어 (2026-09-02, 폰별 독립 + 자동 종료로 변경)
 
 요청:
 ```json
-{ "rate": "20M" }        // "off" | "10M" | "20M" | "30M"  (그 외는 400)
+{ "phone": "s26", "rate": "20M" }   // phone: "s21"|"s26" (그 외 400)
+                                      // rate: "off"|"10M"|"20M"|"30M"|"40M" (그 외 400)
 ```
 
-동작: 두 폰에 SSH → 기존 `iperf3` kill → (`off` 아니면) 새 `iperf3` 시작:
+동작: 지정한 폰에만 SSH → 기존 `iperf3` kill → (`off` 아니면) 새 `iperf3` 시작:
 ```
-iperf3 -u -c 192.168.8.226 -p <5201|5202> -b <rate> -l 1400 -t 3600
+iperf3 -u -c 192.168.8.226 -p <5201|5202> -b <rate> -l 1400 -t 15   # LOAD_DURATION_S(10) + 5 여유
 ```
-(nohup 백그라운드, 다음 `/load` 나 서버 종료 시 교체/정지.)
+서버가 `LOAD_DURATION_S`(기본 10초) 뒤 `threading.Timer`로 자동 `off` 처리한다(같은 폰에 새
+`/load`가 오면 기존 타이머는 취소). `iperf3` 자체의 `-t`도 짧게 잡아 타이머가 죽어도 자동 종료되는
+이중 안전장치. 다른 폰의 부하엔 영향 없음(박스 2개가 완전히 독립).
 
 응답:
 ```json
-{ "ok": true, "rate": "20M", "phones": { "s21": "started", "s26": "started" } }
+{ "ok": true, "phone": "s26", "rate": "20M", "duration_s": 10 }
 ```
-실패 시 `phones` 값이 `"실패: <에러>"`, rate 오류면 `{ "ok": false, "error": "..." }` + 400.
+실패 시 `{ "ok": false, "error": "..." }` + 400 (`phone`/`rate` 오류, SSH 실패 등).
+
+### `GET /check`  — 연결확인 (2026-09-02 신규)
+
+Pi(서버 자신)·AP·S21·S26을 한 번에 점검. "연결확인" 버튼용.
+```json
+{ "pi": true, "ap": true, "s21": true, "s26": false, "all_ok": false }
+```
+`pi`는 이 요청이 처리됐다는 것 자체로 항상 `true`. `ap`는 최근 AP 폴링이 정상(`ready` 이거나
+"AP 응답 없음" 메시지가 아님)인지. `s21`/`s26`은 그 폰에 SSH `echo ok`가 4초 안에 성공했는지.
 
 ### `GET /signal`  — 폰 신호세기 (부하 전 확인용)
 ```json
 { "s21": -28, "s26": -23, "symmetric": true }
 ```
-`symmetric` = 두 폰 신호 차이 ≤ 12 dBm. **비대칭이면 낮은 부하에도 AP 크래시** (§5).
+`symmetric` = 두 폰 신호 차이 ≤ 12 dBm. **비대칭이면 동시 부하 시 낮은 쪽만 굶고 AP가 불안정해질 수 있음** (§5) — 폰별 독립 제어(2026-09-02)로 위험은 크게 줄었지만 신호 확인은 여전히 권장.
 폰이 안 붙어 있으면 해당 키 없음, AP 조회 실패면 `{ "error": "..." }`.
 
 ---
@@ -199,7 +211,7 @@ python3 demo_server.py \
 
 ---
 
-## 7. 레퍼런스 구현 상태 (검증됨, 2026-08-30)
+## 7. 레퍼런스 구현 상태 (검증됨, 2026-08-30 — 아래는 그 시점의 "두 폰 동시" 구현 기준)
 
 | | 결과 |
 |---|---|
@@ -212,6 +224,26 @@ python3 demo_server.py \
 
 로그: `project/results/yongsang/ap_v2_redesign2_demo_full_run_20260830.txt`,
 `ap_v2_redesign2_live_*_20260830.txt`.
+
+> **2026-09-02 업데이트 (API 레벨 검증 완료)**: "참가형" 요구사항(폰별 독립 부하 박스 2개, `POST /load`가
+> `{phone, rate}`로 변경, 10초 자동 종료 + 수동 정지, `GET /check` 연결확인, 우측 상단 실시간
+> 배지)에 맞춰 `demo_server.py`/`demo.html`을 재작성했다. 같은 날 후속 세션에서 폰(S21/S26) 온라인
+> 복귀 후 Pi(`capstone@192.168.8.109`)에서 기동해 curl로 실기기 검증: `GET /check` 전부 true →
+> `{phone:"s26",rate:"10M"}`만 걸어도 S21은 `off` 유지(폰별 독립) → 10초 뒤 자동 `off` 복귀
+> (throughput 13.8→0.08Mbps) → S26=20M+S21=10M 동시 걸어도 서로 안 건드림(합산 throughput
+> 25~33Mbps, raw_label 정상→경고로 반응) → S26만 수동 `{rate:"off"}`로 즉시 정지해도 S21은 그대로
+> 유지. 위 표는 여전히 구 버전(두 폰 동시 무제한 부하) 기준 기록으로 보존한다.
+>
+> **배포 절차 이슈 하나 발견·수정** (코드 버그 아님): Pi에 SSH로 `pkill -f demo_server.py; ...
+> python3 demo_server.py`를 한 명령으로 보내면, `pkill -f`가 그 SSH 명령 자신의 argv 문자열
+> (`"demo_server.py"`가 문자 그대로 들어있음)을 매칭해 스스로를 죽여 SSH 세션이 `exit 255`로
+> 끊긴다 — 흔한 `pkill -f` self-match 문제. `pkill -f '[d]emo_server.py'` (브라켓 트릭, 자기
+> 자신의 argv엔 `[d]emo_server.py`라는 리터럴이 있으므로 매칭 안 되고 실제 실행 중인
+> `demo_server.py` 프로세스만 잡음)로 회피. 서버 재시작 스크립트/문서에 반영할 것.
+>
+> **아직 안 한 것**: 브라우저 UI 시각 확인(우측 상단 배지·카운트다운 표시·연결확인 버튼 클릭
+> 인터랙션) — 이건 curl로는 못 잡는 프론트 렌더링/JS 이벤트 바인딩이라 사람이 직접
+> `http://192.168.8.109:8000/`을 열어서 확인해야 한다.
 
 ---
 

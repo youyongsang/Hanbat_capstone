@@ -285,6 +285,27 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
       <li><b>한계</b>: 지속형 <code>3→2</code> 5개 + occ 72~73 경계 <code>2→3</code> 4개는 그대로 — 게이트 밖의 관측 한계.</li>
       <li>pre-gate 라벨/체크포인트/데이터: <code>*_nogate_archived_20260902</code>.</li>
     </ul>
+
+    <h3>k·m 스윕 → k=2/m=2로 교체 <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-02, 18차)</span></h3>
+    <p class="lede">위 k=3/m=2는 "일단 정한 값"이었지 스윕으로 확정한 값이 아니었다. 같은 날 후속 세션에서 6개 config(nogate·k2m2·k3m2·k3m3·k5m2·k5m3) x 5시드로 EE Fixed를 재학습해 비교:</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>config</th><th class="n">강등</th><th class="n">test L3</th><th class="n">acc(5시드)</th><th class="n">L3 recall</th><th class="n">L3 F1</th></tr></thead>
+      <tbody>
+        <tr><td>nogate</td><td class="n">0</td><td class="n">48</td><td class="n">91.6 ±0.9</td><td class="n">70.4 ±2.0</td><td class="n">78.4 ±1.6</td></tr>
+        <tr><td><b>k=2/m=2</b></td><td class="n">35</td><td class="n">42</td><td class="n">92.2 ±1.2</td><td class="n"><b>87.1 ±2.3</b></td><td class="n"><b>85.3 ±1.2</b></td></tr>
+        <tr><td>k=3/m=2 (원안)</td><td class="n">34</td><td class="n">42</td><td class="n">92.2 ±0.7</td><td class="n">78.1 ±2.8</td><td class="n">83.1 ±2.7</td></tr>
+        <tr><td>k=3/m=3</td><td class="n">68</td><td class="n">37</td><td class="n">92.5 ±0.6</td><td class="n">82.7 ±2.2</td><td class="n">85.0 ±1.2</td></tr>
+        <tr><td>k=5/m=2</td><td class="n">32</td><td class="n">43</td><td class="n">91.6 ±0.7</td><td class="n">78.6 ±3.4</td><td class="n">80.1 ±1.5</td></tr>
+        <tr><td>k=5/m=3</td><td class="n">64</td><td class="n">39</td><td class="n">90.8 ±0.8</td><td class="n">65.6 ±3.1</td><td class="n">75.5 ±1.5</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <ul>
+      <li><b>k=2/m=2 채택</b>: "최근 2폴링 둘 다 심각"이라는 요구가 단발 스파이크는 걸러내면서도(강등 35개, nogate 대비 거의 최소) 진짜 지속형 label 3은 거의 잃지 않는 최적점 — L3 recall·F1이 6개 config 중 최고. k=3/m=3(엄격)도 F1은 근접하지만 강등이 2배(68개)라 L3 표본이 37창까지 줄어 recall 손해가 큼.</li>
+      <li>raw label 3: 319 → <b>284</b>(k2m2, k3m2의 285와 거의 같은 개수지만 강등되는 행이 일부 다름). 3모델 재학습 결과 정확도는 ±1σ 안에서 보합, <b>L3 recall·F1은 전 모델 개선</b>(recall +6~10pt, F1 +1.5~3.0pt). 상세: <code>CLAUDE.md</code> "최신 평가 결과" · <code>.work-log/current.md</code> 18차.</li>
+      <li>k=3/m=2 시절 산출물은 <code>*_k3m2_archived_20260902</code>로 보존. <code>remeasure_redesign.py</code>의 <code>--gate-k</code> 기본값도 3→2로 갱신됨.</li>
+    </ul>
   </section>
 
   <section>

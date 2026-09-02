@@ -31,7 +31,7 @@
 | **왜 feature가 7개인가 (9→6→7), `sta_tx_bitrate_mean`은 왜** | `model_features.md` §2(7번)·§5 + `.work-log/current.md` "2026-08-29 2차" |
 | **왜 `class-weight-power=0.0`인가** | 아티팩트 "Class-Weight-Power Zero" (`.work-log/current.md` 4~5차 체크포인트에 링크·표) |
 | **왜 window size 12인가** (10→12) | `.work-log/current.md` 15차 — window/lr/batch/EMA 스윕에서 12만 이득 (EE 정확도 +1.2pt, Label3 F1 분산 절반). `docs/yongsang/capstone2_vacation_summary.html` §07 |
-| **목표1(95%) 재공략 3연타** | `.work-log/current.md` 15차(window)·16차(데이터 +436행, L3만)·17차(라벨 지속성 게이트, 전 모델 +1.5~2.4pt). `docs/yongsang/model_results.html` "변경" 절 |
+| **목표1(95%) 재공략 4연타** | `.work-log/current.md` 15차(window)·16차(데이터 +436행, L3만)·17차(라벨 지속성 게이트 k3m2)·18차(k·m 스윕 → k2m2 채택, L3 recall·F1 전 모델 개선). `docs/yongsang/model_results.html` "변경" 절 |
 | **AP가 왜 자꾸 크래시하나 / 부하는 얼마까지** | `docs/yongsang/ap_crash_analysis.{md,html}` — 신호 비대칭(capture effect)이 핵심 |
 | **ONNX를 왜 이렇게 배포했나** (staged→unified If→INT8 재조립) | `docs/yongsang/onnx_early_exit_redesign.{md,html}` |
 | **SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가** | **`docs/yongsang/sdn_comparison.html`** — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 `project/models/sdn_lstm.py` docstring (Kaya et al. 2019 재구현) + `.work-log/current.md` 8~9차 + `project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}` |

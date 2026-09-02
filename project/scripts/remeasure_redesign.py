@@ -72,7 +72,7 @@ def parse_args() -> argparse.Namespace:
             "Pass --no-persistence-gate to reproduce pre-gate runs."
         ),
     )
-    p.add_argument("--gate-k", type=int, default=3, help="persistence window (polls)")
+    p.add_argument("--gate-k", type=int, default=2, help="persistence window (polls)")
     p.add_argument("--gate-m", type=int, default=2, help="min severe polls in the window")
     return p.parse_args()
 

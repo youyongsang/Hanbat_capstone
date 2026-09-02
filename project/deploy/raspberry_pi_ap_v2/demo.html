@@ -26,6 +26,20 @@
   .dot.on{background:var(--l0);box-shadow:0 0 8px var(--l0)}
   .dot.warn{background:var(--l3);box-shadow:0 0 8px var(--l3)}
 
+  /* 우측 상단 실시간 배지 (디자인은 임시 — 확정본은 별도 작업 예정) */
+  #badge{position:fixed;top:16px;right:16px;z-index:40;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:10px 16px 11px;
+    min-width:150px;text-align:right;box-shadow:0 6px 24px rgba(0,0,0,.4);
+    transition:background .3s,border-color .3s}
+  #badge .lab{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  #badge .name{font-size:22px;font-weight:750;line-height:1.15;margin-top:1px}
+  #badge .p{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);margin-top:1px}
+  #badge.l0{border-color:var(--l0)} #badge.l0 .name{color:var(--l0)}
+  #badge.l1{border-color:var(--l1)} #badge.l1 .name{color:var(--l1)}
+  #badge.l2{border-color:var(--l2)} #badge.l2 .name{color:var(--l2)}
+  #badge.l3{border-color:var(--l3)} #badge.l3 .name{color:var(--l3)}
+  @media(max-width:640px){ #badge{position:static;margin-bottom:16px;text-align:left;min-width:0} }
+
   .states{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:760px){.states{grid-template-columns:1fr}}
 
@@ -59,19 +73,40 @@
   .feat .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:2px}
   .feat .v small{font-size:11px;color:var(--ink-2);font-weight:400}
 
-  /* 부하 컨트롤 */
+  /* 연결확인 */
+  .checkrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  button.check{font:inherit;font-weight:600;font-size:13.5px;padding:9px 15px;border-radius:8px;
+    border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+  button.check:hover{background:color-mix(in srgb,var(--accent) 15%,transparent)}
+  button.check:disabled{opacity:.5;cursor:wait}
+  .checks{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px}
+  .chk{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:7px;background:var(--panel-2)}
+  .chk .dot{width:7px;height:7px}
+  .chk.ok .dot{background:var(--l0);box-shadow:0 0 6px var(--l0)}
+  .chk.bad .dot{background:var(--l3);box-shadow:0 0 6px var(--l3)}
+  .chk.unknown .dot{background:var(--muted)}
+
+  /* 부하 컨트롤 (폰별 박스 2개) */
+  .loadboxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  @media(max-width:640px){.loadboxes{grid-template-columns:1fr}}
+  .loadbox h2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .phonepill{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:20px;
+    background:var(--panel-2);color:var(--ink-2);text-transform:none;letter-spacing:0}
+  .phonepill.active{background:var(--accent);color:#fff}
   .loadrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-  button.load{font:inherit;font-weight:600;font-size:14px;padding:11px 16px;border-radius:9px;
+  button.load{font:inherit;font-weight:600;font-size:14px;padding:11px 14px;border-radius:9px;
     border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;
     transition:all .15s}
   button.load:hover{border-color:var(--accent)}
   button.load.active{background:var(--accent);border-color:var(--accent);color:#fff}
-  button.load.stop.active{background:var(--l3);border-color:var(--l3)}
+  button.load.stop{background:transparent;border-color:var(--l3);color:var(--l3)}
+  button.load.stop.active{background:var(--l3);border-color:var(--l3);color:#fff}
   button.load:disabled{opacity:.4;cursor:wait}
   .loadinfo{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);display:flex;
-    gap:16px;flex-wrap:wrap;align-items:center}
+    gap:10px;flex-wrap:wrap;align-items:center}
   .sig{padding:3px 8px;border-radius:6px;background:var(--panel-2)}
   .sig.bad{background:color-mix(in srgb,var(--l3) 25%,transparent);color:#fff}
+  .countdown{font-weight:700;color:var(--accent)}
   .warn{color:var(--l1)}
 
   canvas{width:100%;height:200px;display:block;margin-top:4px}
@@ -82,13 +117,66 @@
 </style>
 </head>
 <body>
+<div id="badge" class="l0">
+  <div class="lab">실시간 혼잡 레벨</div>
+  <div class="name" id="badgename">—</div>
+  <div class="p" id="badgep">대기 중</div>
+</div>
+
 <div class="wrap">
   <header>
-    <h1>AP 혼잡 감지 — 라이브 데모</h1>
+    <h1>AP 혼잡 감지 — 참가형 데모</h1>
     <div class="status"><span class="dot" id="dot"></span><span id="statustext">연결 중…</span></div>
   </header>
 
-  <div class="states">
+  <div class="card">
+    <h2>연결 확인</h2>
+    <div class="checkrow">
+      <button class="check" id="btncheck">연결확인</button>
+      <div class="checks">
+        <span class="chk unknown" id="chk-pi"><span class="dot"></span>Pi</span>
+        <span class="chk unknown" id="chk-ap"><span class="dot"></span>AP</span>
+        <span class="chk unknown" id="chk-s21"><span class="dot"></span>S21</span>
+        <span class="chk unknown" id="chk-s26"><span class="dot"></span>S26</span>
+      </div>
+    </div>
+    <div class="note">버튼을 누르면 서버(파이/노트북) · AP · 두 폰(S21·S26)에 SSH로 순서대로 접속을 확인한다. 전부 초록이어야 부하 버튼이 정상 동작한다.</div>
+  </div>
+
+  <div class="loadboxes">
+    <div class="card loadbox">
+      <h2>S26 부하 <span class="phonepill" id="pill26">off</span></h2>
+      <div class="loadrow">
+        <button class="load" data-phone="s26" data-rate="10M">10M</button>
+        <button class="load" data-phone="s26" data-rate="20M">20M</button>
+        <button class="load" data-phone="s26" data-rate="30M">30M</button>
+        <button class="load" data-phone="s26" data-rate="40M">40M</button>
+        <button class="load stop" data-phone="s26" data-rate="off">정지</button>
+      </div>
+      <div class="loadinfo">
+        <span class="sig" id="sig26">S26 —</span>
+        <span id="cd26"></span>
+      </div>
+    </div>
+
+    <div class="card loadbox">
+      <h2>S21 부하 <span class="phonepill" id="pill21">off</span></h2>
+      <div class="loadrow">
+        <button class="load" data-phone="s21" data-rate="10M">10M</button>
+        <button class="load" data-phone="s21" data-rate="20M">20M</button>
+        <button class="load" data-phone="s21" data-rate="30M">30M</button>
+        <button class="load" data-phone="s21" data-rate="40M">40M</button>
+        <button class="load stop" data-phone="s21" data-rate="off">정지</button>
+      </div>
+      <div class="loadinfo">
+        <span class="sig" id="sig21">S21 —</span>
+        <span id="cd21"></span>
+      </div>
+    </div>
+  </div>
+  <div class="note" id="sigwarnnote"></div>
+
+  <div class="states" style="margin-top:16px">
     <div class="card">
       <h2>모델 출력 <span style="color:var(--muted)">— 매 폴링 argmax · 정확도 평가 기준</span></h2>
       <div class="level l0" id="rawlevel">
@@ -114,7 +202,7 @@
       <div class="note">
         모델 출력(원시)이 <b>5폴링 연속 같은 값</b>일 때만 갱신 — 경계 구간(occ 50~77%)의
         폴링 단위 흔들림을 억제한다. <b>모델·학습·평가엔 없는 후처리</b>이며, 리포트의 정확도 수치는
-        모두 왼쪽 "모델 출력" 기준이다.
+        모두 왼쪽 "모델 출력" 기준이다. 우측 상단 배지는 이 안정화 상태를 따른다.
       </div>
     </div>
   </div>
@@ -133,26 +221,6 @@
   </div>
 
   <div class="card" style="margin-top:16px">
-    <h2>부하 제어 <span style="color:var(--muted)">(두 폰 동시 iperf3 UDP)</span></h2>
-    <div class="loadrow">
-      <button class="load" data-rate="10M">10 Mbps</button>
-      <button class="load" data-rate="20M">20 Mbps</button>
-      <button class="load" data-rate="30M">30 Mbps</button>
-      <button class="load stop" data-rate="off">정지</button>
-    </div>
-    <div class="loadinfo">
-      <span>현재 부하: <b id="curload">off</b></span>
-      <span class="sig" id="sig21">S21 —</span>
-      <span class="sig" id="sig26">S26 —</span>
-      <span id="sigwarn"></span>
-    </div>
-    <div class="note">
-      30 Mbps 상한 (AP 크래시 방지). 두 폰 신호가 12 dBm 이상 차이나면 비대칭 부착으로
-      AP가 낮은 부하에도 크래시할 수 있음 — 신호 확인 후 부하.
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:16px">
     <h2>최근 90초</h2>
     <canvas id="chart"></canvas>
     <div class="chartlegend">
@@ -166,9 +234,17 @@
 <script>
 const $ = s => document.querySelector(s);
 const LCLASS = ["l0","l1","l2","l3"];
+const LNAMES = ["정상","경고","혼잡","심각"];
 const hist = [];               // {level(확정), raw(원시), occ}
 const MAXPTS = 180;            // ~90s @ 2Hz
+const LOAD_DURATION_S = 10;    // 서버 LOAD_DURATION_S 와 일치 (표시용 카운트다운)
 
+function setBadge(st){
+  const b = $("#badge");
+  b.className = LCLASS[st.label];
+  $("#badgename").textContent = st.label_name;
+  $("#badgep").textContent = "p = " + st.probs[st.label].toFixed(2);
+}
 function setLevel(st){
   $("#rawlevel").className = "level " + LCLASS[st.raw_label];
   $("#rawnum").textContent = "label " + st.raw_label;
@@ -184,6 +260,7 @@ function setLevel(st){
     bars[i].querySelector(".fill").style.width = (p*100).toFixed(1)+"%";
     bars[i].querySelector(".pv").textContent = p.toFixed(2);
   });
+  setBadge(st);
 }
 function setFeats(f, st){
   $("#f_occ").innerHTML   = f.channel_occupancy_percent.toFixed(0)+'<small> %</small>';
@@ -216,32 +293,76 @@ es.onmessage = ev => {
   draw();
 };
 
-// 부하 버튼
-let busy=false;
-function markLoad(rate){
-  $("#curload").textContent = rate;
-  document.querySelectorAll("button.load").forEach(b=>{
-    b.classList.toggle("active", b.dataset.rate===rate ||
-      (rate==="off" && b.dataset.rate==="off"));
+// ---- 폰별 부하 버튼 ----
+const countdowns = {s21:null, s26:null};
+function markLoad(load){
+  // load = {"s21": "off"|"10M"|..., "s26": ...}
+  ["s21","s26"].forEach(name=>{
+    const rate = load[name] || "off";
+    $("#pill"+name.slice(1)).textContent = rate;
+    $("#pill"+name.slice(1)).classList.toggle("active", rate!=="off");
+    document.querySelectorAll(`button.load[data-phone="${name}"]`).forEach(b=>{
+      b.classList.toggle("active", b.dataset.rate===rate);
+    });
+    if(rate === "off"){
+      clearInterval(countdowns[name]); countdowns[name]=null;
+      $("#cd"+name.slice(1)).textContent = "";
+    }
   });
 }
+function startCountdown(name){
+  clearInterval(countdowns[name]);
+  let remain = LOAD_DURATION_S;
+  const el = $("#cd"+name.slice(1));
+  el.innerHTML = `<span class="countdown">${remain}s</span> 뒤 자동 종료`;
+  countdowns[name] = setInterval(()=>{
+    remain -= 1;
+    if(remain <= 0){ clearInterval(countdowns[name]); countdowns[name]=null; el.textContent=""; return; }
+    el.innerHTML = `<span class="countdown">${remain}s</span> 뒤 자동 종료`;
+  }, 1000);
+}
+
+let busyPhone = {s21:false, s26:false};
 document.querySelectorAll("button.load").forEach(btn=>{
   btn.onclick = async ()=>{
-    if(busy) return; busy=true;
-    document.querySelectorAll("button.load").forEach(b=>b.disabled=true);
+    const phone = btn.dataset.phone, rate = btn.dataset.rate;
+    if(busyPhone[phone]) return; busyPhone[phone]=true;
+    document.querySelectorAll(`button.load[data-phone="${phone}"]`).forEach(b=>b.disabled=true);
     try{
       const r = await fetch("/load",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({rate:btn.dataset.rate})});
+        body:JSON.stringify({phone, rate})});
       const j = await r.json();
-      if(!j.ok) alert("부하 설정 실패: "+(j.error||JSON.stringify(j)));
-      else markLoad(j.rate);
+      if(!j.ok){ alert("부하 설정 실패: "+(j.error||JSON.stringify(j))); }
+      else if(rate !== "off"){ startCountdown(phone); }
+      else { clearInterval(countdowns[phone]); countdowns[phone]=null; $("#cd"+phone.slice(1)).textContent=""; }
     }catch(e){ alert("요청 실패: "+e); }
     finally{
-      busy=false;
-      document.querySelectorAll("button.load").forEach(b=>b.disabled=false);
+      busyPhone[phone]=false;
+      document.querySelectorAll(`button.load[data-phone="${phone}"]`).forEach(b=>b.disabled=false);
     }
   };
 });
+
+// ---- 연결확인 ----
+function setChk(id, ok){
+  const el = $(id);
+  el.className = "chk " + (ok===true ? "ok" : ok===false ? "bad" : "unknown");
+}
+$("#btncheck").onclick = async ()=>{
+  const btn = $("#btncheck");
+  btn.disabled = true; btn.textContent = "확인 중…";
+  ["#chk-pi","#chk-ap","#chk-s21","#chk-s26"].forEach(id=>setChk(id,null));
+  try{
+    const r = await (await fetch("/check")).json();
+    setChk("#chk-pi", r.pi); setChk("#chk-ap", r.ap);
+    setChk("#chk-s21", r.s21); setChk("#chk-s26", r.s26);
+    if(!r.all_ok) alert("일부 연결 확인 실패 — 빨간 항목을 확인하세요.");
+  }catch(e){
+    alert("연결확인 요청 실패: "+e);
+  }finally{
+    btn.disabled = false; btn.textContent = "연결확인";
+  }
+};
 
 // 신호 폴링
 async function pollSignal(){
@@ -251,8 +372,8 @@ async function pollSignal(){
       if(typeof v==="number"){ e.textContent=el.slice(-2).toUpperCase().replace("G","")+" "+v+" dBm"; }
       else { e.textContent=el.includes("21")?"S21 —":"S26 —"; } };
     set("#sig21", s.s21); set("#sig26", s.s26);
-    const w=$("#sigwarn");
-    if(s.symmetric===false){ w.textContent="⚠ 신호 비대칭 — 부하 크래시 위험"; w.className="warn";
+    const w=$("#sigwarnnote");
+    if(s.symmetric===false){ w.textContent="⚠ 신호 비대칭 — 동시 부하 시 크래시 위험 (한 폰씩 짧게 테스트 권장)"; w.className="note warn";
       $("#sig21").classList.add("bad"); $("#sig26").classList.add("bad"); }
     else { w.textContent=""; $("#sig21").classList.remove("bad"); $("#sig26").classList.remove("bad"); }
   }catch(e){}

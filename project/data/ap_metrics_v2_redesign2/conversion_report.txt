@@ -9,8 +9,8 @@ Occupancy outlier fixes: 13
 [train] 1711 samples / 20532 rows
   0:정상: 512
   1:경고: 380
-  2:혼잡: 619
-  3:심각: 200
+  2:혼잡: 620
+  3:심각: 199
 [val] 367 samples / 4404 rows
   0:정상: 110
   1:경고: 81

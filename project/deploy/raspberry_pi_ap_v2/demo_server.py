@@ -1,4 +1,4 @@
-"""데모 서버 — 버튼으로 계단형 부하를 걸고, 모델의 실시간 혼잡 예측을 웹으로 본다.
+"""데모 서버 — 참가형 웹사이트로 폰별 부하를 걸고, 모델의 실시간 혼잡 예측을 웹으로 본다.
 
 노트북에서 실행 (기본값):
     python project/demo/demo_server.py
@@ -12,11 +12,15 @@
     (live_congestion.py 와 동일 로직, victim 프로브 없음)
   - GET  /            데모 페이지
   - GET  /events      SSE — 상태를 ~2Hz 로 스트리밍
-  - POST /load        {"rate": "10M"|"20M"|"30M"|"off"}  두 폰에 iperf3 부하 제어
+  - POST /load        {"phone": "s21"|"s26", "rate": "10M"|"20M"|"30M"|"40M"|"off"}
+                       해당 폰에만 iperf3 부하. "off" 외 rate는 LOAD_DURATION_S(10초) 뒤 서버가 자동 종료.
   - GET  /signal      두 폰의 현재 신호세기 (부하 전 대칭 확인용)
+  - GET  /check       Pi(서버 자신)·AP·S21·S26 연결 상태 일괄 확인 ("연결확인" 버튼용)
   - GET  /health
 
-부하는 30M 로 상한 (AP 크래시 방지 — docs/yongsang/ap_crash_analysis.{md,html}).
+폰별 최대 40M · 10초 자동종료 (2026-09-02 참가형 데모용 — 기존 "두 폰 동시 30M 무제한"보다
+훨씬 짧고 한 폰씩이라 안전 여유가 큼. combined 다중분 부하의 크래시 위험은
+docs/yongsang/ap_crash_analysis.{md,html} 참고, 단발 10초는 그 영역 밖).
 iperf3 -s 서버(포트 2개)는 서버 시작 시 --iperf-target 이 로컬이면 자동 기동.
 """
 
@@ -65,7 +69,8 @@ FEATURES = (
 WINDOW = 12  # matches utils.ap_features.WINDOW_SIZE + the [1,12,7] ONNX (10->12, 2026-09-01).
 CONFIRM = 5                              # 라벨 히스테리시스 (표시/제어용 후처리, 모델·평가엔 없음)
 LABELS = ["정상", "경고", "혼잡", "심각"]
-ALLOWED_RATES = {"10M", "20M", "30M", "off"}
+ALLOWED_RATES = {"10M", "20M", "30M", "40M", "off"}
+LOAD_DURATION_S = 10                     # 부하 버튼 클릭 시 자동 종료까지 걸리는 시간
 PHONE_MAC_PREFIX = {"s21": "06:0f", "s26": "ca:79"}  # dhcp.leases 기준
 
 MODEL_NAME = "ap_early_exit_fixed_unified_int8_v2.onnx"
@@ -112,7 +117,8 @@ PHONES = {
 _lock = threading.Lock()
 _state: dict = {"ready": False, "msg": "시작 중..."}
 _clients: list[queue.Queue] = []
-_current_load = "off"
+_load_state: dict = {"s21": "off", "s26": "off"}
+_load_timers: dict[str, threading.Timer] = {}
 
 
 def _broadcast(obj: dict) -> None:
@@ -231,7 +237,7 @@ def inference_loop() -> None:
                 "raw_label": raw, "raw_name": LABELS[raw],
                 "probs": [round(float(p), 3) for p in probs],
                 "exit": exit_pt, "clients": n_clients,
-                "features": feats, "load": _current_load,
+                "features": feats, "load": dict(_load_state),
             }
         _broadcast(_state)
 
@@ -246,25 +252,55 @@ def _ssh(host: str, cmd: str, timeout: int = 8) -> tuple[int, str]:
         return 1, str(e)
 
 
-def set_load(rate: str) -> dict:
-    global _current_load
-    if rate not in ALLOWED_RATES:
-        return {"ok": False, "error": f"허용 rate: {sorted(ALLOWED_RATES)}"}
-    results = {}
-    for name, ph in PHONES.items():
-        _ssh(ph["ssh"], "pkill -f iperf3 2>/dev/null; true")
-        if rate != "off":
-            cmd = (f"nohup iperf3 -u -c {ARGS.iperf_target} -p {ph['port']} -b {rate} -l 1400 "
-                   f"-t 3600 >/dev/null 2>&1 & echo started")
-            rc, out = _ssh(ph["ssh"], cmd)
-            results[name] = "started" if rc == 0 else f"실패: {out}"
-        else:
-            results[name] = "stopped"
-    _current_load = rate
+def _broadcast_load() -> None:
+    snapshot = dict(_load_state)
     with _lock:
         if _state.get("ready"):
-            _state["load"] = rate
-    return {"ok": True, "rate": rate, "phones": results}
+            _state["load"] = snapshot
+    _broadcast({"load": snapshot})
+
+
+def _stop_phone(name: str) -> None:
+    """타이머 콜백 — LOAD_DURATION_S 뒤 자동 호출. 수동 정지도 이 경로를 탄다."""
+    ph = PHONES[name]
+    _ssh(ph["ssh"], "pkill -f iperf3 2>/dev/null; true")
+    _load_state[name] = "off"
+    _load_timers.pop(name, None)
+    _broadcast_load()
+
+
+def set_phone_load(name: str, rate: str) -> dict:
+    if name not in PHONES:
+        return {"ok": False, "error": f"알 수 없는 폰: {name} (허용: {sorted(PHONES)})"}
+    if rate not in ALLOWED_RATES:
+        return {"ok": False, "error": f"허용 rate: {sorted(ALLOWED_RATES)}"}
+
+    old_timer = _load_timers.pop(name, None)
+    if old_timer:
+        old_timer.cancel()
+
+    ph = PHONES[name]
+    _ssh(ph["ssh"], "pkill -f iperf3 2>/dev/null; true")
+
+    if rate == "off":
+        _load_state[name] = "off"
+        _broadcast_load()
+        return {"ok": True, "phone": name, "rate": "off"}
+
+    # -t 는 LOAD_DURATION_S + 여유분 — 서버 타이머가 실패해도 iperf3 자체가 끝남 (이중 안전장치).
+    cmd = (f"nohup iperf3 -u -c {ARGS.iperf_target} -p {ph['port']} -b {rate} -l 1400 "
+           f"-t {LOAD_DURATION_S + 5} >/dev/null 2>&1 & echo started")
+    rc, out = _ssh(ph["ssh"], cmd)
+    if rc != 0:
+        return {"ok": False, "error": f"{name} 부하 시작 실패: {out}"}
+
+    _load_state[name] = rate
+    timer = threading.Timer(LOAD_DURATION_S, _stop_phone, args=(name,))
+    timer.daemon = True
+    timer.start()
+    _load_timers[name] = timer
+    _broadcast_load()
+    return {"ok": True, "phone": name, "rate": rate, "duration_s": LOAD_DURATION_S}
 
 
 def phone_signals() -> dict:
@@ -294,6 +330,20 @@ def phone_signals() -> dict:
     return named
 
 
+def check_connectivity() -> dict:
+    """"연결확인" 버튼 — Pi(서버 자신)·AP·폰 2대를 한 번에 점검."""
+    result: dict = {"pi": True}  # 이 핸들러가 실행 중이라는 것 자체가 서버(파이/노트북)는 살아있다는 뜻
+    with _lock:
+        msg = str(_state.get("msg", ""))
+        ap_ready = bool(_state.get("ready")) or ("AP 응답 없음" not in msg and _state.get("features") is not None)
+    result["ap"] = ap_ready
+    for name, ph in PHONES.items():
+        rc, _ = _ssh(ph["ssh"], "echo ok", timeout=4)
+        result[name] = (rc == 0)
+    result["all_ok"] = result["pi"] and result["ap"] and result.get("s21", False) and result.get("s26", False)
+    return result
+
+
 # ---------------------------------------------------------------- http
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -317,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, json.dumps({"ready": _state.get("ready")}).encode(), "application/json")
         elif self.path == "/signal":
             self._send(200, json.dumps(phone_signals(), ensure_ascii=False).encode("utf-8"), "application/json")
+        elif self.path == "/check":
+            self._send(200, json.dumps(check_connectivity(), ensure_ascii=False).encode("utf-8"), "application/json")
         elif self.path == "/events":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -355,7 +407,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b"{}")
         except json.JSONDecodeError:
             body = {}
-        res = set_load(str(body.get("rate", "off")))
+        res = set_phone_load(str(body.get("phone", "")), str(body.get("rate", "off")))
         self._send(200 if res.get("ok") else 400,
                    json.dumps(res, ensure_ascii=False).encode("utf-8"), "application/json")
 
@@ -403,7 +455,8 @@ def main() -> None:
         pass
     finally:
         print("\n정리 중... 부하 정지")
-        set_load("off")
+        for name in PHONES:
+            set_phone_load(name, "off")
         for p in iperf_procs:
             p.terminate()
 

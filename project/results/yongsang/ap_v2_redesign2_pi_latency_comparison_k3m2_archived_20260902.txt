@@ -1,0 +1,195 @@
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-09-02 갱신 8차 — 라벨 지속성 게이트 재배포)
+
+=== 8차 재측정 (2026-09-02, window 12, 2551행+게이트, Pi INT8, test 365창, 5회 반복/샘플) ===
+capstone@192.168.8.109, onnxruntime 1.26.0. bench_baseline.py / bench_unified.py.
+라벨 지속성 게이트(단발 프로브 스파이크 label 3 → 혼잡 강등, raw 319→285) 후 3모델 재학습.
+
+| 모델 | avg(ms) | p50 | p95 | 7차 | exit 1/2/3 | 배포 acc | 5시드 acc |
+|---|---:|---:|---:|---:|---|---:|---:|
+| Baseline (EE 없음)     | 0.851 | 0.841 | 0.909 | 0.848 | -/-/100%   | 93.7% | 92.9 ±1.2 |
+| SDN (T=0.70, unified int8) | 0.516 | 0.352 | 0.982 | 0.638 | 56/33/11%  | 94.8% | 93.3 ±0.9 |
+| Proposed Fixed θ      | 0.662 | 0.649 | 0.994 | 0.607 | 29/39/32%  | 93.2% | 92.1 ±0.6 |
+| Proposed Dynamic θ    | 0.658 | 0.694 | 1.038 | 0.632 | 30/54/16%  | 93.2% | 92.6 ±0.7 |
+
+- 전부 avg <1ms — 목표2 유지. EE Fixed(0.662) = Baseline(0.851) −22%.
+- **per-exit 지연은 EE가 SDN보다 전 stage 가벼움**: exit1 0.326 vs 0.338 / exit2 0.657 vs 0.661 / exit3 0.978 vs 0.991ms.
+  EE의 last-timestep linear head < SDN pooling IC(ReduceMax+Mean) — 구조적 차이, window·데이터·게이트 무관하게 유지.
+- SDN 평균(0.516)이 이번엔 EE보다 낮은 건 캘리브레이션 T가 0.63→0.70으로 올라 exit1 비중이 32→56%로 front-load된 것.
+  threshold 정책 artifact이지 아키텍처 우위가 아님. (게이트로 label이 자기일관적이 되며 val 신뢰도↑ → T가 더 공격적으로 캘리브레이션됨.)
+- EE exit3 비중이 26→32%로 오른 건 게이트가 쉬운 단발-3창을 제거해 남은 test가 어려워진 것(occ 60~73 경계).
+- 재현성: Baseline 0.851, EE Fixed 0.662 (단일 실행, 7차와 ±0.05).
+
+------------------------------------------------------------------------
+아래는 7차(window 12, 2551행, pre-gate) 기록 — 보존용.
+------------------------------------------------------------------------
+
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-09-01 갱신 7차 — 데이터 2551행 재학습)
+
+=== 7차 재측정 (2026-09-01, window 12, 2551행, Pi INT8, test 366창) ===
+소패킷 부하로 +436행 수집 -> 2115->2551행 전 모델 재학습. window 12 그대로라 지연은 6차와 사실상 동일.
+
+| 모델 | avg(ms) | p95 | 6차(2115) | 배포 acc | 5시드 acc |
+|---|---:|---:|---:|---:|---:|
+| Baseline (EE 없음)      | 0.848 | -     | 0.858 | 88.5% (약draw) | 91.4 pm 1.7 |
+| SDN (T=0.63)            | 0.638 | 1.001 | 0.695 | 91.0%          | 90.9 pm 1.2 |
+| Proposed Fixed theta    | 0.607 | 0.964 | 0.624 | 91.8%          | 91.4 pm 0.4 |
+| Proposed Dynamic theta  | 0.632 | 1.029 | 0.635 | 91.8%          | -           |
+
+- 전부 avg <1ms — 목표2 유지. EE Fixed 0.607 = Baseline(0.848) -28%.
+- 데이터 추가(+436행)는 추론 비용 불변 (window 12 고정). 지연은 6차와 오차범위.
+- 데이터 수집의 효과는 Label 3: 5시드 recall 55.5->69.6%, F1 69.9->77.5%. 전체 정확도 유지.
+
+------------------------------------------------------------------------
+아래는 6차(window 12, 2115행) 기록 — 보존용.
+------------------------------------------------------------------------
+
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-09-01 갱신 6차 — window 12 재측정)
+
+=== 6차 재측정 (2026-09-01, window 12, Pi INT8, test 309창, 5회 반복/샘플) ===
+capstone@192.168.8.109 (up 4h), onnxruntime 1.26.0. bench_baseline.py / bench_unified.py.
+
+| 모델 | w12 avg(ms) | p50 | p95 | w10(5차) | Δ | exit 1/2/3 |
+|---|---:|---:|---:|---:|---:|---|
+| Baseline (EE 없음)      | 0.858 | 0.858 | 0.869 | 0.746 | +0.11 | -/-/100%      |
+| SDN (논문, unified int8) | 0.695 | 0.674 | 0.984 | 0.572 | +0.12 | 32/25/43%     |
+| Proposed Fixed theta    | 0.624 | 0.631 | 0.949 | 0.540 | +0.08 | 31/42/26%     |
+| Proposed Dynamic theta  | 0.635 | 0.686 | 1.027 | 0.555 | +0.08 | 32/53/15%     |
+
+- **전부 avg < 1ms — 목표2 유지.** window +2 = LSTM step 2회 추가로 avg +0.08~0.12ms (예상대로).
+- **EE Fixed(0.624)가 Baseline(0.858)보다 -27%** (w10 -28%와 동일). SDN(0.695)보다 -10% (w10 -6%에서 격차 소폭 확대 — window 길수록 SDN pooling IC 오버헤드가 커짐).
+- EE Dynamic p95 1.03ms로 순간 1ms 살짝 초과하나 avg 0.635로 여유. exit 분포는 배포 체크포인트와 일치(Fixed 31/42/26, Dynamic 32/53/15).
+- 재현성: Baseline 0.860/0.856, EE Fixed 0.620/0.628 (2회 실행, ±0.01ms).
+- SDN unified int8 그래프의 exit 분포(32/25/43)는 PyTorch 캘리브레이션(51/32/18)과 다름 — 그래프가 baked threshold를 씀. w10에서도 동일했고 지연 비교 자체는 유효.
+
+------------------------------------------------------------------------
+아래는 window 10 시절 기록 — 보존용.
+------------------------------------------------------------------------
+
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-30 갱신 5차 — SDN 논문 충실 재구현)
+
+
+=== 3차 재측정 (2026-08-30, class-weight-power=0.0, Pi INT8, test 310창, 5회 반복/샘플) ===
+
+| 모델 | Pi INT8 avg(ms) | p50 | p95 | 정확도(fp32) | Label3 recall | Label3 F1 | exit 1/2/3 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Baseline(EE 없음)       | 0.746 | 0.745 | 0.754 | 91.6% | 58.1% | 65.5% | -/-/100%        |
+| SDN-style               | 0.534 | 0.535 | 0.821 | 90.6% | 48.4% | 62.5% | 33.9/36.5/29.7% |
+| Proposed Fixed theta    | 0.540 | 0.563 | 0.858 | 90.6% | 54.8% | 68.0% | 30.3/50.3/19.4% |
+| Proposed Dynamic theta  | 0.555 | 0.613 | 0.913 | 91.0% | 54.8% | 69.4% | 31.9/57.7/10.3% |
+
+(INT8 직접 정확도: Fixed 90.3% / F1 65.3%, Dynamic 90.6% / F1 66.7%.)
+
+=== 4차 (2026-08-30 후속) — Baseline·SDN 5시드 특성화 ===
+
+Proposed EE만 5시드로 특성화했던 걸 Baseline·SDN도 동일하게(power=0.0, 시드 0~4):
+
+| 모델 | 5시드 test 정확도 | Label3 F1 | Label3 recall | val-best seed | 비고 |
+|---|---:|---:|---:|---|---|
+| Baseline   | 92.0% ±0.7 | 66.1% ±2.3 | 54.2% ±3.8 | **seed3 (val bal 89.0%)** | 기존 배포 seed0에서 교체 |
+| SDN-style  | 90.4% ±0.7 | 65.3% ±2.5 | 52.3% ±3.2 | seed0 (val bal 88.2%) | 배포 그대로 |
+| EE Fixed θ | 90.7% ±0.7 | 64.5% ±5.5 | 51.0% ±6.6 | seed4 (동률 중 F1 tiebreak) | 배포 그대로 |
+
+- **Baseline 배포 체크포인트 교체: seed0 → seed3.** seed0(val bal 87.8%)은 val-best가 아니었고 test 92.3%는 운 좋은 draw였음. seed3(val bal 89.0%, test 91.6%, L3 F1 65.5%)가 정직한 selector로는 배포 대상. ONNX 재수출·Pi 재측정 완료 — Pi INT8 0.746ms(seed0의 0.739와 오차범위, Baseline은 weight 무관 항상 3층).
+- **세 모델 5시드 평균이 거의 겹침** (92.0 / 90.4 / 90.7%, 전부 ±0.7). Baseline이 평균으로도 근소 1위지만 SDN·EE와의 차이(~1.5pt)는 시드 std 두 배 수준 — "Baseline이 확실히 낫다"보다 "셋이 비슷한데 Baseline이 약간 앞"이 정확한 서술. Label3 F1은 셋 다 64~66%로 사실상 동률.
+- SDN·EE는 배포 체크포인트 안 바뀜(val-best 그대로). SDN 재수출·재측정 불필요.
+
+power=1.0 -> 0.0 지연 변화: Baseline 0.756->0.739(≈동일, 항상 3층), SDN 0.636->0.534,
+Proposed Fixed 0.641->0.540(-16%), Dynamic 0.645->0.555(-14%). EE가 빨라진 이유는 명확 —
+power=1.0은 exit3 도달률이 52%였는데 power=0.0은 19%(Fixed)/10%(Dynamic)로 훨씬 일찍 빠짐
+(라벨3 과보호가 없어지면서 뒤 exit로 미루는 경향이 줄었음). Pi 실측 exit 분포가 fp32 eval과
+정확히 일치(30.3/50.3/19.4 vs 30.0/50.6/19.4).
+
+=== 5차 (2026-08-30 후속2) — SDN 논문 충실 재구현 ===
+
+기존 "SDN-style"은 Proposed와 백본이 100% 같아 "다른 모델과의 비교"가 아니라 "같은 모델 다른 규칙"
+이었음. Kaya et al. (Shallow-Deep Networks, ICML 2019) 논문/공식 코드대로 재구현:
+- **Internal Classifier**: `alpha·maxpool + (1-alpha)·avgpool` (timestep 전체, alpha 학습) → Linear.
+  (Proposed: 마지막 timestep → Linear)
+- **loss 가중**: 커리큘럼 램프 `cur = min(mc, 0.01 + epoch·mc/50)`, `mc = [0.15, 0.30]`, 최종 분류기 1.0.
+  (Proposed: 고정 균등 0.3/0.3/0.4)
+- **confidence threshold**: val에서 스윕해 "full-network 정확도 −1% 이내 최소 비용" 운영점 선택.
+  (Proposed: entropy θ 고정 또는 트래픽 변동 적응)
+- base 3층 LSTM·epochs·batch·lr·class-weight-power는 EE와 동일(통제 변수).
+
+| 모델 | Pi INT8(ms) | 5시드 정확도 | 5시드 L3 F1 | 배포(val-best) |
+|---|---:|---:|---:|---|
+| SDN (논문 충실)   | **0.572** | 90.4% ±1.4 | **60.4% ±8.1** | seed3 · T=0.80 · test 90.3% / L3 F1 65.3% |
+| Proposed EE Fixed | 0.540 | 90.7% ±0.7 | 64.5% ±5.5 | seed4 · test 90.6% / L3 F1 68.0% |
+
+해석 (5차 반영):
+- **4개 모델 전부 목표2(<1ms) 달성.** Baseline 0.75 / SDN 0.57 / Proposed 0.54~0.56ms.
+- **정확도는 셋이 겹침** (5시드 평균 Baseline 92.0 / SDN 90.4 / Proposed 90.7%). 갈리는 두 축:
+  1. **label3 안정성** — SDN 논문 충실은 F1 60.4%±**8.1**(편차 2배), 시드별 캘리브레이션 T가
+     0.71~0.86으로 요동. Proposed는 64.5%±5.5로 더 안정. 작은 val에서 per-model 캘리브레이션이 취약.
+  2. **속도** — SDN pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear보다 무거움
+     → 0.572 vs 0.540ms. Proposed가 -6%.
+- **발표 프레이밍**: "기존 조기종료 방법(SDN)과 동급 정확도 + 더 가벼운 exit head + 희소클래스에서
+  더 안정적 + 트래픽 적응형 임계값." "SDN을 이겼다"가 아니라 "우리 설계 선택의 효과".
+- Baseline은 정확도 근소 1위지만 EE 없음(항상 3층, 0.75ms). Proposed의 가치는 속도·연산량(구조상 ~절반).
+
+------------------------------------------------------------------------
+아래는 2차(2026-08-29, class-weight-power=1.0) 시점 기록 — 보존용.
+------------------------------------------------------------------------
+
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-08-29 갱신 2차 — sta_tx_bitrate_mean 7-feature 승격)
+
+
+배경: item 2(sta_tx_bitrate_mean escalation 지문 재검토) 다중 시드 검증(5시드 x 4개 설정)에서
+7-feature가 exit-loss 가중치와 무관하게 항상 6-feature를 이김을 확인(Label3 F1 +5~11pt).
+`ap_features.py`에 sta_tx_bitrate_mean을 7번째 입력으로 승격 -> Baseline/SDN-style/Proposed
+세 모델 전부 7-feature로 재변환·재학습(각 3시드, val balanced acc 최고 배포) -> ONNX 재수출 ->
+Pi 재측정까지 전체 파이프라인 갱신.
+
+같은 세션에서 item 1(EE exit-loss 가중치를 SDN 스타일로)의 승격도 재검토됨: 다중 시드로 보니
+SDN 가중치가 균등 가중치보다 낫다는 근거가 없었고(오히려 근소 열세), SDNLSTM은 EarlyExitLSTM과
+백본이 의도적으로 동일해서 같은 가중치를 쓰면 두 모델이 사실상 같은 네트워크가 되어 비교 자체가
+무의미해짐 -> Proposed는 균등 가중치(0.3/0.3/0.4)로 되돌림. 6-feature 시절 체크포인트/ONNX/결과는
+`*_6feat_archived_20260829.*` 및 `checkpoints/ap_v2_redesign2_6feat_archived_20260829/`,
+`data/ap_metrics_v2_redesign2_6feat_archived_20260829/`, Pi `~/ap_pi_v2/archived_6feat_20260829/`에
+전부 보존.
+
+학습 파이프라인에 `--seed` 옵션 신규 추가(`train_ap_early_exit.py`/`train_ap_sdn.py`/
+`train_ap_baseline_lstm.py`) — 그 전까지 시드 고정이 전혀 없어 단일 실행 A/B 비교가
+신뢰할 수 없었음(같은 6-feature+SDN 가중치 설정을 시드만 바꿔 재실행하면 test 정확도가
+91.3%->80.0%, Label3 F1이 66.7%->51.1%로 요동침). 이번 배포는 각 아키텍처마다 시드 0/1/2로
+학습 후 val balanced acc 최고를 선택.
+
+Pi: capstone@192.168.8.109, onnxruntime CPU, 같은 세션에서 4개 모델 전부 재측정(5회 반복/샘플 평균).
+
+=== 아키텍처 비교 (Baseline / SDN-style / Proposed, 전부 INT8, 7-feature) ===
+
+| 모델 | Pi INT8(ms) | 정확도 | Label3 recall | Label3 precision | Label3 F1 |
+|---|---:|---:|---:|---:|---:|
+| Baseline(EE 없음) | 0.756 | 88.7% | 58.1% | 69.2% | 63.2% |
+| SDN-style | 0.636 | 89.0% | 58.1% | 81.8% | 67.9% |
+| Proposed Fixed theta(균등 가중치) | 0.641 | 88.1% | 61.3% | 70.4% | 65.5% |
+| Proposed Dynamic theta(균등 가중치) | 0.645 | 87.7% | 61.3% | 67.9% | 64.4% |
+
+해석: 이번 라운드는 item 1과 달리 "Proposed가 전면 우위"라고 말할 수 없다 — SDN-style이 속도
+(0.636ms)와 Label3 F1(67.9%) 둘 다 근소하게 앞선다. Proposed는 recall이 조금 더 높다(61.3% vs
+58.1%). 세 모델 다 3시드 중 val 최고를 뽑은 단일 배포 체크포인트 비교이므로, SDN/Baseline까지
+포함한 완전한 다중 시드 특성화(이번엔 Proposed만 5시드로 했음)는 아직 안 했다 — 근소한 차이를
+아키텍처 우위로 확대 해석하지 않는다.
+
+=== 6-feature(archived) 대비 ===
+
+7-feature 승격 자체는 세 모델 전부에서 뚜렷한 이득이었다(다중 시드 평균 기준, 단일 배포
+체크포인트 숫자는 시드 변동 때문에 이 표만큼 깔끔하게 나타나지 않을 수 있음 - 위 "해석" 참고):
+
+| 설정(5시드 평균, Label3 F1) | 6-feature | 7-feature |
+|---|---:|---:|
+| Proposed, 균등 가중치 | 56.0%±3.3% | 60.9%±3.0% |
+| Proposed, SDN 가중치 | 52.0%±5.8% | 63.1%±3.6% |
+
+=== unified fp32 참고치 ===
+
+INT8 v2 검증: PyTorch fp32 참조 대비 test 310창 중 fixed 306/310, dynamic 305/310 정확히 일치
+(나머지는 엔트로피 경계값 근처 양자화 노이즈). INT8 직접 정확도: fixed/dynamic 둘 다 88.1%,
+Label3 F1 64.4%(fp32 eval 대비 근사).
+
+=== 다음에 필요한 것 ===
+
+- SDN-style·Baseline도 Proposed처럼 5시드로 완전히 특성화하면 위 "해석"의 근소한 차이가 노이즈인지
+  실제인지 더 명확해진다(이번엔 시간 관계상 3시드 중 최고만 뽑음).
+- item 1(exit-loss 가중치)은 여전히 미해결 — 이번 세션은 "균등 가중치가 SDN 가중치보다 못하다는
+  근거가 없다"까지만 확인했지, "균등이 SDN보다 낫다"를 증명한 건 아니다.

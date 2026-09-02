@@ -1,3 +1,27 @@
+AP redesign2 Raspberry Pi 실측 지연 비교 (2026-09-02 갱신 9차 — 게이트 k2m2 재배포)
+
+=== 9차 재측정 (2026-09-02, window 12, 2551행+라벨 지속성 게이트 k=2/m=2, Pi INT8, test 365창, 5회 반복/샘플) ===
+capstone@192.168.8.109 (up 34분), onnxruntime CPU. bench_baseline.py(Baseline) / bench_unified.py(SDN·EE — SDN unified int8도 exit_point를 출력해 동일 하네스로 per-exit 분해 가능).
+18차: k/m 스윕 6개 config x 5시드에서 k2m2가 k3m2(8차 배포)보다 L3 recall·F1 우위로 확인되어 채택 → 3모델 재학습·재배포 후 재측정.
+
+| 모델 | avg(ms) | p50 | p95 | 8차(k3m2) | exit 1/2/3 | 배포 acc | 5시드 acc |
+|---|---:|---:|---:|---:|---|---:|---:|
+| Baseline (EE 없음)     | 0.864 | 0.861 | 0.874 | 0.851 | -/-/100%      | 89.9%(약draw) | 92.7 ±1.5 |
+| SDN (T=0.72, unified int8) | 0.575 | 0.637 | 0.963 | 0.516 | 37.5/47.7/14.8% | 92.3% | 91.9 ±1.0 |
+| Proposed Fixed θ      | 0.625 | 0.638 | 0.959 | 0.662 | 32.9/39.5/27.7% | 92.3% | 91.7 ±0.7 |
+| Proposed Dynamic θ    | 0.632 | 0.696 | 1.034 | 0.658 | 33.4/53.7/12.9% | 92.9% | 92.3 ±0.7 |
+
+- 전부 avg <1ms — 목표2 유지. EE Fixed(0.625) = Baseline(0.864) −28%.
+- **per-exit 지연은 여전히 EE가 SDN보다 전 stage 가벼움**: exit1 0.327 vs 0.332 / exit2 0.644 vs 0.646 / exit3 0.953 vs 0.962ms.
+  EE의 last-timestep linear head < SDN pooling IC(ReduceMax+Mean) — 구조적 차이, k/m 게이트 설정과 무관하게 유지(8차 이전과 같은 패턴).
+- SDN 평균(0.575)이 EE Fixed(0.625)보다 낮은 건 이번에도 exit1 front-load(37.5% vs EE 32.9%) — T=0.72 threshold 정책 artifact.
+- Baseline 배포(89.9%)는 val-bal 최고 pick이 test에서 약한 draw였던 경우(5시드 평균 92.7%가 대표값) — 지연 자체는 EE 없이 항상 3층 실행이라 정확도와 무관하게 0.864ms.
+- 8차(k3m2) 대비: Baseline·EE Fixed/Dynamic은 오차범위 내 유사, SDN만 0.516→0.575로 소폭 상승(T가 0.70→0.72로 오르며 exit1 비중이 56%→37.5%로 줄어 뒤 exit 비중이 늘어난 것 — 마찬가지로 threshold 정책 변화 때문이지 아키텍처 변화 아님).
+
+------------------------------------------------------------------------
+아래는 8차(window 12, 2551행+k3m2 게이트) 이전 기록 — 보존용.
+------------------------------------------------------------------------
+
 AP redesign2 Raspberry Pi 실측 지연 비교 (2026-09-02 갱신 8차 — 라벨 지속성 게이트 재배포)
 
 === 8차 재측정 (2026-09-02, window 12, 2551행+게이트, Pi INT8, test 365창, 5회 반복/샘플) ===

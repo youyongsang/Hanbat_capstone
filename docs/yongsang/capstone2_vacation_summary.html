@@ -175,12 +175,12 @@
 
   <div class="stats">
     <div class="stat">
-      <p class="k">분류 정확도 (5시드 평균, test 365, window 12 · 2551행 + 라벨 게이트)</p>
-      <p class="v">92~93% <small>Base 92.9 · EE Fixed 92.1 · EE Dyn 92.6 · SDN 93.3 · 단일 배포 SDN 94.8</small></p>
+      <p class="k">분류 정확도 (5시드 평균, test 365, window 12 · 2551행 + 라벨 게이트 k=2/m=2)</p>
+      <p class="v">92~93% <small>Base 92.7 · EE Fixed 91.7 · EE Dyn 92.3 · SDN 91.9 · 단일 배포 최고 92.3</small></p>
     </div>
     <div class="stat">
       <p class="k">추론 지연 (Raspberry Pi INT8)</p>
-      <p class="v">0.66 ms <small>EE Fixed θ · Baseline −22% · 전부 &lt;1ms</small></p>
+      <p class="v">0.63 ms <small>EE Fixed θ · Baseline −28% · 전부 &lt;1ms</small></p>
     </div>
     <div class="stat">
       <p class="k">라이브 감지</p>
@@ -192,12 +192,12 @@
     <div class="goal no">
       <span class="tag">목표 1</span>
       <span class="txt">Raspberry Pi 환경에서 혼잡 분류 정확도 <b>95% 이상</b></span>
-      <span class="mark">미달 ~2pt · EE 5시드 92.1~92.6 / 배포 93.2 / 단일 배포 SDN 94.8</span>
+      <span class="mark">미달 ~3pt · EE 5시드 91.7~92.3 / 배포 92.3~92.9 / 단일 배포 최고 92.3 (k2m2 게이트로 L3 recall·F1은 전 모델 개선)</span>
     </div>
     <div class="goal ok">
       <span class="tag">목표 2</span>
       <span class="txt">추론 지연 <b>&lt; 1 ms</b></span>
-      <span class="mark">달성 · 0.52~0.85ms</span>
+      <span class="mark">달성 · 0.58~0.86ms</span>
     </div>
   </div>
 
@@ -428,6 +428,16 @@
       <p>ONNX 6개 <code>[1,12,7]</code> 재수출, EE unified fp32 parity 365/365, INT8 362/365. Pi INT8: Baseline 0.851 / SDN 0.516 /
       <b>EE Fixed θ 0.662</b> / Dynamic 0.658 ms — 전부 &lt;1ms, EE = Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움
       (SDN 평균이 낮은 건 T=0.70이 exit1 front-load).</p>
+    </div>
+    <div class="ev">
+      <span class="date">2026-09-02</span>
+      <div class="hd">게이트 k·m 스윕 → k2m2 채택, 3모델 재배포 (18차)</div>
+      <p>위 17차의 k=3/m=2는 스윕 없이 정한 값이었다. 6개 config(nogate·k2m2·k3m2·k3m3·k5m2·k5m3) x 5시드 스윕 결과
+      <b>k=2/m=2</b>("최근 2폴링 둘 다 심각")가 강등 35개로 L3 recall·F1 최고임을 확인, 채택. raw label 3 319→284.
+      3모델 재학습: 정확도는 ±1σ 안에서 보합(Baseline 92.9→92.7 / SDN 93.3→91.9 / EE Fixed 92.1→91.7 / Dynamic 92.6→92.3),
+      <b>L3 recall·F1은 전 모델 뚜렷이 개선</b>(예: EE Fixed recall 75.2→85.7%, F1 82.9→85.9%). 단일 배포 최고는 SDN·EE 92.3% —
+      17차의 SDN 94.8%보다 낮아 보이지만 그건 5시드 평균보다 튄 운 좋은 draw였다. Pi INT8 재측정: Baseline 0.864 / SDN 0.575 /
+      EE Fixed 0.625 / Dynamic 0.632ms — 전부 &lt;1ms, EE Fixed = Baseline −28%.</p>
     </div>
   </div>
 

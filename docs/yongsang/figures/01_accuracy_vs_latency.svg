@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="660" height="380" viewBox="0 0 660 380" font-family='-apple-system, "Segoe UI", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif'>
-<rect x="0" y="0" width="660" height="380" fill="#ffffff"></rect><text x="20" y="30" text-anchor="start" font-size="15" font-weight="700" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">정확도 vs Pi INT8 지연</text><text x="20" y="48" text-anchor="start" font-size="11.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">5시드 ±1σ (window 12 + 라벨 게이트) · Pi INT8 실측 · 가로축 0.45 ms · EE Dynamic(92.6%·0.658ms)은 Fixed와 겹쳐 생략</text>
+<rect x="0" y="0" width="660" height="380" fill="#ffffff"></rect><text x="20" y="30" text-anchor="start" font-size="15" font-weight="700" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">정확도 vs Pi INT8 지연</text><text x="20" y="48" text-anchor="start" font-size="11.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">5시드 ±1σ (window 12 + k2m2 게이트) · Pi INT8 실측 · 가로축 0.45 ms · EE Dynamic(92.3%·0.632ms)은 Fixed와 겹쳐 생략</text>
 <line x1="58" y1="328" x2="636" y2="328" stroke="#e1e0d9" stroke-width="1"></line>
 <text x="48" y="332" text-anchor="end" font-size="11" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">88%</text>
 <line x1="58" y1="262.5" x2="636" y2="262.5" stroke="#e1e0d9" stroke-width="1"></line>
@@ -26,25 +26,25 @@
 <text x="18" y="197" text-anchor="middle" font-size="11.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="rotate(-90 18 197)">정확도 (%)</text>
 <line x1="58" y1="98.75" x2="636" y2="98.75" stroke="#d03b3b" stroke-width="1.5"></line>
 <text x="636" y="92.75" text-anchor="end" font-size="11" font-weight="600" fill="#d03b3b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">목표 1 — 95%</text>
-<line x1="573.0622222222221" y1="206.8249999999999" x2="573.0622222222221" y2="128.22499999999974" stroke="#4b5566" stroke-width="1.5"></line>
-<line x1="569.0622222222221" y1="206.8249999999999" x2="577.0622222222221" y2="206.8249999999999" stroke="#4b5566" stroke-width="1.5"></line>
-<line x1="569.0622222222221" y1="128.22499999999974" x2="577.0622222222221" y2="128.22499999999974" stroke="#4b5566" stroke-width="1.5"></line>
-<circle cx="573.0622222222221" cy="167.5249999999998" r="7" fill="#ffffff"></circle>
-<circle cx="573.0622222222221" cy="167.5249999999998" r="5.5" fill="#8a9099"></circle>
-<text x="559.0622222222221" y="155.5249999999998" text-anchor="end" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">Baseline</text>
-<text x="559.0622222222221" y="169.5249999999998" text-anchor="end" font-size="10.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">92.9% · 0.851 ms</text>
-<line x1="142.77333333333334" y1="183.90000000000026" x2="142.77333333333334" y2="124.9499999999999" stroke="#4b5566" stroke-width="1.5"></line>
-<line x1="138.77333333333334" y1="183.90000000000026" x2="146.77333333333334" y2="183.90000000000026" stroke="#4b5566" stroke-width="1.5"></line>
-<line x1="138.77333333333334" y1="124.9499999999999" x2="146.77333333333334" y2="124.9499999999999" stroke="#4b5566" stroke-width="1.5"></line>
-<circle cx="142.77333333333334" cy="154.4250000000001" r="7" fill="#ffffff"></circle>
-<circle cx="142.77333333333334" cy="154.4250000000001" r="5.5" fill="#eb6834"></circle>
-<text x="155.77333333333334" y="142.4250000000001" text-anchor="start" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">SDN</text>
-<text x="155.77333333333334" y="156.4250000000001" text-anchor="start" font-size="10.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">93.3% · 0.516 ms</text>
-<line x1="330.30222222222227" y1="213.375" x2="330.30222222222227" y2="174.0750000000004" stroke="#4b5566" stroke-width="1.5"></line>
-<line x1="326.30222222222227" y1="213.375" x2="334.30222222222227" y2="213.375" stroke="#4b5566" stroke-width="1.5"></line>
-<line x1="326.30222222222227" y1="174.0750000000004" x2="334.30222222222227" y2="174.0750000000004" stroke="#4b5566" stroke-width="1.5"></line>
-<circle cx="330.30222222222227" cy="193.7250000000002" r="7" fill="#ffffff"></circle>
-<circle cx="330.30222222222227" cy="193.7250000000002" r="5.5" fill="#2a78d6"></circle>
-<text x="330.30222222222227" y="217.7250000000002" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">EE Fixed θ</text>
-<text x="330.30222222222227" y="230.7250000000002" text-anchor="middle" font-size="10.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">92.1% · 0.662 ms</text>
+<line x1="589.76" y1="223.1999999999999" x2="589.76" y2="124.9499999999999" stroke="#4b5566" stroke-width="1.5"></line>
+<line x1="585.76" y1="223.1999999999999" x2="593.76" y2="223.1999999999999" stroke="#4b5566" stroke-width="1.5"></line>
+<line x1="585.76" y1="124.9499999999999" x2="593.76" y2="124.9499999999999" stroke="#4b5566" stroke-width="1.5"></line>
+<circle cx="589.76" cy="174.0749999999999" r="7" fill="#ffffff"></circle>
+<circle cx="589.76" cy="174.0749999999999" r="5.5" fill="#8a9099"></circle>
+<text x="575.76" y="162.0749999999999" text-anchor="end" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">Baseline</text>
+<text x="575.76" y="176.0749999999999" text-anchor="end" font-size="10.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">92.7% · 0.864 ms</text>
+<line x1="218.55555555555546" y1="233.0249999999998" x2="218.55555555555546" y2="167.5249999999998" stroke="#4b5566" stroke-width="1.5"></line>
+<line x1="214.55555555555546" y1="233.0249999999998" x2="222.55555555555546" y2="233.0249999999998" stroke="#4b5566" stroke-width="1.5"></line>
+<line x1="214.55555555555546" y1="167.5249999999998" x2="222.55555555555546" y2="167.5249999999998" stroke="#4b5566" stroke-width="1.5"></line>
+<circle cx="218.55555555555546" cy="200.2749999999998" r="7" fill="#ffffff"></circle>
+<circle cx="218.55555555555546" cy="200.2749999999998" r="5.5" fill="#eb6834"></circle>
+<text x="231.55555555555546" y="188.2749999999998" text-anchor="start" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">SDN</text>
+<text x="231.55555555555546" y="202.2749999999998" text-anchor="start" font-size="10.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">91.9% · 0.575 ms</text>
+<line x1="282.7777777777777" y1="229.75" x2="282.7777777777777" y2="183.8999999999998" stroke="#4b5566" stroke-width="1.5"></line>
+<line x1="278.7777777777777" y1="229.75" x2="286.7777777777777" y2="229.75" stroke="#4b5566" stroke-width="1.5"></line>
+<line x1="278.7777777777777" y1="183.8999999999998" x2="286.7777777777777" y2="183.8999999999998" stroke="#4b5566" stroke-width="1.5"></line>
+<circle cx="282.7777777777777" cy="206.8249999999999" r="7" fill="#ffffff"></circle>
+<circle cx="282.7777777777777" cy="206.8249999999999" r="5.5" fill="#2a78d6"></circle>
+<text x="282.7777777777777" y="230.8249999999999" text-anchor="middle" font-size="12" font-weight="600" fill="#12151b" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">EE Fixed θ</text>
+<text x="282.7777777777777" y="243.8249999999999" text-anchor="middle" font-size="10.5" font-weight="400" fill="#7c8494" font-family="-apple-system, &quot;Segoe UI&quot;, &quot;Malgun Gothic&quot;, &quot;Noto Sans KR&quot;, system-ui, sans-serif" transform="undefined">91.7% · 0.625 ms</text>
 </svg>

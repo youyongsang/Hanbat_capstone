@@ -3,26 +3,26 @@ Data Directory: project\data\ap_metrics_v2_redesign2
 Checkpoint: project\checkpoints\ap_v2_redesign2\ap_sdn_lstm_best.pth
 
 === AP SDN-style (Shallow-Deep Networks) ===
-Fixed Confidence Threshold (T): 0.7
-Test Accuracy: 94.8%
+Fixed Confidence Threshold (T): 0.72
+Test Accuracy: 92.3%
 Exit별 성능:
-  Exit 1 | Accuracy: 96.1% | Exit Rate: 55.6% | Avg Time: 2.0ms
-  Exit 2 | Accuracy: 95.9% | Exit Rate: 33.7% | Avg Time: 4.0ms
-  Exit 3 | Accuracy: 84.6% | Exit Rate: 10.7% | Avg Time: 8.0ms
-Overall Avg Inference Time: 3.315ms
-Measured Wall Time: 2.719ms
+  Exit 1 | Accuracy: 95.6% | Exit Rate: 37.3% | Avg Time: 2.0ms
+  Exit 2 | Accuracy: 94.9% | Exit Rate: 47.9% | Avg Time: 4.0ms
+  Exit 3 | Accuracy: 75.9% | Exit Rate: 14.8% | Avg Time: 8.0ms
+Overall Avg Inference Time: 3.847ms
+Measured Wall Time: 0.657ms
 Label별 정확도:
-  Label 0 (정상): 97.2%
-  Label 1 (경고): 92.7%
-  Label 2 (혼잡): 98.5%
-  Label 3 (심각): 81.0%
+  Label 0 (정상): 98.2%
+  Label 1 (경고): 90.2%
+  Label 2 (혼잡): 89.4%
+  Label 3 (심각): 90.5%
 시나리오별 정확도:
-  smallpkt_knee_20260901: 100.0%
+  smallpkt_knee_20260901: 94.1%
   smallpkt_light_bursty_20260901: 92.3%
-  smallpkt_step_20260901: 92.3%
-  step_run1: 92.9%
-  step_run2: 95.8%
-  step_run3: 88.2%
-  step_run4: 92.9%
+  smallpkt_step_20260901: 100.0%
+  step_run1: 90.5%
+  step_run2: 93.8%
+  step_run3: 62.5%
+  step_run4: 91.3%
   step_run5: 96.9%
-  step_run6: 97.3%
+  step_run6: 91.7%

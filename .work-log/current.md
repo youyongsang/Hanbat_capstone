@@ -1,29 +1,50 @@
 # Capstone-Design 현재 상태
-최종 업데이트: 2026-09-02 (Claude Code) — **17차: 라벨 지속성 게이트 → 재배포**. 목표1 재공략 3연타(15차 window, 16차 데이터, 17차 라벨). 배포 EE 오답 31개를 test 366창에서 분해 → 최대 오답군 `3→2`(13개) 중 **8개가 victim 프로브 1폴링짜리 스파이크**(ping 851ms 한 번 / loss 16% 한 폴링 → 창 마지막 폴링 라벨만 3, 채널 상태는 label 2). `remeasure_redesign.py --persistence-gate`(기본 ON): occupancy 심각(≥0.75) 아닌데 non-occ 축으로 심각 붙은 label 3은 **그 축이 최근 3폴링 중 2폴링 이상 유지될 때만** label 3, 아니면 혼잡으로 강등. raw label 3 319→285(−34, 전부 occ 48~73). **3모델 5시드 재학습: 정확도 EE Fixed 91.4→92.1 / Dynamic →92.6 / Baseline 91.4→92.9 / SDN 90.9→93.3, L3 recall EE 69.6→75.2(Dynamic 78.1), L3 F1 EE 77.5→82.9(Dynamic 85.2) / SDN 77.8→84.2 — 전 모델 +1.5~2.4pt, L3 recall 안 떨어짐.** 배포(val bal acc 최고): EE seed1 **93.2%**(L3 R/F1 78.6/85.7, Dynamic 83.3/87.5), Baseline seed2 93.7%, SDN seed2 **94.8%**(T=0.7). ONNX 6개 재수출: EE unified fp32 **365/365** PyTorch 일치, INT8 362/365(acc 92.9), Baseline INT8 364/365(94.0), SDN INT8 365/365(94.8). Pi 지연(w12, test 365): Baseline 0.851 / EE Fixed 0.662 / Dynamic 0.658 / SDN 0.516ms — 전부 avg <1ms(목표2), EE Fixed=Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.326/0.657/0.978 vs 0.338/0.661/0.991); SDN 평균이 낮은 건 T=0.7이 exit1을 56%로 front-load한 것. **결론: 라벨 게이트로 5시드 평균 92~93%까지(단일 배포 SDN 94.8), 95% 문턱 근접. 남은 오답 = 지속형 3↔2 + occ 72~73 경계 — 관측 한계.** pre-gate 아카이브: `*_nogate_archived_20260902`. 16차 요약: 소패킷 UDP 부하 +436행(2115→2551) → EE L3 recall 55.5→69.6%, 전체 정확도는 안 움직임(게이트가 그 벽을 부분 돌파). 15차: window/lr/batch/EMA 스윕 → window 10→12만 이득 (EE +1.2pt, L3 F1 분산 절반), 전 계층 w12 반영. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
+최종 업데이트: 2026-09-02 (Claude Code) — **19차: 데모 웹사이트 참가형으로 재작성 + 실기기 검증(API 레벨)**. `demo_server.py`/`demo.html`에 폰별 독립 부하 박스 2개(S21/S26 각 10~40M) + 연결확인 버튼(`GET /check`) + 10초 자동종료(수동 정지 가능) + 우측 상단 실시간 배지 추가. `POST /load`가 `{rate}`(두 폰 동시) → `{phone,rate}`(폰별 독립)로 계약 변경. **폰(S21/S26) 온라인 복귀 후 Pi에서 기동해 curl로 전 시나리오 실기기 검증 완료**: `/check` 전부 true, S26만 부하 걸어도 S21은 안 건드림(폰별 독립), 10초 뒤 자동 off, 두 폰 동시에 다른 rate로 걸어도 서로 안 건드림, 수동 정지가 자동타이머보다 먼저 작동. 검증 중 배포 절차 버그 하나 발견·수정: `pkill -f demo_server.py`가 SSH 원격 명령 자신의 argv에 그 문자열이 들어있어 self-match로 세션이 끊기는 문제 — `pkill -f '[d]emo_server.py'`로 회피(코드 버그 아님, 배포 시 주의사항). **브라우저 UI 시각 확인만 아직 안 함**(Claude-in-Chrome 확장 미연결) — API 레벨 로직은 전부 검증됨. 그 전 **18차: 게이트 k·m 스윕 완주 → k2m2 채택, 3모델 재배포**. 17차(k3m2)가 임시였던 게 드러남 — k/m 6개 config(nogate·k2m2·k3m2·k3m3·k5m2·k5m3) x 5시드 스윕 완주 결과 **k2=m2가 최적**(강등 35개로 거의 최소인데 L3 recall·F1은 최고). k2m2로 raw label 3 319→284(−35, k3m2의 −34와 비슷한 폭이지만 실제 강등되는 행이 다름) 재라벨 → 3모델(Baseline/SDN/EE) 5시드 재학습·재배포. **5시드 평균 (k3m2→k2m2): Baseline acc 92.9→92.7(±1.5) L3F1 81.3→84.3 / SDN 93.3→91.9(±1.0) L3F1 84.2→86.4 / EE Fixed 92.1→91.7(±0.7) L3F1 82.9→85.9 / EE Dynamic 92.6→92.3(±0.7) L3F1 85.2→86.7.** 정확도는 ±1σ 동급 유지(약간 하락~보합), **L3 F1은 전 모델 개선**(+1.5~3.0pt) — 게이트가 더 정교해지며 재현성 있는 심각 클래스가 늘어난 것으로 해석. 배포 단일(val bal acc 최고): EE Fixed seed2 92.3%(L3 P/R/F1 84/88/86) / Dynamic 92.9%(86/88/87), SDN seed0 92.3%(T=0.72, L3 83/90/86), **Baseline seed2 89.9%(약한 test draw — val bal이 test acc와 다르게 움직인 사례, 정직한 pick 유지)**. ONNX 6개 재수출 완료: EE unified fp32 365/365 PyTorch 일치, INT8 v2 fixed 364/365(92.1%)·dynamic 365/365(92.9%), Baseline INT8 365/365(89.9%), SDN INT8 364/365(92.1%, T=0.72). Pi 번들(`deploy/raspberry_pi_ap_v2/`) ONNX+scaler+test.csv sync 완료. **Pi 지연 재측정 완료(9차): Baseline 0.864 / SDN 0.575 / EE Fixed 0.625 / Dynamic 0.632ms — 전부 avg <1ms(목표2 유지), EE Fixed=Baseline −28%.** k3m2 산출물 전부 `*_k3m2_archived_20260902` 보존. 남은 건 문서·그래프 전 계층 갱신(CLAUDE.md·html·figures)뿐. 이전 17차 요약 아래 참고.
+> 17차: 라벨 지속성 게이트 → 재배포. 목표1 재공략 3연타(15차 window, 16차 데이터, 17차 라벨). 배포 EE 오답 31개를 test 366창에서 분해 → 최대 오답군 `3→2`(13개) 중 **8개가 victim 프로브 1폴링짜리 스파이크**(ping 851ms 한 번 / loss 16% 한 폴링 → 창 마지막 폴링 라벨만 3, 채널 상태는 label 2). `remeasure_redesign.py --persistence-gate`(기본 ON): occupancy 심각(≥0.75) 아닌데 non-occ 축으로 심각 붙은 label 3은 **그 축이 최근 3폴링 중 2폴링 이상 유지될 때만** label 3, 아니면 혼잡으로 강등. raw label 3 319→285(−34, 전부 occ 48~73). **3모델 5시드 재학습: 정확도 EE Fixed 91.4→92.1 / Dynamic →92.6 / Baseline 91.4→92.9 / SDN 90.9→93.3, L3 recall EE 69.6→75.2(Dynamic 78.1), L3 F1 EE 77.5→82.9(Dynamic 85.2) / SDN 77.8→84.2 — 전 모델 +1.5~2.4pt, L3 recall 안 떨어짐.** 배포(val bal acc 최고): EE seed1 **93.2%**(L3 R/F1 78.6/85.7, Dynamic 83.3/87.5), Baseline seed2 93.7%, SDN seed2 **94.8%**(T=0.7). ONNX 6개 재수출: EE unified fp32 **365/365** PyTorch 일치, INT8 362/365(acc 92.9), Baseline INT8 364/365(94.0), SDN INT8 365/365(94.8). Pi 지연(w12, test 365): Baseline 0.851 / EE Fixed 0.662 / Dynamic 0.658 / SDN 0.516ms — 전부 avg <1ms(목표2), EE Fixed=Baseline −22%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.326/0.657/0.978 vs 0.338/0.661/0.991); SDN 평균이 낮은 건 T=0.7이 exit1을 56%로 front-load한 것. **결론: 라벨 게이트로 5시드 평균 92~93%까지(단일 배포 SDN 94.8), 95% 문턱 근접. 남은 오답 = 지속형 3↔2 + occ 72~73 경계 — 관측 한계.** pre-gate 아카이브: `*_nogate_archived_20260902`. 16차 요약: 소패킷 UDP 부하 +436행(2115→2551) → EE L3 recall 55.5→69.6%, 전체 정확도는 안 움직임(게이트가 그 벽을 부분 돌파). 15차: window/lr/batch/EMA 스윕 → window 10→12만 이득 (EE +1.2pt, L3 F1 분산 절반), 전 계층 w12 반영. 그 전 14차 — **문서 대청소·표준 인용 검증·새 문서 2종**: 코드·수치 변경 0, 전부 문서. ① 신규 `docs/yongsang/model_features.{md,html}` (7-feature 레퍼런스 — 계산·스무딩·스케일러·라벨축 vs 모델입력·변천) + 신규 `docs/yongsang/congestion_label_redesign.html` (브라우저용 라벨 정의). ② **표준 앵커 인용 원문 대조** — jitter 50ms=ITU-T Y.1541 IPDV·latency 150/400=G.114 확인, **RFC 4594·G.113 인용은 부적합으로 제거**(정성 등급/E-model 계수). ③ 9→6 feature 산수 정정(−2 −1), "RSSI 3종" 표기 통일 + RSSI 설명 추가, `congestion_label_criteria` 전체 archived 재프레이밍. ④ 문서 흐름 스캔(README.html부터) — 죽은 참조 정리(`README_AP_V2.md "핵심 검증 질문"` 6곳·`API.md §4 표` SDN), 모든 `.md` 참조 → `.{md,html}`. ⑤ `README.html` 파일명 → 클릭 링크(`.html` 상대경로, 나머지 GitHub blob). 커밋 `e17a50e`~`69c9f78`(19개) 푸시. **Pi 데모 실기기 검증은 여전히 대기(Pi·AP 오프라인).** 그 전 13차: 데모 서버 Pi 이식(dual-import + 전면 인자화). 그 전 8/30: class-weight-power=0.0 승격 + SDN 논문 재구현 + 라이브 추론 + 데모 웹 대시보드. **5시드 평균 정확도: Baseline 92.0%±0.7 / SDN(논문) 90.4%±1.4 / EE 90.7%±0.7 — 정확도 동급.** 갈리는 축: label3 안정성, 속도(EE 0.540 vs SDN 0.572ms Pi INT8). 아래 "10차"부터 확인.
 
-## ⭐ 다음 세션 시작 지점 — ⏸ 게이트 k·m 스윕 이어서 (k2m2가 유망) / 데이터 더 수집 / 밴드 스티어링
+## ⭐ 다음 세션 시작 지점 — 데모 브라우저 화면(시각) 확인만 남음
 
-**17차까지 완료**: 라벨 지속성 게이트 + 2551행 재배포, ONNX·Pi·문서·그래프 전 계층 일관. 목표2 달성, **목표1 5시드 평균 92~93%**(단일 배포 SDN 94.8, EE 93.2) — 95% 문턱 근접.
+**18~19차 + 데모 실기기 검증(API 레벨)까지 완료**: k2m2 재배포 전 계층 완료, 데모 웹사이트 참가형 재작성 완료 + **API 레벨 실기기 검증 통과**(curl로 `/check`·`/load`·`/events` 전부 확인, 아래 참고). **남은 건 브라우저 UI를 사람이 직접 열어서 보는 것뿐** — Claude-in-Chrome 확장 미연결로 이번 세션엔 시각 확인을 못 함.
 
-### ⏸ 게이트 k·m 스윕 — 2026-09-02 시작, 노트북 닫아야 해서 중단. 내일 이어서.
-6개 config × 5시드(EE Fixed, exp.py 하네스, w12, 게이트 데이터). **nogate·k2m2만 완료:**
+### ✅ 데모 API 레벨 실기기 검증 완료 (2026-09-02)
+Pi(`capstone@192.168.8.109`)에서 `demo_server.py --iperf-target 192.168.8.109 --s21 s21 --s26 s26` 기동 (setsid로 백그라운드, `~/demo_server.log`). 발견·수정한 버그: **`pkill -f demo_server.py`가 SSH 원격 명령 자신의 argv 문자열("demo_server.py"가 그 안에 리터럴로 들어있음)을 자기 자신으로 오인해 죽여서 SSH 세션이 exit 255로 끊기는 self-match 문제** — `pkill -f '[d]emo_server.py'` 브라켓 트릭으로 회피(코드 자체 버그 아니고 배포 절차 이슈, `demo_server.py`엔 영향 없음, 서버 기동 절차에만 기록해 둘 것).
+- `GET /check`: `{"pi":true,"ap":true,"s21":true,"s26":true,"all_ok":true}` — 전부 통과.
+- `POST /load {"phone":"s26","rate":"10M"}` → `/events`에 `load:{"s21":"off","s26":"10M"}` 반영, throughput 0→13.8Mbps. **S21은 그대로 off — 폰별 독립 확인.**
+- 10초 뒤 자동 재확인 → `load:{"s21":"off","s26":"off"}`, throughput 0.08Mbps로 복귀. **자동종료 타이머 정상.**
+- S26=20M + S21=10M 동시 → `load:{"s21":"10M","s26":"20M"}`, throughput 25~33Mbps 합산, raw_label 0→1(경고)로 반응. **동시 독립 부하 확인.**
+- S26만 수동 `{"rate":"off"}` (1초 뒤) → `load:{"s21":"10M","s26":"off"}` — **S21은 안 건드리고 S26만 즉시 정지, 수동 override 확인.**
+- S21도 자동종료(10초) 확인 → 최종 idle 복귀.
+- **미확인**: 브라우저 UI(우측 상단 배지·카운트다운 표시·연결확인 버튼 클릭 인터랙션)는 API 레벨로 못 잡는 프론트 로직이라 사람이 직접 `http://192.168.8.109:8000/`(같은 네트워크) 열어서 확인 필요. JS는 세션 내내 코드 리뷰로 검증했지만 실제 렌더링은 미확인.
+- `project/demo/API.md` §7 콜아웃 업데이트 완료(검증 결과 반영).
 
-| config | 강등 | test L3 | acc (5시드) | L3 recall | L3 F1 | 상태 |
-|---|---|---|---|---|---|---|
-| nogate | 0 | 48 | 91.6 ±0.9 | 70.4 ±2.0 | 78.4 ±1.6 | ✅ |
-| **k=2 m=2** | 35 | 42 | ~92.3 (seed 0~3: 94.2/91.8/92.6/90.7) | ~88 (86/88/90/88) | **~85 (86/83/85/86)** | ⚠ seed 4 미완 |
-| k=3 m=2 (현행 배포) | 34 | 42 | 92.1 ±0.6 | 75.2 ±2.9 | 82.9 ±2.0 | (17차 배포 수치 — 재확인) |
-| k=3 m=3 | 68 | 37 | — | — | — | ⬜ 미실행 |
-| k=5 m=2 | 32 | 43 | — | — | — | ⬜ 미실행 |
-| k=5 m=3 | 64 | 39 | — | — | — | ⬜ 미실행 |
+### 사용자 관찰: "10M만 해도 바로 혼잡 되는데" — 진단
+30M 부하 테스트("심각") 직후 사용자가 브라우저에서 10M을 눌러보고 즉시 혼잡으로 보였다고 보고. 재현 시도 결과:
+- **깨끗한 idle 상태(occ 16~30%대로 안정)에서 S26=10M만 단독으로 걸었을 때는 계속 "정상" 유지** (occ 23~40%, throughput 8~13Mbps) — 재현 안 됨.
+- **유력 원인 1 (안정화 상태의 5폴링 debounce 잔상)**: 직전 30M 테스트로 raw는 바로 "정상"으로 복귀했지만, 화면에 보이는 "안정화 상태"(우측 상단 배지 포함)는 5폴링 연속 동일값이어야 갱신되므로 8~10초간 이전 라벨("심각")이 그대로 남아있었다. 무거운 부하 직후 바로 다음 버튼을 누르면 그 잔상을 "새 부하 때문"으로 오인하기 쉬움.
+- **유력 원인 2 (이 AP의 idle 기준선이 원래 높음)**: 부하 전혀 없는 idle 상태에서도 channel_occupancy가 16~30%로 흔들림(같은 건물 다른 2.4GHz 기기들 영향으로 추정) — 클린한 실험실 환경보다 문턱에 더 빨리 근접하는 조건.
+- 사용자에게 idle 20초 안정화 후 10M 단독 재현 요청함 — **결과 대기 중, 재현되면 실제 버그일 수 있으니 다음 세션에 확인**.
 
-- **k2m2 4시드가 L3 F1 ~85·recall ~88로 배포 config(k3m2)보다 좋아 보임** — seed 4 마저 돌려서 확인 필요. "최근 2폴링 둘 다 심각" = 매우 국소적 지속성 요구.
-- **재개 방법**: config별로 `python project/scripts/remeasure_redesign.py -i project/scripts/metrics_v2_pi_redesign2_relabeled_nogate_archived_20260902.csv -o <tmp>.csv --persistence-gate --gate-k K --gate-m M` → `prepare_ap_metrics_dataset.py --input <tmp>.csv --out-dir <tmp_dir>` → `train_ap_early_exit.py --data-dir <tmp_dir> --checkpoint-dir project/.tmp/km_KmM_sN --seed N` 5시드 → `evaluate_ap_early_exit.py`. (또는 scratchpad/exp.py 하네스 — 세션 날아갔으면 재작성. exp.py = train 스크립트의 val-bal 선택 + fixed-θ stepwise 평가 in-process 복제.)
-- k·m 후보: k3m2(현행)·k2m2·k3m3(엄격, 강등 2배)·k5m2(느슨). m=3 계열은 심각 클래스가 절반 가까이 줄어 위험.
-- 결정 나면 최적 config로 3모델 재배포 (18차).
+### ✅ Pi 지연 재측정 완료 (2026-09-02, 9차)
+Pi 온라인 복귀 → 번들 scp(`deploy/raspberry_pi_ap_v2/*` → `~/ap_pi_v2/`) → `bench_baseline.py`(Baseline)·`bench_unified.py`(SDN·EE — SDN unified int8도 `exit_point` 출력을 가지므로 동일 하네스로 per-exit 분해 가능, k3m2 시절엔 이걸 놓치고 `bench_baseline.py`로 SDN을 재서 exit 분해가 없었음. 이번엔 `bench_unified.py`로 정정).
 
-### 다음에 해볼 것 (목표1)
-- **데이터 더 수집** (아래 16차 레시피) — 게이트 후 남은 오답은 occ 60~73 지속형 3↔2 + occ 72~73 경계라, 그 구간 집중 수집이 효과 있을지 미검증.
+| 모델 | avg(ms) | p50 | p95 | k3m2(8차) | exit 1/2/3 |
+|---|---:|---:|---:|---:|---|
+| Baseline (EE 없음) | 0.864 | 0.861 | 0.874 | 0.851 | -/-/100% |
+| SDN (T=0.72, unified int8) | 0.575 | 0.637 | 0.963 | 0.516 | 37.5/47.7/14.8% |
+| Proposed Fixed θ | 0.625 | 0.638 | 0.959 | 0.662 | 32.9/39.5/27.7% |
+| Proposed Dynamic θ | 0.632 | 0.696 | 1.034 | 0.658 | 33.4/53.7/12.9% |
+
+- 전부 avg <1ms — **목표2 유지**. EE Fixed(0.625) = Baseline(0.864) −28%.
+- per-exit는 여전히 EE가 SDN보다 전 stage 가벼움(0.327/0.644/0.953 vs 0.332/0.646/0.962) — 구조적 차이, k/m 게이트와 무관하게 유지.
+- SDN 평균이 EE보다 낮은 건 이번에도 T=0.72의 exit1 front-load(37.5%) 때문 — threshold 정책 artifact.
+- k3m2 대비: Baseline·EE는 오차범위 내 유사, SDN만 0.516→0.575로 소폭 상승(T 0.70→0.72로 exit1 비중이 줄어든 영향).
+- 반영: `ap_v2_redesign2_pi_latency_comparison.txt`(신규 9차 섹션, k3m2 이하는 8차부터 전부 보존), `generate_ap_comparison.py` 배포 4곳 interpretation 텍스트 + `ap_model_comparison_redesign2.{txt,csv}` 재생성.
+
+### ✅ 문서·그래프 갱신 완료 (2026-09-02)
+`CLAUDE.md`("최신 평가 결과"·"정량적 목표")·`congestion_label_redesign.{md,html}`(§4 k·m 스윕 추가)·`model_results.html`·`sdn_comparison.html`·`onnx_early_exit_redesign.{md,html}`·`capstone2_vacation_summary.html`·`docs/README.{md,html}`·figures 4종(SVG+PNG, `build_figures.js` MODELS 갱신 후 headless Chrome로 재생성) 전부 k3m2→k2m2 수치로 교체. `ap_v2_redesign2_forecast_eval.txt`만 k2m2로 재실행 안 함(우선순위 낮음, 라벨 분포가 바뀌어 escalation recall 재확인 필요). 참고용 하네스: `project/.tmp/deploy_k2m2/`(`metrics.py`=프로덕션 체크포인트로 L3 P/R/F1 계산, `parity.py`=ONNX↔PyTorch parity), k/m 스윕 원본은 `project/.tmp/km_sweep/`.
+
+### 다음에 해볼 것 (목표1, 우선순위 낮음)
+- **데이터 더 수집** (아래 16차 레시피) — k2m2 게이트 후에도 남을 오답 구간(occ 60~73대) 재확인 필요.
 - **`collect_metrics.py`에 게이트 이식** — 현재 게이트는 `remeasure_redesign.py`(오프라인 재라벨)에만. 라이브 수집 label 컬럼은 informational이고 학습 전 항상 remeasure를 거치므로 급하진 않으나, rolling deque로 collector에도 넣으면 일관.
 
 ### 데이터 수집 재개 방법 (16차 검증됨 — AP 크래시 없이)
@@ -40,6 +61,108 @@
 ### 그 밖에 마무리할 것 (문서 관련, 급하지 않음)
 - **`ap_cleaned_strict` "인터넷 공개 데이터" 문구** — 14차에서 재검토 결과 근거 약함(증거: `metrics_cleaned.csv`가 호중 카톡 수신본, 생성 코드 미커밋, latency 0.05ms·RSSI −20dBm대로 물리적 비현실적). 다만 팀이 8/23~24에 "실측 아님 → archived"로 판단한 건 유효. **호중에게 `metrics_cleaned.csv` 원본 출처 직접 확인** 후 `CLAUDE.md`·`capstone2_vacation_summary.html`의 "인터넷 공개 데이터 가공" 문구를 "출처 불명·값 비현실적 → 실측 불인정"으로 톤 조정. (1학기 `data/real`은 확실히 Kaggle 6G Network Slicing — 별개 라인.)
 - **`README.html` 링크 실제 브라우저 클릭 확인** — 14차는 Claude-in-Chrome 확장 미연결이라 Node+DOM셰임 실행으로만 검증(콘솔 에러 없음, 링크 52개 정상 생성). 실제 `file://`로 열어 `.html` 상대링크·GitHub blob 링크 클릭 동작 확인 필요.
+
+## 19차 (2026-09-02) — 데모 웹사이트 참가형으로 재작성 (폰별 독립 부하 + 연결확인)
+
+**동기**: 사용자 "테스트를 위한 데모 웹사이트도 만들어줘, 디자인은 호중한테 맡길 테니 일단 데모버전". 스펙 확인(AskUserQuestion) 결과 기존 `demo_server.py`/`demo.html`(13차, 8/31 이식)을 요구사항에 맞춰 확장하는 쪽으로 — 완전히 새로 만들 필요는 없었음. 요구사항: S26/S21 박스 2개로 분리된 부하 버튼(각 10/20/30/40M), 연결확인 버튼(파이·AP·폰 일괄 점검), 부하 버튼 클릭 시 10초 자동 부하 후 종료 + 수동 정지 버튼, 우측 상단에 실시간 AI 혼잡 레벨 표시.
+
+### 변경 (`project/demo/demo_server.py` + `demo.html`, Pi 번들과 바이트 동일 유지)
+- **`POST /load` 계약 변경**: `{"rate": ...}` (두 폰 동시) → `{"phone": "s21"|"s26", "rate": "10M"|"20M"|"30M"|"40M"|"off"}` (폰별 독립). `set_load()` → `set_phone_load()`로 교체, `_current_load`(문자열) → `_load_state`(dict) + `_load_timers`(dict)로 상태 구조 변경.
+- **10초 자동 종료**: `threading.Timer(LOAD_DURATION_S, _stop_phone, args=(name,))` — 버튼 클릭마다 새로 시작, 같은 폰에 새 요청 오면 기존 타이머 취소. `iperf3 -t 15`(10+5 여유)로 서버 타이머가 죽어도 자동 종료되는 이중 안전장치.
+- **`GET /check` 신규**: Pi(자기 자신, 항상 true)·AP(`_state["ready"]` 또는 features 존재)·S21·S26(SSH `echo ok`, 4초 타임아웃) 일괄 점검, `all_ok` 종합 플래그.
+- **`demo.html`**: 우측 상단 고정 배지(`#badge`, 안정화 라벨 실시간 표시) 추가, "연결 확인" 카드(체크 4개 dot + 버튼), 부하 컨트롤을 박스 2개(S26/S21)로 분리 각각 10/20/30/40M+정지, 폰별 카운트다운(`setInterval`로 10→0 표시). 기존 모델 출력/안정화 상태/텔레메트리/차트 패널은 유지(테스트 목적엔 여전히 유용).
+- `project/demo/API.md`·`README.md` — `/load` 계약·`/check` 문서화, §7에 "2026-09-02 변경 미검증" 경고 추가.
+
+### 검증 (부분적 — 하드웨어 없이)
+- `py_compile` 통과. 로컬 스모크: `--s21 nonexistent-host --s26 nonexistent-host`로 기동 → `/health`·`/`(HTML 서빙)·`/load`(잘못된 phone/rate 400 정상 반환)·`/check` 전부 정상 응답. **AP(192.168.8.1)는 이 세션 네트워크에서 실제로 살아있어 `/check`가 `ap:true`를 정확히 반환**(Pi 지연 재측정 때 이미 같은 네트워크 확인됨), `s21`/`s26`은 가짜 호스트라 `false` — 성공/실패 양쪽 경로 다 검증됨.
+- **폰별 독립 제어(핵심 신규 기능)·10초 자동종료 타이머·우측 상단 배지는 실기기(진짜 S21/S26 폰)로 검증 안 됨** — 다음 세션에 폰 온라인 시 확인 필요.
+
+### 남은 것
+- 실기기 검증 (S21/S26 phone SSH 붙여서 두 박스 동시/순차 부하 확인).
+- 디자인은 호중 담당 예정 — 현재 CSS는 기존 다크 테마 재사용한 기능 우선 버전.
+
+## 18차 (2026-09-02) — 게이트 k·m 스윕 완주 → k2m2 채택, 3모델 재배포
+
+**동기**: 17차에서 k=3/m=2를 배포했지만 k·m 스윕은 nogate·k2m2(4시드)만 하고 중단(노트북 종료). 사용자: "k2m2로 3모델 재배포 진행해줘" — 스윕을 마저 돌려 최적 config를 확정한 뒤 재배포.
+
+### k·m 스윕 완주 (`project/.tmp/km_sweep/exp.py`, EE Fixed θ, w12, 5시드)
+전 세션이 준비해 둔 6개 config의 relabel CSV + windowed 데이터셋을 그대로 재사용(재생성 불필요). k2m2 seed4 + k3m2/k3m3/k5m2/k5m3 5시드씩 완주:
+
+| config | 강등 | test L3 창 | acc (5시드) | L3 recall | L3 F1 |
+|---|---:|---:|---:|---:|---:|
+| nogate | 0 | 48 | 91.6 ±0.9 | 70.4 ±2.0 | 78.4 ±1.6 |
+| **k2=m2** | 35 | 42 | 92.2 ±1.2 | **87.1 ±2.3** | **85.3 ±1.2** |
+| k3=m2 (17차 배포) | 34 | 42 | 92.2 ±0.7 | 78.1 ±2.8 | 83.1 ±2.7 |
+| k3=m3 | 68 | 37 | **92.5 ±0.6** | 82.7 ±2.2 | 85.0 ±1.2 |
+| k5=m2 | 32 | 43 | 91.6 ±0.7 | 78.6 ±3.4 | 80.1 ±1.5 |
+| k5=m3 | 64 | 39 | 90.8 ±0.8 | 65.6 ±3.1 | 75.5 ±1.5 |
+
+- **k2m2 채택**: L3 recall·F1이 전 config 중 최고이면서 강등 개수는 nogate 대비 겨우 +35(k3m3의 68보다 훨씬 보수적) — "최근 2폴링 중 2폴링 다 심각"이라는 국소적 지속성 요구가 단발 스파이크는 걸러내되 진짜 지속형 label 3은 거의 안 잃는 최적점. k3m3도 F1은 근접하지만 강등이 2배라 L3 표본이 37창까지 줄어 recall 손해가 더 큼.
+- 이 표의 k3m2 수치(92.2/78.1/83.1)는 17차 배포 때 정식 학습 스크립트로 낸 수치(92.1/75.2/82.9)와 근접하지만 완전히 동일하진 않음 — `exp.py`가 학습 루프를 in-process로 단순 복제한 하네스라 미세한 차이(오차범위 안).
+
+### 재라벨·재학습 (프로덕션 스크립트로, exp.py 아님)
+- k3m2 시절 canonical 산출물(CSV·windowed data·checkpoints·eval report 5종·comparison표 2종) 전부 `*_k3m2_archived_20260902`로 아카이브 후 교체.
+- `remeasure_redesign.py --gate-k 2 --gate-m 2`: raw label 3 319→**284**(−35, 전부 occ 48~73). `prepare_ap_metrics_dataset.py` → windowed train 1711 / val 367 / **test 365**.
+- 3모델 x 5시드 정식 학습(`train_ap_early_exit.py`/`train_ap_baseline_lstm.py`/`train_ap_sdn.py`, 각 `--checkpoint-dir project/.tmp/deploy_k2m2/<model>_s<seed>`). 평가는 `project/.tmp/deploy_k2m2/metrics.py`(신규, 프로덕션 체크포인트 로드 + L3 P/R/F1 계산 — 기존 eval 스크립트들은 라벨별 accuracy만 내고 F1을 안 냈어서 추가).
+
+**5시드 평균 (k3m2 → k2m2)**:
+| 모델 | acc | L3 recall | L3 F1 |
+|---|---|---|---|
+| Baseline | 92.9±1.2 → 92.7±1.5 | 78.1±1.0 → 87.1±1.9 | 81.3±3.1 → 84.3±3.5 |
+| SDN (T-cal) | 93.3±0.9 → 91.9±1.0 | 78.6±2.6 → 87.6±1.8 | 84.2±1.5 → 86.4±1.3 |
+| EE Fixed θ | 92.1±0.6 → 91.7±0.7 | 75.2±2.9 → 85.7±3.7 | 82.9±2.0 → 85.9±2.5 |
+| EE Dynamic θ | 92.6±0.7 → 92.3±0.7 | 78.1±2.8 → 83.8±3.2 | 85.2±1.8 → **86.7±1.8**(project best) |
+
+- 정확도는 ±1σ 안에서 보합~소폭 하락, **L3 F1은 전 모델 개선**(+1.5~3.0pt) — k2m2가 "학습 가능한" 심각 클래스를 k3m2보다 더 일관되게 남긴 것으로 해석.
+
+### 배포 (val balanced acc 최고 — 정직한 pick 원칙 유지)
+| 모델 | seed | val bal | 배포 test | L3 P/R/F1 | exit | 비고 |
+|---|---|---|---|---|---|---|
+| EE Fixed θ | 2 | 90.1 | 92.3% | 84/88/86 | 33/40/27 | |
+| EE Dynamic θ | 2 | 90.1 | 92.9% | 86/88/87 | 34/54/12 | 같은 backbone, threshold만 다름 |
+| Baseline | 2 | 91.0 | **89.9%** | 69/90/78 | — | **약한 test draw** — seed2 valbal이 seed0(91.0 근사)보다 근소 높아 선택됐지만 test acc는 seed0(92.6%)보다 낮음. val-bal 기준의 정직한 pick을 유지(치팅 방지) — cherry-pick 안 함. |
+| SDN | 0 | 90.6 | 92.3% | 83/90/86 | 37/48/15 | T=0.72 |
+
+- Baseline 89.9%는 프로젝트 역대 배포 수치 중 낮은 편이지만, 5시드 평균(92.7%)이 진짜 대표값이고 단일 배포는 seed 뽑기 운(그림 목적이면 seed0 92.6%도 후보로 언급 가능하나 val-bal 규칙을 안 깼다는 게 중요).
+
+### EE vs SDN 항목별 비교 (사용자 질문 "EE가 SDN보다 낮네" / "다른 부분에서 SDN보다 좋은 게 있어?")
+
+k2m2에서 EE Fixed(5시드 91.7)가 SDN(91.9)보다 근소하게 낮고, EE Dynamic(92.3)은 SDN보다 근소하게 높다 — 둘 다 표준편차보다 작은 차이라 "동급"이지만 방향은 갈린다. k3m2 때도 SDN이 4개 모델 중 정확도 1위였으므로 이 패턴 자체는 새로 생긴 게 아니다. 항목별로 뜯어보면:
+
+| 항목 | EE Fixed | EE Dynamic | SDN | 승자 |
+|---|---:|---:|---:|---|
+| 5시드 정확도 | 91.7 ±0.7 | 92.3 ±0.7 | 91.9 ±1.0 | Dynamic이 근소 우위, Fixed는 근소 열세 (전부 오차범위) |
+| 5시드 L3 recall | 85.7 ±3.7 | 83.8 ±3.2 | **87.6 ±1.8** | SDN |
+| 5시드 L3 F1 | 85.9 ±2.5 | **86.7 ±1.8** | 86.4 ±1.3 | Dynamic (프로젝트 역대 최고), Fixed는 SDN보다 근소 열세 |
+| 배포 단일 정확도 | 92.3% | **92.9%** | 92.3% | Dynamic — 이번 라운드 4개 모델 배포 체크포인트 중 최고(Baseline은 약한 draw로 89.9%) |
+| 배포 L3 F1 | 86 | **87** | 86 | Dynamic |
+| Pi 평균 지연 | 0.625ms | 0.632ms | **0.575ms** | SDN — 이번 라운드는 SDN이 더 빠름(T=0.72가 exit1을 37.5%로 앞당긴 threshold 정책 덕) |
+| **per-exit 지연 (구조적)** | **0.327/0.644/0.953ms** | 〃 | 0.332/0.646/0.962ms | **EE — 매 stage에서 SDN보다 가볍다.** last-timestep linear head < SDN pooling IC(ReduceMax+Mean). 라운드마다 일관되게 나오는 진짜 구조적 차이(threshold 정책과 무관) |
+| 캘리브레이션 필요 여부 | 불필요 (entropy θ 고정) | 불필요 | val에서 T 스윕 필요 | EE — SDN은 모델마다 confidence threshold를 다시 캘리브레이션해야 함 |
+| 트래픽 적응형 임계값 | — | **지원** | 없음 (고정 T) | EE Dynamic — SDN엔 대응 기능 없음 |
+
+**결론**: "EE가 모든 면에서 이긴다"는 아니다. 전체 평균 지연·L3 recall은 이번 라운드 SDN이 앞선다. EE의 실질 우위는 ①**구조적 per-exit 경량성**(threshold 정책과 무관하게 항상 성립) ②**per-model 캘리브레이션 불필요** ③**트래픽 적응형 임계값**(Dynamic θ) ④이번 라운드 한정으로 배포 단일 정확도·L3 F1 근소 우위(Dynamic). 발표 프레이밍은 기존 그대로 "정확도 동급 + 구조적으로 더 가벼운 head + 캘리브레이션 불필요 + 트래픽 적응형" — "SDN을 이겼다"가 아니라 "우리 설계 선택의 효과".
+
+### ONNX 재수출 (6단계 전부 성공, `docs/yongsang/onnx_early_exit_redesign.md` 순서 그대로)
+`export_onnx_ap.py`(EE staged fp32) → `export_onnx_ap_baseline.py`(fp32+int8) → `export_onnx_ap_sdn.py`(SDN staged fp32, 체크포인트에서 T=0.72 자동 로드) → `export_onnx_ap_unified.py`(EE unified fp32) → `export_onnx_ap_unified_int8_v2.py`(EE unified INT8 재조립) → `export_onnx_ap_sdn_unified_int8.py --confidence-threshold 0.72`(SDN은 T를 체크포인트에서 자동으로 안 읽고 CLI 인자라 명시 필요 — 안 그러면 기본값 0.85로 export되어 배포 체크포인트와 어긋남, 이번에 확인).
+
+**Parity (`project/.tmp/deploy_k2m2/parity.py`, test 365창, PyTorch vs ONNX)**:
+| 모델 | fp32 parity | INT8 parity | INT8 test acc |
+|---|---|---|---|
+| EE Fixed | 365/365 | 364/365 | 92.1% |
+| EE Dynamic | 365/365 | 365/365 | 92.9% |
+| Baseline | — (int8만 비교) | 365/365 | 89.9% |
+| SDN | — (int8만 비교) | 364/365 | 92.1% |
+
+Pi 번들(`deploy/raspberry_pi_ap_v2/`)에 ONNX 27개 + `scaler_params.json` + `test.csv` sync 완료(scaler는 내용 불변이라 git diff 없음).
+
+### 작업 중 사고: 파일명 착오 정정
+`generate_ap_comparison.py`가 읽는 canonical 리포트 이름(`ap_baseline_lstm_redesign2_eval_report.txt`, `ap_sdn_redesign2_eval_report.txt`)을 처음에 놓치고 `ap_v2_redesign2_sdnw_eval_report.txt`(SDN 가중치 ablation용 별개 파일)에 잘못 썼다가 `git checkout`으로 즉시 복구. 이후 올바른 파일명으로 재생성. 교훈: 새 evaluate 결과를 어디 쓸지는 `generate_ap_comparison.py`의 `RESULT_DIR` 참조 이름을 먼저 확인.
+
+### 남은 것
+- **Pi 지연 재측정** — 이 세션 내내 Pi 오프라인이라 미실행. 번들은 이미 갱신 완료, scp+bench만 하면 됨. 위 "다음 세션 시작 지점" 참고.
+- **문서·그래프 전 계층 갱신 보류** — CLAUDE.md·`model_results.html`·`sdn_comparison.html`·figures가 k3m2 수치인 채로 남아있음. Pi 수치 나온 뒤 한 번에 갱신 예정(중복 작업 방지).
+- **`ap_v2_redesign2_forecast_eval.txt`·`ap_v2_redesign2_threshold_comparison.txt`는 현재 canonical 경로에 없음** — k3m2 버전을 아카이브만 하고 k2m2로 재실행은 안 함(우선순위 낮음, 위 "다음에 해볼 것" 참고). 필요해지면 `forecast_eval_redesign.py` 재실행.
 
 ## 17차 (2026-09-02) — 라벨 지속성 게이트 → 재배포 (목표1 재공략)
 

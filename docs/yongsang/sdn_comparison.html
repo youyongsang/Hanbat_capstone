@@ -336,45 +336,46 @@
     <h2><span class="step">04</span> 결과 — 어떻게 갈리나</h2>
     <p class="lede">모든 수치 <code>class-weight-power=0.0</code>. <b>5시드 평균</b>을 기준 수치로 인용(단일 체크포인트는 test draw 편차가 있음). 그래프로 보려면 <code>docs/yongsang/model_results.html</code>.</p>
 
-    <h3 style="font-size:0.92rem; margin:1.6rem 0 0.5rem;">5시드 특성화 (window 12 + 라벨 지속성 게이트, test 365 · 2026-09-02)</h3>
+    <h3 style="font-size:0.92rem; margin:1.6rem 0 0.5rem;">5시드 특성화 (window 12 + 라벨 지속성 게이트 k=2/m=2, test 365 · 2026-09-02, 18차)</h3>
     <div class="tw">
     <table class="grid">
       <thead><tr><th>모델</th><th class="n">정확도</th><th class="n">Label3 F1</th><th class="n">Label3 recall</th></tr></thead>
       <tbody>
-        <tr><td>Baseline LSTM <span style="color:var(--ink-mute)">(EE 없음)</span></td><td class="n">92.9% ±1.2</td><td class="n">81.3% ±3.1</td><td class="n">78.1% ±1.0</td></tr>
-        <tr><td class="sdn">SDN <span style="color:var(--ink-mute)">(논문 충실)</span></td><td class="n"><b>93.3% ±0.9</b></td><td class="n">84.2% ±1.5</td><td class="n">78.6% ±2.6</td></tr>
-        <tr><td class="ours">Proposed EE (Fixed θ)</td><td class="n">92.1% ±0.6</td><td class="n">82.9% ±2.0</td><td class="n">75.2% ±2.9</td></tr>
-        <tr><td class="ours">Proposed EE (Dynamic θ)</td><td class="n">92.6% ±0.7</td><td class="n"><b>85.2% ±1.8</b></td><td class="n">78.1% ±2.8</td></tr>
+        <tr><td>Baseline LSTM <span style="color:var(--ink-mute)">(EE 없음)</span></td><td class="n"><b>92.7% ±1.5</b></td><td class="n">84.3% ±3.5</td><td class="n">87.1% ±1.9</td></tr>
+        <tr><td class="sdn">SDN <span style="color:var(--ink-mute)">(논문 충실)</span></td><td class="n">91.9% ±1.0</td><td class="n">86.4% ±1.3</td><td class="n">87.6% ±1.8</td></tr>
+        <tr><td class="ours">Proposed EE (Fixed θ)</td><td class="n">91.7% ±0.7</td><td class="n">85.9% ±2.5</td><td class="n">85.7% ±3.7</td></tr>
+        <tr><td class="ours">Proposed EE (Dynamic θ)</td><td class="n">92.3% ±0.7</td><td class="n"><b>86.7% ±1.8</b></td><td class="n">83.8% ±3.2</td></tr>
       </tbody>
     </table>
     </div>
-    <p class="axis note">라벨 지속성 게이트(17차 — 단발 프로브 스파이크 label 3 → 혼잡 강등)로 <b>전 모델 +1.5~2.4pt</b>. Label3 F1은 SDN 84.2 / EE Dynamic 85.2로 프로젝트 역대 최고. 정확도는 넷 다 <b>±1σ가 겹친다</b> — "동급"(SDN 근소 선두). EE Fixed가 5시드 평균으론 근소 최저지만 Dynamic은 중위.</p>
+    <p class="axis note">18차: 17차의 임시 게이트(k=3/m=2)를 6개 config x 5시드 스윕으로 재확인, <b>k=2/m=2로 교체</b>. k3m2 대비 정확도는 ±1σ 안에서 보합, <b>L3 recall·F1은 전 모델 뚜렷이 개선</b>(recall +6~10pt, F1 +1.5~3.0pt). Label3 F1은 EE Dynamic 86.7로 프로젝트 역대 최고. 정확도는 넷 다 <b>±1σ가 겹친다</b> — "동급"(Baseline 근소 선두).</p>
 
-    <h3 style="font-size:0.92rem; margin:2rem 0 0.5rem;">배포 단일 체크포인트 (window 12 + 게이트, val balanced acc 최고, fp32)</h3>
+    <h3 style="font-size:0.92rem; margin:2rem 0 0.5rem;">배포 단일 체크포인트 (window 12 + k2m2 게이트, val balanced acc 최고, fp32)</h3>
     <div class="tw">
     <table class="grid">
       <thead><tr><th>모델</th><th class="n">정확도</th><th class="n">Label2</th><th class="n">Label3 R/F1</th><th class="n">exit 1/2/3 (%)</th><th>비고</th></tr></thead>
       <tbody>
-        <tr><td>Baseline (seed2)</td><td class="n">93.7%</td><td class="n">93.9%</td><td class="n">78.6 / 82.5</td><td class="n">0 / 0 / 100</td><td>5시드 92.9</td></tr>
-        <tr><td class="sdn">SDN (seed2)</td><td class="n"><b>94.8%</b></td><td class="n">98.5%</td><td class="n">81.0 / 86.1</td><td class="n">56 / 34 / 11</td><td>캘리브레이션 <code>T = 0.70</code>, 95% 문턱</td></tr>
-        <tr><td class="ours">Proposed EE Fixed θ (seed1)</td><td class="n">93.2%</td><td class="n">94.7%</td><td class="n">78.6 / 85.7</td><td class="n">28 / 41 / 31</td><td>← 발표 평가 대상</td></tr>
-        <tr><td class="ours">Proposed EE Dynamic θ (seed1)</td><td class="n">93.2%</td><td class="n">93.9%</td><td class="n">83.3 / 87.5</td><td class="n">30 / 53 / 16</td><td></td></tr>
+        <tr><td>Baseline (seed2)</td><td class="n">89.9%</td><td class="n">86.4%</td><td class="n">90 / 78</td><td class="n">0 / 0 / 100</td><td>약한 test draw(5시드 92.7)</td></tr>
+        <tr><td class="sdn">SDN (seed0)</td><td class="n"><b>92.3%</b></td><td class="n">89.4%</td><td class="n">90 / 86</td><td class="n">37 / 48 / 15</td><td>캘리브레이션 <code>T = 0.72</code></td></tr>
+        <tr><td class="ours">Proposed EE Fixed θ (seed2)</td><td class="n"><b>92.3%</b></td><td class="n">88.6%</td><td class="n">88 / 86</td><td class="n">33 / 40 / 27</td><td>← 발표 평가 대상</td></tr>
+        <tr><td class="ours">Proposed EE Dynamic θ (seed2)</td><td class="n">92.9%</td><td class="n">90.2%</td><td class="n">88 / 87</td><td class="n">34 / 54 / 12</td><td></td></tr>
       </tbody>
     </table>
     </div>
+    <p class="axis note">k3m2 시절 단일 배포 최고는 SDN 94.8%였으나, 그건 SDN 5시드 평균(93.3±0.9)보다 +1.6σ 튄 운 좋은 draw였다. 이번 SDN 92.3%는 5시드 평균(91.9±1.0)에 거의 정확히 맞는 <b>정직한 draw</b>다 — val-bal 기준 선택을 지켰다는 게 핵심이지, 절대치 하락 자체가 k2m2의 결함은 아니다.</p>
 
-    <div class="callout warn"><span>⚑</span><span><b>SDN이 뒤처지는 축: exit head 무게 (per-exit).</b> Pi INT8 per-exit 지연은 <b>우리 head가 SDN보다 전 stage 가볍다</b> — exit1 <code>0.326</code> vs <code>0.338</code> / exit2 <code>0.657</code> vs <code>0.661</code> / exit3 <code>0.978</code> vs <code>0.991 ms</code>. SDN의 pooling IC는 매 exit마다 <code>ReduceMax + Mean</code>을 시퀀스 전체에 수행하고, 우리 exit head는 마지막 timestep 하나만 Linear에 통과시키기 때문. <b>단, 2026-09-02 라운드 평균은 SDN(0.516)이 우리(0.662)보다 낮다</b> — SDN 캘리브레이션 <code>T</code>가 0.63→0.70으로 올라 exit1 종료가 56%로 앞당겨진 것(threshold 정책 artifact이지 구조 우위 아님). 우리 entropy <code>θ</code>는 그 per-model 캘리브레이션 자체가 필요 없다는 이점은 유지. 넷 다 목표2 <code>&lt;1 ms</code> (Baseline 0.851).</span></div>
+    <div class="callout warn"><span>⚑</span><span><b>SDN이 뒤처지는 축: exit head 무게 (per-exit).</b> Pi INT8 per-exit 지연은 <b>우리 head가 SDN보다 전 stage 가볍다</b> — exit1 <code>0.327</code> vs <code>0.332</code> / exit2 <code>0.644</code> vs <code>0.646</code> / exit3 <code>0.953</code> vs <code>0.962 ms</code>. SDN의 pooling IC는 매 exit마다 <code>ReduceMax + Mean</code>을 시퀀스 전체에 수행하고, 우리 exit head는 마지막 timestep 하나만 Linear에 통과시키기 때문. <b>단, 평균은 SDN(0.575)이 우리(0.625)보다 낮다</b> — SDN 캘리브레이션 <code>T = 0.72</code>가 exit1 종료를 37.5%로 앞당긴 것(threshold 정책 artifact이지 구조 우위 아님). 우리 entropy <code>θ</code>는 그 per-model 캘리브레이션 자체가 필요 없다는 이점은 유지. 넷 다 목표2 <code>&lt;1 ms</code> (Baseline 0.864).</span></div>
   </section>
 
   <section>
     <h2><span class="step">05</span> 한 줄 결론</h2>
     <div class="callout good"><span>✔</span><span><b>"기존 조기종료 방법(SDN)과 정확도는 동급인데, exit head가 per-exit로 더 가볍고, per-model 캘리브레이션(<code>T</code>) 없이 entropy <code>θ</code>만으로 동작하며, 트래픽 적응형 임계값(Dynamic θ)까지 쓸 수 있다."</b> — 우리 설계 선택(단순 last-step head · 균등 loss · entropy θ)의 효과를 보여주는 통제 비교이지, "SDN을 이겼다"는 주장이 아니다.</span></div>
-    <p class="axis note" style="margin-top:1rem;">발표에서 Proposed의 가치 주장은 <b>정확도가 아니라 속도·효율</b> (목표2 <code>&lt;1 ms</code> 달성, Baseline 대비 <b>−22%</b>) + "간섭 감지에 Early Exit LSTM 최초 적용". 남은 숙제는 Pi 정확도 95% (window·데이터·라벨 게이트로 EE 92~93%·단일 배포 SDN 94.8%까지, 그 이상은 AP·telemetry — 17차 결론).</p>
+    <p class="axis note" style="margin-top:1rem;">발표에서 Proposed의 가치 주장은 <b>정확도가 아니라 속도·효율</b> (목표2 <code>&lt;1 ms</code> 달성, Baseline 대비 <b>−28%</b>) + "간섭 감지에 Early Exit LSTM 최초 적용" + k2m2 게이트 재튜닝으로 L3(심각) 탐지력이 전 모델 개선됐다는 점. 남은 숙제는 Pi 정확도 95% (window·데이터·라벨 게이트로 EE 92~93%·단일 배포 최고 92.3%까지, 그 이상은 AP·telemetry — 18차 결론).</p>
   </section>
 
   <footer class="page-foot">
     <span>코드 정본: <code>project/models/sdn_lstm.py</code> (docstring + <code>SDNLSTM</code> · <code>SDNInternalClassifier</code> · <code>sdn_loss_coeffs</code> · <code>calibrate_confidence_threshold</code>) · 학습: <code>project/scripts/train_ap_sdn.py</code></span>
-    <span>수치 정본: <code>.work-log/current.md</code> 8~9차 · 비교표: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · Pi 지연: <code>project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt</code></span>
+    <span>수치 정본: <code>.work-log/current.md</code> 18차(k2m2 게이트 재배포) · 비교표: <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code> · Pi 지연: <code>project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt</code> 9차</span>
     <span>관련: <code>docs/yongsang/onnx_early_exit_redesign.html</code> (배포) · <code>docs/yongsang/model_features.html</code> (입력) · <code>CLAUDE.md</code> "해석 기준" 6번 (Fixed vs Dynamic)</span>
     <span>원 논문: Kaya, Hong, Dumitraş, <i>Shallow-Deep Networks: Understanding and Mitigating Network Overthinking</i>, ICML 2019 · <code>github.com/yigitcankaya/Shallow-Deep-Networks</code></span>
   </footer>
