@@ -12,8 +12,12 @@
     (live_congestion.py 와 동일 로직, victim 프로브 없음)
   - GET  /            데모 페이지
   - GET  /events      SSE — 상태를 ~2Hz 로 스트리밍
-  - POST /load        {"phone": "s21"|"s26", "rate": "10M"|"20M"|"30M"|"40M"|"off"}
+  - POST /load        {"phone": "s21"|"s26", "rate": "10M"|"20M"|"30M"|"40M"|"off",
+                        "packet_size": 1400|200 (생략 시 1400)}
                        해당 폰에만 iperf3 부하. "off" 외 rate는 LOAD_DURATION_S(10초) 뒤 서버가 자동 종료.
+                       packet_size=200(소패킷)은 같은 bitrate라도 초당 패킷 수가 많아 occupancy·
+                       retry가 더 크게 뜬다 — bitrate 하나만으로는 "그냥 많이 넣으면 그만" 처럼
+                       보인다는 피드백(2026-09-02)에 대응해 추가한 두 번째 부하 축.
   - GET  /signal      두 폰의 현재 신호세기 (부하 전 대칭 확인용)
   - GET  /check       Pi(서버 자신)·AP·S21·S26 연결 상태 일괄 확인 ("연결확인" 버튼용)
   - GET  /health
@@ -70,6 +74,10 @@ WINDOW = 12  # matches utils.ap_features.WINDOW_SIZE + the [1,12,7] ONNX (10->12
 CONFIRM = 5                              # 라벨 히스테리시스 (표시/제어용 후처리, 모델·평가엔 없음)
 LABELS = ["정상", "경고", "혼잡", "심각"]
 ALLOWED_RATES = {"10M", "20M", "30M", "40M", "off"}
+ALLOWED_PACKET_SIZES = {1400, 200}       # -l 값. 1400=일반(기본), 200=소패킷(같은 bitrate라도
+                                          # 초당 패킷 수가 많아 occupancy·retry가 더 크게 뜸 —
+                                          # 16차 데이터 수집(smallpkt_*)에서 검증된 축.
+DEFAULT_PACKET_SIZE = 1400
 LOAD_DURATION_S = 10                     # 부하 버튼 클릭 시 자동 종료까지 걸리는 시간
 PHONE_MAC_PREFIX = {"s21": "06:0f", "s26": "ca:79"}  # dhcp.leases 기준
 
@@ -117,7 +125,10 @@ PHONES = {
 _lock = threading.Lock()
 _state: dict = {"ready": False, "msg": "시작 중..."}
 _clients: list[queue.Queue] = []
-_load_state: dict = {"s21": "off", "s26": "off"}
+_load_state: dict = {
+    "s21": {"rate": "off", "packet_size": DEFAULT_PACKET_SIZE},
+    "s26": {"rate": "off", "packet_size": DEFAULT_PACKET_SIZE},
+}
 _load_timers: dict[str, threading.Timer] = {}
 
 
@@ -264,16 +275,18 @@ def _stop_phone(name: str) -> None:
     """타이머 콜백 — LOAD_DURATION_S 뒤 자동 호출. 수동 정지도 이 경로를 탄다."""
     ph = PHONES[name]
     _ssh(ph["ssh"], "pkill -f iperf3 2>/dev/null; true")
-    _load_state[name] = "off"
+    _load_state[name]["rate"] = "off"
     _load_timers.pop(name, None)
     _broadcast_load()
 
 
-def set_phone_load(name: str, rate: str) -> dict:
+def set_phone_load(name: str, rate: str, packet_size: int = DEFAULT_PACKET_SIZE) -> dict:
     if name not in PHONES:
         return {"ok": False, "error": f"알 수 없는 폰: {name} (허용: {sorted(PHONES)})"}
     if rate not in ALLOWED_RATES:
         return {"ok": False, "error": f"허용 rate: {sorted(ALLOWED_RATES)}"}
+    if packet_size not in ALLOWED_PACKET_SIZES:
+        return {"ok": False, "error": f"허용 packet_size: {sorted(ALLOWED_PACKET_SIZES)}"}
 
     old_timer = _load_timers.pop(name, None)
     if old_timer:
@@ -283,24 +296,25 @@ def set_phone_load(name: str, rate: str) -> dict:
     _ssh(ph["ssh"], "pkill -f iperf3 2>/dev/null; true")
 
     if rate == "off":
-        _load_state[name] = "off"
+        _load_state[name]["rate"] = "off"
         _broadcast_load()
         return {"ok": True, "phone": name, "rate": "off"}
 
     # -t 는 LOAD_DURATION_S + 여유분 — 서버 타이머가 실패해도 iperf3 자체가 끝남 (이중 안전장치).
-    cmd = (f"nohup iperf3 -u -c {ARGS.iperf_target} -p {ph['port']} -b {rate} -l 1400 "
+    # -l packet_size: 1400=일반, 200=소패킷 (같은 bitrate라도 초당 패킷 수↑ → occupancy·retry↑).
+    cmd = (f"nohup iperf3 -u -c {ARGS.iperf_target} -p {ph['port']} -b {rate} -l {packet_size} "
            f"-t {LOAD_DURATION_S + 5} >/dev/null 2>&1 & echo started")
     rc, out = _ssh(ph["ssh"], cmd)
     if rc != 0:
         return {"ok": False, "error": f"{name} 부하 시작 실패: {out}"}
 
-    _load_state[name] = rate
+    _load_state[name] = {"rate": rate, "packet_size": packet_size}
     timer = threading.Timer(LOAD_DURATION_S, _stop_phone, args=(name,))
     timer.daemon = True
     timer.start()
     _load_timers[name] = timer
     _broadcast_load()
-    return {"ok": True, "phone": name, "rate": rate, "duration_s": LOAD_DURATION_S}
+    return {"ok": True, "phone": name, "rate": rate, "packet_size": packet_size, "duration_s": LOAD_DURATION_S}
 
 
 def phone_signals() -> dict:
@@ -407,7 +421,11 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b"{}")
         except json.JSONDecodeError:
             body = {}
-        res = set_phone_load(str(body.get("phone", "")), str(body.get("rate", "off")))
+        try:
+            packet_size = int(body.get("packet_size", DEFAULT_PACKET_SIZE))
+        except (TypeError, ValueError):
+            packet_size = -1  # set_phone_load 가 ALLOWED_PACKET_SIZES 로 걸러서 400 반환
+        res = set_phone_load(str(body.get("phone", "")), str(body.get("rate", "off")), packet_size)
         self._send(200 if res.get("ok") else 400,
                    json.dumps(res, ensure_ascii=False).encode("utf-8"), "application/json")
 

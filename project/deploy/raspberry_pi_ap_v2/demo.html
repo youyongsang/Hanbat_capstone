@@ -93,6 +93,10 @@
   .phonepill{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:20px;
     background:var(--panel-2);color:var(--ink-2);text-transform:none;letter-spacing:0}
   .phonepill.active{background:var(--accent);color:#fff}
+  .pktrow{display:flex;gap:6px;margin-bottom:10px}
+  button.pkt{font:inherit;font-size:12px;font-weight:600;padding:6px 10px;border-radius:7px;
+    border:1px solid var(--line);background:transparent;color:var(--ink-2);cursor:pointer}
+  button.pkt.active{background:var(--panel-2);border-color:var(--accent);color:var(--ink)}
   .loadrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
   button.load{font:inherit;font-weight:600;font-size:14px;padding:11px 14px;border-radius:9px;
     border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;
@@ -146,6 +150,10 @@
   <div class="loadboxes">
     <div class="card loadbox">
       <h2>S26 부하 <span class="phonepill" id="pill26">off</span></h2>
+      <div class="pktrow" data-phone="s26">
+        <button class="pkt active" data-phone="s26" data-pkt="1400">일반 (1400B)</button>
+        <button class="pkt" data-phone="s26" data-pkt="200">소패킷 (200B)</button>
+      </div>
       <div class="loadrow">
         <button class="load" data-phone="s26" data-rate="10M">10M</button>
         <button class="load" data-phone="s26" data-rate="20M">20M</button>
@@ -161,6 +169,10 @@
 
     <div class="card loadbox">
       <h2>S21 부하 <span class="phonepill" id="pill21">off</span></h2>
+      <div class="pktrow" data-phone="s21">
+        <button class="pkt active" data-phone="s21" data-pkt="1400">일반 (1400B)</button>
+        <button class="pkt" data-phone="s21" data-pkt="200">소패킷 (200B)</button>
+      </div>
       <div class="loadrow">
         <button class="load" data-phone="s21" data-rate="10M">10M</button>
         <button class="load" data-phone="s21" data-rate="20M">20M</button>
@@ -174,6 +186,7 @@
       </div>
     </div>
   </div>
+  <div class="note">패킷 크기 토글은 다음에 누를 rate 버튼에 적용된다 — 같은 bitrate라도 소패킷(200B)은 초당 패킷 수가 많아 채널 점유율·재전송이 더 크게 뜬다(bitrate만으로는 안 보이는 두 번째 부하 축).</div>
   <div class="note" id="sigwarnnote"></div>
 
   <div class="states" style="margin-top:16px">
@@ -295,11 +308,15 @@ es.onmessage = ev => {
 
 // ---- 폰별 부하 버튼 ----
 const countdowns = {s21:null, s26:null};
+const selectedPkt = {s21:1400, s26:1400};   // 다음 rate 클릭에 쓸 패킷 크기 (토글로 선택)
 function markLoad(load){
-  // load = {"s21": "off"|"10M"|..., "s26": ...}
+  // load = {"s21": {"rate":"off"|"10M"|..., "packet_size":1400|200}, "s26": {...}}
   ["s21","s26"].forEach(name=>{
-    const rate = load[name] || "off";
-    $("#pill"+name.slice(1)).textContent = rate;
+    const entry = load[name] || {rate:"off"};
+    const rate = entry.rate || "off";
+    const pkt = entry.packet_size;
+    const label = rate==="off" ? "off" : (pkt===200 ? rate+" · 소패킷" : rate);
+    $("#pill"+name.slice(1)).textContent = label;
     $("#pill"+name.slice(1)).classList.toggle("active", rate!=="off");
     document.querySelectorAll(`button.load[data-phone="${name}"]`).forEach(b=>{
       b.classList.toggle("active", b.dataset.rate===rate);
@@ -310,6 +327,15 @@ function markLoad(load){
     }
   });
 }
+document.querySelectorAll("button.pkt").forEach(btn=>{
+  btn.onclick = ()=>{
+    const phone = btn.dataset.phone, pkt = Number(btn.dataset.pkt);
+    selectedPkt[phone] = pkt;
+    document.querySelectorAll(`button.pkt[data-phone="${phone}"]`).forEach(b=>{
+      b.classList.toggle("active", Number(b.dataset.pkt)===pkt);
+    });
+  };
+});
 function startCountdown(name){
   clearInterval(countdowns[name]);
   let remain = LOAD_DURATION_S;
@@ -329,8 +355,9 @@ document.querySelectorAll("button.load").forEach(btn=>{
     if(busyPhone[phone]) return; busyPhone[phone]=true;
     document.querySelectorAll(`button.load[data-phone="${phone}"]`).forEach(b=>b.disabled=true);
     try{
+      const packet_size = selectedPkt[phone];
       const r = await fetch("/load",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({phone, rate})});
+        body:JSON.stringify({phone, rate, packet_size})});
       const j = await r.json();
       if(!j.ok){ alert("부하 설정 실패: "+(j.error||JSON.stringify(j))); }
       else if(rate !== "off"){ startCountdown(phone); }
