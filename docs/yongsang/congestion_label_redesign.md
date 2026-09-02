@@ -309,7 +309,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 ## 참고
 
 - `docs/yongsang/congestion_label_criteria.{md,html}` — 옛(가중합) 정의, archived
-- `project/results/yongsang/ap_v2_redesign2_threshold_comparison.txt` — "occupancy 문턱 vs 학습 모델" 실측 대조 ("핵심 검증 질문"의 결과)
+- `project/results/yongsang/ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt` — "occupancy 문턱 vs 학습 모델" 실측 대조 ("핵심 검증 질문"의 결과, k3m2 시절 마지막 실행, k2m2로 재실행 안 함)
 - `.work-log/current.md` — 2026-08-27 저녁 세션 (문제 발견 경위)
 - **앵커 근거** (원문 대조 2026-08-31): ITU-T Y.1541 (jitter IPDV ≤ 50ms, loss IPLR ≤ 0.1% — Class 0/1) · ITU-T G.114 (편도 지연 150 / 400ms) · Cisco Enterprise QoS SRND (voice: 편도 ≤ 150ms, jitter ≤ 30ms, loss ≤ 1%) · Aruba WLAN 설계 가이드 (channel utilization ~50% / 75%) · ITU-T G.107 E-model (§4 대안 조합 방식). RFC 4594·G.113 App.I는 앵커 수치 근거로 부적합(위 §3 참조).
 

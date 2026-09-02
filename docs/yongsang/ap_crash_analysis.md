@@ -137,7 +137,7 @@ rep10(500초) 완전 크래시로 종료됐던 AP를 세션 시작 시 물리 �
 
 ### 왜 필요한가
 
-**연결되는 상위 질문**: 이 프로젝트가 답해야 하는 건 "occupancy만으로는 안 잡히는 혼잡(경합·간섭·재전송 주도)을 조기종료 LSTM이 얼마나 정확히 잡는가"다(`docs/yongsang/congestion_label_redesign.{md,html}` §1·§3, 실측 대조는 `project/results/yongsang/ap_v2_redesign2_threshold_comparison.txt`). 그런데 현재 label 3 샘플이 거의 다 occupancy=100% 순간이라 모델이 지름길만 학습했을 수 있다 — 아래 방법들의 목적은 **occupancy가 아니라 retry/jitter가 주도하는 label 2/3 샘플을 확보**하는 것이다.
+**연결되는 상위 질문**: 이 프로젝트가 답해야 하는 건 "occupancy만으로는 안 잡히는 혼잡(경합·간섭·재전송 주도)을 조기종료 LSTM이 얼마나 정확히 잡는가"다(`docs/yongsang/congestion_label_redesign.{md,html}` §1·§3, 실측 대조는 `project/results/yongsang/ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt`(k3m2 시절 마지막 실행, k2m2로 재실행 안 함)). 그런데 현재 label 3 샘플이 거의 다 occupancy=100% 순간이라 모델이 지름길만 학습했을 수 있다 — 아래 방법들의 목적은 **occupancy가 아니라 retry/jitter가 주도하는 label 2/3 샘플을 확보**하는 것이다.
 
 현재 부하는 "다중 기기 × `iperf3 -u -b ??M`(기본 ~1470B UDP 프레임)"뿐이다. 두 가지 한계:
 

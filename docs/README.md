@@ -53,8 +53,8 @@
 | `ap_baseline_lstm_redesign2_eval_report.txt` · `ap_sdn_redesign2_eval_report.txt` | Baseline · SDN 평가 |
 | `ap_model_comparison_redesign2.{txt,csv}` | Baseline / SDN / Proposed 비교표. **그래프 버전 = `docs/yongsang/model_results.html`** |
 | `ap_v2_redesign2_pi_latency_comparison.txt` | Raspberry Pi INT8 지연 실측 (3~5차 + 이전 차수 보존). 그래프 버전 위 동일 |
-| `ap_v2_redesign2_threshold_comparison.txt` | 학습 모델 vs occupancy 단일 문턱 (심각 탐지) |
-| `ap_v2_redesign2_forecast_eval.txt` | 조기경보(k폴링 뒤 라벨) 프레이밍 |
+| `ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt` | 학습 모델 vs occupancy 단일 문턱 (심각 탐지) — k3m2 시절 마지막 실행, k2m2로 재실행 안 함 |
+| `ap_v2_redesign2_forecast_eval_k3m2_archived_20260902.txt` | 조기경보(k폴링 뒤 라벨) 프레이밍 — k3m2 시절 마지막 실행, k2m2로 재실행 안 함 |
 | `ap_v2_redesign2_pi_bench_power0_20260830.txt` | Pi INT8 벤치 raw 로그 |
 | `ap_v2_redesign2_live_*_20260830.txt` · `..._demo_full_run_...` | 라이브 혼잡 감지 부하 테스트 실측 |
 | `*_archived_*` / `*_6feat_*` / `*_power1_*` | 옛 버전. **안 봐도 됨** (덮어쓰지 않고 보존한 것) |

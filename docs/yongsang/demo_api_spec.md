@@ -485,7 +485,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 | `static` | occupancy 문턱 전환 — 전환 시각, 오탐 횟수, 회복 속도 |
 | `proposed` | LSTM 전환 — **더 일찍 감지하는가? 오탐이 적은가? 회복이 빠른가?** |
 
-이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(`congestion_label_redesign.{md,html}` §1·§3, 실측 대조 `ap_v2_redesign2_threshold_comparison.txt`).
+이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(`congestion_label_redesign.{md,html}` §1·§3, 실측 대조 `ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt`(k3m2 시절, k2m2로 재실행 안 함)).
 
 ### 9.5 전제 (미착수 이유이기도 함)
 

@@ -65,7 +65,7 @@ project/checkpoints/ap_v2_redesign2/                   현행 Early Exit LSTM �
 project/deploy/raspberry_pi_ap_v2/                     Pi 배포 번들 (ONNX staged/unified/int8_v2 + bench 스크립트)
 project/results/yongsang/ap_v2_redesign2_eval_report.txt          현행 평가 리포트
 project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt Pi 실측 지연 비교 (Baseline/SDN/Proposed)
-project/results/yongsang/ap_v2_redesign2_forecast_eval.txt        조기경보 프레이밍 결과
+project/results/yongsang/ap_v2_redesign2_forecast_eval.txt        조기경보 프레이밍 결과 (k3m2 시절 마지막 실행 — k2m2로 재실행 안 함, canonical 경로에 없음. `*_k3m2_archived_20260902.txt` 참고)
 project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}  아키텍처 비교표
 project/models/ap_early_exit_lstm.py    APEarlyExitLSTM (EarlyExitLSTM 상속, input_size = len(AP_FEATURE_COLUMNS) = 7)
 project/models/early_exit_lstm.py       EarlyExitLSTM 베이스, multi_exit_loss(weights 파라미터)
