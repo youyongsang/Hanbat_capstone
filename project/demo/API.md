@@ -6,7 +6,7 @@
 > 다시 짜더라도 이 계약을 지키면 프론트/모델/부하 파트가 서로 안 깨진다.
 
 관련 문서:
-- `docs/yongsang/demo_api_spec.{md,html}` — 원래 구상한 3-API-면(백엔드/부하 에이전트/파이 서버) 큰 그림. **이 문서가 그 중 "지금 실제로 만든 최소 버전"의 확정 스펙**이다.
+- `demo_api_spec.{md,html}` (같은 폴더, 2026-09-02 `docs/yongsang/`에서 이동) — 원래 구상한 3-API-면(백엔드/부하 에이전트/파이 서버) 큰 그림. **이 문서가 그 중 "지금 실제로 만든 최소 버전"의 확정 스펙**이다 — 폰별 독립 부하·`GET /check`·`packet_size` 등 그 "최소 버전"은 이제 최소가 아니게 더 나아갔다.
 - `project/scripts/live_congestion.py` — 웹 없이 터미널로 도는 같은 추론 루프.
 - `docs/yongsang/onnx_early_exit_redesign.{md,html}` — ONNX 배포 구조.
 

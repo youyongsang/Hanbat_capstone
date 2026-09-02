@@ -4,7 +4,9 @@
 
 > **(2026-08-30)** 그 중 **"지금 실제로 만들어 동작·검증한 최소 버전"의 확정 스펙은 `project/demo/API.md`** 다 (레퍼런스 구현: `project/demo/demo_server.py` + `demo.html`). 팀이 데모를 만든다면 그 문서의 API·모델 계약을 지키고, 이 문서는 확장 방향(밴드 스티어링 §9 등)의 참고로 본다.
 
-> **(2026-08-29 최신화)** 아래 FeatureVector·SubScores·congestion_score 관련 절은 8/27 라벨 재설계 + 8/29 7-feature 승격을 반영해 갱신했다. 원래 이 문서가 전제했던 9-feature 가중합 스키마는 이미 두 번 바뀌었다(9→6→7-feature, 가중합→max/anchor 방식) — 구현 착수 전에 반드시 `project/utils/ap_features.py`·`project/scripts/collect_metrics.py`의 `calculate_scores()`로 최신 계약을 재확인할 것. ONNX export는 이미 끝나 있다(unified INT8 v2, `project/checkpoints/ap_v2_redesign2/`) — 8/27 시점 "신규 구현 부담은 ONNX export 하나"라는 전제는 더 이상 유효하지 않다(그 작업은 이미 끝났고, 남은 건 대시보드/백엔드/에이전트 4개 컴포넌트 자체).
+> **(2026-09-02 최신화)** "최소 버전"이 이젠 최소가 아니다 — `project/demo/API.md`의 레퍼런스 구현이 이 문서가 §4에서 구상했던 것보다 실제로 더 나아갔다: **폰별 완전 독립 부하 제어**(이 문서의 `targets: ["s21","s26"]` 단일 프로필 방식과 달리, S21/S26이 서로 다른 rate·`packet_size`를 동시에 걸 수 있음), **`GET /check`**(이 문서 §3의 `/api/health`와 비슷한 취지의 Pi·AP·폰 일괄 점검), **10초 자동 종료**(이 문서 §2.6의 `MAX_DURATION_S=420`보다 훨씬 보수적 — 참가형 데모라 세션 하나당 훨씬 짧게 잡음). §2.4 `LoadProfile`의 `packet_bytes` 필드는 이 문서가 8/27에 이미 구상해둔 걸 9/2에 실제로 구현한 것(사용자 피드백 "bitrate만으론 그냥 많이 넣으면 그만 아니냐"에 대응 — 실기기로 같은 bitrate·다른 packet_size가 다른 결과를 낸다는 걸 확인했다, 상세는 `.work-log/current.md` 19차). 아래 안전 상수(§2.6)·백엔드 아키텍처(§1, FastAPI 분리·프리셋·밴드 스티어링 등)는 여전히 **미착수 확장 비전**이고, 실제 구현은 훨씬 단순한 단일 파일(`demo_server.py`) 구조다 — 이 문서를 "지금 뭐가 돌아가는지"의 정본으로 읽지 말 것.
+
+> **(2026-08-29 최신화)** 아래 FeatureVector·SubScores·congestion_score 관련 절은 8/27 라벨 재설계 + 8/29 7-feature 승격을 반영해 갱신했다. 원래 이 문서가 전제했던 9-feature 가중합 스키마는 이미 두 번 바뀌었다(9→6→7-feature, 가중합→max/anchor 방식) — 구현 착수 전에 반드시 `project/utils/ap_features.py`·`project/scripts/collect_metrics.py`의 `calculate_scores()`로 최신 계약을 재확인할 것. ONNX export는 이미 끝나 있다(unified INT8 v2, `project/checkpoints/ap_v2_redesign2/`) — 8/27 시점 "신규 구현 부담은 ONNX export 하나"라는 전제는 더 이상 유효하지 않다(그 작업은 이미 끝났고, 남은 건 대시보드/백엔드/에이전트 4개 컴포넌트 자체). **(2026-09-02 추가)** `window_size`는 10이 아니라 **12**(2026-09-01 스윕에서 승격, `utils/ap_features.py`의 `WINDOW_SIZE`가 정본). `congestion_score`에 **라벨 지속성 게이트**(2026-09-02, k=2/m=2)도 추가됐다 — occupancy가 심각이 아닌데 non-occ 축(jitter/loss/latency)으로 심각이 붙으면 최근 2폴링 중 2폴링 이상 유지돼야 심각 유지, 아니면 혼잡으로 강등. 상세: `docs/yongsang/congestion_label_redesign.{md,html}` §4.
 
 ## 1. 시스템 개요
 
@@ -64,7 +66,7 @@
 
 앵커(표준 문턱, `ANCHORS` in `collect_metrics.py`):
 
-| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 (심각 앵커 기준, 원문 대조는 `congestion_label_redesign.{md,html}` §3) |
+| 축 | 경고 | 혼잡 | 심각 | 완전 | 근거 (심각 앵커 기준, 원문 대조는 `docs/yongsang/congestion_label_redesign.{md,html}` §3) |
 |---|---:|---:|---:|---:|---|
 | occupancy(%) | 40 | 55 | 75 | 90 | Aruba WLAN 가이드 (75% 문제) — 40/55/90은 보간 |
 | jitter(ms, 프로브) | 20 | 30 | 50 | 100 | ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms); 20/30 = Cisco voice |
@@ -319,7 +321,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 }
 ```
 
-- `window_filled: false` — 스트림 시작 후 첫 10샘플(약 10초). 이때 `label`/`congestion_score`는 잠정값이며 대시보드는 "warming up"으로 표시한다.
+- `window_filled: false` — 스트림 시작 후 첫 `window_size`(현재 12)개 샘플, 폴링 1Hz면 약 12초. 이때 `label`/`congestion_score`는 잠정값이며 대시보드는 "warming up"으로 표시한다.
 - `early_exit.exit_taken` ∈ {1, 2, 3}. `policy`는 `fixed` 또는 `dynamic`.
 - `infer_ms` — 파이 온보드 추론 wall time(대시보드에서 Early Exit 이득 시연용).
 - `steer` — 밴드 스티어링 상태(§9). 스티어링을 안 쓰면 `"mode": "off"`로 고정.
@@ -330,11 +332,11 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 {
   "model": { "arch": "APEarlyExitLSTM", "onnx": "ap_early_exit_fixed_unified_int8_v2.onnx",
              "checkpoint": "ap_early_exit_lstm_best.pth",
-             "trained_on_rows": 2115, "trained_at": "2026-08-29" },
+             "trained_on_rows": 2551, "trained_at": "2026-09-02" },
   "scaler": { "file": "scaler_params.json", "sha256": "…" },
   "features": ["throughput_mbps","channel_occupancy_percent","tx_retry_ratio",
                "rssi_dbm","rssi_delta_db","rssi_moving_avg_dbm","sta_tx_bitrate_mean"],
-  "window_size": 10,
+  "window_size": 12,
   "poll_interval_s": 1.0,
   "labels": { "0": "정상", "1": "경고", "2": "혼잡", "3": "심각" },
   "congestion_formula": "max(occupancy, jitter, loss, latency)",
@@ -342,9 +344,11 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
     "occupancy": [40, 55, 75, 90], "jitter": [20, 30, 50, 100],
     "loss": [0.5, 1.0, 5.0, 10.0], "latency": [30, 60, 150, 400]
   },
-  "label_thresholds": [0.25, 0.50, 0.75]
+  "label_thresholds": [0.25, 0.50, 0.75],
+  "persistence_gate": { "k": 2, "m": 2 }
 }
 ```
+(`trained_on_rows`/`trained_at`는 2026-09-02 k2m2 재배포 기준 — CLAUDE.md "최신 평가 결과" 참고. `persistence_gate`는 이 문서 §2.3 이후 신규 개념, `congestion_formula`가 non-occ 축 심각을 붙이기 전 마지막 필터로 통과시킨다.)
 
 대시보드는 시작 시 `/meta`를 1회 읽어 feature 순서·앵커·문턱을 표시에 쓴다. **`scaler.sha256`이 학습 때와 다르면 결과를 신뢰하지 말 것**(재라벨링/재변환 후 ONNX·scaler 동기 안 맞음 신호 — feature 개수가 바뀔 때마다(9→6→7) 실제로 반복된 문제였다).
 
@@ -365,13 +369,13 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 
 ## 6. 데모 1회 실행 순서
 
-1. **파이 부팅** → `APPoller`가 유선 SSH로 AP 연결 → `/stream` 방송 시작(첫 10초 `window_filled: false`).
+1. **파이 부팅** → `APPoller`가 유선 SSH로 AP 연결 → `/stream` 방송 시작(첫 ~12초 `window_filled: false`, window_size=12 기준).
 2. **노트북 백엔드 기동** → `iperf3 -s -p 5201` / `-p 5202` → `/api/stream`이 파이 `/stream` 구독 후 브라우저에 재방출.
 3. **브라우저에서 대시보드 열기** → `/meta` 1회 읽기 → `EventSource("/api/stream")` 연결 → 게이지·스파크라인 갱신 시작.
 4. **발표자가 프리셋 버튼 클릭** (예: "소패킷 25M") → `POST /api/load { "preset_id": "smallpkt_25_250" }`.
 5. 백엔드가 **안전 범위 검증** → 각 폰에 `POST /load`(또는 SSH exec).
 6. 폰들이 `iperf3 -u -c ...` 실행 → 채널 부하 상승.
-7. **약 10초 후** 파이 윈도우가 새 상태로 채워지며 `congestion_score`·`label` 상승 → 게이지 `1 → 2 → 3`.
+7. **약 12초 후**(window_size 기준) 파이 윈도우가 새 상태로 채워지며 `congestion_score`·`label` 상승 → 게이지 `1 → 2 → 3`.
 8. **(스티어링 모드일 때, §9)** `label ≥ 2`가 `STEER_HOLD_S` 유지되면 파이가 victim 클라이언트에 `bss_tm_req` 전송 → 5GHz로 이동 → 2.4GHz occupancy·retry 하강 → 게이지 `3 → 1`. 대시보드에 "s26 → 5GHz" 배지 + victim flow 회복 그래프.
 9. `duration_s` 만료 또는 **"전체 정지"** → `DELETE /api/load` → 폰 부하 종료 → 게이지 하강. 스티어링은 `COOLDOWN_S` 후 2.4GHz로 복귀(또는 수동).
 10. `COOLDOWN_S` 후 다음 프리셋.
@@ -485,7 +489,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
 | `static` | occupancy 문턱 전환 — 전환 시각, 오탐 횟수, 회복 속도 |
 | `proposed` | LSTM 전환 — **더 일찍 감지하는가? 오탐이 적은가? 회복이 빠른가?** |
 
-이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(`congestion_label_redesign.{md,html}` §1·§3, 실측 대조 `ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt`(k3m2 시절, k2m2로 재실행 안 함)).
+이게 "occupancy만 보는 분류기 대비 LSTM 우위"를 downstream 지표로 증명하는 자리다(`docs/yongsang/congestion_label_redesign.{md,html}` §1·§3, 실측 대조 `project/results/yongsang/ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt`(k3m2 시절, k2m2로 재실행 안 함)).
 
 ### 9.5 전제 (미착수 이유이기도 함)
 
