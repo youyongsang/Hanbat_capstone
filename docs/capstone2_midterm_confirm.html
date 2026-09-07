@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>중간발표 확정 체크리스트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#f4f5f8;
+    --surface:#ffffff;
+    --surface-2:#eceef3;
+    --line:#dcdfe7;
+    --ink:#191d28;
+    --ink-2:#4d5665;
+    --muted:#868e9d;
+    --accent:#3350c8;
+
+    --req:#c8323d;      --req-bg:#f9e9ea;
+    --confirm:#b3741a;  --confirm-bg:#f8f0e1;
+    --info:#237a52;     --info-bg:#e4f1ea;
+
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"IBM Plex Sans","Noto Sans KR",-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0f131a;
+      --surface:#161b22;
+      --surface-2:#1d2431;
+      --line:#2b3441;
+      --ink:#e7ebf1;
+      --ink-2:#a6b0be;
+      --muted:#6c7684;
+      --accent:#7d9bff;
+      --req:#ef5b62;      --req-bg:#2c1618;
+      --confirm:#e0a047;  --confirm-bg:#2b2114;
+      --info:#49c187;     --info-bg:#122a20;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0f131a;
+    --surface:#161b22;
+    --surface-2:#1d2431;
+    --line:#2b3441;
+    --ink:#e7ebf1;
+    --ink-2:#a6b0be;
+    --muted:#6c7684;
+    --accent:#7d9bff;
+    --req:#ef5b62;      --req-bg:#2c1618;
+    --confirm:#e0a047;  --confirm-bg:#2b2114;
+    --info:#49c187;     --info-bg:#122a20;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:780px;margin:0 auto;padding:40px 22px 96px}
+
+  header{margin-bottom:34px}
+  .eyebrow{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 10px
+  }
+  h1{
+    font-size:27px;font-weight:700;letter-spacing:-.02em;margin:0 0 8px;
+    text-wrap:balance
+  }
+  .sub{color:var(--ink-2);margin:0;max-width:60ch}
+
+  .bar{
+    display:flex;flex-wrap:wrap;gap:8px;margin-top:22px
+  }
+  .stat{
+    display:flex;align-items:baseline;gap:7px;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:9px;padding:9px 13px;
+  }
+  .stat b{font-family:var(--mono);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+  .stat span{font-size:12px;color:var(--ink-2)}
+  .stat.req b{color:var(--req)} .stat.confirm b{color:var(--confirm)} .stat.done b{color:var(--info)}
+
+  .progress{margin-top:16px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+  .progress .track{
+    height:5px;border-radius:3px;background:var(--surface-2);
+    overflow:hidden;margin-top:6px;border:1px solid var(--line)
+  }
+  .progress .fill{height:100%;background:var(--accent);width:0;transition:width .3s}
+
+  .toggle{
+    position:fixed;top:14px;right:14px;font:inherit;font-size:12px;
+    font-family:var(--mono);background:var(--surface);color:var(--ink-2);
+    border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer
+  }
+  .toggle:hover{color:var(--ink)}
+
+  section{margin-top:38px}
+  .sec-head{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:14px;
+    padding-bottom:9px;border-bottom:1px solid var(--line)
+  }
+  .sec-head .n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+  .sec-head h2{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .sec-head .count{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+
+  .item{
+    display:flex;gap:13px;
+    background:var(--surface);border:1px solid var(--line);
+    border-left:3px solid var(--sev);border-radius:9px;
+    padding:14px 15px;margin-bottom:9px
+  }
+  .item[data-sev="req"]{--sev:var(--req)}
+  .item[data-sev="confirm"]{--sev:var(--confirm)}
+  .item[data-sev="done"]{--sev:var(--info)}
+  .item.checked{opacity:.55}
+  .item.checked h3{text-decoration:line-through;text-decoration-color:var(--muted)}
+
+  .chk{flex:none;position:relative;width:19px;height:19px;margin-top:2px;cursor:pointer}
+  .chk input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .chk span{
+    position:absolute;inset:0;border:1.5px solid var(--muted);border-radius:5px;
+    background:var(--surface)
+  }
+  .chk input:checked + span{background:var(--accent);border-color:var(--accent)}
+  .chk input:checked + span::after{
+    content:"";position:absolute;left:5.5px;top:2px;width:5px;height:9px;
+    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg)
+  }
+  .chk input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+
+  .body{flex:1;min-width:0}
+  .body h3{font-size:14.5px;font-weight:600;margin:0 0 7px;line-height:1.4}
+  .tag{
+    display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;
+    padding:1px 6px;border-radius:5px;margin-left:7px;vertical-align:1px;
+    background:var(--sev-bg);color:var(--sev)
+  }
+  .item[data-sev="req"] .tag{--sev-bg:var(--req-bg)}
+  .item[data-sev="confirm"] .tag{--sev-bg:var(--confirm-bg)}
+  .item[data-sev="done"] .tag{--sev-bg:var(--info-bg)}
+
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+  dl>div{display:contents}
+  dt{
+    font-family:var(--mono);font-size:11px;letter-spacing:.03em;
+    color:var(--muted);text-transform:uppercase;padding-top:2px
+  }
+  dd{margin:0;font-size:13.5px;color:var(--ink-2)}
+  dd code,dd .m{
+    font-family:var(--mono);font-size:12px;
+    background:var(--surface-2);padding:.5px 4px;border-radius:4px;color:var(--ink)
+  }
+  .owner{
+    display:inline-block;margin-top:9px;font-size:11.5px;font-family:var(--mono);
+    color:var(--ink-2);background:var(--surface-2);border-radius:20px;padding:2px 9px
+  }
+  .owner::before{content:"담당 ";color:var(--muted)}
+
+  .refbox{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px;margin-top:8px;font-family:var(--mono);font-size:11.5px;
+    line-height:1.7;color:var(--ink-2);white-space:pre-wrap;overflow-x:auto
+  }
+
+  .insert{
+    margin-top:11px;border:1px solid var(--line);border-radius:8px;
+    background:var(--surface-2);overflow:hidden
+  }
+  .insert .lbl{
+    font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--muted);padding:7px 12px;border-bottom:1px solid var(--line);background:var(--surface)
+  }
+  .insert .c{padding:12px 13px;font-size:13px;line-height:1.62;color:var(--ink)}
+  .insert .c > p{margin:0 0 9px} .insert .c > p:last-child{margin:0}
+  .insert .c strong{font-weight:600}
+  .insert .scroll{overflow-x:auto;margin:2px 0 9px}
+  .insert table{border-collapse:collapse;width:100%;font-size:11.5px}
+  .insert th,.insert td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+  .insert th{background:var(--surface);font-weight:600;font-size:10.5px;white-space:nowrap}
+  .insert code,.insert .m{
+    font-family:var(--mono);font-size:11.5px;background:var(--surface);
+    padding:.5px 4px;border-radius:4px
+  }
+  .insert .note{font-size:12px;color:var(--ink-2);margin-top:2px}
+  .insert .note b{color:var(--ink);font-weight:600}
+
+  .diag{
+    display:block;width:100%;height:auto;max-width:640px;margin:10px auto 6px;
+    color:var(--ink);font-family:var(--sans)
+  }
+  .diag .hot{color:#c9761c}
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) .diag .hot{color:#e6a24d}
+  }
+  :root[data-theme="dark"] .diag .hot{color:#e6a24d}
+  .diag-cap{
+    display:block;text-align:center;font-size:11.5px;color:var(--muted);
+    margin:2px 0 4px;line-height:1.5
+  }
+
+  footer{
+    margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--muted)
+  }
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:560px){
+    .wrap{padding:32px 15px 80px}
+    dl{grid-template-columns:1fr;gap:1px}
+    dt{padding-top:6px}
+  }
+</style>
+</head>
+<body>
+
+<button class="toggle" id="themeBtn" type="button">theme</button>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">캡스톤디자인 2 · 중간발표 &amp; 중간보고서</p>
+    <h1>중간발표 확정 체크리스트</h1>
+    <p class="sub">유용상 세션(2026-09)에서 정리된 수정·확정·전사 항목. 슬라이드/보고서에 <strong>넣을 내용 자체</strong>를 항목마다 적어뒀으니 그대로 옮기면 됩니다. 실측·결정이 필요한 것만 값이 비어 있습니다.</p>
+
+    <div class="bar">
+      <div class="stat req"><b>2</b><span>PPT 필수 수정</span></div>
+      <div class="stat confirm"><b>22</b><span>확정 · 보강 · 전사</span></div>
+      <div class="stat done"><b>1</b><span>반영 완료</span></div>
+    </div>
+
+    <div class="progress">
+      <span id="pcount">0 / 25 확인함</span>
+      <div class="track"><div class="fill" id="pfill"></div></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="n">A</span><h2>발표 PPT — 필수 수정</h2><span class="count">2</span></div>
+
+    <article class="item" data-sev="req">
+      <label class="chk"><input type="checkbox" data-id="a2"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 3 "1학기 96.9%" 출처 불일치<span class="tag">필수</span></h3>
+        <dl>
+          <div><dt>왜</dt><dd>심사위원이 1학기 최종보고서를 열면 96.9%가 없음. 최종보고서 = <span class="m">95.7%</span>(FP32/INT8 ONNX), <code>capstone1_summary.html</code> = Full LSTM 96.9% / EE 97.4% / INT8 97.2%</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">둘 중 하나로 문구 확정 (슬라이드 3 목표 박스)</div>
+          <div class="c">
+            <p><strong>A안 (배포 시스템 기준):</strong> "1학기 배포 모델(Early Exit INT8 ONNX)은 시뮬레이터 데이터에서 정확도 95.7% · 평균 추론 0.919ms. 2학기 목표는 이를 실측 데이터에서 재현하는 것."</p>
+            <p><strong>B안 (최고 성능 기준):</strong> "1학기 Full LSTM은 PC 평가에서 96.9% (Early Exit 97.4%). 시뮬레이터 검증 결과를 실측 환경에서 재현하는 것이 2학기 목표."</p>
+            <p class="note">→ 어느 수치를 쓰든 <b>괄호에 "PC 평가" / "INT8 ONNX 실측" 등 측정 조건 명시</b>. 최종보고서와 어긋나지 않게 A안 권장.</p>
+          </div>
+        </div>
+        <span class="owner">유용상 · 예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="req">
+      <label class="chk"><input type="checkbox" data-id="a3"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 6 문구 1건 다듬기<span class="tag">필수</span></h3>
+        <div class="insert">
+          <div class="lbl">위치와 수정문</div>
+          <div class="c">
+            <p><strong>슬라이드 6</strong> — <em>"재설계 (현행)"</em> 섹션, <code>지속성 게이트 k=2/m=2</code> 줄 바로 아래 괄호. 날짜 <b>"9/2"</b>가 문장 중간에 끼어 있음</p>
+            <p class="note">지금: (단발 ping 타임아웃 = 지터 · <b>9/2</b> 6조합×5시드 스윕으로 선택)<br>→ (단발 ping 타임아웃 = 지터. k·m <b>6조합×5시드 스윕(9/2)</b>으로 최적값 선택)</p>
+          </div>
+        </div>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">B</span><h2>발표 PPT — 라벨 · 측정 근거 보강 (Q&amp;A 방어)</h2><span class="count">7</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b1"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 5 앞에 "AP에서 얻는 원시 데이터" 슬라이드 신규<span class="tag">보강</span></h3>
+        <dl>
+          <div><dt>왜</dt><dd>"왜 이 feature냐" 질문의 근본 답 — AP가 주는 게 뭔지부터 있어야 근거 사슬이 완성됨</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">신규 슬라이드 내용 (슬라이드 4~5 사이)</div>
+          <div class="c">
+            <p><strong>제목:</strong> AP에서 얻는 원시 데이터 (OpenWrt 텔레메트리)</p>
+            <p><strong>수집 방식:</strong> GL.iNet Opal(OpenWrt) ← 유선 SSH 지속 세션으로 <code>iw dev wlan0 station dump</code> + <code>iw dev wlan0 survey dump</code> 폴링(1~2초). 별도로 ping·victim iperf3.</p>
+            <div class="scroll"><table>
+              <tr><th>① AP에서 직접 읽음 (SSH만으로 획득)</th><th>얻는 원시 지표</th></tr>
+              <tr><td><code>iw dev wlan0 station dump</code><br>(연결 단말별)</td><td>signal avg(RSSI dBm), tx/rx bitrate(PHY rate), tx packets·retries·failed, rx/tx bytes, 연결 단말 수</td></tr>
+              <tr><td><code>iw dev wlan0 survey dump</code><br>(채널 전체)</td><td>channel active/busy time(ms), receive/transmit time(ms), noise floor(dBm)</td></tr>
+            </table></div>
+            <div class="scroll"><table>
+              <tr><th>② AP 채널을 통과시켜 측정 (수집기에서 실행, AP는 중계만)</th><th>얻는 값</th></tr>
+              <tr><td><code>ping 192.168.8.226</code> (유선 싱크)</td><td>RTT</td></tr>
+              <tr><td><code>iperf3 -u -b 300k</code> → 노트북 서버</td><td>jitter(IPDV), packet loss %</td></tr>
+            </table></div>
+            <p><strong>→ 3갈래로 분리:</strong></p>
+            <div class="scroll"><table>
+              <tr><th>구분</th><th>지표</th><th>용도</th></tr>
+              <tr><td>배포 시에도 얻는 AP-side</td><td>표 ① 전체</td><td><b>모델 입력 7-feature 도출</b></td></tr>
+              <tr><td>라벨 전용 (배포 시 없음)</td><td>표 ② (ping RTT + 프로브 jitter/loss)</td><td><code>congestion_score = max(...)</code> 계산에만</td></tr>
+              <tr><td>탐색용 수집 → 모델 제외</td><td>channel rx/tx time %, ext-busy %, noise</td><td>변화 미미 (계획발표 피드백, 8개 컬럼)</td></tr>
+            </table></div>
+            <p class="note">핵심 메시지: <b>latency·jitter·loss는 AP가 주는 값이 아니라</b> 별도 장비(유선 싱크 + 협조 스트림)로 측정해야 함 → 배포 환경에 없음 → 모델 입력에서 제외.</p>
+          </div>
+        </div>
+        <span class="owner">유용상(내용) · 예나(작도)</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b2"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 5 feature 선택 근거 추가<span class="tag">보강</span></h3>
+        <dl>
+          <div><dt>왜</dt><dd>지금 "출처" 열(<code>iw station dump</code> 등)은 측정 명령이지 "왜 이 7개냐"의 답이 아님</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 5 표 위에 넣을 문단</div>
+          <div class="c">
+            <p>1학기 모델 입력은 <strong>RPS · 채널 점유율 · 패킷 손실률 · 지연시간 4개</strong>였다. 이 구성에는 두 가지 문제가 있었다. 첫째, 라벨을 채널 점유율로 부여하면서 그 채널 점유율을 모델 입력에도 사용해, 모델이 혼잡을 예측하는 것이 아니라 정답을 일부 읽는 <strong>순환 구조</strong>였다. 둘째, RPS는 애플리케이션 계층 지표이고 패킷 손실률·지연시간은 종단 간 통신을 실제로 측정해야 얻는 값이라, AP의 무선 텔레메트리만으로는 산출할 수 없다 — 즉 <strong>실제 AP에 배포하는 순간 세 지표는 획득 불가능</strong>하다.</p>
+            <p>2학기에는 GL.iNet Opal이 SSH로 제공하는 지표(RSSI · PHY rate · 프레임 카운터 · 채널 airtime) 중 <strong>① 배포 시 AP만으로 획득 ② 라벨 생성 축이 아님 ③ 혼잡 4단계를 유의미하게 변별 ④ QoS 붕괴의 원인 신호</strong> — 네 조건을 모두 만족하는 <strong>7개</strong>를 모델 입력으로 확정하였다.</p>
+            <div class="scroll"><table>
+              <tr><th>feature</th><th>victim QoS 붕괴와의 관계 (선정 근거)</th></tr>
+              <tr><td><code>channel_occupancy_percent</code></td><td>채널 airtime 포화 → 경합 증가 → victim 패킷 지연·손실. 주력 축</td></tr>
+              <tr><td><code>tx_retry_ratio</code></td><td>재전송 비율 ↑ = jitter·loss를 유발하는 원인. "곧 깨진다"는 선행 지표</td></tr>
+              <tr><td><code>throughput_mbps</code></td><td>occupancy와 조합해 "포화 부하" 여부 판별 (단독으로는 혼잡 아님)</td></tr>
+              <tr><td>RSSI 3종<br>(값·직전 변화·5폴링 이동평균)</td><td>신호 약화 → 낮은 MCS → 같은 데이터에 더 많은 airtime 소모 → 경합 악화. delta가 악화 추세를 조기 포착</td></tr>
+              <tr><td><code>sta_tx_bitrate_mean</code></td><td>occupancy 60~72% 회색지대(나머지 6개 feature가 Label 2·3 사이에 겹치는 구간)에서 두 라벨을 통계적으로 가르는 유일 축 — Cohen's d 0.52, 5시드 검증 Label 3 F1 +5~11pt</td></tr>
+            </table></div>
+            <p><strong>변천:</strong> 4개(1학기 시뮬) → 9개(초기 실측) → 6개(latency·jitter·loss 제거 = 라벨 축 leakage) → 7개(<code>sta_tx_bitrate_mean</code> 추가)</p>
+            <p class="note">제외: latency·jitter·loss = 라벨을 만드는 축(정답 유출) + 배포 시 측정 불가 · <code>connected_clients</code> = 우리 데이터 2~3대라 변별력 없음</p>
+          </div>
+        </div>
+        <span class="owner">유용상 · 예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b3"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 6 심각 문턱에 표준 출처 명시 + 참고문헌 슬라이드<span class="tag">보강</span></h3>
+        <dl>
+          <div><dt>왜</dt><dd>"Aruba WLAN 가이드"처럼 이름만 적혀 근거로 약함. 심사위원이 "이 수치 어디서?" 물으면 답이 필요</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 6 심각 문턱 표 + 각주</div>
+          <div class="c">
+            <div class="scroll"><table>
+              <tr><th>축</th><th>심각 앵커</th><th>표준 근거 (원문 대조 2026-08-31)</th></tr>
+              <tr><td>채널 점유율</td><td>75%</td><td>Aruba Networks, <em>Very High-Density 802.11ac Networks VRD</em> — channel utilization ≈50% 양호 / &gt;75% 성능 저하</td></tr>
+              <tr><td>jitter (IPDV)</td><td>50 ms</td><td><strong>ITU-T Y.1541</strong> (2011) — Class 0·1: IP packet delay variation 상한 50 ms</td></tr>
+              <tr><td>패킷 손실</td><td>5%</td><td><strong>Cisco Enterprise QoS SRND</strong> — voice 손실 권장 ≤1%, &gt;5% 사용 불가</td></tr>
+              <tr><td>편도 지연</td><td>150 ms</td><td><strong>ITU-T G.114</strong> (2003) — 편도 전송시간 &lt;150 ms 만족 / 150–400 조건부 / &gt;400 불가</td></tr>
+            </table></div>
+            <p class="note"><b>심각(0.75) 앵커만 국제 표준이 직접 규정.</b> 경고(0.25)·혼잡(0.5) 앵커(점유율 40/55, jitter 20/30, 손실 0.5/1, 지연 30/60)는 Cisco voice 권장치 또는 그 아래 선형 보간 — 정식 4-티어 표준 아님.</p>
+            <p class="note">조합은 ITU-T G.107 E-model이 정석이나 계산이 무거워 <code>max</code>로 단순화. 초기 인용했던 RFC 4594(정성 등급만)·ITU-T G.113 App.I(E-model 계수표)는 원문 대조 후 근거에서 제외.</p>
+          </div>
+        </div>
+        <div class="refbox">참고문헌 슬라이드 (또는 마지막 장)
+[1] ITU-T Rec. Y.1541, "Network performance objectives for IP-based services," 2011.
+[2] ITU-T Rec. G.114, "One-way transmission time," 2003.
+[3] ITU-T Rec. G.107, "The E-model," 2015.
+[4] Cisco Systems, "Enterprise QoS Solution Reference Network Design Guide."
+[5] Aruba Networks, "Very High-Density 802.11ac Networks Validated Reference Design."
+[6] Y. Kaya et al., "Shallow-Deep Networks," ICML 2019.  (SDN 비교모델)</div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b4"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 6 "victim 프로브" 용어 정의 박스<span class="tag">보강</span></h3>
+        <dl>
+          <div><dt>왜</dt><dd>생소한 용어라 처음 나올 때 정의 필요</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 6 각주 또는 정의 박스</div>
+          <div class="c">
+            <p><strong>victim 프로브</strong> — 혼잡의 "피해자" 역할을 하는 관측용 스트림. 배경 부하와 별개로, QoS에 민감한 작은 UDP 스트림(300kbps ≈ VoIP 통화 한 통)을 일부러 흘려서 <strong>그 스트림이 이 혼잡 속에서 겪는 지터·손실을 직접 측정</strong>한다. 합성 점수가 아니라 "실제 앱이 얼마나 깨지나"를 재는 것 — 부하가 아니라 센서.</p>
+            <p class="note">("victim"은 네트워크 측정에서 혼잡·간섭의 영향을 재려고 일부러 노출시키는 대상 트래픽을 부르는 통용어)</p>
+          </div>
+        </div>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b5"><span></span></label>
+      <div class="body">
+        <h3>Q&amp;A 답변 준비 — 중간 앵커 · 컷오프 자의성<span class="tag">보강</span></h3>
+        <dl>
+          <div><dt>예상 질문</dt><dd>경고/혼잡 앵커(40/55, 20/30…)와 0.25/0.5/0.75 컷오프가 자의적 아니냐</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 대비 — 외워둘 답변</div>
+          <div class="c">
+            <p>"심각(0.75) 앵커만 국제 표준이 직접 지지하고, <strong>label 3 판정은 심각 앵커만 사용</strong>합니다. 우리가 정말 잡으려는 건 심각(Label 3) 탐지이고, 중간 앵커는 0/1/2 구분에만 영향을 줍니다. 그리고 각 축을 앵커에 piecewise-linear로 매핑하기 때문에 <code>congestion_score = 0.75</code>는 곧 '어떤 축이 심각 앵커에 정확히 도달했다'는 뜻이라, 컷오프 자체가 앵커 정의에서 자동으로 나옵니다."</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b6"><span></span></label>
+      <div class="body">
+        <h3>추가 슬라이드 3건 — 만들지 결정<span class="tag">결정</span></h3>
+        <dl>
+          <div><dt>후보</dt><dd>부록 A(라벨 앵커 전체 표 + idle/부하 캘리브레이션) · 부록 B(feature 4→9→6→7 변천) · 전체 시스템 구성도 1장(앞배치) · 팀원 역할분담 슬라이드</dd></div>
+          <div><dt>할 일</dt><dd>발표 시간(10분)과 채점표 항목 보고 취사선택</dd></div>
+        </dl>
+        <span class="owner">팀</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b7"><span></span></label>
+      <div class="body">
+        <h3>victim 프로브의 필요성 + 프로브 없이 예측되는 원리<span class="tag">보강</span></h3>
+        <dl>
+          <div><dt>왜</dt><dd>슬라이드 6이 "프로브는 학습에만 쓴다"고만 함 — <b>① 그럼 프로브를 왜 쓰냐 ② 배포 때 어떻게 맞히냐</b> 둘 다 Q&amp;A 1순위인데 설명이 없음. 사실 같은 논리</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 6 "LSTM 선정 이유" 아래 또는 별도 1장</div>
+          <div class="c">
+            <p><strong>왜 victim 프로브가 필요한가:</strong> 라벨은 "실제 QoS가 깨지는가"를 나타내야 한다. 1학기처럼 점유율 문턱만 쓰면 라벨 = 점유율 규칙이라 순환논리. "QoS가 깨지는가"를 실제로 재려면 jitter·loss 실측이 필요하고, 그게 victim 프로브다. 즉 프로브는 <strong>규칙으로는 만들 수 없는 정직한 정답을 만드는 도구</strong>.</p>
+            <p>데이터 한 행 = <code>[7개 AP feature]</code> + <code>[프로브·ping·점유율로 계산한 label]</code>. 학습 시 모델에는 <strong>7개 feature만 입력</strong>하고 label을 정답으로 준다. 모델은 "feature가 이런 패턴 → label이 이거"를 반복 학습하며 그 안에 숨은 관계(예: 점유율 65% + retry 급증 + bitrate 상승 → victim QoS 붕괴 → label 3)를 내부 가중치로 압축한다. 배포 시에는 label도 프로브 값도 받지 않고 7개 feature만으로 label 확률을 출력한다 — <strong>프로브가 하던 측정을 학습된 모델이 간접 추론으로 대체</strong>.</p>
+
+            <figure style="margin:0">
+            <svg class="diag" viewBox="0 0 720 540" role="img" aria-label="상시 연결된 victim 프로브의 패킷 도착이 부하 시 흔들리고 일부 유실되며, 그 jitter·loss가 occupancy·latency와 함께 congestion_score를 거쳐 학습 정답 라벨이 된다">
+              <defs>
+                <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+              <g fill="currentColor" font-size="12">
+
+                <text x="12" y="16" font-size="11.5" font-weight="600" opacity="0.6">① 상시 구성</text>
+                <g stroke="currentColor" stroke-width="1.4" fill="none">
+                  <rect x="12" y="30" width="72" height="24" rx="4"/>
+                  <rect x="12" y="62" width="72" height="24" rx="4"/>
+                  <rect x="12" y="104" width="118" height="24" rx="4"/>
+                  <rect x="286" y="46" width="120" height="46" rx="5"/>
+                  <rect x="590" y="58" width="118" height="24" rx="4"/>
+                  <path d="M84 42 H 286" marker-end="url(#pa)"/>
+                  <path d="M84 74 H 286" marker-end="url(#pa)"/>
+                  <path d="M130 114 C 200 114, 215 90, 286 82" marker-end="url(#pa)"/>
+                  <path d="M406 70 H 590" marker-end="url(#pa)"/>
+                </g>
+                <text x="48" y="46" text-anchor="middle" font-size="11">폰 S21</text>
+                <text x="48" y="78" text-anchor="middle" font-size="11">폰 S26</text>
+                <text x="71" y="120" text-anchor="middle" font-size="10.5">파이 · 프로브 송신 + 수집</text>
+                <text x="346" y="67" text-anchor="middle" font-weight="600">AP</text>
+                <text x="346" y="83" text-anchor="middle" font-size="10" opacity="0.7">GL.iNet Opal</text>
+                <text x="649" y="73" text-anchor="middle" font-size="10.5">노트북 · 프로브 수신</text>
+                <text x="185" y="34" text-anchor="middle" font-size="10" opacity="0.7">무선 25 Mbps 부하 ×2</text>
+                <text x="150" y="106" font-size="10" opacity="0.7">유선 · 프로브 300k UDP + iw SSH</text>
+                <text x="498" y="64" text-anchor="middle" font-size="10" opacity="0.7">무선 downlink · 프로브</text>
+
+                <text x="12" y="162" font-size="11.5" font-weight="600" opacity="0.6">② 부하가 걸리면 프로브 패킷 도착이 흔들리고 일부가 사라진다</text>
+                <g stroke="currentColor" stroke-width="1" opacity="0.3">
+                  <line x1="128" y1="196" x2="556" y2="196"/>
+                  <line x1="128" y1="238" x2="556" y2="238"/>
+                  <line x1="128" y1="280" x2="556" y2="280"/>
+                </g>
+                <text x="12" y="200">프로브 송신</text>
+                <text x="12" y="242">수신 · idle</text>
+                <text x="12" y="284" class="hot">수신 · 부하 인가</text>
+
+                <g stroke="currentColor" stroke-width="2">
+                  <line x1="138" y1="186" x2="138" y2="206"/><line x1="184" y1="186" x2="184" y2="206"/><line x1="230" y1="186" x2="230" y2="206"/><line x1="276" y1="186" x2="276" y2="206"/><line x1="322" y1="186" x2="322" y2="206"/><line x1="368" y1="186" x2="368" y2="206"/><line x1="414" y1="186" x2="414" y2="206"/><line x1="460" y1="186" x2="460" y2="206"/><line x1="506" y1="186" x2="506" y2="206"/>
+                </g>
+                <g stroke="currentColor" stroke-width="2">
+                  <line x1="139" y1="228" x2="139" y2="248"/><line x1="186" y1="228" x2="186" y2="248"/><line x1="228" y1="228" x2="228" y2="248"/><line x1="278" y1="228" x2="278" y2="248"/><line x1="324" y1="228" x2="324" y2="248"/><line x1="366" y1="228" x2="366" y2="248"/><line x1="415" y1="228" x2="415" y2="248"/><line x1="458" y1="228" x2="458" y2="248"/><line x1="507" y1="228" x2="507" y2="248"/>
+                </g>
+                <text x="572" y="242" font-size="10" opacity="0.8">jitter ≈ 1 ms · loss 0%</text>
+
+                <g class="hot" stroke="currentColor" stroke-width="2">
+                  <line x1="136" y1="270" x2="136" y2="290"/><line x1="176" y1="270" x2="176" y2="290"/><line x1="250" y1="270" x2="250" y2="290"/><line x1="270" y1="270" x2="270" y2="290"/><line x1="360" y1="270" x2="360" y2="290"/><line x1="392" y1="270" x2="392" y2="290"/><line x1="486" y1="270" x2="486" y2="290"/><line x1="520" y1="270" x2="520" y2="290"/>
+                </g>
+                <g class="hot" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 3" opacity="0.75">
+                  <line x1="322" y1="270" x2="322" y2="290"/><line x1="430" y1="270" x2="430" y2="290"/>
+                </g>
+                <text x="322" y="266" text-anchor="middle" font-size="11" class="hot">✕</text>
+                <text x="430" y="266" text-anchor="middle" font-size="11" class="hot">✕</text>
+                <text x="572" y="284" font-size="10" class="hot">jitter ↑ · loss ↑</text>
+
+                <text x="12" y="336" font-size="11.5" font-weight="600" opacity="0.6">③ 그 흔들림이 정답 라벨이 된다</text>
+                <text x="12" y="368" class="hot">프로브 → jitter, loss</text>
+                <text x="12" y="392">AP → occupancy</text>
+                <text x="12" y="416">ping → latency</text>
+                <g stroke="currentColor" stroke-width="1.4" fill="none">
+                  <path d="M168 364 C 220 364, 240 380, 292 388" marker-end="url(#pa)"/>
+                  <path d="M150 388 H 292" marker-end="url(#pa)"/>
+                  <path d="M150 412 C 220 412, 240 396, 292 392" marker-end="url(#pa)"/>
+                  <rect x="292" y="366" width="286" height="44" rx="5"/>
+                  <path d="M435 410 V 436" marker-end="url(#pa)"/>
+                  <rect x="316" y="436" width="238" height="26" rx="4"/>
+                </g>
+                <text x="435" y="384" text-anchor="middle" font-size="11">congestion_score</text>
+                <text x="435" y="400" text-anchor="middle" font-size="9.5" opacity="0.75">= max(각 축을 표준 앵커로 점수화)</text>
+                <text x="435" y="453" text-anchor="middle" font-size="10.5">label 0 · 1 · 2 · 3  =  학습 정답 y</text>
+                <text x="12" y="494" font-size="10" opacity="0.65">모델 입력 x = AP 텔레메트리 7개 — 프로브·ping 값은 라벨 계산에만, 입력엔 없음</text>
+              </g>
+            </svg>
+            <figcaption class="diag-cap">상시 흐르는 프로브 스트림이 부하 시 겪는 도착 흔들림·유실 → jitter·loss → 정답 라벨</figcaption>
+            </figure>
+
+            <div class="scroll"><table>
+              <tr><th></th><th>모델에 들어가는 것</th><th>정답</th></tr>
+              <tr><td>학습</td><td>7 feature</td><td>label (프로브·ping·점유율로 계산) → 예측과 비교해 가중치 갱신</td></tr>
+              <tr><td>배포</td><td>7 feature</td><td>없음 — 모델이 label 직접 출력</td></tr>
+            </table></div>
+            <p class="note">7개 feature가 jitter/loss를 <b>완벽히 결정하지는 않는다</b>(occ 60~73% 애매 구간). → 모델이 배우는 건 결정론적 대응표가 아니라 <b>확률적 매핑</b> → 정확도가 100%가 아닌 92%이고, 단순 lookup이 아닌 진짜 학습 문제인 이유.</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">C</span><h2>확정 · 실측이 필요한 값</h2><span class="count">7</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c1"><span></span></label>
+      <div class="body">
+        <h3>Raspberry Pi 4 RAM 용량<span class="tag">확정</span></h3>
+        <dl><div><dt>지금</dt><dd>요구사항 표에 <code>4GB</code>로 가정 기재</dd></div>
+        <div><dt>할 일</dt><dd>2 / 4 / 8GB 중 실제 값 확인</dd></div></dl>
+        <span class="owner">김호중</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c2"><span></span></label>
+      <div class="body">
+        <h3>개발 PC 실제 사양<span class="tag">확정</span></h3>
+        <dl><div><dt>할 일</dt><dd>CPU 모델 · RAM(팀원별 다르면 최소 사양 기준) → ECR-002</dd></div></dl>
+        <span class="owner">전원</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c3"><span></span></label>
+      <div class="body">
+        <h3>스마트폰 정확한 모델명<span class="tag">확정</span></h3>
+        <dl><div><dt>지금</dt><dd>PPT·demo는 <code>S21 / S26</code>, 크래시 분석 문서엔 <code>191</code> 표기 혼재</dd></div>
+        <div><dt>할 일</dt><dd>실제 모델명으로 문서·슬라이드 통일 (ECR-004)</dd></div></dl>
+        <span class="owner">김호중</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c4"><span></span></label>
+      <div class="body">
+        <h3>victim 프로브 싱크 위치<span class="tag">확정</span></h3>
+        <dl><div><dt>지금</dt><dd>노트북(<code>192.168.8.226</code>)의 iperf3 서버가 수신·측정하는 구조로 이해</dd></div>
+        <div><dt>할 일</dt><dd>맞는지 확인 → ECR-005 / SIR-SI-002 문구 확정</dd></div></dl>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c5"><span></span></label>
+      <div class="body">
+        <h3>Pi 추론 프로세스 메모리 실측 (PER-RU-001)<span class="tag">실측</span></h3>
+        <dl><div><dt>지금</dt><dd>요구사항 표에 "미측정"</dd></div>
+        <div><dt>할 일</dt><dd>Pi에서 <code>/usr/bin/time -v</code> 또는 추론 중 <code>ps -o rss</code> 로 RSS 측정</dd></div></dl>
+        <span class="owner">김호중</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c6"><span></span></label>
+      <div class="body">
+        <h3>모델 크기 표기 통일<span class="tag">확정</span></h3>
+        <dl><div><dt>지금</dt><dd>PPT s9 = <code>1.37MB → 0.36MB</code>(십진) · 요구사항 PER-RU-002 = <code>1.30MB → 0.35MB</code>(이진). 실제 바이트 <code>1,366,578 → 356,963</code></dd></div>
+        <div><dt>할 일</dt><dd>한쪽으로 통일 (파일 크기는 십진이 흔하니 1.37→0.36MB 권장)</dd></div></dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c7"><span></span></label>
+      <div class="body">
+        <h3>표준 문서 정확한 서지정보<span class="tag">확정</span></h3>
+        <dl><div><dt>할 일</dt><dd>Aruba VRD 정확한 제목·판, Cisco SRND 버전 확인. Y.1541·G.114 티어 수치는 안정적</dd></div></dl>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">D</span><h2>내용 불일치 해소</h2><span class="count">2</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="d1"><span></span></label>
+      <div class="body">
+        <h3>1학기 라벨 정의가 문서마다 다름<span class="tag">확정</span></h3>
+        <dl>
+          <div><dt>지금</dt><dd>1학기 최종보고서 = "RPS·점유율·손실·지연 <b>가중합</b> 혼잡 점수" · CLAUDE.md/내부 이해 = "채널 점유율 <b>단일 문턱</b> 40/65/85"</dd></div>
+          <div><dt>할 일</dt><dd>유용상이 1학기 코드(<code>yongsang</code> 브랜치)에서 확인 → 아래 둘 중 맞는 문장으로 슬라이드 6 "문제 (8/27 이전)" 및 보고서 통일</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">확인 후 하나 선택 (슬라이드 6 · 보고서 라벨 재설계 문단)</div>
+          <div class="c">
+            <p><strong>단일 문턱이 맞으면:</strong> "1학기 라벨은 채널 점유율 단일 문턱(40/65/85%)으로 0~3단계를 자동 부여했다. 라벨이 사실상 점유율 규칙이라, 점유율을 입력에 포함한 LSTM은 Threshold baseline과 구조적으로 순환한다."</p>
+            <p><strong>가중합이 맞으면:</strong> "1학기 라벨은 RPS·점유율·손실·지연을 가중 합산한 혼잡 점수로 부여했으나, 점유율 가중치가 커서 라벨이 사실상 점유율에 지배되었다. 그 점유율을 모델 입력에도 사용해 순환 구조가 되었다."</p>
+            <p class="note">2학기 대비 문구는 동일: "→ <code>congestion_score = max(표준 앵커)</code> + victim 프로브로 재설계, 라벨 축은 모델 입력에서 분리"</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="d2"><span></span></label>
+      <div class="body">
+        <h3>데모 사이트 담당 구분<span class="tag">확정</span></h3>
+        <dl>
+          <div><dt>지금</dt><dd>이번 세션 역할표 = 백엔드 유용상 / 프론트 김호중 · work-log = 데모(<code>live_congestion.py</code> + 대시보드) 전체를 김호중</dd></div>
+          <div><dt>할 일</dt><dd>실제 기여 기준으로 팀 내 확정 후 보고서 역할표·PPT 반영</dd></div>
+        </dl>
+        <span class="owner">팀</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">E</span><h2>중간보고서 [별첨1] 전사 (→ hwp)</h2><span class="count">7</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e1"><span></span></label>
+      <div class="body">
+        <h3>요구사항 정의서 표 전체 옮기기<span class="tag">전사</span></h3>
+        <dl>
+          <div><dt>범위</dt><dd>10개 범주 — ECR(장비) · SFR(기능) · PER(성능) · SIR(인터페이스: UI + SI) · DAR(데이터) · TER(테스트) · SER(보안) · QUR(품질) · COR(제약) · PMR(PM). 열 = 고유번호 · 명칭 · 응락수준 · 요구사항 분류 · (정의) · 세부내용</dd></div>
+          <div><dt>ID 체계</dt><dd><code>SFR-[분류코드]-[번호]</code> — DC(데이터 수집·라벨링) PP(전처리) CD(혼잡 감지) EE(조기 종료) CM(비교 모델) CH(채널 대응) DP(경량화·배포) RT(실시간). PER은 AC/TS/TP/RU, SIR은 UI/SI, DAR은 DI/DM 등</dd></div>
+          <div><dt>지금</dt><dd>10개 범주 완성본 표가 세션 대화에 있음 (별도 요구사항 정의서 문서로 정리 예정 — 유용상)</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">기능 요구사항 (SFR) — 19행, 대표 예시</div>
+          <div class="c">
+            <div class="scroll"><table>
+              <tr><th>고유번호</th><th>명칭</th><th>응락</th><th>분류</th><th>세부내용 (요약)</th></tr>
+              <tr><td>SFR-DC-001</td><td>트래픽 데이터 입력</td><td>필수</td><td>데이터 수집·라벨링</td><td><code>collect_metrics.py</code> 지속 SSH로 AP 텔레메트리 라이브 수집(2551행)</td></tr>
+              <tr><td>SFR-DC-002</td><td>QoS victim 프로브 측정</td><td>필수</td><td>데이터 수집·라벨링</td><td>iperf3 UDP 300kbps + ping으로 jitter·loss·RTT 실측, 라벨 산출에만</td></tr>
+              <tr><td>SFR-DC-003</td><td>혼잡 점수·라벨 산출</td><td>필수</td><td>데이터 수집·라벨링</td><td>각 축 표준 앵커 매핑 → <code>congestion_score = max(4축)</code> → Label 0~3</td></tr>
+              <tr><td>SFR-DC-004</td><td>라벨 지속성 게이트</td><td>필수</td><td>데이터 수집·라벨링</td><td>비-점유율 축 심각은 최근 k=2폴링 중 m=2폴링 유지 시만 Label 3</td></tr>
+              <tr><td>SFR-PP-001</td><td>트래픽 특성 추출</td><td>필수</td><td>특성 추출·전처리</td><td>7-feature 산출, 라벨 축(jitter/loss/latency) 입력 제외</td></tr>
+              <tr><td>SFR-PP-002</td><td>시계열 윈도우·정규화</td><td>필수</td><td>특성 추출·전처리</td><td>window 12, (batch,12,7), train min-max 스케일러 공유</td></tr>
+              <tr><td>SFR-CD-001</td><td>혼잡 수준 분류</td><td>필수</td><td>혼잡 감지</td><td>정상/경고/혼잡/심각 4단계 확률분포 + argmax</td></tr>
+              <tr><td>SFR-CD-002</td><td>Baseline LSTM 혼잡 감지</td><td>필수</td><td>혼잡 감지</td><td>조기 종료 없는 3계층 LSTM, 정확도 상한선</td></tr>
+              <tr><td>SFR-CD-003</td><td>Early Exit LSTM 혼잡 감지</td><td>필수</td><td>혼잡 감지</td><td>계층별 exit 분류기, multi-exit loss 0.3/0.3/0.4</td></tr>
+              <tr><td>SFR-EE-001</td><td>고정 임계값 조기 종료</td><td>필수</td><td>조기 종료 제어</td><td>예측 엔트로피 &lt; 고정 θ면 해당 계층 종료</td></tr>
+              <tr><td>SFR-EE-002</td><td>동적 임계값 조기 종료</td><td>필수</td><td>조기 종료 제어</td><td>최근 채널 점유율 변동률로 θ 조정, 같은 백본</td></tr>
+              <tr><td>SFR-CM-001</td><td>SDN 비교모델 혼잡 감지</td><td>권장</td><td>비교 모델</td><td>Kaya et al. 2019 재구현 — pooling IC + 램프 loss + 캘리브레이션 T</td></tr>
+              <tr><td>SFR-CH-001</td><td>채널 전환 필요 여부 판단</td><td>필수</td><td>채널 대응</td><td>Label 0 유지 / 1 모니터링 / 2 전환 / 3 즉시 전환·5GHz</td></tr>
+              <tr><td>SFR-CH-002</td><td>채널 전환 명령 후보 생성</td><td>필수</td><td>채널 대응</td><td>후보 채널·명령 생성까지. 실제 AP 적용은 2학기 후반</td></tr>
+              <tr><td>SFR-DP-001</td><td>ONNX 모델 변환</td><td>필수</td><td>경량화·배포</td><td>torch.jit.script + If 노드 fp32 단일 그래프</td></tr>
+              <tr><td>SFR-DP-002</td><td>INT8 경량화</td><td>필수</td><td>경량화·배포</td><td>staged 양자화 후 If 서브그래프 재조립</td></tr>
+              <tr><td>SFR-DP-003</td><td>Pi 엣지 추론 실행</td><td>필수</td><td>경량화·배포</td><td>Pi 4 ONNX Runtime INT8, test 365창 전량, avg·p95·per-exit</td></tr>
+              <tr><td>SFR-RT-001</td><td>실시간 추론 서비스</td><td>권장</td><td>실시간 서비스</td><td><code>live_congestion.py</code> — 프로브 없이 7-feature→라벨, 히스테리시스</td></tr>
+              <tr><td>SFR-RT-002</td><td>실시간 데모 대시보드</td><td>권장</td><td>실시간 서비스</td><td><code>demo_server.py</code> + <code>demo.html</code> — 계단형 부하 + SSE 예측</td></tr>
+            </table></div>
+            <p class="note">1학기 매핑: SFR-001→DC-001, 002→PP-001, 003→CD-001, 004→CD-002, 005→CD-003, 006→EE-001, 007→EE-002, 008→CH-001, 009→CH-002. 나머지는 2학기 신규.</p>
+          </div>
+        </div>
+        <span class="owner">예나 · 유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e2"><span></span></label>
+      <div class="body">
+        <h3>E-R 대체 — 데이터 파일 스키마 표<span class="tag">전사</span></h3>
+        <dl><div><dt>내용</dt><dd>"관계형 DB 미사용 → 해당 없음" 문단 + raw CSV / windowed CSV / scaler·summary JSON / 결과 CSV 스키마 표</dd></div></dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e3"><span></span></label>
+      <div class="body">
+        <h3>UI 분석 + 구성요소 명세 + 프로토타입 캡처<span class="tag">전사</span></h3>
+        <dl>
+          <div><dt>내용</dt><dd>UI 분석 문단(누가·왜·무엇을) + 데모 대시보드 화면 영역별 구성요소 표 + <b>부하 거는 중(혼잡/심각 표시된) 스크린샷 1장</b>에 영역 번호 주석</dd></div>
+        </dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e4"><span></span></label>
+      <div class="body">
+        <h3>섹션 2 보강 표 2건<span class="tag">전사</span></h3>
+        <dl><div><dt>내용</dt><dd>팀원 역할 수행 문제점·해결방안 표(4건) + 일정계획 WBS 표(3항목: SOTA 비교 / Pi 실시간 파이프라인 / 동적 threshold 경량화-지연)</dd></div></dl>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="done">
+      <label class="chk"><input type="checkbox" data-id="e5"><span></span></label>
+      <div class="body">
+        <h3>섹션 2 문제 1 제거 · 문제 1~7 재번호<span class="tag">완료</span></h3>
+        <dl>
+          <div><dt>상태</dt><dd><code>중간보고서_초안.md</code>에 이미 반영됨</dd></div>
+          <div><dt>할 일</dt><dd>hwp로 옮길 때 재번호·변경관리 표 사유("방학 초 폐기한 파이프라인…") 그대로 반영됐는지만 확인</dd></div>
+        </dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e6"><span></span></label>
+      <div class="body">
+        <h3>테스트 요구사항 — 간소화 버전 사용<span class="tag">전사</span></h3>
+        <dl><div><dt>내용</dt><dd>17행 → 7행으로 줄인 버전(단위/통합/시스템/성능×3/재현성) + 테스트 환경·절차 문단</dd></div></dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e7"><span></span></label>
+      <div class="body">
+        <h3>요구사항 변경관리 과정 문제점 문장 추가<span class="tag">전사</span></h3>
+        <dl><div><dt>내용</dt><dd>"데이터·라벨·feature가 잦게 변경 → 문서 동기화 부담 → <code>.work-log/current.md</code> 단일 소스 + authoritative 문서 파일별 지정" 한 문단</dd></div></dl>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+  </section>
+
+  <footer>
+    체크 상태는 이 브라우저에만 저장됩니다 · 항목 원문·표는 세션 대화 참조 · 마지막 갱신 2026-09-07
+  </footer>
+</div>
+
+<script>
+  (function(){
+    "use strict";
+    var KEY="capstone2-confirm-v1";
+    var boxes=Array.prototype.slice.call(document.querySelectorAll('.chk input'));
+    var store={};
+    try{ store=JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ store={}; }
+
+    var pcount=document.getElementById('pcount');
+    var pfill=document.getElementById('pfill');
+    var total=boxes.length;
+
+    function refresh(){
+      var done=0;
+      boxes.forEach(function(b){
+        if(b.checked){ done++; b.closest('.item').classList.add('checked'); }
+        else{ b.closest('.item').classList.remove('checked'); }
+      });
+      pcount.textContent=done+' / '+total+' 확인함';
+      pfill.style.width=(total? (done/total*100):0)+'%';
+      document.querySelectorAll('section').forEach(function(sec){
+        var all=sec.querySelectorAll('.chk input');
+        var d=sec.querySelectorAll('.chk input:checked').length;
+        var c=sec.querySelector('.count');
+        if(c) c.textContent=d+' / '+all.length;
+      });
+    }
+
+    boxes.forEach(function(b){
+      var id=b.dataset.id;
+      if(store[id]) b.checked=true;
+      b.addEventListener('change',function(){
+        store[id]=b.checked;
+        try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){}
+        refresh();
+      });
+    });
+    refresh();
+
+    var btn=document.getElementById('themeBtn');
+    var root=document.documentElement;
+    var TKEY="capstone2-confirm-theme";
+    try{ var t=localStorage.getItem(TKEY); if(t) root.setAttribute('data-theme',t); }catch(e){}
+    btn.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme');
+      var mqDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var next= cur? (cur==='dark'?'light':'dark') : (mqDark?'light':'dark');
+      root.setAttribute('data-theme',next);
+      try{ localStorage.setItem(TKEY,next); }catch(e){}
+    });
+  })();
+</script>
+</body>
+</html>
