@@ -140,11 +140,11 @@
 
     <div class="bar">
       <div class="stat req"><b>1</b><span>PPT 수정</span></div>
-      <div class="stat confirm"><b>20</b><span>근거 · 실측 · 전사</span></div>
+      <div class="stat confirm"><b>22</b><span>근거 · 실측 · 전사</span></div>
       <div class="stat done"><b>6</b><span>이미 반영됨</span></div>
     </div>
     <div class="progress">
-      <span id="pcount">0 / 21 확인함</span>
+      <span id="pcount">0 / 23 확인함</span>
       <div class="track"><div class="fill" id="pfill"></div></div>
     </div>
 
@@ -170,7 +170,7 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="n">B</span><h2>Q&amp;A 방어 — 근거 보강 / 답변 준비</h2><span class="count">6</span></div>
+    <div class="sec-head"><span class="n">B</span><h2>Q&amp;A 방어 — 근거 보강 / 답변 준비</h2><span class="count">8</span></div>
 
     <article class="item" data-sev="confirm">
       <label class="chk"><input type="checkbox" data-id="b1"><span></span></label>
@@ -286,6 +286,40 @@
         <span class="owner">유용상</span>
       </div>
     </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b7"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 11 "배포 89.9%" 가 뭔 뜻 / 왜 Baseline이 제일 낮나<span class="tag">답변</span></h3>
+        <dl><div><dt>왜</dt><dd>"Baseline이 정확도 1등이라며 왜 89.9?" 예상 질문. 슬라이드에 정확도가 두 종류라 헷갈림</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <ul>
+              <li><strong>5시드 평균</strong>(슬라이드 위쪽) = 각 모델을 시드 5개로 5번 학습해 test 정확도를 평균낸 값. 학습 무작위성까지 반영한 <strong>진짜 대표값</strong> → 3모델 다 ~92%로 동급 (Baseline 92.7이 오히려 1등)</li>
+              <li><strong>배포 단일 체크포인트</strong>(아래쪽) = Pi에 실제로 올릴 <strong>1개</strong>를 골랐을 때의 test 정확도. 고르는 기준은 <strong>validation balanced accuracy</strong> (test를 보고 고르면 반칙)</li>
+              <li><strong>Baseline 89.9의 정체</strong>: 그 규칙대로 고른 시드(seed2)가 하필 test에서 89.9%. seed0은 test 92.6%였지만 val 점수가 근소하게 낮아 규칙상 안 뽑힘 → <strong>test를 보고 시드를 고르는 반칙을 안 한 정직한 결과</strong></li>
+              <li>배포 최고는 <strong>EE Dynamic 92.9%</strong> (목표1 판정 대상)</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b8"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 6 — 정상(109)이 혼잡(132)보다 적은데?<span class="tag">답변</span></h3>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <p>"혼잡 감지인데 왜 정상 데이터가 제일 적냐" → <strong>부하 테스트로 수집한 데이터라 혼잡~심각 구간이 많다.</strong> 실환경 배포 시 분포는 정상이 다수겠지만, 학습·평가는 경계 구간을 충분히 확보하는 게 중요해서 의도적으로 부하 시나리오 위주로 수집.</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
   </section>
 
   <section>
@@ -354,8 +388,9 @@
               <li>"라벨을 점유율로 부여" → "<strong>라벨을 4축(RPS·점유율·손실·지연) 가중합으로 부여</strong> (occupancy 가중치 0.35로 최대 + occupancy만 원척도라 실질적으로 점유율이 지배)"</li>
               <li>leakage 논거 강화: "점유율을 입력에도 사용" → "<strong>모델 입력 4개 = 라벨 계산 4축 전부</strong> → 모델이 정답 계산식의 재료를 다 보고 있어 사실상 정답을 읽음 (완전 leakage)"</li>
               <li>2학기 대비: "→ 라벨 축(jitter·loss·latency)을 모델 입력에서 <strong>완전히 분리</strong>"</li>
+              <li><strong>슬라이드 3</strong>도 같이: "1학기 시뮬레이터 95.7%"·"시뮬레이터 검증" → 1학기 최종 시스템은 <strong>Kaggle 6G 공개 데이터셋</strong>(시뮬레이터 아님). "공개 데이터셋(Kaggle 6G) 95.7%"로 문구 정합성</li>
             </ul>
-            <p class="note">CLAUDE.md의 "채널 점유율 단일 문턱(40/65/85)" 서술은 틀린 것으로 확인 → 수정 완료.</p>
+            <p class="note">CLAUDE.md의 "채널 점유율 단일 문턱(40/65/85)" 서술은 틀린 것으로 확인 → 수정 완료. (traffic_simulator.py만 그 방식, 최종보고서 시스템은 Kaggle 가중합)</p>
           </div>
         </div>
         <span class="owner">유용상 · 예나</span>
