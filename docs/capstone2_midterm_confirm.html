@@ -140,11 +140,11 @@
 
     <div class="bar">
       <div class="stat req"><b>1</b><span>PPT 수정</span></div>
-      <div class="stat confirm"><b>22</b><span>근거 · 실측 · 전사</span></div>
+      <div class="stat confirm"><b>23</b><span>근거 · 실측 · 전사</span></div>
       <div class="stat done"><b>6</b><span>이미 반영됨</span></div>
     </div>
     <div class="progress">
-      <span id="pcount">0 / 23 확인함</span>
+      <span id="pcount">0 / 24 확인함</span>
       <div class="track"><div class="fill" id="pfill"></div></div>
     </div>
 
@@ -372,7 +372,7 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="n">D</span><h2>내용 확인</h2><span class="count">2</span></div>
+    <div class="sec-head"><span class="n">D</span><h2>내용 확인</h2><span class="count">3</span></div>
 
     <article class="item" data-sev="confirm">
       <label class="chk"><input type="checkbox" data-id="d1"><span></span></label>
@@ -415,6 +415,26 @@
           <div><dt>할 일</dt><dd>실제 기여 기준으로 팀 확정 → 보고서 역할표</dd></div>
         </dl>
         <span class="owner">팀</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="d3"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 17 참고문헌 — [4]·[5] 서지 다듬기<span class="tag">확정</span></h3>
+        <dl>
+          <div><dt>확인 결과</dt><dd>6개 모두 실존 문서(웹 검증 완료). [1] Y.1541 (12/2011) · [2] G.114 (05/2003) · [3] G.107 (06/2015) · [6] Kaya et al. ICML 2019 (PMLR v97, pp.3301–3310) — 서지 정확</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">[4]·[5]만 손보면 완벽</div>
+          <div class="c">
+            <ul>
+              <li><strong>[4] Cisco Enterprise QoS SRND</strong> — "Version 3.3" 추가 권장 (흔히 인용되는 판, voice 편도 ≤150ms / jitter ≤30ms / loss ≤1% 수록). 실물 PDF 확인됨</li>
+              <li><strong>[5] Aruba</strong> — 채널 이용률 75% 임계값은 Aruba 것 맞음 (기본 트리거값 + best practice &lt;20% voice / &lt;50% video / <strong>&lt;75% data</strong>). 단 이 수치가 "Very High-Density 802.11ac Networks VRD"에서 온 건지, "Managing and Optimizing RF Spectrum for Aruba WLANs (Application Note)"에서 온 건지 <strong>팀이 8/31에 실제로 본 문서로 확인</strong> → 맞는 제목으로 교체</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
       </div>
     </article>
   </section>
