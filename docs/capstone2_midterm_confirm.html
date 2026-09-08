@@ -343,12 +343,22 @@
     <article class="item" data-sev="confirm">
       <label class="chk"><input type="checkbox" data-id="d1"><span></span></label>
       <div class="body">
-        <h3>1학기 라벨 = "점유율 단일 문턱" 맞나<span class="tag">확정</span></h3>
+        <h3>슬라이드 7 "라벨을 점유율로 부여" — 부정확, 수정 필요<span class="tag">수정</span></h3>
         <dl>
-          <div><dt>지금</dt><dd>슬라이드 3·7은 "라벨을 점유율로 부여" (단일 문턱). 슬라이드 8 "문제(8/27 이전)"의 "가중합 <code>0.45·occupancy</code>"는 초기 <code>ap_metrics_v2</code>(방학 1차)이지 1학기 아님. 반면 <strong>1학기 최종보고서는 "RPS·점유율·손실·지연 가중합"</strong>으로 서술</div>
-          <div><dt>할 일</dt><dd><code>yongsang</code> 브랜치에서 1학기 라벨 코드 확인 → 슬라이드 7 "점유율로 부여"가 맞는지. 틀리면 슬라이드 7 수정</dd></div>
+          <div><dt>확인 결과</dt><dd><code>yongsang</code> 브랜치 확인 완료. 1학기 최종 시스템(<code>data/real</code> = Kaggle 6G 데이터셋)의 라벨은 <strong>4축 가중합</strong>: <code>score = 0.35·occupancy + 0.25·latency + 0.25·loss + 0.15·rps</code>, 문턱 35/55/75/100. 초기 <code>traffic_simulator.py</code>만 occupancy 단일 문턱(40/65/85)이었고 최종보고서 시스템은 아님. <strong>C1 최종보고서 서술이 맞음</strong></div>
         </dl>
-        <span class="owner">유용상</span>
+        <div class="insert">
+          <div class="lbl">슬라이드 7 "1학기 입력 4개의 문제" 문구 교체</div>
+          <div class="c">
+            <ul>
+              <li>"라벨을 점유율로 부여" → "<strong>라벨을 4축(RPS·점유율·손실·지연) 가중합으로 부여</strong> (occupancy 가중치 0.35로 최대 + occupancy만 원척도라 실질적으로 점유율이 지배)"</li>
+              <li>leakage 논거 강화: "점유율을 입력에도 사용" → "<strong>모델 입력 4개 = 라벨 계산 4축 전부</strong> → 모델이 정답 계산식의 재료를 다 보고 있어 사실상 정답을 읽음 (완전 leakage)"</li>
+              <li>2학기 대비: "→ 라벨 축(jitter·loss·latency)을 모델 입력에서 <strong>완전히 분리</strong>"</li>
+            </ul>
+            <p class="note">CLAUDE.md의 "채널 점유율 단일 문턱(40/65/85)" 서술은 틀린 것으로 확인 → 수정 완료.</p>
+          </div>
+        </div>
+        <span class="owner">유용상 · 예나</span>
       </div>
     </article>
     <article class="item" data-sev="confirm">

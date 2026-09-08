@@ -27,7 +27,7 @@
 
 ## 배경 (1학기 → 1차 → 2차)
 
-- **1학기**: `project/data/real` 기준 4-feature(RPS, channel occupancy, packet loss, latency) 실험. **시뮬레이터 생성 데이터**(`traffic_simulator.py`, 공장 운영 패턴 4시나리오). 라벨은 **채널 점유율 단일 문턱**(40/65/85)으로 자동 부여 → Threshold baseline과 순환 구조. Threshold / Baseline LSTM / Early Exit Fixed·Dynamic / SDN-style을 비교. 이 브랜치에는 코드가 없다 — `yongsang` 브랜치 참고. 정리본: `docs/capstone1_summary.html`.
+- **1학기**: 4-feature(RPS, channel occupancy, packet loss, latency) 실험. 초기엔 `traffic_simulator.py`(공장 운영 패턴 4시나리오, `assign_label(channel_occupancy)` = 40/65/85 **occupancy 단일 문턱** 라벨). **최종보고서 시스템은** `project/data/real` = **Kaggle 6G Network Slicing QoS 데이터셋**(`generate_from_real_dataset.py`, window 10)에 **4축 가중합 라벨**(`composite_congestion_score` = 0.35·occupancy + 0.25·latency + 0.25·packet_loss + 0.15·rps, 각 축 0~100 정규화, 문턱 35/55/75). 모델 입력 4-feature = 라벨 계산 4축과 완전히 동일 → leakage/순환 구조(2학기 재설계의 출발점). Threshold / Baseline LSTM / Early Exit Fixed·Dynamic / SDN-style을 비교. 이 브랜치에는 코드가 없다 — `yongsang` 브랜치 참고. 정리본: `docs/capstone1_summary.html`.
 - **1차(`ap_cleaned_strict`, archived)**: 방학 중 "실제 AP 장비 실측"을 목표로 9-feature 파이프라인을 구축했으나, 2026-08-23 확인 결과 실제로는 인터넷 공개 데이터를 가공한 것이었다. 9-feature 파이프라인, congestion score 라벨링, Early Exit/SDN 비교 구조를 미리 검증하는 역할은 했다. 재라벨링/재학습 안 하기로 결정(2026-08-24), 코드·데이터는 `yongsang` 브랜치에만.
 - **2차(이 브랜치의 공식 진행 라인)**: 2026-08-23부터 팀이 실제로 구매한 GL.iNet Opal(GL-SFT1200) AP에서 `project/scripts/collect_metrics.py`로 직접 라이브 수집한 진짜 실측 데이터. "실제 AP 장비 실측" 목표를 처음으로 만족. 아래 세 단계로 진화했다.
 
