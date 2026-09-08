@@ -140,11 +140,11 @@
 
     <div class="bar">
       <div class="stat req"><b>1</b><span>PPT 수정</span></div>
-      <div class="stat confirm"><b>19</b><span>근거 · 실측 · 전사</span></div>
+      <div class="stat confirm"><b>20</b><span>근거 · 실측 · 전사</span></div>
       <div class="stat done"><b>6</b><span>이미 반영됨</span></div>
     </div>
     <div class="progress">
-      <span id="pcount">0 / 20 확인함</span>
+      <span id="pcount">0 / 21 확인함</span>
       <div class="track"><div class="fill" id="pfill"></div></div>
     </div>
 
@@ -170,7 +170,7 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="n">B</span><h2>Q&amp;A 방어 — 근거 보강 / 답변 준비</h2><span class="count">5</span></div>
+    <div class="sec-head"><span class="n">B</span><h2>Q&amp;A 방어 — 근거 보강 / 답변 준비</h2><span class="count">6</span></div>
 
     <article class="item" data-sev="confirm">
       <label class="chk"><input type="checkbox" data-id="b1"><span></span></label>
@@ -262,6 +262,28 @@
           </div>
         </div>
         <span class="owner">유용상 · 예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b6"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 9 "숨은 관계를 내부 가중치로 압축" 이 뭔 뜻?<span class="tag">답변</span></h3>
+        <dl><div><dt>왜</dt><dd>슬라이드 9 문구가 추상적이라 "그게 무슨 말이냐" 질문 가능</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <ul>
+              <li><strong>학습 = (7 feature 입력, label 정답) 쌍을 2,551행어치 반복해서 봄</strong></li>
+              <li><strong>"숨은 관계"</strong> = if문으로 못 짜는 feature 조합 ↔ 라벨 대응. 예: "점유율 65%대(혼자선 애매) + retry 급증 + bitrate 상승 조합이면 → 대개 victim QoS가 깨져서 정답이 label 3이더라"</li>
+              <li><strong>"가중치로 압축"</strong> = LSTM의 수십만 개 숫자(가중치)를 "7 feature 넣으면 맞는 라벨 나오게" 조금씩 조정 → 그 관계가 숫자 안에 녹아듦. 데이터 2,551행 패턴이 고정 크기 가중치 뭉치(~1.4MB)로 요약됨. 학습 후엔 데이터 없이 가중치만으로 새 상황에 라벨을 매김</li>
+              <li><strong>비유</strong>: 경험 많은 관리자가 수백 번 겪으며 "점유율 65%여도 retry 튀고 속도 이상하면 곧 통화 끊기더라"는 감을 익히는 것. 학습 = 그 감 익히기, 가중치 = 그 감</li>
+              <li><strong>슬라이드 맥락</strong>: 배포 땐 프로브가 없어 jitter/loss를 직접 못 봄 → 점유율·retry·bitrate 같은 AP 신호만으로 QoS 붕괴를 판단해야 하고, 그 판단력이 이 가중치에 들어있음</li>
+            </ul>
+            <p class="note">슬라이드 문구를 그대로 두되 위 내용으로 답하거나, 문구를 "AP 신호 패턴 ↔ QoS 붕괴 대응을 학습으로 익힘" 정도로 풀어 써도 됨.</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
       </div>
     </article>
   </section>
