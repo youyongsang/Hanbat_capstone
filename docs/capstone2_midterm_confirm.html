@@ -139,8 +139,8 @@
     <p class="sub">발표 전 확정할 수정·근거·실측·전사 항목. 슬라이드/보고서에 <strong>넣을 내용</strong>을 항목마다 적었습니다. 값이 빈 것만 팀이 측정·결정.</p>
 
     <div class="bar">
-      <div class="stat req"><b>1</b><span>PPT 수정</span></div>
-      <div class="stat confirm"><b>23</b><span>근거 · 실측 · 전사</span></div>
+      <div class="stat req"><b>2</b><span>PPT 수정 (A)</span></div>
+      <div class="stat confirm"><b>22</b><span>Q&amp;A · 실측 · 전사</span></div>
       <div class="stat done"><b>6</b><span>이미 반영됨</span></div>
     </div>
     <div class="progress">
@@ -154,7 +154,7 @@
   </header>
 
   <section>
-    <div class="sec-head"><span class="n">A</span><h2>PPT 수정</h2><span class="count">1</span></div>
+    <div class="sec-head"><span class="n">A</span><h2>PPT 수정</h2><span class="count">2</span></div>
 
     <article class="item" data-sev="req">
       <label class="chk"><input type="checkbox" data-id="a2"><span></span></label>
@@ -165,6 +165,26 @@
           <div><dt>문구</dt><dd>제목 "방학 진행 경과 — 8/21 ~ 9/2, <b>세션 21차</b>" → "세션 21차"(Claude와 21번 작업)는 심사위원한테 뜬금없음. <code>8/21 ~ 9/2</code>만 남기기</dd></div>
         </dl>
         <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="a3"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 17 참고문헌 — [4]·[5] 서지 보완<span class="tag">보완</span></h3>
+        <dl>
+          <div><dt>확인 결과</dt><dd>6개 모두 실존 문서(웹 검증 완료). [1] Y.1541 (12/2011) · [2] G.114 (05/2003) · [3] G.107 (06/2015) · [6] Kaya et al. ICML 2019 (PMLR v97, pp.3301–3310) — 서지 정확, 그대로 두면 됨</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">[4]·[5]만 손보면 완벽</div>
+          <div class="c">
+            <ul>
+              <li><strong>[4] Cisco Enterprise QoS SRND</strong> — 끝에 <code>Version 3.3</code> 추가 권장 (흔히 인용되는 판, voice 편도 ≤150ms / jitter ≤30ms / loss ≤1% 수록). 실물 PDF 확인됨</li>
+              <li><strong>[5] Aruba</strong> — 채널 이용률 75% 임계값은 Aruba 것 맞음 (기본 트리거값 + best practice &lt;20% voice / &lt;50% video / <strong>&lt;75% data</strong>). 단 이 수치가 "Very High-Density 802.11ac Networks VRD"에서 온 건지, "Managing and Optimizing RF Spectrum for Aruba WLANs (Application Note)"에서 온 건지 <strong>팀이 8/31에 실제로 본 문서로 확인</strong> → 맞는 제목으로 교체</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
       </div>
     </article>
   </section>
@@ -372,7 +392,7 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="n">D</span><h2>내용 확인</h2><span class="count">3</span></div>
+    <div class="sec-head"><span class="n">D</span><h2>내용 확인</h2><span class="count">2</span></div>
 
     <article class="item" data-sev="confirm">
       <label class="chk"><input type="checkbox" data-id="d1"><span></span></label>
@@ -418,25 +438,6 @@
       </div>
     </article>
 
-    <article class="item" data-sev="confirm">
-      <label class="chk"><input type="checkbox" data-id="d3"><span></span></label>
-      <div class="body">
-        <h3>슬라이드 17 참고문헌 — [4]·[5] 서지 다듬기<span class="tag">확정</span></h3>
-        <dl>
-          <div><dt>확인 결과</dt><dd>6개 모두 실존 문서(웹 검증 완료). [1] Y.1541 (12/2011) · [2] G.114 (05/2003) · [3] G.107 (06/2015) · [6] Kaya et al. ICML 2019 (PMLR v97, pp.3301–3310) — 서지 정확</dd></div>
-        </dl>
-        <div class="insert">
-          <div class="lbl">[4]·[5]만 손보면 완벽</div>
-          <div class="c">
-            <ul>
-              <li><strong>[4] Cisco Enterprise QoS SRND</strong> — "Version 3.3" 추가 권장 (흔히 인용되는 판, voice 편도 ≤150ms / jitter ≤30ms / loss ≤1% 수록). 실물 PDF 확인됨</li>
-              <li><strong>[5] Aruba</strong> — 채널 이용률 75% 임계값은 Aruba 것 맞음 (기본 트리거값 + best practice &lt;20% voice / &lt;50% video / <strong>&lt;75% data</strong>). 단 이 수치가 "Very High-Density 802.11ac Networks VRD"에서 온 건지, "Managing and Optimizing RF Spectrum for Aruba WLANs (Application Note)"에서 온 건지 <strong>팀이 8/31에 실제로 본 문서로 확인</strong> → 맞는 제목으로 교체</li>
-            </ul>
-          </div>
-        </div>
-        <span class="owner">유용상</span>
-      </div>
-    </article>
   </section>
 
   <section>
