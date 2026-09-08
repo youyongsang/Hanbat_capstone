@@ -139,12 +139,12 @@
     <p class="sub">발표 전 확정할 수정·근거·실측·전사 항목. 슬라이드/보고서에 <strong>넣을 내용</strong>을 항목마다 적었습니다. 값이 빈 것만 팀이 측정·결정.</p>
 
     <div class="bar">
-      <div class="stat req"><b>2</b><span>PPT 수정</span></div>
+      <div class="stat req"><b>1</b><span>PPT 수정</span></div>
       <div class="stat confirm"><b>19</b><span>근거 · 실측 · 전사</span></div>
       <div class="stat done"><b>6</b><span>이미 반영됨</span></div>
     </div>
     <div class="progress">
-      <span id="pcount">0 / 21 확인함</span>
+      <span id="pcount">0 / 20 확인함</span>
       <div class="track"><div class="fill" id="pfill"></div></div>
     </div>
 
@@ -154,29 +154,7 @@
   </header>
 
   <section>
-    <div class="sec-head"><span class="n">A</span><h2>PPT 수정</h2><span class="count">2</span></div>
-
-    <article class="item" data-sev="req">
-      <label class="chk"><input type="checkbox" data-id="a1"><span></span></label>
-      <div class="body">
-        <h3>슬라이드 8 앵커 표 — 라벨명과 겹쳐 헷갈림<span class="tag">필수</span></h3>
-        <dl>
-          <div><dt>왜</dt><dd>앵커 표 컬럼이 <code>경고 / 혼잡 / 심각 / 완전</code>인데, 데모·슬라이드 6 라벨은 <code>정상 / 경고 / 혼잡 / 심각</code>. 심사위원이 두 슬라이드 보면 "왜 하나는 완전, 하나는 정상?"</dd></div>
-        </dl>
-        <div class="insert">
-          <div class="lbl">슬라이드 8 앵커 표 헤더 · 각주</div>
-          <div class="c">
-            <ul>
-              <li>컬럼 헤더에 score 병기: <code>경고 0.25 · 혼잡 0.5 · 심각 0.75 · 완전 1.0</code> (본문 "각 축을 4앵커(경고 0.25 / …)"와 통일). 또는 아예 <code>0.25 / 0.5 / 0.75 / 1.0</code> 만</li>
-              <li>표 제목: "sub-score 앵커 (표준 문턱)" → "raw 수치 → sub-score 매핑 눈금"</li>
-              <li>"완전"이 5번째 라벨처럼 읽히면 → <code>포화 1.0</code></li>
-              <li>각주 1줄: "앵커 = piecewise-linear 매핑 눈금(score 0~1). 최종 라벨(정상/경고/혼잡/심각)은 congestion_score를 0.25 / 0.5 / 0.75로 자른 결과. '정상' 앵커는 없음(모든 앵커 미만), '완전'은 라벨 아님(score 상한, label 3에 포함)"</li>
-            </ul>
-          </div>
-        </div>
-        <span class="owner">유용상 · 예나</span>
-      </div>
-    </article>
+    <div class="sec-head"><span class="n">A</span><h2>PPT 수정</h2><span class="count">1</span></div>
 
     <article class="item" data-sev="req">
       <label class="chk"><input type="checkbox" data-id="a2"><span></span></label>
