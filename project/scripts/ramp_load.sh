@@ -7,6 +7,7 @@
 # 사용법: bash ramp_load.sh <port> [profile] [target_ip] [pkt_len]
 #   port      : 191=5201, S26=5202 (노트북 iperf3 서버와 맞출 것)
 #   profile   : step(기본, 계단식 10/20/30/40M x 60s) | knee(무릎근처, 22M x 240s 고정)
+#               | light(경고↔혼잡, 13M x 300s) | gray(혼잡↔심각 회색지대, 19M x 300s)
 #   target_ip : 기본 192.168.8.226 (노트북) — 세션마다 IP 바뀌면 인자로 덮어쓸 것
 #   pkt_len   : 기본 1200 (바이트)
 #
@@ -29,8 +30,16 @@ case "$PROFILE" in
     # 무릎근처: 22M 고정 240초 (두 폰 합계 ~44M, occ 50~75% 오르내림 노림)
     STEPS=("22M:240")
     ;;
+  light)
+    # 경고↔혼잡 밴드: 13M 고정 300초 (두 폰 합계 ~26M, occ ~45~58% dwell)
+    STEPS=("13M:300")
+    ;;
+  gray)
+    # 혼잡↔심각 회색지대: 19M 고정 300초 (두 폰 합계 ~38M, occ ~58~70% dwell)
+    STEPS=("19M:300")
+    ;;
   *)
-    echo "알 수 없는 profile: $PROFILE (step 또는 knee)" >&2
+    echo "알 수 없는 profile: $PROFILE (step | knee | light | gray)" >&2
     exit 1
     ;;
 esac
