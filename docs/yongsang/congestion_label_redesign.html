@@ -314,6 +314,53 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
     <p class="lede"><b>문제</b>: <code>max(표준 문턱)</code>은 그 자체로 규칙 기반 분류기다. 배포 시점에 규칙으로 계산하면 되는데 왜 LSTM인가?</p>
     <div class="callout key"><span>▸</span><span><b>답: 프로브가 배포 시점엔 없다.</b> 배포 시스템엔 victim 프로브(협조 싱크 + 지속 스트림)가 없다. 모델은 <b>AP-side 텔레메트리만 보고 "지금 victim QoS가 깨지고 있는가"를 예측</b>해야 한다. 규칙으로 못 한다 — victim 측정값이 없으니까. + 시계열 추세(window 10) + Early Exit 효율.</span></div>
 
+    <h3>반론 검토: "공장 장비가 자기 지연율을 이미 안다면?" <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-13)</span></h3>
+    <p class="lede">실제 공장 자동화 장비가 자기 지연(cycle time/RTT)을 이미 로깅한다면, victim 프로브 없이 그 값을 직접 받아 규칙으로 계산하면 되는 것 아닌가 — 그럼 LSTM(나아가 모델 자체)이 무의미해지는 게 아닌가? <b>결론: 전제는 부분적으로 맞지만, 그래서 이 프로젝트가 무의미해지진 않는다.</b></p>
+    <ul>
+      <li><b>유선 산업 프로토콜은 실제로 지연 진단을 갖고 있다.</b> PROFINET RT/IRT는 250µs~1ms급 결정적 사이클타임을 스펙으로 갖고, OPC UA도 subscription publishing interval·네트워크 RTT·서버 publish cycle을 조합해 지연을 진단하며 TSN 환경에선 RTT/jitter가 실시간 성능 지표로 명시돼 있다 (Real-Time Performance of OPC UA, arXiv:2310.17052; PROFINET University).</li>
+      <li><b>그런데 이건 대부분 유선 필드기기·컨트롤러용이다.</b> AP가 관리하는 건 <b>무선</b> 클라이언트(핸드헬드 스캐너, 무선 센서, 이동 로봇, 태블릿)인데, 이런 기기 대부분은 PROFINET/OPC UA 스택을 안 돌린다 — 지연 데이터가 어딘가엔 있어도 AP·Pi까지 도달하지 않는다.</li>
+      <li><b>한 클라이언트의 지연율만으론 "채널 전환" 판단이 안 된다.</b> 목표는 채널을 공유하는 전체의 상태 파악인데, capture effect(<code>ap_crash_analysis</code> — 신호 강한 기기가 채널 독점·약한 기기가 굶는 현상)처럼 클라이언트마다 체감이 다르다. 이질적 무선 기기 전부의 표준화된 협조 보고는 실전에서 비현실적.</li>
+      <li><b>그래서 실제 연구도 AP-side 텔레메트리만 쓰는 접근을 택한다.</b> APDT(Access Point Digital Twin)는 신호세기·트래픽량·throughput·패킷손실 같은 AP-side 신호만으로 혼잡도 예측 모델을 학습하고(arXiv:2511.23009), 대학 건물 AP 100개 실측으로 LSTM/CNN/GRU/Transformer를 비교한 연구도 마찬가지로 AP 관측만 사용한다(arXiv:2408.09423).</li>
+    </ul>
+    <div class="callout"><span>ℹ</span><span><b>결론</b>: "유선 장비 일부가 지연율을 안다"가 "무선 클라이언트 전체가 협조한다"를 의미하지 않는다. 이 프로젝트의 전제(AP만 보고, 클라이언트 협조 없이 판단)는 유선 자동화 프로토콜의 존재와 무관하게 유효 — 오히려 이 문제가 왜 어렵고 의미 있는지 보여주는 근거가 된다. (특정 배포 현장의 클라이언트 전부가 실제로 협조 보고한다면, 그 현장에 한해 보너스 입력으로 추가하는 건 별개로 이득일 수 있음 — 일반해를 대체하는 게 아니라 특수해를 더하는 것.)</span></div>
+
+    <h3>남는 관측 한계를 넘는 법: Early-Exit 스타일 능동 프로브 트리거 (하이브리드 아키텍처) <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-14)</span></h3>
+    <p class="lede">"AP만 보고 판단"이라는 전제는 정당화됐지만 대가로 남는 관측 한계는 실재한다 — 라벨 3(심각)의 78.2%가 occupancy가 아닌 축(주로 loss, 83%)이 원인인데 모델은 그 축을 못 본다. 이 한계는 <b>일부는 하드웨어 세대 문제</b>(nl80211 <code>airtime_link_metric</code>을 상위 MediaTek 칩만 펌웨어 레벨에서 지원, 지금 AP인 MT7621A는 없음)이고 <b>일부는 보편적 한계</b>(victim이 실제로 패킷을 받았는지는 결국 받는 쪽이 보고해야 완벽히 알 수 있음 — Wi-Fi 프로토콜 구조 자체의 문제라 AP 등급과 무관, 그래서 상용 솔루션도 소수의 능동 테스트 에이전트를 함께 씀).</p>
+    <p><b>제안</b> — Early Exit의 "확신 있으면 가볍게, 애매하면 더 본다"는 원리를 모델 레이어(exit1/2/3)뿐 아니라 <b>파이프라인 전체(패시브 판단 vs 능동 프로브 발동)</b>에도 적용한다: 확신 높으면(softmax 최대확률 ≥ θ) 패시브 판단 그대로, 확신 낮으면(&lt; θ) 짧게(~2초) 능동 프로브를 발동해 실측 congestion_score로 확정.</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>프로브 트리거율</th><th class="n">4-class 정확도</th><th class="n">L3 F1</th></tr></thead>
+      <tbody>
+        <tr><td>0% (순수 패시브)</td><td class="n">93.2%</td><td class="n">85.3%</td></tr>
+        <tr><td>2.0%</td><td class="n">94.3%</td><td class="n">87.6%</td></tr>
+        <tr><td><b>3.4%</b></td><td class="n"><b>95.0%(목표1 재달성)</b></td><td class="n">89.0%</td></tr>
+        <tr><td>8.3%</td><td class="n">96.4%</td><td class="n">92.6%</td></tr>
+        <tr><td>20.0%</td><td class="n">97.9%</td><td class="n">96.4%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout key"><span>▸</span><span>캐노니컬 test 365창엔 원래 라벨을 만든 진짜 probe 측정값이 이미 있어 재수집 없이 오프라인 시뮬레이션 가능("확신 &lt; θ인 창만 실측 라벨로 대체"). Baseline 5시드 검증 완료(단조증가, 시드 표준편차 벗어난 확실한 개선). <b>전체 윈도우의 3.4%만 애매하다고 판단해 프로브를 잠깐 켜면 목표1(4-class 95%)을 넘는다.</b></span></div>
+    <h4 style="margin:18px 0 8px;font-size:0.95em;color:var(--ink-mute)">배포 함의</h4>
+    <ul>
+      <li>"모든 클라이언트 협조" 대신 <b>"협조 기기 1대 상시 배치 + 드물게(3~8%)만 짧게 찌르는 것"</b>으로 완화 — 상용 제품(소수 지정 센서)과 같은 현실적 패턴. <b>단, 센서 "개수"(AP당 최소 1대)는 트리거율과 무관하게 그대로 필요</b> — 트리거율이 줄여주는 건 개수가 아니라 센서 1대당 운영 부담(전력·airtime).</li>
+      <li>트리거된 ~2초 경로는 목표2(모델 추론 &lt;1ms)와 무관한 별도의 드문 예외 경로 — 채널 전환이라는 물리적 동작 자체도 수 초~수십 초 걸림. 완전히 무해하진 않은 정직한 제한 사항(§8에 단축 아이디어 별도 기록).</li>
+      <li>협조기기 후보(현실성 순): <b>RPi Zero 2 W</b>(완전한 Linux, 기존 <code>ProbeRunner</code>/iperf3 코드 재사용 가능, 저비용) &gt; AGV/무선 스캐너 등 기존 무선기기 재활용(비용 0, 단 설치 권한 문제) &gt; ESP32(최저가, iperf3 완전 호환 아님).</li>
+      <li>센서는 상시 전원은 켜두되 유휴 대기만(<code>iperf3 -s</code> 리스닝 비용 거의 0) — 기기를 그때그때 깨우는 구조가 아니라 Pi가 필요한 순간에만 짧게 트래픽을 보내는 것뿐.</li>
+      <li><b>LSTM은 무의미해지지 않는다</b> — "전부 판단"에서 "92~97%는 직접 판단 + 확신도로 언제 프로브가 필요한지 결정하는 게이트키퍼"로 역할이 바뀔 뿐. 센서 1곳(좁은 시야)과 LSTM(AP 전체 station 종합, 넓은 시야)은 상호보완적 — capture effect처럼 센서 위치만 멀쩡하고 다른 station은 굶는 경우를 LSTM이 잡아냄.</li>
+    </ul>
+    <div class="callout key"><span>▸</span><span><b>"실시간" 주장과의 관계 — 목표2와 혼동 금지.</b> 목표2(추론 &lt;1ms)는 <b>LSTM 모델 자체의 추론 시간</b>에 대한 목표이지 최종 판단까지의 전체 시간이 아니다. 하이브리드를 얹어도 모델 계산 시간은 그대로 &lt;1ms. 프로브 트리거는 목표1(정확도)을 위해 극히 일부 순간(3.4%)에만 의도적으로 실시간성을 내려놓는 별개의 메커니즘이다 — "시스템은 실시간으로 동작한다"(❌ 오해 소지) 대신 <b>"모델 추론은 실시간을 유지하되, 애매한 3.4%는 의도적으로 실시간성을 희생하고 확인한다"</b>(✅)로 서술.</span></div>
+    <div class="callout"><span>ℹ</span><span><b>채택 범위</b>: 이 구조는 오프라인 시뮬레이션(실제 probe 정답값 + 5시드 재현)으로 검증된 <b>제안·향후 연구로 채택</b>한다. 실제 라이브 구현(프로브 컨트롤러 모듈, 협조기기 배치, 데모 연동)은 이번 학기 스코프 밖으로 보류 — 시뮬레이션만으로 충분히 방어 가능한 근거이고, 라이브 네트워크 작업은 예상 못 한 변수가 많으며(이번 세션의 "AP 크래시" 오판 사례 등), 남은 시간은 보고서 작성에 우선 배정. 상세·산출물: <code>.work-log/current.md</code> 25차 후속, <code>project/.tmp/exp_l3_threshold/probe_trigger_simulation.py</code>.</span></div>
+
+    <h3>대안 경로: 새 AP 구매(per-station airtime) 재검토 <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-14)</span></h3>
+    <p class="lede">하이브리드는 대가(센서 의존성+지연)를 치르고 얻은 개선이라 "공짜"가 아니다. 대가 없이 순수 패시브 정확도 자체를 올릴 수 있는 새 AP 카드는 여전히 유효한 대안 — 단 불확실성이 커서 우선순위는 하이브리드보다 낮다.</p>
+    <ul>
+      <li><b>per-station airtime이란</b>: 채널 전체 점유율·station 평균 재전송률은 "채널이 얼마나 바쁜가"만 알려주고 "어느 station이 밀리는가"는 모른다. per-station airtime은 <b>기기(MAC)별로 실제 전송 기회를 얼마나 받았는지 직접 재는 값</b> — capture effect(신호 강한 기기가 채널 독점, 약한 기기가 굶는 현상)를 추론이 아니라 직접 관측 가능하게 함. 굶는 정도가 심해지면 패킷이 드롭(=loss)되므로 기존 <code>sta_tx_bitrate_min</code>보다 loss와 더 직접 연결될 가능성. <b>feature 아이디어</b>: 같은 패턴으로 <code>sta_airtime_min</code>(연결된 station 중 최솟값) 추가 — 미검증, 향후 연구.</li>
+      <li><b>칩셋 vs OpenWrt 구분(중요)</b>: 이 정보가 없는 건 OpenWrt의 한계가 아니라 <b>칩셋+드라이버의 한계</b> — OpenWrt는 SSH·<code>iw</code> 접근이라는 "문"만 열어줄 뿐, 그 문 안의 내용(어떤 통계를 nl80211에 채우는지)은 칩셋이 정한다. 지금 AP(MT7621A, 구형·저가)는 방이 휑하고, 상위 칩(MediaTek MT7996, WiFi 7 플래그십)은 펌웨어 MCU 레벨에서 station별 airtime을 준다는 기록 확인(단 중급인 MT7981 — 원래 계획한 GL-MT6000의 칩 — 지원 여부는 미확인, MT7996은 한 단계 위).</li>
+      <li><b>MT7996 탑재 후보</b>(OpenWrt 지원까지 별도 확인 필요): GL.iNet Slate 7 Pro(GL-BE10000)·Flint 3(GL-BE9300), Banana Pi BPI-R4(OpenWrt/mt76 지원 커뮤니티 문서로 명시 확인됨).</li>
+      <li><b>10배 데이터로 우회 가능한가 — 아니다</b>: 22차에서 이미 애매한 구간(occ 40~74)을 정확히 겨냥해 60% 더 모았는데도 회색지대 정확도가 8%→9%로 사실상 그대로였음 — 표본 부족이 아니라 "같은 7개 입력값이 다른 순간엔 다른 라벨(loss 때문)"이라는 irreducible error 구조라는 근거가 이미 있음. 10배는 이 AP로 수 주~수개월 걸려 이번 학기 내 시도 자체가 불가능.</li>
+    </ul>
+    <div class="callout"><span>ℹ</span><span>새 AP는 "진짜 새로운 축(per-station airtime)을 주는가"에 전부 달려 있고, 오늘 3번 실패한 "그럴듯해 보였지만 같은 정보의 재탕" 패턴과 다를 가능성은 있으나 <b>사서 실측하기 전까진 확정 불가</b>. 이번 학기엔 하이브리드(검증 완료)가 우선, 새 AP는 여력 되면 시도할 향후 연구.</span></div>
+
     <h3>라벨 축 vs 모델 입력</h3>
     <div class="tw">
     <table class="grid">
@@ -388,6 +435,7 @@ sta_tx_bitrate_mean        <span class="c">← 2026-08-29 추가 (6→7)</span><
         <li>표준 문턱 출처 정밀화 필요 (정확한 조항).</li>
         <li>occupancy·retry leakage 여지 — occ만으로 label 3 되는 행이 많으면 occ 심각 앵커 상향(90%) 또는 라벨에서 제외 검토.</li>
         <li>옛 <code>metrics_v2.csv</code> 5574행은 프로브·tx_packets 없어 완전 relabel 불가 → 레거시/사전학습용.</li>
+        <li><b>하이브리드 프로브 트리거(2026-09-14)의 2초 결정 지연</b> — 트리거되는 3.4% 순간은 확정까지 iperf3 테스트 시간(~2초) 소요. 치명적 결함은 아님(대안인 "즉시 추측"도 오판 비용이 있고, 채널 전환 자체가 이미 수초~수십초 걸림) — 단 정직한 제한 사항. 단축 아이디어(미검증): 전송률↑로 짧은 시간에 통계 확보 / 상시 저주기 백그라운드 측정+캐시 읽기 / 모델 확률과 결합(대체 아닌 융합) / ping 먼저 → 애매하면만 iperf3(프로브 안에 또 Early Exit). 상세: markdown §5·§8.</li>
       </ul></div>
     </details>
   </section>

@@ -1,0 +1,262 @@
+<meta charset="utf-8">
+<title>논문 초안 — 서론·본론 (v0)</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#f5f7fa; --panel:#fcfcfb; --panel-raise:#ffffff;
+    --ink:#12151b; --ink-2:#4b5566; --ink-mute:#7c8494;
+    --rule:#e2e6ec; --rule-strong:#c9d0da;
+    --accent:#2a78d6; --accent-2:#eb6834; --accent-ink:#ffffff;
+    --l0:#0ca30c; --l1:#c99a1e; --l2:#e0752c; --l3:#d03b3b;
+    --shadow:0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+      --l0:#3ec13e; --l1:#d9ad48; --l2:#e08a4a; --l3:#e2564f;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --accent-2:#d95926; --accent-ink:#0e1116;
+    --l0:#3ec13e; --l1:#d9ad48; --l2:#e08a4a; --l3:#e2564f;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.75; -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums; }
+  main { max-width:860px; margin:0 auto; padding:4rem 1.75rem 6rem; }
+
+  header.page-head { max-width:740px; margin-bottom:2.5rem; }
+  .eyebrow {
+    font-family:"IBM Plex Mono",monospace; font-size:0.78rem; letter-spacing:0.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 0.9rem;
+  }
+  h1 { font-size:clamp(1.7rem,1.4rem + 1.4vw,2.25rem); font-weight:700; letter-spacing:-0.01em; line-height:1.22; margin:0 0 0.9rem; text-wrap:balance; }
+  .page-head p { color:var(--ink-2); font-size:1.02rem; margin:0; max-width:68ch; }
+
+  section { margin-top:3.2rem; }
+  section > h2 {
+    font-size:1.15rem; font-weight:700; letter-spacing:-0.005em; margin:0 0 0.6rem;
+    display:flex; align-items:baseline; gap:0.6rem;
+  }
+  section > h2 .step { font-family:"IBM Plex Mono",monospace; font-size:0.78rem; color:var(--ink-mute); font-weight:500; }
+  section > .lede { color:var(--ink-2); max-width:74ch; margin:0 0 1.3rem; font-size:0.92rem; }
+  h3 { font-size:1rem; margin:1.8rem 0 0.7rem; letter-spacing:-0.005em; }
+  h3 .num { color:var(--accent); font-family:"IBM Plex Mono",monospace; font-size:0.85em; margin-right:0.4em; }
+
+  p.body-text { max-width:74ch; margin:0 0 1.1rem; text-align:justify; word-break:keep-all; }
+  p.body-text:last-child { margin-bottom:0; }
+
+  code, .k {
+    font-family:"IBM Plex Mono",monospace; font-size:0.86em;
+    background:var(--panel); border:1px solid var(--rule); border-radius:3px;
+    padding:0.05em 0.32em; color:var(--ink-2);
+  }
+  sup.cite { font-family:"IBM Plex Mono",monospace; color:var(--accent); font-weight:600; }
+
+  .callout {
+    display:flex; gap:0.85rem; background:var(--panel); border:1px solid var(--rule);
+    border-left:3px solid var(--accent); border-radius:4px; padding:1rem 1.2rem;
+    font-size:0.9rem; color:var(--ink-2); margin-top:1.2rem;
+  }
+  .callout b { color:var(--ink); }
+  .callout.warn { border-left-color:var(--accent-2); }
+  .callout.key { border-left-color:var(--l0); }
+
+  ol.contrib { color:var(--ink-2); max-width:74ch; padding-left:1.3rem; margin:1rem 0; }
+  ol.contrib li { margin:0.5rem 0; }
+  ol.contrib b { color:var(--ink); }
+
+  pre.block {
+    background:var(--ink); color:var(--paper); border-radius:6px; padding:1.2rem 1.4rem;
+    font-family:"IBM Plex Mono",monospace; font-size:0.85rem; line-height:1.7; overflow-x:auto; margin:1rem 0;
+  }
+  pre.block .c { color:#8fa6bd; }
+
+  .tw { overflow-x:auto; }
+  table.grid { width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:0.4rem; }
+  table.grid th, table.grid td { text-align:left; padding:0.6rem 0.7rem; border-bottom:1px solid var(--rule); vertical-align:top; }
+  table.grid thead th {
+    font-weight:600; color:var(--ink-mute); font-size:0.74rem; text-transform:uppercase;
+    letter-spacing:0.03em; border-bottom:1px solid var(--rule-strong);
+  }
+  table.grid td.n, table.grid th.n { text-align:right; font-family:"IBM Plex Mono",monospace; white-space:nowrap; }
+  table.grid tbody tr:hover { background:color-mix(in oklab, var(--accent) 5%, transparent); }
+
+  .todo { border:1px dashed var(--rule-strong); border-radius:6px; padding:0.9rem 1.1rem; font-size:0.86rem; color:var(--ink-2); margin-top:1rem; }
+  .todo b { color:var(--accent-2); }
+
+  .status-pill {
+    display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:0.72rem;
+    padding:0.15em 0.6em; border-radius:99px; border:1px solid var(--rule-strong); color:var(--ink-mute);
+    margin-left:0.5em; vertical-align:middle;
+  }
+  .status-pill.open { color:var(--accent-2); border-color:var(--accent-2); }
+  .status-pill.done { color:var(--l0); border-color:var(--l0); }
+
+  ul.checklist { list-style:none; padding:0; margin:1rem 0 0; color:var(--ink-2); font-size:0.9rem; max-width:74ch; }
+  ul.checklist li { display:flex; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--rule); }
+  ul.checklist li:last-child { border-bottom:none; }
+  ul.checklist li::before { content:"☐"; color:var(--ink-mute); flex:none; }
+
+  footer.page-foot {
+    margin-top:4rem; padding-top:1.6rem; border-top:1px solid var(--rule);
+    font-size:0.82rem; color:var(--ink-mute); display:flex; flex-direction:column; gap:0.4rem;
+  }
+  footer.page-foot code { background:var(--panel); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<main>
+
+  <header class="page-head">
+    <p class="eyebrow">국문지 논문 초안 · v0 · 확정 원고 아님</p>
+    <h1>Early-Exit LSTM 기반 무선랜 혼잡탐지 — 서론·본론 초안</h1>
+    <p>작성 기준 2026-09-13 대화, <code>work-log</code> 23차(2026-09-10) 수치. 인용 <code>[1]~[10]</code>은 자리표시이며 실제 서지사항으로 교체 필요 — 05절 목록 참고.</p>
+    <div class="callout key"><span>▸</span><span><b>설계 배경</b>은 별도 아티팩트(강조 포인트 3가지 · 유사연구 비교표 · 목차 · 체크리스트)에 있다. 이 문서는 그 위에서 실제 문장으로 풀어 쓴 서론(I)·본론(II~IV) 전문이다.</span></div>
+  </header>
+
+  <section id="intro">
+    <h2><span class="step">I</span> 서론</h2>
+
+    <p class="body-text">무선랜(WLAN)은 스마트 기기 보급 확산과 함께 실내 데이터 트래픽의 핵심 전송 매체로 자리 잡았으며, 이에 따라 AP(Access Point) 단위의 채널 혼잡은 사용자 체감 품질(QoS) 저하를 유발하는 주요 요인으로 지목되고 있다. 특히 다수의 단말이 동일 채널을 공유하는 환경에서는 채널 점유율 상승, 재전송 증가, 신호 품질 저하가 복합적으로 작용하여 혼잡 수준이 급격히 변화하므로, 이를 실시간으로 판단하고 채널 전환과 같은 대응을 트리거할 수 있는 엣지 기반 추론 체계가 요구된다.</p>
+
+    <p class="body-text">혼잡 수준을 실시간으로 판단하기 위한 딥러닝 기반 접근으로는 조기 종료(Early-Exit) 신경망이 대표적이다. Teerapittayanon 등<sup class="cite">[1]</sup>이 제안한 BranchyNet을 시작으로, Kaya 등<sup class="cite">[2]</sup>은 내부 분류기(internal classifier)와 커리큘럼 기반 손실 함수를 결합한 Shallow-Deep Network(SDN)를 제안하여 추론 비용을 큰 폭으로 절감하면서도 정확도를 유지할 수 있음을 보였다. 그러나 이러한 조기 종료 기법은 주로 이미지 분류 태스크에서 검증되었으며, 무선 네트워크의 시계열 텔레메트리에 적용되어 엣지 장비에서 실측 지연까지 검증된 사례는 확인되지 않는다.</p>
+
+    <p class="body-text">한편 WiFi 트래픽 및 혼잡을 예측하기 위한 딥러닝 연구도 다수 보고된 바 있다. 예를 들어 <sup class="cite">[3]</sup>은 대학 캠퍼스 내 다수의 실제 AP에서 장기간 수집한 데이터를 바탕으로 CNN, GRU, LSTM 등 다양한 시계열 모델의 트래픽 예측 성능을 비교하였다. 이러한 연구들은 실제 측정 데이터를 활용한다는 점에서 의의가 있으나, 예측 대상이 트래픽량 자체의 회귀(regression) 문제로 한정되어 있고, 혼잡의 심각도를 판별하는 라벨 체계가 표준 규격에 근거하지 않으며, 제안 모델을 엣지 장비에 배포하여 지연을 실측한 사례도 드물다.</p>
+
+    <p class="body-text">혼잡 수준을 다단계 분류 문제로 정식화하기 위해서는 정답 라벨의 정의가 선행되어야 한다. 그러나 라벨 산정에 사용한 지표를 모델의 입력 feature로 그대로 사용할 경우, 라벨과 입력 사이에 순환적 의존관계(circularity)가 발생하여 모델이 실질적인 패턴을 학습하지 않고도 높은 정확도를 보이는 데이터 누출(leakage) 문제가 발생할 수 있다. 본 연구진은 예비 실험 단계에서 채널 점유율 등 단일 지표에 대한 가중합으로 라벨을 정의하고 이를 모델 입력에 그대로 포함시켰을 때 이러한 순환성이 실제로 발생함을 확인하였으며, 이는 라벨 설계와 모델 입력 설계를 명확히 분리하는 방법론의 필요성을 시사한다.</p>
+
+    <p class="body-text">이에 본 논문은 실제 구매한 상용 AP(GL.iNet Opal, GL-SFT1200)에서 직접 수집한 7종의 시계열 feature를 입력으로 하고, ITU-T Y.1541<sup class="cite">[4]</sup>, ITU-T G.114<sup class="cite">[5]</sup>, Cisco Enterprise QoS 가이드<sup class="cite">[6]</sup>, Aruba WLAN 용량 가이드<sup class="cite">[7]</sup> 등 국제·산업 표준의 문턱값을 앵커(anchor)로 삼아 정의한 4단계 혼잡 라벨을 학습 대상으로 하는 Early-Exit LSTM 기반 혼잡 분류 모델을 제안한다. 라벨 산정에는 별도의 victim 프로브를 통해 측정한 지연·지터·손실률을 사용하되, 이 지표들은 모델 입력에서 제외하여 라벨-입력 간 순환성을 원천적으로 차단하였다. 제안 모델은 Raspberry Pi 상에서 ONNX INT8 양자화 형태로 배포되어 1ms 미만의 실측 추론 지연을 달성하였다.</p>
+
+    <p class="body-text">본 논문의 기여는 다음과 같이 요약된다.</p>
+    <ol class="contrib">
+      <li><b>최초 적용 + 엣지 실증</b> — 무선 AP의 혼잡·간섭 탐지 문제에 Early-Exit 신경망 구조를 최초로 적용하고, 시뮬레이션이 아닌 실측 데이터와 실제 엣지 장비를 통해 이를 검증하였다.</li>
+      <li><b>순환논리 없는 라벨링 방법론</b> — 표준 규격 기반 앵커와 victim 프로브를 결합하되 모델 입력과 라벨 계산 축을 분리함으로써 데이터 누출 문제를 방지하였다.</li>
+      <li><b>통제된 비교실험</b> — 동일한 백본(backbone) 구조를 공유하는 Baseline, Shallow-Deep Network 재구현 모델, 제안 모델(Early-Exit LSTM)을 통제된 조건에서 비교하여 정확도-효율 간의 트레이드오프를 정량적으로 제시하였다.</li>
+    </ol>
+
+    <p class="body-text">본 논문의 구성은 다음과 같다. II장에서는 조기 종료 신경망, 무선랜 혼잡 예측, 엣지 추론과 관련된 선행연구를 검토한다. III장에서는 데이터 수집 환경, 라벨링 방법론, 제안 모델 및 비교 모델의 구조를 기술한다. IV장에서는 실험 설정과 정확도, 심각 등급 탐지 성능, Raspberry Pi 실측 지연 결과를 제시한다. V장에서는 결론과 향후 연구 방향을 논한다.</p>
+  </section>
+
+  <section id="related">
+    <h2><span class="step">II</span> 관련연구</h2>
+
+    <h3><span class="num">2.1</span>조기 종료 신경망</h3>
+    <p class="body-text">Teerapittayanon 등<sup class="cite">[1]</sup>은 심층 신경망의 중간 계층에 다수의 분기(branch)를 추가하고, 각 분기에서 산출된 예측의 엔트로피가 사전에 정한 문턱값보다 낮을 경우 해당 지점에서 추론을 종료하는 BranchyNet을 제안하였다. Kaya 등<sup class="cite">[2]</sup>은 이를 확장하여 내부 분류기에 pooling 기반 구조를 적용하고, 학습 과정에서 깊이에 따라 가중치를 점증적으로 부여하는 커리큘럼 손실 함수와 검증 데이터 기반의 신뢰도 문턱값 보정(calibration) 절차를 결합한 Shallow-Deep Network(SDN)를 제안하여, 정확도 손실을 최소화하면서 평균 추론 비용을 50% 이상 절감할 수 있음을 보였다. 이후 다양한 후속 연구들이 조기 종료 구조를 개선해 왔으나<sup class="cite">[8]</sup>, 이들 연구는 공통적으로 이미지 분류를 대상 태스크로 삼고 있으며, 무선 네트워크의 시계열 텔레메트리 데이터에 적용된 사례는 확인되지 않는다.</p>
+    <div class="callout warn"><span>⚠</span><span><b>용어 주의</b> — 여기서의 SDN은 Kaya et al.의 <i>Shallow-Deep Network</i> 약자이며, 통신 분야에서 흔히 쓰이는 <i>Software-Defined Networking</i>과 무관하다. 본문 전체에서 최초 등장 시 전체 명칭을 병기하고, 이후에도 "SDN(Shallow-Deep Network)" 형태로 유지할 것.</span></div>
+
+    <h3><span class="num">2.2</span>무선랜 혼잡 및 트래픽 예측</h3>
+    <p class="body-text">무선 네트워크의 트래픽 및 혼잡을 예측하기 위한 딥러닝 연구도 활발히 이루어져 왔다. <sup class="cite">[3]</sup>은 대학 캠퍼스에 설치된 다수의 실제 AP로부터 장기간 수집한 트래픽 데이터를 바탕으로 CNN, 단순 순환 신경망(SRNN), GRU, LSTM, Transformer 등의 시계열 예측 모델을 비교하였으며, LSTM 계열 모델이 반복적 패턴을 갖는 트래픽 예측에 효과적임을 확인하였다. 다만 이러한 연구는 트래픽량 자체를 연속값으로 예측하는 회귀 문제를 다루고 있어, 본 연구와 같이 표준 규격에 기반한 다단계 혼잡 등급을 분류하는 문제와는 태스크 정의가 상이하다. 또한 국내 학술지에서는 무선랜 채널 할당 및 간섭 회피를 다룬 초기 연구들이 보고된 바 있으나<sup class="cite">[9]</sup>, 이들 연구는 대체로 규칙 기반(rule-based) 접근에 해당하며, 실측 데이터 기반의 딥러닝 분류 모델을 다룬 국문 연구는 확인되지 않는다.</p>
+    <div class="todo">🔍 <b>TODO(복귀 후)</b> — RISS·DBpia·KCI에서 "무선랜 혼잡 분류", "AP 트래픽 딥러닝", "Wi-Fi QoS 분류" 등으로 직접 재검색해 이 절을 보강할 것. 웹검색만으로는 국내 학술DB 전문을 다 훑지 못함.</div>
+
+    <h3><span class="num">2.3</span>엣지 환경에서의 경량 추론</h3>
+    <p class="body-text">엣지 디바이스에서 딥러닝 모델의 추론 지연을 절감하기 위한 방법으로는 양자화(quantization), 가지치기(pruning), 조기 종료 등이 널리 연구되어 왔다<sup class="cite">[10]</sup>. 그러나 이러한 경량화 기법들이 무선랜 혼잡 분류와 같은 네트워크 관리 태스크에 적용되어 Raspberry Pi와 같은 실제 엣지 장비에서 지연을 실측한 연구는 드물며, 본 연구는 이러한 공백을 메우는 것을 목표로 한다.</p>
+  </section>
+
+  <section id="design">
+    <h2><span class="step">III</span> 시스템 설계</h2>
+
+    <h3><span class="num">3.1</span>데이터 수집</h3>
+    <p class="body-text">본 연구는 상용 AP인 GL.iNet Opal(GL-SFT1200)을 대상으로, 유선 SSH 채널을 통해 1Hz 주기로 AP 내부 텔레메트리(채널 점유율, station 통계, 재전송 카운트 등)를 지속적으로 폴링하는 방식으로 데이터를 수집하였다. 관리 트래픽을 무선 채널로부터 분리하기 위해 폴링 및 라벨 계산용 프로브 트래픽은 유선 경로를 통해 별도로 전송하였다. 또한 실제 혼잡 상황을 유발하기 위해 다수의 모바일 단말을 이용한 iperf3 기반 부하를 계단형(step) 및 소패킷(small-packet) 프로파일로 인가하였으며, 최종적으로 2,551개 폴링 샘플을 확보하였다.</p>
+
+    <h3><span class="num">3.2</span>라벨링 방법론</h3>
+    <p class="body-text">혼잡 라벨은 4개의 축 — 채널 점유율, 지터, 손실률, 지연 — 각각에 대해 국제·산업 표준에서 제시하는 문턱값을 4단계 앵커(경고·혼잡·심각·완전)로 삼아 구간 선형(piecewise-linear) 방식으로 <code>[0, 1]</code> 범위의 점수로 정규화한 뒤, 네 축의 최댓값으로 최종 혼잡 점수를 산정하였다.</p>
+    <pre class="block"><span class="c"># 라벨 산정식</span>
+congestion_score = max(occupancy_score, jitter_score, loss_score, latency_score)
+
+label = 0  if score &lt; 0.25   <span class="c"># 정상</span>
+        1  if score &lt; 0.50   <span class="c"># 경고</span>
+        2  if score &lt; 0.75   <span class="c"># 혼잡</span>
+        3  if score ≥ 0.75   <span class="c"># 심각</span></pre>
+    <p class="body-text">지터 및 손실률은 부하와 무관하게 유지되는 경량 UDP 프로브(victim probe)의 실측값으로부터, 지연은 ICMP ping RTT의 절반으로부터 산정하였다. 앵커 문턱값은 ITU-T Y.1541의 IP 패킷 지연 변이(IPDV) 등급<sup class="cite">[4]</sup>, ITU-T G.114의 편도 지연 등급<sup class="cite">[5]</sup>, Cisco Enterprise QoS 가이드의 손실률 기준<sup class="cite">[6]</sup>, Aruba WLAN 용량 설계 가이드의 점유율 기준<sup class="cite">[7]</sup>에 각각 근거하였다.</p>
+    <p class="body-text">라벨 산정에 사용된 지터·손실률·지연은 모델 입력에서 완전히 배제하였다. 이는 배포 환경에서 모델이 victim 프로브 없이 AP 측 텔레메트리만으로 동작해야 하기 때문이며, 동시에 라벨과 모델 입력 간의 순환적 의존을 차단하기 위한 설계이기도 하다. 또한 단발성 프로브 스파이크로 인한 라벨 잡음을 억제하기 위해, occupancy 축이 심각 수준에 도달하지 않은 상태에서 다른 축만으로 심각 라벨이 부여된 샘플에 대해서는 최근 k회 폴링 중 m회 이상 해당 축이 심각 수준을 유지할 때에만 심각 라벨을 확정하는 지속성 게이트(persistence gate, k=2, m=2)를 적용하였다.</p>
+
+    <h3><span class="num">3.3</span>제안 모델: Early-Exit LSTM</h3>
+    <p class="body-text">제안 모델은 3층 LSTM(hidden size 128, dropout 0.2)을 백본으로 하며, 각 층 뒤에 내부 분류기를 두어 최근 12회 폴링으로 구성된 시계열 윈도우에 대해 조기 종료 여부를 판단한다. 각 내부 분류기의 출력 엔트로피가 문턱값 θ보다 낮으면 해당 지점에서 4단계 혼잡 라벨을 출력하고, 그렇지 않으면 다음 층으로 전파한다. 문턱값 θ는 고정값을 사용하는 Fixed 방식과 최근 트래픽 변동률에 따라 동적으로 조정되는 Dynamic 방식 두 가지로 운용하였다. 학습에는 세 exit 지점의 손실을 0.3:0.3:0.4의 비율로 결합한 다중 종료 손실 함수를 사용하였다.</p>
+
+    <h3><span class="num">3.4</span>비교 모델</h3>
+    <p class="body-text">제안 모델의 상대적 성능을 평가하기 위해 두 가지 비교 모델을 구성하였다. Baseline은 조기 종료 구조 없이 동일한 3층 LSTM 백본의 최종 출력만을 사용하는 모델이다. Shallow-Deep Network(SDN)<sup class="cite">[2]</sup> 비교 모델은 Kaya 등의 원 논문을 충실히 재구현한 것으로, 동일한 백본을 공유하되 (i) max-pooling과 average-pooling을 결합한 내부 분류기 구조, (ii) 깊이에 따라 가중치를 증가시키는 커리큘럼 기반 손실 함수, (iii) 검증 데이터 기반의 신뢰도 문턱값 보정이라는 세 가지 요소에서 제안 모델과 차이를 두었다. 세 모델은 모두 동일한 데이터 분할과 하이퍼파라미터 하에서 5개의 무작위 시드로 학습·평가하였다.</p>
+  </section>
+
+  <section id="experiments">
+    <h2><span class="step">IV</span> 실험 및 결과</h2>
+
+    <h3><span class="num">4.1</span>실험 환경</h3>
+    <p class="body-text">전체 2,551개 샘플을 시계열 윈도우(길이 12) 단위로 변환한 뒤 학습·검증·시험 집합으로 분할하였으며, 시험 집합은 365개 윈도우(라벨 분포 정상 109·경고 82·혼잡 132·심각 42)로 구성되었다. 각 모델은 5개의 무작위 시드로 학습하였고, 검증 균형 정확도(validation balanced accuracy)가 가장 높은 체크포인트를 최종 평가 및 배포 대상으로 선정하였다.</p>
+
+    <h3><span class="num">4.2</span>정확도 및 심각 등급 탐지 성능</h3>
+    <p class="body-text">5개 시드에 대한 평균 정확도는 Baseline 92.7%(±1.5), SDN 91.9%(±1.0), 제안 모델(Fixed θ) 91.7%(±0.7), 제안 모델(Dynamic θ) 92.3%(±0.7)로, 세 모델 간 정확도는 오차범위 내에서 동등한 수준을 보였다. 반면 가장 판별이 어려운 심각(라벨 3) 등급에 대한 F1 점수는 Baseline 84.3, SDN 86.4, 제안 모델(Fixed) 85.9, 제안 모델(Dynamic) 86.7로, 지속성 게이트 적용 이후 전 모델에서 개선이 관찰되었다(예: 제안 모델의 심각 등급 재현율은 게이트 적용 전 75.2%에서 85.7%로 상승).</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>모델</th><th class="n">정확도(5-seed)</th><th class="n">L3 F1</th><th class="n">Pi 지연(ms)</th></tr></thead>
+      <tbody>
+        <tr><td>Baseline (EE 없음)</td><td class="n">92.7 ± 1.5%</td><td class="n">84.3</td><td class="n">0.864</td></tr>
+        <tr><td>SDN (Shallow-Deep Network 재구현)</td><td class="n">91.9 ± 1.0%</td><td class="n">86.4</td><td class="n">0.575</td></tr>
+        <tr><td>제안 모델 — Fixed θ</td><td class="n">91.7 ± 0.7%</td><td class="n">85.9</td><td class="n">0.625</td></tr>
+        <tr><td>제안 모델 — Dynamic θ</td><td class="n">92.3 ± 0.7%</td><td class="n">86.7</td><td class="n">0.632</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="num">4.3</span>Raspberry Pi 실측 지연</h3>
+    <p class="body-text">각 모델을 ONNX INT8 형태로 양자화하여 Raspberry Pi에 배포한 뒤 시험 집합 전체에 대해 추론 지연을 실측하였다. 평균 지연은 Baseline 0.864ms, SDN 0.575ms, 제안 모델(Fixed) 0.625ms, 제안 모델(Dynamic) 0.632ms로, 모든 모델이 1ms 미만의 지연을 달성하였다. 특히 제안 모델(Fixed)은 Baseline 대비 28% 낮은 지연을 보였다. Exit 지점별 지연을 분해한 결과, 제안 모델은 모든 exit 단계에서 SDN보다 낮은 지연을 보여 pooling 기반 내부 분류기 대비 구조적으로 경량임을 확인하였다. SDN의 평균 지연이 제안 모델보다 낮게 나타난 것은 구조적 우위가 아니라, 검증 데이터로 보정된 신뢰도 문턱값이 첫 번째 exit의 비중을 상대적으로 높게 설정한 결과로 해석된다.</p>
+  </section>
+
+  <section id="refs">
+    <h2><span class="step">V</span> 인용 자리표시 & 남은 작업</h2>
+    <p class="lede">위 본문의 <code>[1]~[10]</code>은 실제 서지사항으로 교체가 필요하다. <span class="status-pill done">확인됨</span>은 서지사항 확인 완료, <span class="status-pill open">미확정</span>은 복귀 후 확인 필요.</p>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>번호</th><th>임시 근거</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td class="n">[1]</td><td>Teerapittayanon et al., BranchyNet (2016, IEEE ICPR)</td><td><span class="status-pill open">미확정</span> 정확한 서지사항 확인</td></tr>
+        <tr><td class="n">[2]</td><td>Kaya, Hong, Dumitraș, "Shallow-Deep Networks" (ICML 2019, PMLR v97)</td><td><span class="status-pill done">확인됨</span> <code>proceedings.mlr.press/v97/kaya19a.html</code></td></tr>
+        <tr><td class="n">[3]</td><td>대학 캠퍼스 100개 AP·3개월 실측, CNN/SRNN/GRU/LSTM/Transformer 비교 (arXiv 2408.09423)</td><td><span class="status-pill open">미확정</span> 저자·정식 서지사항 확인</td></tr>
+        <tr><td class="n">[4]</td><td>ITU-T Y.1541 (IPDV/지터 등급)</td><td><span class="status-pill open">미확정</span> 버전/연도 확인</td></tr>
+        <tr><td class="n">[5]</td><td>ITU-T G.114 (편도 지연 등급)</td><td><span class="status-pill open">미확정</span> 버전/연도 확인</td></tr>
+        <tr><td class="n">[6]</td><td>Cisco Enterprise QoS 가이드 (손실률 기준)</td><td><span class="status-pill open">미확정</span> 정확한 문서명/버전</td></tr>
+        <tr><td class="n">[7]</td><td>Aruba WLAN 용량 설계 가이드 (점유율 기준)</td><td><span class="status-pill open">미확정</span> 정확한 문서명/버전</td></tr>
+        <tr><td class="n">[8]</td><td>Early-Exit DNN 종합 리뷰 (ACM Computing Surveys, 2024)</td><td><span class="status-pill open">미확정</span> 저자·정식 서지사항</td></tr>
+        <tr><td class="n">[9]</td><td>국내 무선랜 채널 할당/간섭 회피 관련 논문</td><td><span class="status-pill open">미확정</span> DBpia 재검색 후 교체</td></tr>
+        <tr><td class="n">[10]</td><td>엣지 디바이스 양자화 성능 특성화 연구 (arXiv 2303.05016 등)</td><td><span class="status-pill open">미확정</span> 저자·정식 서지사항</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><span class="num">▸</span>남은 작업</h3>
+    <ul class="checklist">
+      <li>[1][3][8][10] 정확한 서지사항(저자·연도·발표지) 확정</li>
+      <li>[9] 국내 유사연구 실제로 존재하는지 DBpia/RISS/KCI 재검색 후 교체 또는 문장 수정</li>
+      <li>"오차범위 내에서 동등" 등 통계적 표현이 실제 검정(t-test 등) 근거인지, 단순 표준편차 비교인지 명확히 하거나 검정 수행</li>
+      <li>V장(결론 및 향후 연구) 작성 — 목표 정확도(95%) 미달 서술 방식. <b>±1등급 허용 99.2%는 재프레이밍 근거로 쓰지 말 것(2026-09-13 정정 — 혼잡↔심각 오차만 전환 결정을 뒤집는데 다른 인접 오차와 동일 취급해 과장됨)</b>. 재프레이밍은 L3(심각) recall/precision(83~90%대)으로 서술</li>
+      <li>초록·제목 작성</li>
+      <li>투고 저널의 분량·서식 규정에 맞춰 절 번호·인용 스타일 조정</li>
+    </ul>
+  </section>
+
+  <footer class="page-foot">
+    <span>markdown 원본(같은 내용): <code>docs/yongsang/paper_draft_intro_body.md</code></span>
+    <span>설계 배경(강조 포인트·유사연구 비교표·목차·체크리스트): 별도 아티팩트 <code>paper_design.html</code> (비공개 링크, 대화 기록 참고)</span>
+    <span>인용 수치 출처: <code>CLAUDE.md</code> "최신 평가 결과" · <code>.work-log/current.md</code> 18차/9차/23차</span>
+  </footer>
+
+</main>
