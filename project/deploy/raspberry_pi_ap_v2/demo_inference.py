@@ -69,7 +69,9 @@ def inference_loop() -> None:
         cur_active, cur_busy, *_ = survey
         now = time.time()
 
-        signal_avg, n_clients, _mn, bitrate_mean = summarize_stations(station, prev_st)
+        # summarize_stations는 2026-09-12 feature 실험으로 6-tuple 반환(expected
+        # throughput/MCS 추가) — 데모는 아직 7-feature 그대로라 뒤 2개는 무시.
+        signal_avg, n_clients, _mn, bitrate_mean, _exp_thr, _mcs = summarize_stations(station, prev_st)
         occ_raw, _ = calculate_channel_occupancy(prev_active, prev_busy, cur_active, cur_busy)
         occ_h.append(occ_raw)
         occ = median(occ_h)

@@ -136,6 +136,8 @@ CSV_COLUMNS = [
     "rssi_moving_avg_dbm",
     "sta_tx_bitrate_min",        # 가장 굶는 station PHY rate (모델 입력, victim 프록시)
     "sta_tx_bitrate_mean",       # station 평균 PHY rate (모델 입력)
+    "sta_expected_thr_mbps_mean",  # iw "expected throughput" 평균 (실험, 2026-09-12 — 9-feature 후보, 모델 입력 아님)
+    "sta_tx_mcs_mean",             # tx MCS index 평균 (실험, 2026-09-12 — 9-feature 후보, 모델 입력 아님)
     "throughput_score",          # 정보용 (라벨 max에서 제외)
     "occupancy_score",
     "jitter_score",
@@ -437,6 +439,11 @@ def parse_station_info(output):
                 "signal_avg": None,
                 "tx_bitrate": 0.0,
                 "rx_bitrate": 0.0,
+                # 2026-09-12 (feature 실험 Phase 1): tx bitrate 라인의 "MCS n" +
+                # "expected throughput:" 라인. 9-feature 후보(occ 58~74 혼잡↔심각
+                # 변별력 실험용) — 아직 모델 입력엔 안 들어감, CSV에만 쌓는다.
+                "tx_mcs": None,
+                "expected_thr_mbps": None,
             }
             continue
 
@@ -502,6 +509,19 @@ def parse_station_info(output):
                 current["tx_bitrate"] = float(
                     match.group(1)
                 )
+            mcs_match = re.search(r"MCS\s+(\d+)", line)
+            if mcs_match:
+                current["tx_mcs"] = int(mcs_match.group(1))
+
+        elif line.startswith("expected throughput:"):
+            match = re.search(
+                r"([\d.]+)\s*Mbps",
+                line,
+            )
+            if match:
+                current["expected_thr_mbps"] = float(
+                    match.group(1)
+                )
 
         elif line.startswith("rx bitrate:"):
             match = re.search(
@@ -544,7 +564,13 @@ def summarize_stations(stations, previous_stations=None):
     # 트래픽 없는 station은 rate가 MCS 0 바닥에 stale하게 물려 있어서
     # (diag_25 런에서 min이 상수 6.5) 신호를 죽인다. tx_packets가 증가한
     # station만 본다. 활성 station이 없으면(무부하) 0.0.
+    # 2026-09-12 (feature 실험 Phase 1): 같은 "활성 station" 필터로 tx MCS index +
+    # iw "expected throughput"도 같이 모은다. occ 58~74(혼잡↔심각) 회색지대에서
+    # 7-feature보다 변별력이 나오는지 시험하는 9-feature 후보 — 아직 모델 입력엔
+    # 안 쓴다(demo/ap_features.py 미변경), CSV 로그로만 쌓는다.
     active_rates = []
+    active_mcs = []
+    active_expected_thr = []
     for mac, s in stations.items():
         rate = s.get("tx_bitrate", 0.0)
         if rate <= 0.0:
@@ -554,8 +580,15 @@ def summarize_stations(stations, previous_stations=None):
             prev is not None
             and s.get("tx_packets", 0) > prev.get("tx_packets", 0)
         )
-        if sent:
-            active_rates.append(rate)
+        if not sent:
+            continue
+        active_rates.append(rate)
+        mcs = s.get("tx_mcs")
+        if mcs is not None:
+            active_mcs.append(mcs)
+        expected_thr = s.get("expected_thr_mbps")
+        if expected_thr is not None:
+            active_expected_thr.append(expected_thr)
 
     if active_rates:
         sta_tx_bitrate_min = min(active_rates)
@@ -564,11 +597,22 @@ def summarize_stations(stations, previous_stations=None):
         sta_tx_bitrate_min = 0.0
         sta_tx_bitrate_mean = 0.0
 
+    sta_tx_mcs_mean = (
+        sum(active_mcs) / len(active_mcs) if active_mcs else 0.0
+    )
+    sta_expected_thr_mean = (
+        sum(active_expected_thr) / len(active_expected_thr)
+        if active_expected_thr
+        else 0.0
+    )
+
     return (
         signal_avg,
         len(stations),
         sta_tx_bitrate_min,
         sta_tx_bitrate_mean,
+        sta_expected_thr_mean,
+        sta_tx_mcs_mean,
     )
 
 
@@ -1237,6 +1281,8 @@ def main():
                 connected_clients,
                 sta_tx_bitrate_min,
                 sta_tx_bitrate_mean,
+                sta_expected_thr_mean,
+                sta_tx_mcs_mean,
             ) = summarize_stations(station, previous_stations)
 
             # ------------------------------------------------
@@ -1533,6 +1579,8 @@ def main():
                 round(rssi_moving_avg, 2),
                 round(sta_tx_bitrate_min, 1),
                 round(sta_tx_bitrate_mean, 1),
+                round(sta_expected_thr_mean, 2),
+                round(sta_tx_mcs_mean, 2),
                 throughput_score,
                 occupancy_score,
                 jitter_score,
