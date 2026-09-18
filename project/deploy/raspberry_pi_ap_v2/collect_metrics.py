@@ -23,7 +23,9 @@ AP_IP = "192.168.8.1"
 # 노트북은 ICMP에 즉시·일정하게 응답한다. Pi→AP(유선)→노트북(무선
 # downlink) 경로라 혼잡 시 RTT가 오르는 신호는 그대로 유지된다.
 SERVER_IP = "192.168.8.226"
-INTERFACE = "wlan0"
+# 5GHz 타당성 검증(2026-09-18)용 오버라이드. wlan0=2.4GHz(기본, 프로덕션),
+# wlan1=5GHz. `AP_INTERFACE=wlan1 python3 collect_metrics.py <scenario>`로 전환.
+INTERFACE = os.environ.get("AP_INTERFACE", "wlan0")
 
 CSV_FILE = os.environ.get("COLLECT_CSV_FILE", "metrics_v2.csv")
 IPERF_JSON_FILE = "iperf3_result.json"

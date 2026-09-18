@@ -115,6 +115,30 @@
   footer.page-foot code { background:var(--panel); }
 
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+
+  /* Lane A/B diagram (model input vs label computation) */
+  .lanes { margin-top:1.4rem; display:flex; flex-direction:column; gap:0.9rem; }
+  .lane { border:1px solid var(--rule); border-radius:6px; padding:0.9rem 1rem 1.1rem; background:var(--panel); }
+  .lane-b { border-style:dashed; }
+  .lane-tag { display:block; font-family:"IBM Plex Mono",monospace; font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:0.7rem; }
+  .lane-b .lane-tag { color:var(--ink-mute); }
+  .lchain { display:flex; flex-wrap:wrap; align-items:stretch; gap:0.35rem; }
+  .lnode { flex:1 1 118px; min-width:96px; background:var(--panel-raise); border:1px solid var(--rule-strong); border-radius:5px; padding:0.5rem 0.55rem; font-size:0.76rem; line-height:1.35; color:var(--ink-2); text-align:center; display:flex; align-items:center; justify-content:center; }
+  .lnode.strong { border-color:var(--accent); color:var(--ink); font-weight:600; }
+  .lnode.result { background:color-mix(in oklab, var(--accent) 12%, var(--panel-raise)); border-color:var(--accent); color:var(--ink); font-weight:600; }
+  .lane-b .lnode.result { background:color-mix(in oklab, var(--l3) 14%, var(--panel-raise)); border-color:var(--l3); }
+  .larrow { display:flex; align-items:center; justify-content:center; color:var(--ink-mute); font-size:0.85rem; flex:0 0 auto; padding:0 0.1rem; }
+  .lconverge { text-align:center; font-size:0.8rem; color:var(--ink-mute); margin-top:0.6rem; }
+  .lconverge .tbox { display:inline-block; margin:0.35rem 0; background:var(--panel-raise); border:1px solid var(--rule-strong); border-radius:5px; padding:0.5rem 0.9rem; font-size:0.8rem; color:var(--ink); }
+
+  /* horizontal bar chart */
+  .barchart { margin-top:0.9rem; display:flex; flex-direction:column; gap:0.4rem; }
+  .barrow { display:flex; align-items:center; gap:0.6rem; font-size:0.78rem; }
+  .barrow .blabel { flex:0 0 92px; color:var(--ink-2); font-family:"IBM Plex Mono",monospace; font-size:0.72rem; text-align:right; }
+  .barrow .btrack { flex:1; background:var(--panel-raise); border:1px solid var(--rule); border-radius:3px; height:18px; position:relative; overflow:hidden; }
+  .barrow .bfill { height:100%; background:var(--rule-strong); }
+  .barrow.win .bfill { background:var(--l3); }
+  .barrow .bval { flex:0 0 84px; font-family:"IBM Plex Mono",monospace; font-size:0.74rem; color:var(--ink-mute); }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -302,6 +326,15 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
       </tbody>
     </table>
     </div>
+    <div class="barchart">
+      <div class="barrow"><span class="blabel">nogate</span><div class="btrack"><div class="bfill" style="width:70.4%"></div></div><span class="bval">70.4 ±2.0</span></div>
+      <div class="barrow win"><span class="blabel">k=2/m=2</span><div class="btrack"><div class="bfill" style="width:87.1%"></div></div><span class="bval"><b>87.1 ±2.3</b></span></div>
+      <div class="barrow"><span class="blabel">k=3/m=2</span><div class="btrack"><div class="bfill" style="width:78.1%"></div></div><span class="bval">78.1 ±2.8</span></div>
+      <div class="barrow"><span class="blabel">k=3/m=3</span><div class="btrack"><div class="bfill" style="width:82.7%"></div></div><span class="bval">82.7 ±2.2</span></div>
+      <div class="barrow"><span class="blabel">k=5/m=2</span><div class="btrack"><div class="bfill" style="width:78.6%"></div></div><span class="bval">78.6 ±3.4</span></div>
+      <div class="barrow"><span class="blabel">k=5/m=3</span><div class="btrack"><div class="bfill" style="width:65.6%"></div></div><span class="bval">65.6 ±3.1</span></div>
+      <p style="font-size:0.72rem;color:var(--ink-mute);margin:0.2rem 0 0;">L3 recall(%), 5시드 평균 — 강조색 막대가 채택된 k=2/m=2</p>
+    </div>
     <ul>
       <li><b>k=2/m=2 채택</b>: "최근 2폴링 둘 다 심각"이라는 요구가 단발 스파이크는 걸러내면서도(강등 35개, nogate 대비 거의 최소) 진짜 지속형 label 3은 거의 잃지 않는 최적점 — L3 recall·F1이 6개 config 중 최고. k=3/m=3(엄격)도 F1은 근접하지만 강등이 2배(68개)라 L3 표본이 37창까지 줄어 recall 손해가 큼.</li>
       <li>raw label 3: 319 → <b>284</b>(k2m2, k3m2의 285와 거의 같은 개수지만 강등되는 행이 일부 다름). 3모델 재학습 결과 정확도는 ±1σ 안에서 보합, <b>L3 recall·F1은 전 모델 개선</b>(recall +6~10pt, F1 +1.5~3.0pt). 상세: <code>CLAUDE.md</code> "최신 평가 결과" · <code>.work-log/current.md</code> 18차.</li>
@@ -313,6 +346,47 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
     <h2><span class="step">05</span> 모델 입력 feature 재정의</h2>
     <p class="lede"><b>문제</b>: <code>max(표준 문턱)</code>은 그 자체로 규칙 기반 분류기다. 배포 시점에 규칙으로 계산하면 되는데 왜 LSTM인가?</p>
     <div class="callout key"><span>▸</span><span><b>답: 프로브가 배포 시점엔 없다.</b> 배포 시스템엔 victim 프로브(협조 싱크 + 지속 스트림)가 없다. 모델은 <b>AP-side 텔레메트리만 보고 "지금 victim QoS가 깨지고 있는가"를 예측</b>해야 한다. 규칙으로 못 한다 — victim 측정값이 없으니까. + 시계열 추세(window 10) + Early Exit 효율.</span></div>
+
+    <div class="lanes">
+      <div class="lane lane-a">
+        <span class="lane-tag">Lane A · 배포 시 라이브 추론</span>
+        <div class="lchain">
+          <div class="lnode">AP(Opal)<br>유선 SSH 폴링 1Hz</div>
+          <div class="larrow">▶</div>
+          <div class="lnode">7-feature 계산<br>throughput·occupancy·retry·RSSI×3·bitrate</div>
+          <div class="larrow">▶</div>
+          <div class="lnode">min-max<br>스케일러</div>
+          <div class="larrow">▶</div>
+          <div class="lnode">윈도우 버퍼<br>(최근 12폴링)</div>
+          <div class="larrow">▶</div>
+          <div class="lnode strong">Early Exit<br>LSTM</div>
+          <div class="larrow">▶</div>
+          <div class="lnode result">모델 예측<br>label 0~3 + 확률</div>
+        </div>
+      </div>
+
+      <div class="lane lane-b">
+        <span class="lane-tag">Lane B · 라벨 계산 — 학습 전용, 배포엔 없음</span>
+        <div class="lchain">
+          <div class="lnode">victim 프로브(300kbps UDP) + ping</div>
+          <div class="larrow">▶</div>
+          <div class="lnode">표준 앵커 매핑<br>ITU-T Y.1541·G.114 / Cisco QoS / Aruba</div>
+          <div class="larrow">▶</div>
+          <div class="lnode"><code>max(...)</code></div>
+          <div class="larrow">▶</div>
+          <div class="lnode">지속성 게이트<br>k=2, m=2</div>
+          <div class="larrow">▶</div>
+          <div class="lnode result">정답 label</div>
+        </div>
+      </div>
+
+      <div class="lconverge">
+        ▼<br>
+        <span class="tbox">학습 단계 — 예측 vs 정답 loss → 역전파로 가중치 갱신</span><br>
+        ▲ 가중치 업데이트 (Lane A의 LSTM으로 피드백)
+      </div>
+    </div>
+    <div class="callout key"><span>▸</span><span><b>Lane A는 Lane B를 한 번도 보지 못한다.</b> 라벨 산정에 쓴 지표(프로브 jitter·loss, ping latency)는 모델 입력 7개 어디에도 없다 — 두 레인이 공유하는 컬럼이 없다는 것 자체가 순환논리 차단의 시각적 증거다.</span></div>
 
     <h3>반론 검토: "공장 장비가 자기 지연율을 이미 안다면?" <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-13)</span></h3>
     <p class="lede">실제 공장 자동화 장비가 자기 지연(cycle time/RTT)을 이미 로깅한다면, victim 프로브 없이 그 값을 직접 받아 규칙으로 계산하면 되는 것 아닌가 — 그럼 LSTM(나아가 모델 자체)이 무의미해지는 게 아닌가? <b>결론: 전제는 부분적으로 맞지만, 그래서 이 프로젝트가 무의미해지진 않는다.</b></p>
