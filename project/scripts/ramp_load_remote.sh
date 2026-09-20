@@ -22,7 +22,7 @@ PKT_LEN="${3:-1200}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_RAMP="${SCRIPT_DIR}/ramp_load.sh"
 
-HOSTS=(s21 s26)
+HOSTS=(${PHONE_HOSTS:-s21 s26})
 PORTS=(5201 5202)
 
 echo "=== 원격 램프 부하 오케스트레이터 (profile=${PROFILE}, target=${TARGET_IP}) ==="
