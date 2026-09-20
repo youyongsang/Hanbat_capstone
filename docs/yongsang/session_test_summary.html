@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>세션 단위 독립 test 실험 정리</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#f5f7fa; --panel:#fcfcfb; --panel-raise:#ffffff;
+    --ink:#12151b; --ink-2:#4b5566; --ink-mute:#7c8494;
+    --rule:#e2e6ec; --rule-strong:#c9d0da;
+    --accent:#2a78d6; --warn:#b26a00; --bad:#c0392b; --good:#0c7a0c;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+    --shadow:0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --warn:#e0a040; --bad:#e66767; --good:#3ec13e;
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --warn:#e0a040; --bad:#e66767; --good:#3ec13e;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+  main { max-width:980px; margin:0 auto; padding:3.5rem 1.5rem 6rem; }
+  .eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.78rem; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .8rem; }
+  h1 { font-size:clamp(1.8rem,1.4rem + 1.6vw,2.4rem); line-height:1.2; margin:0 0 .8rem; letter-spacing:-.01em; text-wrap:balance; }
+  .lead { color:var(--ink-2); max-width:70ch; margin:0 0 2rem; }
+  section { margin-top:3.2rem; }
+  h2 { font-size:1.25rem; margin:0 0 .4rem; letter-spacing:-.005em; display:flex; gap:.6rem; align-items:baseline; }
+  h2 .n { font-family:"IBM Plex Mono",monospace; font-size:.8rem; color:var(--ink-mute); font-weight:500; }
+  h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
+  p { margin:.5rem 0 1rem; max-width:74ch; }
+  .sub { color:var(--ink-2); max-width:74ch; margin:0 0 1.2rem; }
+  code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule);
+    border-radius:3px; padding:.05em .32em; color:var(--ink-2); }
+  .callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent);
+    border-radius:4px; padding:.9rem 1.1rem; margin:1rem 0 1.4rem; }
+  .callout.warn { border-left-color:var(--warn); }
+  .callout.bad { border-left-color:var(--bad); }
+  .callout p { margin:.25rem 0; }
+  .callout strong { color:var(--ink); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1.2rem; }
+  .card { background:var(--panel-raise); border:1px solid var(--rule); border-radius:6px; padding:1.1rem 1.2rem; box-shadow:var(--shadow); }
+  .card h3 { margin-top:0; }
+  .tablewrap { overflow-x:auto; margin:.6rem 0 1.4rem; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; min-width:560px; }
+  th, td { padding:.5rem .7rem; text-align:left; border-bottom:1px solid var(--rule); vertical-align:top; }
+  th { color:var(--ink-mute); font-weight:600; font-size:.8rem; letter-spacing:.02em; white-space:nowrap; background:var(--panel); }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.86rem; white-space:nowrap; }
+  tr.sep td { border-top:2px solid var(--rule-strong); }
+  .tag { display:inline-block; font-size:.74rem; font-weight:600; padding:.08rem .5rem; border-radius:999px; border:1px solid var(--rule-strong); white-space:nowrap; }
+  .tag.use { color:var(--good); border-color:var(--good); }
+  .tag.train { color:var(--accent); border-color:var(--accent); }
+  .tag.quar { color:var(--bad); border-color:var(--bad); }
+  .tag.part { color:var(--warn); border-color:var(--warn); }
+  ul { padding-left:1.2rem; max-width:76ch; } li { margin:.35rem 0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin:1.4rem 0 .5rem; }
+  .kpi { background:var(--panel-raise); border:1px solid var(--rule); border-radius:6px; padding:.9rem 1rem; }
+  .kpi b { display:block; font-size:1.55rem; font-family:"IBM Plex Mono",monospace; letter-spacing:-.02em; }
+  .kpi span { color:var(--ink-2); font-size:.86rem; }
+  /* charts */
+  .chart { margin:.4rem 0 .6rem; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; }
+  .chart text { fill:var(--ink-2); font-size:11.5px; font-family:"IBM Plex Sans KR",system-ui,sans-serif; }
+  .chart text.val { fill:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:11px; }
+  .chart text.grp { fill:var(--ink); font-weight:600; font-size:12px; }
+  .chart .grid { stroke:var(--rule); stroke-width:1; }
+  .chart .bar { cursor:default; }
+  .chart .bar:hover, .chart .bar:focus { filter:brightness(1.12); outline:none; }
+  .legend { display:flex; flex-wrap:wrap; gap:.4rem 1.2rem; font-size:.86rem; color:var(--ink-2); margin:.2rem 0 .6rem; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.4rem; vertical-align:-1px; }
+  details { margin:.4rem 0 1rem; } summary { cursor:pointer; color:var(--ink-2); font-size:.88rem; }
+  #tip { position:fixed; pointer-events:none; z-index:10; background:var(--panel-raise); border:1px solid var(--rule-strong);
+    border-radius:5px; padding:.4rem .6rem; font-size:.84rem; box-shadow:var(--shadow); opacity:0; transition:opacity .08s; max-width:260px; }
+  #tip b { font-family:"IBM Plex Mono",monospace; font-size:.95rem; display:block; }
+  #tip span { color:var(--ink-2); }
+  footer { margin-top:4rem; color:var(--ink-mute); font-size:.84rem; border-top:1px solid var(--rule); padding-top:1rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Capstone Design 2 · 28차 (2026-09-19 ~ 09-21)</p>
+  <h1>세션 단위 독립 test 실험 정리</h1>
+  <p class="lead">새 AP가 10/6에 올지 불확실한 3주 동안, 지금 가진 AP(GL.iNet Opal)로 <b>"학습 때 못 본 날·조건의 데이터에서도 모델이 유지되는가"</b>를 재기 위해 세션을 새로 수집하고 기존 모델을 그대로 적용해 본 결과를 정리한다. 수집한 세션, 결과, 그렇게 나온 이유, 그리고 이 결과가 프로젝트에 갖는 의의와 한계를 담았다.</p>
+</header>
+
+<div class="callout">
+  <p><strong>한 줄 결론.</strong> 같은 수집 안에서 나눈 test 수치는 낙관적이었다. 세션 단위로 떨어뜨리면 5GHz는 심각(L3) recall이 65~70% → 42~48%로 크게 내려가고, 2.4GHz는 세션에 따라 55~72%(g1)와 88~91%(g2)로 갈린다. 남는 약점은 <b>AP 텔레메트리에 흔적이 없는 심각</b>이다.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><b>8개</b><span>새로 수집한 세션 (5GHz 6개[격리 2개 포함] + 2.4GHz 2개)</span></div>
+  <div class="kpi"><b>−20pt</b><span>5GHz L3 recall 하락 (in-dist → 독립 세션)</span></div>
+  <div class="kpi"><b>55~91%</b><span>2.4GHz 독립 세션 L3 recall (세션마다 다름)</span></div>
+  <div class="kpi"><b>13 / 23개</b><span>2.4GHz / 5GHz 독립 심각 구간 수 (CI 폭 결정)</span></div>
+</div>
+
+<section>
+  <h2><span class="n">01</span>왜 이 실험을 했나</h2>
+  <p class="sub">기존 평가는 한 번 수집한 데이터를 시간 순서로 12개씩 묶은 <b>창(window)</b>을 무작위로 train/val/test에 나눈 것이다. 그러면 같은 실험의 바로 옆 창이 train과 test에 함께 들어가 모델이 "외워서" 맞히기 쉽다.</p>
+  <ul>
+    <li><b>세션 단위 test</b>: 수집 1회(세션)를 통째로 test로 뺀다. 학습에 쓴 날과 다른 날, 다른 조건의 데이터로 재므로 실제 배포 후 성능에 가깝다.</li>
+    <li>test에 정상·경고·혼잡·심각이 균일하게 있을 필요는 없다. 필요한 것은 <b>심각(L3)의 독립 구간이 충분히 많은 것</b>이다. 창이 stride 1로 겹치므로 실제 독립 표본은 창 수가 아니라 "연속된 심각 구간" 수다.</li>
+    <li>5GHz는 "혼잡하면 5GHz로 전환"이라는 최종 목표 문장의 실현 가능성을 보려고 시작한 별도 라인(미채택)이고, 발표 핵심은 2.4GHz다. 그래서 5GHz에서 방법을 먼저 검증하고 2.4GHz에 적용했다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">02</span>수집한 세션</h2>
+  <p class="sub">장소는 모두 집이고, 부하는 폰 2대(S21·S26)가 노트북(무선 sink)으로 iperf3 UDP를 보내며, victim 프로브·ping·AP 텔레메트리는 유선 Raspberry Pi가 수집했다. 심각 수는 재라벨(지속성 게이트 k=2/m=2) 후 기준이며 표시한 것은 예외.</p>
+  <div class="callout">
+    <p><strong>"심각 독립 구간"이란?</strong> 심각(L3) 라벨이 시간상 <b>연속으로 이어진 덩어리</b> 하나를 1개로 센 값이다(30초 이상 끊기면 별개의 구간). 예를 들어 심각이 90초 동안 이어졌다면 창은 수십 개여도 구간은 1개다. 창은 stride 1로 겹쳐서 이웃한 창이 거의 같은 정보이므로, 실제 독립 표본은 창 수가 아니라 이 구간 수이고 신뢰구간(CI)도 이 단위로 계산했다. <b>모델 입력 feature 개수(7-feature·6-feature)와는 무관하다.</b></p>
+  </div>
+
+  <h3>5GHz (AP <code>wlan1</code>)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>세션</th><th>수집 시각</th><th class="num">행</th><th class="num">심각</th><th class="num">심각 독립 구간</th><th>용도</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>기존 수집</td><td>09-19 01:00~18:10</td><td class="num">6,993</td><td class="num">529</td><td class="num">-</td><td><span class="tag train">학습·in-dist</span></td><td>여러 부하(step, heavy 40~80M, 소패킷). 크래시 구간 제거. 이 데이터로 3모델 5시드 학습</td></tr>
+      <tr><td>세션 1</td><td>09-19 23:59~09-20 00:26</td><td class="num">1,025</td><td class="num">278*</td><td class="num">-</td><td><span class="tag quar">격리</span></td><td>*게이트 전. heavy60/70에서 심각 50~75%, 프로브 실패 34~89%. 유튜브 시청·노트북 전원 문제로 오염</td></tr>
+      <tr><td>세션 1b</td><td>09-20 01:50~02:15</td><td class="num">882</td><td class="num">64*</td><td class="num">9</td><td><span class="tag quar">격리</span></td><td>*게이트 전. 라벨은 유효하나 <code>sta_tx_bitrate_mean</code>이 6.5Mbps에 고착(부하 행 76~91%)</td></tr>
+      <tr class="sep"><td>세션 1c</td><td>09-20 02:35~03:26</td><td class="num">1,194</td><td class="num">76</td><td class="num">8</td><td><span class="tag use">독립 test</span></td><td>통제 조건(전원 연결, 폰 미사용, 노트북 bitrate 확인). AP 크래시 1회 후 재수집</td></tr>
+      <tr><td>세션 2</td><td>09-20 03:33~04:05</td><td class="num">632</td><td class="num">74</td><td class="num">6</td><td><span class="tag use">독립 test</span> <span class="tag part">일부</span></td><td>s26 폰 이탈로 중단</td></tr>
+      <tr><td>세션 2b</td><td>09-20 14:17~14:44</td><td class="num">693</td><td class="num">10</td><td class="num">3</td><td><span class="tag use">독립 test</span></td><td>낮. 노트북 bitrate 고착 재발 → 재연결 후 시작</td></tr>
+      <tr><td>세션 3</td><td>09-20 17:32~18:54</td><td class="num">1,378</td><td class="num">18</td><td class="num">6</td><td><span class="tag use">독립 test</span></td><td>저녁. heavy 계열 심각이 거의 안 나옴</td></tr>
+      <tr class="sep"><td><b>독립 test 풀</b></td><td>1c+2+2b+3</td><td class="num"><b>3,897</b></td><td class="num"><b>178</b></td><td class="num"><b>23</b></td><td></td><td>평가는 1c+2+2b(2,519행·구간 17개, 2,363창)로 수행</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>2.4GHz (AP <code>wlan0</code>)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>세션</th><th>수집 시각</th><th class="num">행</th><th class="num">심각</th><th class="num">심각 독립 구간</th><th>용도</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>기존 캐노니컬</td><td>08-28, 09-01</td><td class="num">2,551</td><td class="num">284</td><td class="num">-</td><td><span class="tag train">학습·in-dist</span></td><td><b>실제로는 2일치, 4시나리오 계열</b>(step 2,115행이 대부분). step 런 4~6(전체의 약 34%)은 bitrate 고착 의심</td></tr>
+      <tr class="sep"><td>g1</td><td>09-20 19:42~21:21</td><td class="num">1,044</td><td class="num">315</td><td class="num">6</td><td><span class="tag use">독립 test</span></td><td>step ×2, 소패킷 step, 소패킷 knee ×2. 노트북 Wi-Fi 이탈·bitrate 고착 등 사고 다수(spknee_a의 bitrate는 신뢰 불가)</td></tr>
+      <tr><td>g2</td><td>09-21 00:26~01:48</td><td class="num">1,262</td><td class="num">466</td><td class="num">7</td><td><span class="tag use">독립 test</span></td><td>실제 AP 크래시 1회(가동 시간 초기화로 확인) 후 재개. g1과 <b>같은 밤의 연속 세션</b>이라 날짜 독립성은 없음</td></tr>
+      <tr class="sep"><td><b>합산</b></td><td>g1+g2</td><td class="num"><b>2,306</b></td><td class="num"><b>781</b></td><td class="num"><b>13</b></td><td></td><td>평가 2,150창 (심각 780창)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2><span class="n">03</span>결과 A — 같은 세션 내 test는 낙관적이었다</h2>
+  <p class="sub">기존 모델(재학습 없음)을 새 세션에 그대로 적용했다. 5시드 평균이며 아래 차트는 <b>심각(L3) recall</b>이다. 막대 값은 직접 표기했고, 표 보기로도 확인할 수 있다.</p>
+  <div class="legend" id="lg1"></div>
+  <div class="grid2">
+    <div class="card"><h3>5GHz</h3><div class="chart" id="c1a"></div></div>
+    <div class="card"><h3>2.4GHz</h3><div class="chart" id="c1b"></div></div>
+  </div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>정확도(%) / L3 recall(%)</th><th class="num">Baseline</th><th class="num">SDN</th><th class="num">EE Fixed</th><th class="num">EE Dynamic</th></tr></thead>
+    <tbody>
+      <tr><td>5GHz 같은 세션 내 test (6,993행, 995창)</td><td class="num">90.8 / 67.5</td><td class="num">90.2 / 67.0</td><td class="num">88.7 / 65.2</td><td class="num">88.3 / 70.2</td></tr>
+      <tr><td>5GHz 독립 세션 (2,363창, 구간 17)</td><td class="num">86.5 / 48.2</td><td class="num">85.2 / 48.2</td><td class="num">86.2 / 41.9</td><td class="num">86.3 / 48.1</td></tr>
+      <tr><td>&nbsp;&nbsp;L3 recall 95% CI (구간 부트스트랩)</td><td class="num">[19, 68]</td><td class="num">[19, 68]</td><td class="num">[18, 58]</td><td class="num">[21, 67]</td></tr>
+      <tr class="sep"><td>2.4GHz 같은 세션 내 test (365창)</td><td class="num">92.7 / 87.1</td><td class="num">91.9 / 87.6</td><td class="num">91.7 / 85.7</td><td class="num">92.3 / 83.8</td></tr>
+      <tr><td>2.4GHz g1 (972창, 구간 6)</td><td class="num">79.7 / 60.5</td><td class="num">75.1 / 55.0</td><td class="num">77.9 / 71.6</td><td class="num">75.5 / 64.3</td></tr>
+      <tr><td>2.4GHz g2 (구간 7)</td><td class="num">84.1 / 88.6</td><td class="num">81.4 / 88.3</td><td class="num">82.5 / 91.2</td><td class="num">82.1 / 90.2</td></tr>
+      <tr><td>2.4GHz g1+g2 합산 (2,150창, 구간 13)</td><td class="num">82.1 / 77.3</td><td class="num">78.5 / 74.9</td><td class="num">80.4 / 83.3</td><td class="num">79.1 / 79.7</td></tr>
+      <tr><td>&nbsp;&nbsp;L3 recall 95% CI</td><td class="num">[64, 88]</td><td class="num">[57, 88]</td><td class="num">[72, 92]</td><td class="num">[66, 90]</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <p><strong>읽는 법.</strong> (1) 5GHz는 세션을 떼면 recall이 약 20pt 내려가고 정확도도 3~5pt 내려간다. (2) 2.4GHz는 <b>g1 55~72%, g2 88~91%</b>로 두 독립 세션이 크게 갈려서 합산 평균(75~83%)은 대표값으로 쓰기 어렵다. (3) 독립 구간이 13~17개뿐이라 신뢰구간이 넓고 <b>모델 간 차이(Baseline/SDN/EE)는 구분할 수 없다</b>.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">04</span>결과 B — 어떤 심각이 안 잡히나</h2>
+  <p class="sub">낮은 recall은 "loss 심각이 많아서"가 아니라, 심각 상태에서 <b>AP 텔레메트리(occupancy, retry, RSSI, bitrate)가 혼잡 상태와 달라 보이는가</b>에 좌우된다. 2.4GHz는 심각의 약 71%가 loss 주도인데도 in-distribution recall이 84~88%였고, 5GHz 소패킷은 loss 주도인데 recall이 높다.</p>
+  <div class="grid2">
+    <div class="card"><h3>2.4GHz — 심각 유형별 recall (g1+g2)</h3><div class="chart" id="c2a"></div></div>
+    <div class="card"><h3>5GHz — 부하 프로파일별 recall (독립 세션)</h3><div class="chart" id="c2b"></div></div>
+  </div>
+  <ul>
+    <li><b>occupancy가 이미 높은 심각</b>(occ_score ≥ 0.75)은 87.8%로 잘 맞는다. 채널 점유율만으로도 구분되기 때문이다.</li>
+    <li><b>occupancy는 낮은데 프로브 실패/loss로 붙은 심각</b>은 31.5~41.3%뿐이다. 이 유형은 혼잡(2) 상태와 텔레메트리가 거의 같아서, 정보가 없는 것이다.</li>
+    <li>5GHz 소패킷 60M/200B는 붕괴하는 순간 지연이 수백 ms로 튀고 처리량·retry가 함께 달라져 잘 잡히지만(약 85%), heavy 60/70/75는 4~23%다. occupancy 미달인 심각의 비율도 5GHz가 68%로 2.4GHz의 39%보다 높다.</li>
+    <li>오탐의 <b>98%는 실제 혼잡(2)</b>이다. 혼잡↔심각 인접 경계가 남은 오답의 정체이고, 정상↔심각 혼동은 거의 없다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">05</span>결과 C — 같은 부하도 세션마다 결과가 갈린다</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>부하 프로파일</th><th class="num">2.4GHz g1</th><th class="num">2.4GHz g2</th><th>5GHz 관찰</th></tr></thead>
+    <tbody>
+      <tr><td>step (10→40M, 1200B)</td><td class="num">23% / 26%</td><td class="num">26% / 32%</td><td rowspan="4">같은 heavy 60/70/75 부하 행의 심각 비율: 이전 수집 새벽 2.4~5.8%, 이전 <b>오후 1시 45.6%</b>, 오후 2시 2.0%, 새 세션 1c 12.2% · 2 6.9% · 2b 1.5% · 3 0.2%. 같은 프로파일이 세션마다 0~75%로 갈리고, <b>시간대는 일관된 요인이 아니다</b>(밤에 더 늘어난다는 초기 관찰은 이전 수집과 비교해 철회).</td></tr>
+      <tr><td>소패킷 step (300B)</td><td class="num">30%</td><td class="num">42% / 41%</td></tr>
+      <tr><td>소패킷 knee (22M×2, 200B)</td><td class="num">60% / 58%</td><td class="num">71% / 56%</td></tr>
+      <tr><td>변동성</td><td class="num" colspan="2">2.4GHz는 두 세션에서 프로파일별 비율이 <b>일관</b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub">각 칸은 런별 심각 비율(게이트 전, 런이 둘이면 "a / b")이다. 2.4GHz는 재현성이 좋아 세션 수집이 효율적이고, 5GHz는 부하 크기만으로 심각 발생을 통제할 수 없어 표본 확보 자체가 어렵다.</p>
+</section>
+
+<section>
+  <h2><span class="n">06</span>그 이유 — 왜 이런 결과가 나왔나</h2>
+  <ol>
+    <li><b>내부 분할의 누수.</b> 인접 창이 train/test에 섞여 외워서 맞힌다. 세션을 떼면 이 이득이 사라진다. 5GHz에서 20pt 하락이 그 크기다.</li>
+    <li><b>텔레메트리로 안 보이는 심각의 존재.</b> 심각은 victim 프로브(jitter/loss)와 ping으로 정의되는데 모델은 AP 측 값만 본다. occupancy 미달·프로브 stale 유형은 정보가 없어 recall이 31~41%에 머문다. 5GHz는 이 유형이 68%라 더 불리하다. occupancy만 쓰는 어블레이션에서 나머지 feature가 recall에 더해주는 이득이 5GHz +7pt, 2.4GHz +16pt로 절반 이하였다.</li>
+    <li><b>세션 조건에 따른 심각 발생 변동.</b> 특히 5GHz는 같은 부하도 런마다 심각이 0~75%로 갈려 test 구성이 세션마다 달라진다. "데이터를 더 모으면 좋아진다"가 성립하지 않았다(5,810행 → 6,993행에서 L3 recall이 오히려 하락, 특정 시나리오 제외 실험에서도 개선 없음).</li>
+    <li><b>학습 데이터의 좁은 범위.</b> 2.4GHz 캐노니컬은 2일치 4계열이 전부다. 그 안에서 만든 in-distribution 수치는 다양성을 반영하지 못한다.</li>
+    <li><b>측정 품질 문제.</b> 아래 07 참고. g1이 낮고 g2가 높은 격차는 g1 <code>spknee_a</code>의 bitrate 오염만으로는 설명되지 않는다(그 런을 빼도 g1 recall은 68~79%로 g2보다 낮다). <b>원인은 미확정</b>이고 세션×런별 분해가 필요하다.</li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="n">07</span>수집 과정에서 드러난 측정·데이터 문제</h2>
+  <div class="callout bad">
+    <p><strong><code>sta_tx_bitrate_mean</code> 고착.</strong> 부하를 받는 노트북 station의 AP측 tx rate 보고가 6.5Mbps(MCS0)에 고정되는 현상이 반복됐다. 노트북은 정상(rx 270Mbps, 신호 90%)인데 AP가 보고하는 rate만 고착이며, Wi-Fi 재연결로 안 풀리면 <b>어댑터를 껐다 켜야</b> 풀렸다. 2.4GHz 학습 데이터의 step 런 4~6(약 34%)에도 같은 현상이 섞여 있을 가능성이 크다.</p>
+  </div>
+  <ul>
+    <li><b>6-feature 어블레이션</b>(2.4GHz 캐노니컬, Baseline 5시드): bitrate를 빼면 L3 F1이 86.7 → 80.4(−6.3pt). 그 이득은 bitrate가 정상인 런에서 나와 "고착 아티팩트에서 온 이득" 가설은 지지되지 않았다. 다만 같은 런 내부 분할이라 외운 효과는 못 가린다.</li>
+    <li><b>노트북 SSID 이탈.</b> 2.4GHz 부하로 링크가 포화되면 Windows가 저장된 5GHz·집 공유기로 자동 로밍했다. 노트북 한 곳에서만 본 "AP 크래시" 판정은 이것과 구분되지 않는다. 5GHz 세션 1c와 2.4GHz g1의 크래시 판정은 독립 경로로 확인하지 못했고, g2의 크래시만 AP 가동 시간 초기화로 확인됐다.</li>
+    <li><b>프로브 stale = 실패 규칙 효과.</b> "채널이 바쁜데 프로브가 죽으면 그 축을 1.0"이라는 규칙 때문에, 프로브 하나만 실패해도 심각이 된다. 5GHz 세션 1의 이상 현상(심각 50~75%)이 이 규칙과 환경 오염이 겹친 결과였다.</li>
+    <li><b>러너 오탐과 운영 실수.</b> 링크 포화 때 노트북발 ping 실패, 판정 기준이 포화 프로파일의 정상 데이터를 고착으로 오판, 종료 시 잘린 줄, 환경변수 순서 버그, 패치 실패를 확인하지 않고 진행 등을 모두 수정해 수집 절차로 남겼다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">08</span>의의와 한계</h2>
+  <h3>의의</h3>
+  <ul>
+    <li><b>낙관 편향을 처음으로 실측했다.</b> 발표에서 인용할 L3 수치는 같은 세션 내 분할 수치와 독립 세션 수치를 함께 제시해야 정직하다. 2.4GHz는 독립 세션에서도 55~91% 범위가 나와 주장은 유지되지만 "84~88%"라는 단일 수치로는 말할 수 없다.</li>
+    <li><b>남는 약점이 무엇인지 특정했다.</b> 혼잡↔심각 경계, 특히 텔레메트리에 흔적이 없는 loss 주도 심각이다. 이는 AP 텔레메트리만으로 판단하는 구조의 한계이고, 확신이 낮을 때만 짧게 능동 프로브를 트리거하는 <b>하이브리드 구조</b>가 필요한 근거가 된다(25차 오프라인 시뮬레이션: 트리거율 3.4%로 4-class 93.2% → 95.0%).</li>
+    <li><b>수집·평가 프로토콜을 정립했다.</b> 통제 체크리스트(전원, 폰 미사용, 노트북 bitrate·SSID 확인), 독립 구간 기준, 유형별·프로파일별 보고, 러너의 안전장치가 새 AP가 오면 그대로 재사용된다.</li>
+    <li><b>5GHz는 미채택으로 정리할 근거가 생겼다.</b> 독립 세션에서 2.4GHz보다 낮고 세션 간 변동이 크며, 채널 전환 메커니즘 자체는 미검증이다.</li>
+  </ul>
+  <h3>한계</h3>
+  <ul>
+    <li>독립 구간이 13~17개라 신뢰구간이 넓고, 모델(Baseline/SDN/EE) 간 우열은 주장할 수 없다.</li>
+    <li>2.4GHz g1·g2는 같은 밤의 연속 세션이라 <b>날짜 독립성이 없다</b>. 장소, AP, 폰 배치도 모두 같다.</li>
+    <li>g1과 g2의 격차 원인, 심각 발생의 세션 간 변동 원인은 미확정이다.</li>
+    <li>정확도만 보고한 것이며 Pi 지연은 5GHz 기준으로 재측정하지 않았다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">09</span>다음 할 일</h2>
+  <ul>
+    <li><b>다른 날에 2.4GHz 세션 추가</b>(목표 독립 구간 20~30개)로 날짜 독립성 확보.</li>
+    <li>g1·g2의 <b>세션×런별 분해</b>, bitrate·occupancy 분포 비교로 격차 원인 추적.</li>
+    <li><b>7-feature vs 6-feature 모델</b>을 독립 세션에서 비교(6-feature는 체크포인트를 저장해 재학습 필요). 독립 세션에서 혼잡→심각 오탐이 늘면 bitrate 의존이 원인일 수 있다.</li>
+    <li>보고서에 위 수치를 반영하고, 노트북 자동 연결 설정과 Pi 다운 원인 등 남은 운영 이슈 정리.</li>
+  </ul>
+</section>
+
+<footer>
+  수치 출처: <code>.work-log/current.md</code> 26~28차, 평가 스크립트·결과 <code>project/.tmp/exp_5g/eval_test_pool.txt</code>, <code>project/.tmp/exp_24g/eval_g1.txt</code>, <code>eval_g12.txt</code>, 어블레이션 <code>ablate_bitrate_24g.py</code>. 원본 CSV와 스크립트는 저장소에 커밋하지 않았다(컨벤션).
+</footer>
+</main>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  var SERIES = [
+    {name: "같은 세션 내 분할 (in-distribution)", v: "var(--s1)"},
+    {name: "독립 세션 / g1", v: "var(--s2)"},
+    {name: "2.4GHz g2", v: "var(--s3)"}
+  ];
+  var tip = document.getElementById("tip");
+
+  function esc(t) { var d = document.createElement("div"); d.textContent = t; return d.innerHTML; }
+  function showTip(e, big, small) {
+    tip.textContent = "";
+    var b = document.createElement("b"); b.textContent = big; var s = document.createElement("span"); s.textContent = small;
+    tip.appendChild(b); tip.appendChild(s);
+    var x = (e.clientX || 0) + 14, y = (e.clientY || 0) + 14;
+    tip.style.left = Math.min(x, window.innerWidth - 270) + "px"; tip.style.top = y + "px"; tip.style.opacity = 1;
+  }
+  function hideTip() { tip.style.opacity = 0; }
+
+  // cfg: {el, xmax, unit, series:[idx...], groups:[{label, bars:[{s, v, note}]}]}
+  function hbar(cfg) {
+    var el = document.getElementById(cfg.el), NS = "http://www.w3.org/2000/svg";
+    var W = 480, left = cfg.left || 96, right = 48, bh = 13, gap = 2, ggap = 14, top = 14;
+    var plotW = W - left - right, y = top, rows = [];
+    cfg.groups.forEach(function (g) { rows.push({g: g, y0: y}); y += g.bars.length * (bh + gap) + ggap; });
+    var H = y + 6;
+    var svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("role", "img"); svg.setAttribute("aria-label", cfg.aria || "막대 차트");
+    [0, 25, 50, 75, 100].forEach(function (t) {
+      if (t > cfg.xmax) return;
+      var x = left + plotW * t / cfg.xmax;
+      var ln = document.createElementNS(NS, "line"); ln.setAttribute("x1", x); ln.setAttribute("x2", x);
+      ln.setAttribute("y1", top - 6); ln.setAttribute("y2", H - 6); ln.setAttribute("class", "grid"); svg.appendChild(ln);
+      var tx = document.createElementNS(NS, "text"); tx.setAttribute("x", x); tx.setAttribute("y", 8); tx.setAttribute("text-anchor", "middle");
+      tx.textContent = t; svg.appendChild(tx);
+    });
+    rows.forEach(function (r) {
+      var gt = document.createElementNS(NS, "text"); gt.setAttribute("x", 0); gt.setAttribute("y", r.y0 + bh - 2);
+      gt.setAttribute("class", "grp"); gt.textContent = r.g.label; svg.appendChild(gt);
+      r.g.bars.forEach(function (b, i) {
+        var yy = r.y0 + i * (bh + gap), w = Math.max(2, plotW * b.v / cfg.xmax), x0 = left, rad = 4;
+        var p = document.createElementNS(NS, "path");
+        var d = w > 2 * rad
+          ? "M" + x0 + " " + yy + "h" + (w - rad) + "a" + rad + " " + rad + " 0 0 1 " + rad + " " + rad + "v" + (bh - 2 * rad) + "a" + rad + " " + rad + " 0 0 1 -" + rad + " " + rad + "h-" + (w - rad) + "z"
+          : "M" + x0 + " " + yy + "h" + w + "v" + bh + "h-" + w + "z";
+        p.setAttribute("d", d); p.setAttribute("fill", SERIES[b.s].v); p.setAttribute("class", "bar"); p.setAttribute("tabindex", "0");
+        var label = r.g.label + " · " + (cfg.legendNames ? cfg.legendNames[b.s] : SERIES[b.s].name);
+        var small = label + (b.note ? " (" + b.note + ")" : "");
+        p.addEventListener("pointermove", function (e) { showTip(e, b.v.toFixed(1) + cfg.unit, small); });
+        p.addEventListener("pointerleave", hideTip);
+        p.addEventListener("focus", function () { var rc = p.getBoundingClientRect(); showTip({clientX: rc.right, clientY: rc.top}, b.v.toFixed(1) + cfg.unit, small); });
+        p.addEventListener("blur", hideTip);
+        svg.appendChild(p);
+        var vt = document.createElementNS(NS, "text"); vt.setAttribute("x", x0 + w + 5); vt.setAttribute("y", yy + bh - 2);
+        vt.setAttribute("class", "val"); vt.textContent = b.v.toFixed(1) + (b.note ? "" : ""); svg.appendChild(vt);
+      });
+    });
+    el.appendChild(svg);
+    // 표 보기
+    var det = document.createElement("details"), sm = document.createElement("summary"); sm.textContent = "표로 보기";
+    det.appendChild(sm);
+    var tb = document.createElement("table"), th = document.createElement("thead"), trh = document.createElement("tr");
+    ["항목", "구분", "값(" + cfg.unit + ")", "비고"].forEach(function (h) { var c = document.createElement("th"); c.textContent = h; trh.appendChild(c); });
+    th.appendChild(trh); tb.appendChild(th);
+    var tbd = document.createElement("tbody");
+    cfg.groups.forEach(function (g) {
+      g.bars.forEach(function (b) {
+        var tr = document.createElement("tr");
+        [g.label, cfg.legendNames ? cfg.legendNames[b.s] : SERIES[b.s].name, b.v.toFixed(1), b.note || ""].forEach(function (t, i) {
+          var c = document.createElement("td"); if (i === 2) c.className = "num"; c.textContent = t; tr.appendChild(c);
+        }); tbd.appendChild(tr);
+      });
+    });
+    tb.appendChild(tbd);
+    var wrap = document.createElement("div"); wrap.className = "tablewrap"; wrap.appendChild(tb); det.appendChild(wrap);
+    el.appendChild(det);
+  }
+
+  var M = ["Baseline", "SDN", "EE Fixed", "EE Dynamic"];
+  // 차트 1: L3 recall
+  hbar({el: "c1a", xmax: 100, unit: "%", aria: "5GHz L3 recall: 같은 세션 내 분할 대 독립 세션",
+    groups: M.map(function (m, i) { return {label: m, bars: [{s: 0, v: [67.5, 67.0, 65.2, 70.2][i]}, {s: 1, v: [48.2, 48.2, 41.9, 48.1][i]}]}; })});
+  hbar({el: "c1b", xmax: 100, unit: "%", aria: "2.4GHz L3 recall: 같은 세션 내 분할, g1, g2",
+    groups: M.map(function (m, i) { return {label: m, bars: [{s: 0, v: [87.1, 87.6, 85.7, 83.8][i]}, {s: 1, v: [60.5, 55.0, 71.6, 64.3][i]}, {s: 2, v: [88.6, 88.3, 91.2, 90.2][i]}]}; })});
+  var lg = document.getElementById("lg1");
+  SERIES.forEach(function (s) {
+    var sp = document.createElement("span"), i = document.createElement("i"); i.style.background = s.v;
+    sp.appendChild(i); sp.appendChild(document.createTextNode(s.name)); lg.appendChild(sp);
+  });
+
+  // 차트 2: 유형별 (단일 계열)
+  var one = ["심각 유형 / 프로파일"];
+  hbar({el: "c2a", xmax: 100, unit: "%", left: 150, legendNames: one, aria: "2.4GHz 심각 유형별 recall",
+    groups: [
+      {label: "occupancy 주도", bars: [{s: 0, v: 87.8, note: "649창"}]},
+      {label: "occ 미달 + 프로브 stale", bars: [{s: 0, v: 31.5, note: "96창"}]},
+      {label: "occ 미달 + 측정된 loss/lat", bars: [{s: 0, v: 41.3, note: "35창"}]}
+    ]});
+  hbar({el: "c2b", xmax: 100, unit: "%", left: 110, legendNames: one, aria: "5GHz 프로파일별 recall",
+    groups: [
+      {label: "소패킷 60M/200B", bars: [{s: 0, v: 85.2, note: "69창, 4모델 평균"}]},
+      {label: "heavy75", bars: [{s: 0, v: 22.9, note: "29창, 4모델 평균"}]},
+      {label: "heavy60", bars: [{s: 0, v: 20.7, note: "38창, 4모델 평균"}]},
+      {label: "heavy70", bars: [{s: 0, v: 4.0, note: "20창, 4모델 평균"}]}
+    ]});
+})();
+</script>
+</body>
+</html>
