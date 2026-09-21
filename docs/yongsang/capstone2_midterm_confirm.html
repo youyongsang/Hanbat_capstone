@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>중간발표 확정 체크리스트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</head>
+<body>
+<style>
+  :root{
+    --ground:#f4f5f8;
+    --surface:#ffffff;
+    --surface-2:#eceef3;
+    --line:#dcdfe7;
+    --ink:#191d28;
+    --ink-2:#4d5665;
+    --muted:#868e9d;
+    --accent:#3350c8;
+    --req:#c8323d;      --req-bg:#f9e9ea;
+    --confirm:#b3741a;  --confirm-bg:#f8f0e1;
+    --info:#237a52;     --info-bg:#e4f1ea;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"IBM Plex Sans","Noto Sans KR",-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0f131a; --surface:#161b22; --surface-2:#1d2431; --line:#2b3441;
+      --ink:#e7ebf1; --ink-2:#a6b0be; --muted:#6c7684; --accent:#7d9bff;
+      --req:#ef5b62; --req-bg:#2c1618; --confirm:#e0a047; --confirm-bg:#2b2114;
+      --info:#49c187; --info-bg:#122a20;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0f131a; --surface:#161b22; --surface-2:#1d2431; --line:#2b3441;
+    --ink:#e7ebf1; --ink-2:#a6b0be; --muted:#6c7684; --accent:#7d9bff;
+    --req:#ef5b62; --req-bg:#2c1618; --confirm:#e0a047; --confirm-bg:#2b2114;
+    --info:#49c187; --info-bg:#122a20;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased
+  }
+  .wrap{max-width:800px;margin:0 auto;padding:40px 22px 96px}
+
+  header{margin-bottom:30px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  h1{font-size:27px;font-weight:700;letter-spacing:-.02em;margin:0 0 8px;text-wrap:balance}
+  .sub{color:var(--ink-2);margin:0;max-width:64ch}
+
+  .bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .stat{display:flex;align-items:baseline;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 13px}
+  .stat b{font-family:var(--mono);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+  .stat span{font-size:12px;color:var(--ink-2)}
+  .stat.req b{color:var(--req)} .stat.confirm b{color:var(--confirm)} .stat.done b{color:var(--info)}
+  .progress{margin-top:15px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+  .progress .track{height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden;margin-top:6px;border:1px solid var(--line)}
+  .progress .fill{height:100%;background:var(--accent);width:0;transition:width .3s}
+
+  .toggle{position:fixed;top:14px;right:14px;font:inherit;font-size:12px;font-family:var(--mono);background:var(--surface);color:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+  .toggle:hover{color:var(--ink)}
+
+  .done-note{
+    margin-top:18px;background:var(--info-bg);border:1px solid var(--line);border-left:3px solid var(--info);
+    border-radius:8px;padding:11px 14px;font-size:12.5px;color:var(--ink-2);line-height:1.6
+  }
+  .done-note b{color:var(--ink)}
+
+  section{margin-top:36px}
+  .sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .sec-head .n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+  .sec-head h2{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .sec-head .count{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+
+  .item{display:flex;gap:13px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--sev);border-radius:9px;padding:14px 15px;margin-bottom:9px}
+  .item[data-sev="req"]{--sev:var(--req)}
+  .item[data-sev="confirm"]{--sev:var(--confirm)}
+  .item[data-sev="done"]{--sev:var(--info)}
+  .item.checked{opacity:.5}
+  .item.checked h3{text-decoration:line-through;text-decoration-color:var(--muted)}
+
+  .chk{flex:none;position:relative;width:19px;height:19px;margin-top:2px;cursor:pointer}
+  .chk input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .chk span{position:absolute;inset:0;border:1.5px solid var(--muted);border-radius:5px;background:var(--surface)}
+  .chk input:checked + span{background:var(--accent);border-color:var(--accent)}
+  .chk input:checked + span::after{content:"";position:absolute;left:5.5px;top:2px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg)}
+  .chk input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+
+  .body{flex:1;min-width:0}
+  .body h3{font-size:14.5px;font-weight:600;margin:0 0 7px;line-height:1.4}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:1px 6px;border-radius:5px;margin-left:7px;vertical-align:1px;background:var(--sev-bg);color:var(--sev)}
+  .item[data-sev="req"] .tag{--sev-bg:var(--req-bg)}
+  .item[data-sev="confirm"] .tag{--sev-bg:var(--confirm-bg)}
+  .item[data-sev="done"] .tag{--sev-bg:var(--info-bg)}
+
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+  dl>div{display:contents}
+  dt{font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;padding-top:2px}
+  dd{margin:0;font-size:13.5px;color:var(--ink-2)}
+  dd code,dd .m{font-family:var(--mono);font-size:12px;background:var(--surface-2);padding:.5px 4px;border-radius:4px;color:var(--ink)}
+  .owner{display:inline-block;margin-top:9px;font-size:11.5px;font-family:var(--mono);color:var(--ink-2);background:var(--surface-2);border-radius:20px;padding:2px 9px}
+  .owner::before{content:"담당 ";color:var(--muted)}
+
+  .insert{margin-top:11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);overflow:hidden}
+  .insert .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:7px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
+  .insert .c{padding:12px 13px;font-size:13px;line-height:1.62;color:var(--ink)}
+  .insert .c > p{margin:0 0 9px} .insert .c > p:last-child{margin:0}
+  .insert .c strong{font-weight:600}
+  .insert .c ul{margin:0 0 9px;padding-left:18px} .insert .c li{margin:2px 0}
+  .insert .scroll{overflow-x:auto;margin:2px 0 9px}
+  .insert table{border-collapse:collapse;width:100%;font-size:11.5px}
+  .insert th,.insert td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+  .insert th{background:var(--surface);font-weight:600;font-size:10.5px;white-space:nowrap}
+  .insert code,.insert .m{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:.5px 4px;border-radius:4px}
+  .insert .note{font-size:12px;color:var(--ink-2);margin-top:2px}
+  .insert .note b{color:var(--ink);font-weight:600}
+
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:560px){
+    .wrap{padding:32px 15px 80px}
+    dl{grid-template-columns:1fr;gap:1px}
+    dt{padding-top:6px}
+  }
+</style>
+
+<button class="toggle" id="themeBtn" type="button">theme</button>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">캡스톤디자인 2 · 중간발표_10 (18슬라이드) 기준</p>
+    <h1>중간발표 확정 체크리스트</h1>
+    <p class="sub">발표 전 확정할 수정·근거·실측·전사 항목. 슬라이드/보고서에 <strong>넣을 내용</strong>을 항목마다 적었습니다. 값이 빈 것만 팀이 측정·결정.</p>
+
+    <div class="bar">
+      <div class="stat req"><b>2</b><span>PPT 수정 (A)</span></div>
+      <div class="stat confirm"><b>22</b><span>Q&amp;A · 실측 · 전사</span></div>
+      <div class="stat done"><b>6</b><span>이미 반영됨</span></div>
+    </div>
+    <div class="progress">
+      <span id="pcount">0 / 24 확인함</span>
+      <div class="track"><div class="fill" id="pfill"></div></div>
+    </div>
+
+    <div class="done-note">
+      <b>지난 세션에서 이미 슬라이드에 반영된 것</b> — 슬라이드 5(AP 원시 데이터), 7(feature 선택 근거), 8(표준 출처·victim 프로브 정의), 9(프로브 학습 전용·예측 원리), 17(참고문헌), 슬라이드 3(1학기 기준 = EE INT8 ONNX 95.7%). 아래는 그 이후 남은 항목.
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="n">A</span><h2>PPT 수정</h2><span class="count">2</span></div>
+
+    <article class="item" data-sev="req">
+      <label class="chk"><input type="checkbox" data-id="a2"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 14 — 페이지 번호 + "세션 21차" 표현<span class="tag">필수</span></h3>
+        <dl>
+          <div><dt>번호</dt><dd>슬라이드 14인데 번호가 <code>11</code>로 하드코딩됨(_9에서 옮겨오며 안 바뀜). 순서 확정 후 마지막에 손보거나 자동 슬라이드 번호 placeholder로 교체 — 다른 슬라이드 번호는 정상</dd></div>
+          <div><dt>문구</dt><dd>제목 "방학 진행 경과 — 8/21 ~ 9/2, <b>세션 21차</b>" → "세션 21차"(Claude와 21번 작업)는 심사위원한테 뜬금없음. <code>8/21 ~ 9/2</code>만 남기기</dd></div>
+        </dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="a3"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 17 참고문헌 — [4]·[5] 서지 보완<span class="tag">보완</span></h3>
+        <dl>
+          <div><dt>확인 결과</dt><dd>6개 모두 실존 문서(웹 검증 완료). [1] Y.1541 (12/2011) · [2] G.114 (05/2003) · [3] G.107 (06/2015) · [6] Kaya et al. ICML 2019 (PMLR v97, pp.3301–3310) — 서지 정확, 그대로 두면 됨</dd></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">[4]·[5]만 손보면 완벽</div>
+          <div class="c">
+            <ul>
+              <li><strong>[4] Cisco Enterprise QoS SRND</strong> — 끝에 <code>Version 3.3</code> 추가 권장 (흔히 인용되는 판, voice 편도 ≤150ms / jitter ≤30ms / loss ≤1% 수록). 실물 PDF 확인됨</li>
+              <li><strong>[5] Aruba</strong> — 채널 이용률 75% 임계값은 Aruba 것 맞음 (기본 트리거값 + best practice &lt;20% voice / &lt;50% video / <strong>&lt;75% data</strong>). 단 이 수치가 "Very High-Density 802.11ac Networks VRD"에서 온 건지, "Managing and Optimizing RF Spectrum for Aruba WLANs (Application Note)"에서 온 건지 <strong>팀이 8/31에 실제로 본 문서로 확인</strong> → 맞는 제목으로 교체</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">B</span><h2>Q&amp;A 방어 — 근거 보강 / 답변 준비</h2><span class="count">8</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b1"><span></span></label>
+      <div class="body">
+        <h3>왜 <code>max</code>로 조합했나<span class="tag">보강</span></h3>
+        <dl><div><dt>왜</dt><dd>슬라이드 8에 "가중치 논쟁 없음"만 있음. "왜 평균이 아니고 max?" 예상 질문</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 8 보강 또는 Q&amp;A 답변</div>
+          <div class="c">
+            <ul>
+              <li><strong>표준은 조합법을 안 준다</strong> — ITU-T·Cisco는 "각 축이 언제 나쁜가"(문턱)는 규정하지만 "어떻게 합치나"(가중치)는 규정 안 함. weighted-sum은 가중치(occ 0.45 등)를 임의로 정해야 했고, 그게 1차 순환논리의 원인</li>
+              <li><strong>QoS는 병목이 지배</strong> — jitter가 완벽해도 loss 10%면 VoIP는 못 씀. 평균 내면 그 사실이 희석됨. 가장 나쁜 축이 사용자 체감을 결정</li>
+              <li><strong>정의가 명확</strong> — label 3 = 최소 한 축이 표준 심각 문턱 초과 (occ≥75% OR jitter≥50ms OR loss≥5% OR 편도≥150ms)</li>
+              <li>정석은 ITU-T G.107 E-model이나 계산이 무거워 max로 단순화 (슬라이드 17 [3]에 이미 명시)</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b2"><span></span></label>
+      <div class="body">
+        <h3>왜 지속성 게이트를 <code>k=2 / m=2</code>로 했나<span class="tag">보강</span></h3>
+        <dl><div><dt>왜</dt><dd>슬라이드 8에 "6조합×5시드 스윕으로 최적값 선택"만. 왜 2/2가 최적인지 없음</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 8 보강 또는 부록 슬라이드</div>
+          <div class="c">
+            <p><strong>게이트가 필요한 이유:</strong> ping 1회 타임아웃, 1폴링 loss 스파이크만으로도 Label 3(심각)이 붙어서, 실제 QoS 붕괴가 아닌 지터성 잡음이 심각 라벨에 섞였다. → 규칙: 비-점유율 축(jitter/loss/latency)이 심각(≥0.75)이어도 <strong>최근 k폴링 중 m폴링 이상 유지될 때만 Label 3 확정</strong>, 아니면 혼잡(2)으로 강등.</p>
+            <p><strong>어떻게 골랐나:</strong> 6개 조합 <code>nogate · k2m2 · k3m2 · k3m3 · k5m2 · k5m3</code> × 5시드 스윕 (2026-09-02, 18차).</p>
+            <p><strong>k=2 / m=2가 최적인 이유:</strong></p>
+            <ul>
+              <li>강등된 행 35개 → nogate 대비 거의 최소 = <strong>라벨을 가장 적게 건드림</strong></li>
+              <li>그런데 Label 3 recall·F1은 6개 조합 중 <strong>최고</strong></li>
+              <li>k를 키우면(3, 5) 더 많은 label 3이 강등돼 <strong>학습 가능한 심각 샘플이 줄어 recall 하락</strong></li>
+              <li>k=2/m=2 = "최근 2폴링 둘 다 심각" → 단발 스파이크는 거르고 2폴링만 지속되면 인정 → 진짜 붕괴는 대부분 살림</li>
+            </ul>
+            <p class="note">결과: raw label 3 <b>319 → 284</b>. 5시드 Label 3 recall 전 모델 <b>+6~10pt</b> (EE Fixed 75.2 → 85.7%), EE Dynamic Label 3 F1 <b>86.7</b>(프로젝트 역대 최고). 17차의 임시값 k=3/m=2에서 교체.</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b3"><span></span></label>
+      <div class="body">
+        <h3>"완전" 앵커를 넘으면? / occ 90%<span class="tag">답변</span></h3>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <ul>
+              <li>score 0.75~1.0 전부 <strong>label 3(심각)</strong>. "완전" 라벨은 없음 — 우리는 4단계만 만들고 심각에서 자름</li>
+              <li>차이는 내부 score뿐: 점유율 75% → occ_score 0.75, 점유율 90% → 1.0. 라벨은 둘 다 3</li>
+              <li>occ 90%(완전 앵커)는 <strong>소패킷 부하에서 실제로 뜬다</strong> (med 77% / max 90%). test 365창 label 3(42개)에 포함</li>
+              <li>occupancy는 게이트 적용 안 됨(비-점유율 축만) → 1폴링만 떠도 label 3</li>
+              <li>jitter는 이 장비(폰 2대+iperf3)로 20ms(경고 앵커)도 잘 안 넘음 → jitter 완전은 이 셋업에선 안 일어남 (슬라이드 16 위험요소에 명시)</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b4"><span></span></label>
+      <div class="body">
+        <h3>"SDN을 이겼냐?" 포지셔닝<span class="tag">답변</span></h3>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <p>"정확도는 <strong>동급</strong>입니다 (5시드 EE Fixed 91.7 / Dynamic 92.3 / SDN 91.9). 주장은 '이겼다'가 아니라 <strong>(1)</strong> 동급 정확도에 <strong>(2)</strong> head가 더 가볍고 (per-exit 전 stage: EE 0.327/0.644/0.953 vs SDN 0.332/0.646/0.962 ms) <strong>(3)</strong> threshold가 트래픽 적응형(Dynamic θ). SDN 평균 지연이 더 낮은 건 T=0.72가 exit 1을 앞당긴 <strong>정책 효과지 구조 우위가 아님</strong>."</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b5"><span></span></label>
+      <div class="body">
+        <h3>목표1 미달 프레이밍 (슬라이드 11)<span class="tag">보강</span></h3>
+        <dl><div><dt>왜</dt><dd>슬라이드 11이 "목표1(95%) 미달"로 시작 → "실패"로 읽힘</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 11 첫 줄 또는 발표 멘트</div>
+          <div class="c">
+            <p>"1학기 95.7%는 <strong>점유율 문턱으로 만든 순환논리 라벨</strong> 위의 값입니다. 2학기 92%는 <strong>victim 프로브로 만든 정직한 실측 라벨</strong> — 더 어려운 문제를 정직하게 푸는 중이고, 남은 갭은 occupancy 60~73% <strong>한 구간</strong>입니다."</p>
+          </div>
+        </div>
+        <span class="owner">유용상 · 예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b6"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 9 "숨은 관계를 내부 가중치로 압축" 이 뭔 뜻?<span class="tag">답변</span></h3>
+        <dl><div><dt>왜</dt><dd>슬라이드 9 문구가 추상적이라 "그게 무슨 말이냐" 질문 가능</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <ul>
+              <li><strong>학습 = (7 feature 입력, label 정답) 쌍을 2,551행어치 반복해서 봄</strong></li>
+              <li><strong>"숨은 관계"</strong> = if문으로 못 짜는 feature 조합 ↔ 라벨 대응. 예: "점유율 65%대(혼자선 애매) + retry 급증 + bitrate 상승 조합이면 → 대개 victim QoS가 깨져서 정답이 label 3이더라"</li>
+              <li><strong>"가중치로 압축"</strong> = LSTM의 수십만 개 숫자(가중치)를 "7 feature 넣으면 맞는 라벨 나오게" 조금씩 조정 → 그 관계가 숫자 안에 녹아듦. 데이터 2,551행 패턴이 고정 크기 가중치 뭉치(~1.4MB)로 요약됨. 학습 후엔 데이터 없이 가중치만으로 새 상황에 라벨을 매김</li>
+              <li><strong>비유</strong>: 경험 많은 관리자가 수백 번 겪으며 "점유율 65%여도 retry 튀고 속도 이상하면 곧 통화 끊기더라"는 감을 익히는 것. 학습 = 그 감 익히기, 가중치 = 그 감</li>
+              <li><strong>슬라이드 맥락</strong>: 배포 땐 프로브가 없어 jitter/loss를 직접 못 봄 → 점유율·retry·bitrate 같은 AP 신호만으로 QoS 붕괴를 판단해야 하고, 그 판단력이 이 가중치에 들어있음</li>
+            </ul>
+            <p class="note">슬라이드 문구를 그대로 두되 위 내용으로 답하거나, 문구를 "AP 신호 패턴 ↔ QoS 붕괴 대응을 학습으로 익힘" 정도로 풀어 써도 됨.</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b7"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 11 "배포 89.9%" 가 뭔 뜻 / 왜 Baseline이 제일 낮나<span class="tag">답변</span></h3>
+        <dl><div><dt>왜</dt><dd>"Baseline이 정확도 1등이라며 왜 89.9?" 예상 질문. 슬라이드에 정확도가 두 종류라 헷갈림</dd></div></dl>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <ul>
+              <li><strong>5시드 평균</strong>(슬라이드 위쪽) = 각 모델을 시드 5개로 5번 학습해 test 정확도를 평균낸 값. 학습 무작위성까지 반영한 <strong>진짜 대표값</strong> → 3모델 다 ~92%로 동급 (Baseline 92.7이 오히려 1등)</li>
+              <li><strong>배포 단일 체크포인트</strong>(아래쪽) = Pi에 실제로 올릴 <strong>1개</strong>를 골랐을 때의 test 정확도. 고르는 기준은 <strong>validation balanced accuracy</strong> (test를 보고 고르면 반칙)</li>
+              <li><strong>Baseline 89.9의 정체</strong>: 그 규칙대로 고른 시드(seed2)가 하필 test에서 89.9%. seed0은 test 92.6%였지만 val 점수가 근소하게 낮아 규칙상 안 뽑힘 → <strong>test를 보고 시드를 고르는 반칙을 안 한 정직한 결과</strong></li>
+              <li>배포 최고는 <strong>EE Dynamic 92.9%</strong> (목표1 판정 대상)</li>
+            </ul>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="b8"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 6 — 정상(109)이 혼잡(132)보다 적은데?<span class="tag">답변</span></h3>
+        <div class="insert">
+          <div class="lbl">Q&amp;A 답변</div>
+          <div class="c">
+            <p>"혼잡 감지인데 왜 정상 데이터가 제일 적냐" → <strong>부하 테스트로 수집한 데이터라 혼잡~심각 구간이 많다.</strong> 실환경 배포 시 분포는 정상이 다수겠지만, 학습·평가는 경계 구간을 충분히 확보하는 게 중요해서 의도적으로 부하 시나리오 위주로 수집.</p>
+          </div>
+        </div>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">C</span><h2>확정 · 실측이 필요한 값</h2><span class="count">5</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c1"><span></span></label>
+      <div class="body">
+        <h3>Raspberry Pi 4 RAM 용량<span class="tag">확정</span></h3>
+        <dl><div><dt>할 일</dt><dd>2 / 4 / 8GB 중 실제 값 → 요구사항 정의서 ECR-001</dd></div></dl>
+        <span class="owner">김호중</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c2"><span></span></label>
+      <div class="body">
+        <h3>개발 PC 실제 사양<span class="tag">확정</span></h3>
+        <dl><div><dt>할 일</dt><dd>CPU 모델 · RAM (팀원별 다르면 최소 사양) → ECR-002</dd></div></dl>
+        <span class="owner">전원</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c3"><span></span></label>
+      <div class="body">
+        <h3>스마트폰 정확한 모델명<span class="tag">확정</span></h3>
+        <dl><div><dt>지금</dt><dd>PPT·demo는 <code>S21 / S26</code>, 크래시 분석 문서엔 <code>191</code> 표기 혼재</dd></div>
+        <div><dt>할 일</dt><dd>실제 모델명으로 슬라이드 4·요구사항 통일</dd></div></dl>
+        <span class="owner">김호중</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c4"><span></span></label>
+      <div class="body">
+        <h3>Pi 추론 프로세스 메모리 실측 (PER-RU-001)<span class="tag">실측</span></h3>
+        <dl><div><dt>할 일</dt><dd>Pi에서 <code>/usr/bin/time -v</code> 또는 추론 중 <code>ps -o rss</code> 로 RSS 측정 → 요구사항 정의서 채우기</dd></div></dl>
+        <span class="owner">김호중</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="c5"><span></span></label>
+      <div class="body">
+        <h3>모델 크기 표기 통일<span class="tag">확정</span></h3>
+        <dl>
+          <div><dt>지금</dt><dd>슬라이드 12 = <code>1.37MB → 0.36MB</code> (십진, 실제 바이트 1,366,578 → 356,963)</dd></div>
+          <div><dt>할 일</dt><dd>요구사항 정의서 PER-RU-002도 이 표기로 통일 (이진 1.30MB 아님)</dd></div>
+        </dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">D</span><h2>내용 확인</h2><span class="count">2</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="d1"><span></span></label>
+      <div class="body">
+        <h3>슬라이드 7 "라벨을 점유율로 부여" — 부정확, 수정 필요<span class="tag">수정</span></h3>
+        <dl>
+          <div><dt>확인 결과</dt><dd><code>yongsang</code> 브랜치 확인 완료. 1학기 최종 시스템(<code>data/real</code> = Kaggle 6G 데이터셋)의 라벨은 <strong>4축 가중합</strong>: <code>score = 0.35·occupancy + 0.25·latency + 0.25·loss + 0.15·rps</code>, 문턱 35/55/75/100. 초기 <code>traffic_simulator.py</code>만 occupancy 단일 문턱(40/65/85)이었고 최종보고서 시스템은 아님. <strong>C1 최종보고서 서술이 맞음</strong></div>
+        </dl>
+        <div class="insert">
+          <div class="lbl">슬라이드 7 — 이 줄만 교체 (before → after)</div>
+          <div class="c">
+            <p><strong>"1학기 입력 4개의 문제" 첫 번째 불릿:</strong></p>
+            <p class="note">before: 순환 구조 — 라벨을 <b>점유율로 부여</b> + 점유율을 입력에도 사용 → 모델이 정답을 일부 읽음</p>
+            <p class="note">after: 순환 구조 — 라벨을 <b>4축(RPS·점유율·손실·지연) 가중합으로 부여</b>하고, <b>그 4축을 입력에도 그대로 사용</b> → 모델이 정답 계산식 재료를 전부 봄 (완전 leakage)</p>
+            <p class="note">두 번째 불릿("배포 시 획득 불가 — RPS는 앱 계층 …")은 그대로 둠.</p>
+          </div>
+        </div>
+        <div class="insert">
+          <div class="lbl">슬라이드 3 — "시뮬레이터" 표현 정합성 (before → after)</div>
+          <div class="c">
+            <div class="scroll"><table>
+              <tr><th>before</th><th>after</th></tr>
+              <tr><td>데이터: 트래픽 시뮬레이터 · 공장 운영 패턴 4종 · 공개 QoS 데이터셋</td><td>데이터: 공개 QoS 데이터셋(Kaggle 6G) · 공장 운영 시나리오 4종</td></tr>
+              <tr><td>시뮬레이터 기준 (EE INT8 ONNX)</td><td>공개 데이터셋 기준 (EE INT8 ONNX)</td></tr>
+              <tr><td>→ 시뮬레이터 검증으로 나온 결과를 기반으로 실환경에서 검증 필요</td><td>→ 공개 데이터셋 검증 결과를 실환경에서 검증 필요</td></tr>
+              <tr><td>(1학기 배포 모델(EE INT8 ONNX) <b>시뮬레이터</b> 95.7%를 실측 데이터에서 재현)</td><td>(1학기 배포 모델(EE INT8 ONNX) <b>공개 데이터셋(Kaggle 6G)</b> 95.7%를 실측 데이터에서 재현)</td></tr>
+            </table></div>
+            <p class="note">CLAUDE.md "채널 점유율 단일 문턱(40/65/85)"은 틀린 것으로 확인 → 수정 완료. (traffic_simulator.py만 그 방식, 최종보고서 시스템은 Kaggle 6G 가중합)</p>
+          </div>
+        </div>
+        <span class="owner">유용상 · 예나</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="d2"><span></span></label>
+      <div class="body">
+        <h3>데모 사이트 담당 구분<span class="tag">확정</span></h3>
+        <dl>
+          <div><dt>지금</dt><dd>역할표 = 백엔드 유용상 / 프론트 김호중 · work-log = 데모(<code>live_congestion.py</code> + 대시보드) 전체를 김호중</dd></div>
+          <div><dt>할 일</dt><dd>실제 기여 기준으로 팀 확정 → 보고서 역할표</dd></div>
+        </dl>
+        <span class="owner">팀</span>
+      </div>
+    </article>
+
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">E</span><h2>발표 운영 — 7분 / 18슬라이드</h2><span class="count">3</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e1"><span></span></label>
+      <div class="body">
+        <h3>7분 컷 배정 (슬라이드당 ~23초)<span class="tag">결정</span></h3>
+        <div class="insert">
+          <div class="lbl">본편 / 부록 배정안</div>
+          <div class="c">
+            <div class="scroll"><table>
+              <tr><th>처리</th><th>슬라이드</th></tr>
+              <tr><td>본편 유지</td><td>3(목표) · 4(환경, 압축) · 6(데이터) · 8(라벨 재설계) · 10(모델 3종) · 11(정확도) · 12(지연) · 13(데모, 압축)</td></tr>
+              <tr><td>병합 → 1장</td><td>14(경과) + 15(피드백 대응) — 타임라인 한 줄 + 되돌린 결정 4건 + 피드백 5건</td></tr>
+              <tr><td>부록으로 이동 (Q&amp;A 때만)</td><td>5(AP 원시 데이터) · 7(feature 선택 근거) · 9(프로브 학습 전용) — 3장은 밀도 높아 7분엔 안 들어감</td></tr>
+              <tr><td>넘기며 언급</td><td>17(참고문헌)</td></tr>
+              <tr><td>스킵 가능</td><td>2(목차)</td></tr>
+            </table></div>
+            <p class="note">본편 ~10장. 라벨/근거는 8번 한 장으로 개념만 말하고, 상세(5·7·9)는 "부록 A~C 참조"로.</p>
+          </div>
+        </div>
+        <span class="owner">팀</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e2"><span></span></label>
+      <div class="body">
+        <h3>데모 방식 결정<span class="tag">결정</span></h3>
+        <dl><div><dt>권장</dt><dd>라이브 데모는 AP 크래시 리스크 + 시간 부담 → <strong>15초 영상 또는 스크린샷 + 설명</strong>. 슬라이드 13에 이미 "데모 영상 or 설명" 여지 있음</dd></div></dl>
+        <span class="owner">김호중 · 예나</span>
+      </div>
+    </article>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="e3"><span></span></label>
+      <div class="body">
+        <h3>발표자 분담<span class="tag">결정</span></h3>
+        <dl><div><dt>할 일</dt><dd>3인 각 ~2분씩 나눌지, 1인이 할지 (7분이면 파트 전환 비용도 고려)</dd></div></dl>
+        <span class="owner">팀</span>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="n">F</span><h2>중간보고서 [별첨1] 전사 (→ hwp)</h2><span class="count">4</span></div>
+
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="f1"><span></span></label>
+      <div class="body">
+        <h3>요구사항 정의서 표 10개 범주<span class="tag">전사</span></h3>
+        <dl>
+          <div><dt>범위</dt><dd>ECR(장비) · SFR(기능) · PER(성능) · SIR(인터페이스: UI+SI) · DAR(데이터) · TER(테스트) · SER(보안) · QUR(품질) · COR(제약) · PMR(PM). 열 = 고유번호 · 명칭 · 응락수준 · 분류 · (정의) · 세부내용</div>
+          <div><dt>ID 체계</dt><dd><code>SFR-[분류코드]-[번호]</code> (DC/PP/CD/EE/CM/CH/DP/RT), PER은 AC/TS/TP/RU 등</div>
+          <div><dt>지금</dt><dd>완성본이 이전 세션 대화에 있음 — 별도 정리 문서로 뽑을지 결정</dd></div>
+        </dl>
+        <span class="owner">예나 · 유용상</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="f2"><span></span></label>
+      <div class="body">
+        <h3>E-R 대체 — 데이터 파일 스키마 표<span class="tag">전사</span></h3>
+        <dl><div><dt>내용</dt><dd>"관계형 DB 미사용 → 해당 없음" 문단 + raw CSV / windowed CSV / scaler·summary JSON / 결과 CSV 스키마 표</dd></div></dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="f3"><span></span></label>
+      <div class="body">
+        <h3>UI 분석 + 구성요소 명세 + 프로토타입 캡처<span class="tag">전사</span></h3>
+        <dl><div><dt>내용</dt><dd>UI 분석 문단(누가·왜·무엇을) + 데모 대시보드 화면 영역별 구성요소 표 + 부하 거는 중(혼잡/심각 표시) 스크린샷 1장에 영역 번호 주석</dd></div></dl>
+        <span class="owner">예나</span>
+      </div>
+    </article>
+    <article class="item" data-sev="confirm">
+      <label class="chk"><input type="checkbox" data-id="f4"><span></span></label>
+      <div class="body">
+        <h3>섹션 2 보강 (일정 WBS · 역할 문제점)<span class="tag">전사</span></h3>
+        <dl>
+          <div><dt>내용</dt><dd>일정계획 WBS 표(SOTA 비교 / Pi 실시간 파이프라인 / 동적 threshold 경량화-지연) + 팀원 역할 수행 문제점·해결방안 표(4건)</dd></div>
+          <div><dt>참고</dt><dd>섹션 2 문제 1(1차 데이터) 제거·문제 1~7 재번호·팀원 역할 표는 <code>중간보고서_초안.md</code>에 이미 반영</dd></div>
+        </dl>
+        <span class="owner">유용상</span>
+      </div>
+    </article>
+  </section>
+
+  <footer>
+    체크 상태는 이 브라우저에만 저장됩니다 · 중간발표_10 기준 · 갱신 2026-09-08
+  </footer>
+</div>
+
+<script>
+  (function(){
+    "use strict";
+    var KEY="capstone2-confirm-v2";
+    var boxes=Array.prototype.slice.call(document.querySelectorAll('.chk input'));
+    var store={};
+    try{ store=JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ store={}; }
+    var pcount=document.getElementById('pcount');
+    var pfill=document.getElementById('pfill');
+    var total=boxes.length;
+    function refresh(){
+      var done=0;
+      boxes.forEach(function(b){
+        if(b.checked){ done++; b.closest('.item').classList.add('checked'); }
+        else{ b.closest('.item').classList.remove('checked'); }
+      });
+      pcount.textContent=done+' / '+total+' 확인함';
+      pfill.style.width=(total? (done/total*100):0)+'%';
+      document.querySelectorAll('section').forEach(function(sec){
+        var all=sec.querySelectorAll('.chk input').length;
+        var d=sec.querySelectorAll('.chk input:checked').length;
+        var c=sec.querySelector('.count');
+        if(c) c.textContent=d+' / '+all;
+      });
+    }
+    boxes.forEach(function(b){
+      var id=b.dataset.id;
+      if(store[id]) b.checked=true;
+      b.addEventListener('change',function(){
+        store[id]=b.checked;
+        try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){}
+        refresh();
+      });
+    });
+    refresh();
+    var btn=document.getElementById('themeBtn');
+    var root=document.documentElement;
+    var TKEY="capstone2-confirm-theme";
+    try{ var t=localStorage.getItem(TKEY); if(t) root.setAttribute('data-theme',t); }catch(e){}
+    btn.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme');
+      var mqDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var next= cur? (cur==='dark'?'light':'dark') : (mqDark?'light':'dark');
+      root.setAttribute('data-theme',next);
+      try{ localStorage.setItem(TKEY,next); }catch(e){}
+    });
+  })();
+</script>
+</body>
+</html>
