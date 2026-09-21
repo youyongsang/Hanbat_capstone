@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>g3 세션과 bitrate 오염 분석</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#f5f7fa; --panel:#fcfcfb; --panel-raise:#ffffff;
+    --ink:#12151b; --ink-2:#4b5566; --ink-mute:#7c8494;
+    --rule:#e2e6ec; --rule-strong:#c9d0da;
+    --accent:#2a78d6; --warn:#b26a00; --bad:#c0392b; --good:#0c7a0c;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+    --shadow:0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --warn:#e0a040; --bad:#e66767; --good:#3ec13e;
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --warn:#e0a040; --bad:#e66767; --good:#3ec13e;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+  main { max-width:980px; margin:0 auto; padding:3.5rem 1.5rem 6rem; }
+  .eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.78rem; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .8rem; }
+  h1 { font-size:clamp(1.8rem,1.4rem + 1.6vw,2.4rem); line-height:1.2; margin:0 0 .8rem; letter-spacing:-.01em; text-wrap:balance; }
+  .lead { color:var(--ink-2); max-width:70ch; margin:0 0 2rem; }
+  section { margin-top:3.2rem; }
+  h2 { font-size:1.25rem; margin:0 0 .4rem; letter-spacing:-.005em; display:flex; gap:.6rem; align-items:baseline; }
+  h2 .n { font-family:"IBM Plex Mono",monospace; font-size:.8rem; color:var(--ink-mute); font-weight:500; }
+  h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
+  p { margin:.5rem 0 1rem; max-width:74ch; }
+  .sub { color:var(--ink-2); max-width:74ch; margin:0 0 1.2rem; }
+  code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule);
+    border-radius:3px; padding:.05em .32em; color:var(--ink-2); }
+  .callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent);
+    border-radius:4px; padding:.9rem 1.1rem; margin:1rem 0 1.4rem; }
+  .callout.warn { border-left-color:var(--warn); }
+  .callout.bad { border-left-color:var(--bad); }
+  .callout p { margin:.25rem 0; }
+  .callout strong { color:var(--ink); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1.2rem; }
+  .card { background:var(--panel-raise); border:1px solid var(--rule); border-radius:6px; padding:1.1rem 1.2rem; box-shadow:var(--shadow); }
+  .card h3 { margin-top:0; }
+  .tablewrap { overflow-x:auto; margin:.6rem 0 1.4rem; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; min-width:560px; }
+  th, td { padding:.5rem .7rem; text-align:left; border-bottom:1px solid var(--rule); vertical-align:top; }
+  th { color:var(--ink-mute); font-weight:600; font-size:.8rem; letter-spacing:.02em; white-space:nowrap; background:var(--panel); }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.86rem; white-space:nowrap; }
+  tr.sep td { border-top:2px solid var(--rule-strong); }
+  .tag { display:inline-block; font-size:.74rem; font-weight:600; padding:.08rem .5rem; border-radius:999px; border:1px solid var(--rule-strong); white-space:nowrap; }
+  .tag.use { color:var(--good); border-color:var(--good); }
+  .tag.train { color:var(--accent); border-color:var(--accent); }
+  .tag.quar { color:var(--bad); border-color:var(--bad); }
+  .tag.part { color:var(--warn); border-color:var(--warn); }
+  ul { padding-left:1.2rem; max-width:76ch; } li { margin:.35rem 0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin:1.4rem 0 .5rem; }
+  .kpi { background:var(--panel-raise); border:1px solid var(--rule); border-radius:6px; padding:.9rem 1rem; }
+  .kpi b { display:block; font-size:1.55rem; font-family:"IBM Plex Mono",monospace; letter-spacing:-.02em; }
+  .kpi span { color:var(--ink-2); font-size:.86rem; }
+  /* charts */
+  .chart { margin:.4rem 0 .6rem; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; }
+  .chart text { fill:var(--ink-2); font-size:11.5px; font-family:"IBM Plex Sans KR",system-ui,sans-serif; }
+  .chart text.val { fill:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:11px; }
+  .chart text.grp { fill:var(--ink); font-weight:600; font-size:12px; }
+  .chart .grid { stroke:var(--rule); stroke-width:1; }
+  .chart .bar { cursor:default; }
+  .chart .bar:hover, .chart .bar:focus { filter:brightness(1.12); outline:none; }
+  .legend { display:flex; flex-wrap:wrap; gap:.4rem 1.2rem; font-size:.86rem; color:var(--ink-2); margin:.2rem 0 .6rem; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.4rem; vertical-align:-1px; }
+  details { margin:.4rem 0 1rem; } summary { cursor:pointer; color:var(--ink-2); font-size:.88rem; }
+  #tip { position:fixed; pointer-events:none; z-index:10; background:var(--panel-raise); border:1px solid var(--rule-strong);
+    border-radius:5px; padding:.4rem .6rem; font-size:.84rem; box-shadow:var(--shadow); opacity:0; transition:opacity .08s; max-width:260px; }
+  #tip b { font-family:"IBM Plex Mono",monospace; font-size:.95rem; display:block; }
+  #tip span { color:var(--ink-2); }
+  footer { margin-top:4rem; color:var(--ink-mute); font-size:.84rem; border-top:1px solid var(--rule); padding-top:1rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Capstone Design 2 · 28차 후속 (2026-09-21)</p>
+  <h1>g3 세션 수집과 bitrate 오염 분석</h1>
+  <p class="lead">2.4GHz 독립 세션 <code>g3</code>을 수집해 기존 배포 모델을 평가하자, 다른 세션보다 <b>심각(L3) precision이 유독 낮게</b> 나왔다. 원인을 추적하다 <b>학습 데이터의 <code>sta_tx_bitrate_mean</code> 오염</b>과 <b>평가 방식의 낙관성</b>이라는 두 가지 구조적 문제를 확인했고, 평가를 <b>leave-one-session-out(LOSO)</b>으로 바꿔 기준선을 다시 세웠다. 이 문서는 그 과정과 결과, 남은 문제를 정리한다.</p>
+</header>
+
+<div class="callout">
+  <p><strong>한 줄 결론.</strong> g3의 낮은 precision은 <b>모델이 배운 bitrate 규칙("낮으면 혼잡, 높으면 심각")이 세션이 바뀌면 깨지기 때문</b>인 것으로 보이지만, 오염된 런을 단순히 빼면 혼잡 학습 데이터가 같이 사라져 오히려 나빠진다. 세션 단위로 평가하면 세션 평균 정확도 <b>88.4%</b>, L3 recall <b>77~78%</b>, precision <b>83~84%</b>이고, 이 수치는 <b>"심각이 어떤 유형이냐"</b>(occupancy 주도 vs loss·latency 주도)에 더 크게 좌우된다. 후속으로 링크 상태를 바꿔 수집한 g4·g5와 7세션 LOSO 결과는 <b>10절</b>에 있다.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><b>53%</b><span>학습 데이터(2,551행) 중 bitrate 고착 런 비율 (1,344행)</span></div>
+  <div class="kpi"><b>70%</b><span>혼잡(2) 라벨 중 고착 런 출신 비율 — 라벨과 오염이 겹침</span></div>
+  <div class="kpi"><b>88.4 / 77 / 83</b><span>LOSO 세션 평균 정확도 / L3 recall / L3 precision</span></div>
+  <div class="kpi"><b>42~44%</b><span>8/28 fold의 L3 recall — 심각이 occupancy 주도가 아님</span></div>
+</div>
+
+<section>
+  <h2><span class="n">01</span>g3 수집 경위</h2>
+  <p class="sub">09-21 03:33부터 같은 절차(폰 2대 iperf3 → 노트북 sink, 유선 Pi가 AP 텔레메트리·프로브 수집)로 수집했다. 이번에는 런 종료마다 <b>bitrate 품질 게이트</b>(부하 행 중 bitrate 10Mbps 미만이 10% 이하)로 데이터를 걸렀다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">런</th><th class="num">행</th><th class="">라벨 0/1/2/3 (게이트 전)</th><th class="num">bitrate 10Mbps 미만</th><th class="">판정</th></tr></thead><tbody><tr class=""><td class="">idle</td><td class="num">156</td><td class="">156/0/0/0</td><td class="num">-</td><td class=""><span class="tag use">사용</span></td></tr><tr class=""><td class="">step (1200B)</td><td class="num">199</td><td class="">33/48/41/77</td><td class="num">10%</td><td class=""><span class="tag use">사용</span></td></tr><tr class=""><td class="">spstep (300B)</td><td class="num">194</td><td class="">35/47/71/41</td><td class="num">0%</td><td class=""><span class="tag use">사용</span></td></tr><tr class=""><td class="">spknee (200B)</td><td class="num">167</td><td class="">35/0/57/75</td><td class="num">0%</td><td class=""><span class="tag use">사용</span></td></tr><tr class=""><td class="">gray (재수집)</td><td class="num">250</td><td class="">36/17/178/19</td><td class="num">4%</td><td class=""><span class="tag use">사용</span> (1차는 36% 미달 → 재수집)</td></tr><tr class="sep"><td class="">kneelo</td><td class="num">181</td><td class="">36/13/86/46</td><td class="num">28%</td><td class=""><span class="tag quar">미달</span></td></tr><tr class=""><td class="">kneepkt500</td><td class="num">182</td><td class="">36/9/85/52</td><td class="num">24%</td><td class=""><span class="tag quar">미달</span> (재시도는 AP 크래시로 134행 부분)</td></tr><tr class=""><td class="">kneehiprobe</td><td class="num">70</td><td class="">35/3/3/29</td><td class="num">30%</td><td class=""><span class="tag quar">미달</span></td></tr><tr class=""><td class="">kneehi</td><td class="num">157</td><td class="">35/0/5/117</td><td class="num">12%</td><td class=""><span class="tag quar">미달</span></td></tr></tbody></table></div>
+  <p>통과한 5개 런(966행)이 g3 본풀이고, 미달·부분 런은 이름을 구분해 보존했다. 재수집한 gray는 AP 재부팅 직후(가동 7분)에 돌렸더니 bitrate 미달이 36%에서 4%로 내려갔지만, 같은 조치 뒤 돌린 kneepkt500은 AP가 크래시해 <b>가동 시간만으로는 설명되지 않는다</b>.</p>
+  <h3>이번 세션에서 드러난 사고</h3>
+  <ul>
+    <li><b>노트북 iperf3 서버 다운</b>: 어댑터 초기화 뒤 서버(5201/5202/5203)가 죽어 있어 spstep이 부하 없이 끝났다(전 행 라벨 0). 러너는 이를 감지하지 못하고 다음 런으로 넘어갔다. → 러너에 서버 생존 점검이 필요하다.</li>
+    <li><b>Pi 파일 이어 붙음</b>: 중단된 런의 Pi 쪽 CSV가 남아 같은 이름으로 다시 수집하면 이어 붙는다(spstep 468행 = 274 + 194, kneelo 330행). 재시작 전에 Pi 파일을 치워야 한다.</li>
+    <li><b>AP 크래시 판정 정정</b>: kneepkt500 중 AP 무응답을 처음에 "정체"로 판단했으나, 이후 AP 가동 시간이 5분으로 초기화돼 있어 <b>실제 재부팅</b>이었다. 회복 뒤의 응답(유선 ping 정상)을 근거로 삼은 것이 오판이었다. 크래시 판정은 가동 시간 초기화와 DHCP 임대 소실로 해야 한다. (kneelo 1차의 100초 무응답은 가동 시간이 이어져 재부팅이 아니었다.)</li>
+    <li><b>bitrate 고착 재발</b>: AP 재부팅 뒤 노트북 tx bitrate가 1~9Mbps로 고착 → Wi-Fi 어댑터 끄기/켜기(관리자 권한)로 해소.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">02</span>기존 배포 모델을 g3에 적용하면</h2>
+  <p class="sub">재학습 없이 기존 k2m2 배포 모델(5시드)을 g3에 적용했다(창 906개, 심각 195개). <b>recall은 g2 수준으로 유지되지만 precision이 낮다.</b></p>
+<div class="tablewrap"><table><thead><tr><th class="">모델</th><th class="num">정확도</th><th class="num">L3 recall</th><th class="num">L3 precision</th><th class="num">L3 F1</th></tr></thead><tbody><tr class=""><td class="">Baseline</td><td class="num">77.4±2.5</td><td class="num">84.2±2.4</td><td class="num">56.0±6.0</td><td class="num">67.0±3.5</td></tr><tr class=""><td class="">SDN</td><td class="num">74.4±3.5</td><td class="num">86.9±2.8</td><td class="num">51.8±4.5</td><td class="num">64.7±2.7</td></tr><tr class=""><td class="">EE Fixed</td><td class="num">69.2±2.8</td><td class="num">88.8±2.4</td><td class="num">45.4±3.5</td><td class="num">60.0±3.1</td></tr><tr class=""><td class="">EE Dynamic</td><td class="num">68.6±2.9</td><td class="num">88.2±2.4</td><td class="num">44.8±3.7</td><td class="num">59.3±3.2</td></tr></tbody></table></div>
+  <p>세션별로 보면 g1은 recall이 낮고(55~72%), g3는 precision이 낮다(45~56%, gray 제외 시 57~66%). g3 오탐의 94%는 <b>실제 혼잡(2)을 심각으로 예측</b>한 경우였다.</p>
+</section>
+
+<section>
+  <h2><span class="n">03</span>진단 — g3의 오탐은 어디서 나나</h2>
+  <p class="sub">혼잡(2) 창을 심각으로 잘못 예측하는 비율(Baseline 5시드)을 점유율 구간별로 나눠 보면 <b>혼잡/심각 경계(점유율 65~75%)에 집중</b>된다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">혼잡(2) 창 점유율 구간</th><th class="num">g1</th><th class="num">g2</th><th class="num">g3</th></tr></thead><tbody><tr class=""><td class="">55~65%</td><td class="num">3%</td><td class="num">11%</td><td class="num">12%</td></tr><tr class=""><td class="">65~70%</td><td class="num">7%</td><td class="num">42%</td><td class="num">61%</td></tr><tr class=""><td class="">70~75%</td><td class="num">39%</td><td class="num">87%</td><td class="num">80%</td></tr></tbody></table></div>
+  <p>그리고 g3는 <b>bitrate가 유독 높다</b>. 혼잡 창의 bitrate 중앙값이 107.5Mbps로 g1(47.6)·g2(57.8)의 약 2배다.</p>
+<div class="legend"><span><i style="background:#1baf7a"></i>혼잡(2) 창 bitrate 중앙값</span><span><i style="background:#eb6834"></i>심각(3) 창 bitrate 중앙값</span></div><div class="chart"><svg viewBox="0 0 860 260" role="img"><line class="grid" x1="46" x2="850" y1="208.0" y2="208.0"/><text x="40" y="212.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="176.7" y2="176.7"/><text x="40" y="180.7" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="145.3" y2="145.3"/><text x="40" y="149.3" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="114.0" y2="114.0"/><text x="40" y="118.0" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="82.7" y2="82.7"/><text x="40" y="86.7" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="51.3" y2="51.3"/><text x="40" y="55.3" text-anchor="end">100</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">120</text><g class="bar" tabindex="0"><title>g1 · 혼잡(2) 창 bitrate 중앙값: 47.6 Mbps</title><rect x="152.0" y="133.4" width="26.0" height="74.6" rx="2" fill="#1baf7a"/><text class="val" x="165.0" y="129.4" text-anchor="middle">48</text></g><g class="bar" tabindex="0"><title>g1 · 심각(3) 창 bitrate 중앙값: 39.0 Mbps</title><rect x="180.0" y="146.9" width="26.0" height="61.1" rx="2" fill="#eb6834"/><text class="val" x="193.0" y="142.9" text-anchor="middle">39</text></g><text class="grp" x="180.0" y="242.0" text-anchor="middle">g1</text><g class="bar" tabindex="0"><title>g2 · 혼잡(2) 창 bitrate 중앙값: 57.8 Mbps</title><rect x="420.0" y="117.4" width="26.0" height="90.6" rx="2" fill="#1baf7a"/><text class="val" x="433.0" y="113.4" text-anchor="middle">58</text></g><g class="bar" tabindex="0"><title>g2 · 심각(3) 창 bitrate 중앙값: 60.0 Mbps</title><rect x="448.0" y="114.0" width="26.0" height="94.0" rx="2" fill="#eb6834"/><text class="val" x="461.0" y="110.0" text-anchor="middle">60</text></g><text class="grp" x="448.0" y="242.0" text-anchor="middle">g2</text><g class="bar" tabindex="0"><title>g3 · 혼잡(2) 창 bitrate 중앙값: 107.5 Mbps</title><rect x="688.0" y="39.6" width="26.0" height="168.4" rx="2" fill="#1baf7a"/><text class="val" x="701.0" y="35.6" text-anchor="middle">108</text></g><g class="bar" tabindex="0"><title>g3 · 심각(3) 창 bitrate 중앙값: 82.0 Mbps</title><rect x="716.0" y="79.5" width="26.0" height="128.5" rx="2" fill="#eb6834"/><text class="val" x="729.0" y="75.5" text-anchor="middle">82</text></g><text class="grp" x="716.0" y="242.0" text-anchor="middle">g3</text></svg></div>
+  <h3>반사실 검증 — bitrate 입력만 바꿔 봤다</h3>
+  <p>Baseline 5시드에서 bitrate 입력만 g1·g2 중앙값으로 고정했다(재학습 없음, 진단용).</p>
+<div class="tablewrap"><table><thead><tr><th class="">조건 (g3 기준)</th><th class="num">혼잡 오예측</th><th class="num">L3 precision</th><th class="num">L3 recall</th></tr></thead><tbody><tr class=""><td class="">원본</td><td class="num">43.6%</td><td class="num">65.9%</td><td class="num">86.3%</td></tr><tr class=""><td class="">bitrate를 g1·g2 중앙값으로 고정</td><td class="num">12.7%</td><td class="num">86.1%</td><td class="num">80.4%</td></tr><tr class=""><td class="">g3 bitrate를 g1·g2 95분위로 상한</td><td class="num">42.3%</td><td class="num">66.5%</td><td class="num">85.9%</td></tr></tbody></table></div>
+  <ul>
+    <li>고정하면 g3의 오예측이 3분의 1로 줄고 precision이 20pt 오른다. → <b>bitrate가 모델을 심각 쪽으로 밀고 있다.</b></li>
+    <li>상한만 씌우면 변화가 없다. → 극단값이 아니라 <b>분포 전체가 높게 이동</b>했다.</li>
+    <li>g1에서는 같은 처치로 recall이 60.5% → 75.4%로 오른다. <b>같은 원인이 g1에서는 recall, g3에서는 precision을 깎는 것</b>으로 보인다(g1의 심각 창 bitrate는 39Mbps로 낮음).</li>
+    <li>g2도 같은 처치에 개선된다(오예측 36 → 25%). g3에서 유독 심할 뿐, 세션이 바뀌면 어디서나 해가 된다.</li>
+  </ul>
+  <div class="callout warn"><p><strong>한계.</strong> 재학습 없이 입력을 바꾼 진단이라 "bitrate를 빼면 좋아진다"는 결론이 아니다. 고정 시 g3 recall은 86 → 80%로 내려가 bitrate가 심각 탐지에 일부 기여하기도 한다. g3의 bitrate가 높은 이유(AP 재부팅·어댑터 초기화 뒤 링크 상태)도 확정하지 못했다.</p></div>
+</section>
+
+<section>
+  <h2><span class="n">04</span>학습 데이터의 bitrate 오염</h2>
+  <p class="sub">모델이 배운 규칙("bitrate 낮음 = 혼잡, 높음 = 심각")의 출처를 학습 데이터(2,551행)에서 확인했다. <b>런 6개 중 3개가 고착</b>(부하 행의 6.0~7.5Mbps 비율 62~75%)이다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">런</th><th class="num">부하 행</th><th class="num">고착 비율</th><th class="">비고</th></tr></thead><tbody><tr class=""><td class="">step_run1~3</td><td class="num">112~217</td><td class="num">4~8%</td><td class="">정상</td></tr><tr class=""><td class="">step_run4</td><td class="num">350</td><td class="num"><b>75%</b></td><td class="">고착</td></tr><tr class=""><td class="">step_run5</td><td class="num">435</td><td class="num"><b>62%</b></td><td class="">고착</td></tr><tr class=""><td class="">step_run6</td><td class="num">226</td><td class="num"><b>66%</b></td><td class="">고착</td></tr><tr class=""><td class="">smallpkt 3개</td><td class="num">106~127</td><td class="num">0%</td><td class="">정상</td></tr></tbody></table></div>
+  <p>고착 런 3개가 <b>전체 행의 53%</b>(1,344행)다. 더 큰 문제는 오염이 <b>라벨에 치우쳐 있다</b>는 점이다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">그룹</th><th class="num">라벨 0</th><th class="num">라벨 1</th><th class="num">라벨 2</th><th class="num">라벨 3</th><th class="">bitrate 중앙값 (혼잡 / 심각)</th></tr></thead><tbody><tr class=""><td class="">고착 런(step_run4~6)</td><td class="num">370</td><td class="num">293</td><td class="num"><b>617</b></td><td class="num">64</td><td class="">6.5 / 6.5</td></tr><tr class=""><td class="">정상 런</td><td class="num">463</td><td class="num">256</td><td class="num">268</td><td class="num"><b>220</b></td><td class="">40.5 / 57.8</td></tr></tbody></table></div>
+  <ul>
+    <li>혼잡 라벨의 <b>70%가 고착 런</b>에서, 심각 라벨의 <b>77%가 정상 런</b>에서 나왔다. 그래서 bitrate가 "런 정체성"의 대리 변수가 됐을 가능성이 크다.</li>
+    <li>점유율 60~75% 경계에서 정상 런 안의 혼잡(40.0)과 심각(39.7)의 bitrate는 <b>차이가 없다</b>. 6번째 feature로 추가하며 근거로 삼은 신호(Cohen's d 0.52)가 고착 런과 정상 런의 구성 차이에서 왔을 가능성이 생긴다(재학습 확인 전 가설).</li>
+    <li>g1도 오염돼 있다: 6개 런 중 spknee_a(57%, 중앙값 1.0Mbps)·spknee_b(34%)·step_b(43%)가 미달. g2·g3는 깨끗하다(0~10%). 이 사실을 늦게 확인해 첫 LOSO에는 g1 오염 런이 포함됐다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">05</span>고착 런을 빼고 재학습하면?</h2>
+  <p class="sub">Baseline LSTM 5시드, 독립 세션 g1·g2·g3(gray 제외, 2,818창)에서 평가했다. A 기준선 / B 고착 런 제외 / C bitrate 제외(6-feature) / D 둘 다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">조건</th><th class="num">in-dist 정확도</th><th class="num">in-dist L3 recall</th><th class="num">독립 정확도</th><th class="num">독립 L3 recall</th><th class="num">독립 L3 precision</th></tr></thead><tbody><tr class=""><td class="">A 7feat 전체</td><td class="num">93.3±0.8</td><td class="num">85.2±1.0</td><td class="num">82.0±1.3</td><td class="num">81.8±7.6</td><td class="num">77.4±5.5</td></tr><tr class=""><td class="">B 7feat 고착 런 제외</td><td class="num">89.5±2.9</td><td class="num">87.1±2.4</td><td class="num">78.9±1.3</td><td class="num">91.4±1.2</td><td class="num">70.7±2.6</td></tr><tr class=""><td class="">C 6feat 전체</td><td class="num">92.4±0.2</td><td class="num">81.0±1.5</td><td class="num">83.3±1.3</td><td class="num">89.4±2.3</td><td class="num">76.5±2.7</td></tr><tr class=""><td class="">D 6feat 고착 런 제외</td><td class="num">88.6±0.9</td><td class="num">88.1±3.0</td><td class="num">75.9±1.4</td><td class="num">93.4±1.3</td><td class="num">69.3±1.6</td></tr></tbody></table></div><div class="legend"><span><i style="background:#2a78d6"></i>A 7feat 전체</span><span><i style="background:#8fb8ea"></i>B 7feat 고착런 제외</span><span><i style="background:#eb6834"></i>C 6feat 전체</span><span><i style="background:#f2b08f"></i>D 6feat 고착런 제외</span></div><div class="chart"><svg viewBox="0 0 860 300" role="img"><line class="grid" x1="46" x2="850" y1="248.0" y2="248.0"/><text x="40" y="252.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="202.4" y2="202.4"/><text x="40" y="206.4" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="156.8" y2="156.8"/><text x="40" y="160.8" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="111.2" y2="111.2"/><text x="40" y="115.2" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="65.6" y2="65.6"/><text x="40" y="69.6" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>in-dist 정확도 · A 7feat 전체: 93.3%</title><rect x="90.5" y="35.3" width="26.0" height="212.7" rx="2" fill="#2a78d6"/><text class="val" x="103.5" y="31.3" text-anchor="middle">93</text></g><g class="bar" tabindex="0"><title>in-dist 정확도 · B 7feat 고착런 제외: 89.5%</title><rect x="118.5" y="43.9" width="26.0" height="204.1" rx="2" fill="#8fb8ea"/><text class="val" x="131.5" y="39.9" text-anchor="middle">90</text></g><g class="bar" tabindex="0"><title>in-dist 정확도 · C 6feat 전체: 92.4%</title><rect x="146.5" y="37.3" width="26.0" height="210.7" rx="2" fill="#eb6834"/><text class="val" x="159.5" y="33.3" text-anchor="middle">92</text></g><g class="bar" tabindex="0"><title>in-dist 정확도 · D 6feat 고착런 제외: 88.6%</title><rect x="174.5" y="46.0" width="26.0" height="202.0" rx="2" fill="#f2b08f"/><text class="val" x="187.5" y="42.0" text-anchor="middle">89</text></g><text class="grp" x="146.5" y="282.0" text-anchor="middle">in-dist 정확도</text><g class="bar" tabindex="0"><title>독립 정확도 · A 7feat 전체: 82.0%</title><rect x="291.5" y="61.0" width="26.0" height="187.0" rx="2" fill="#2a78d6"/><text class="val" x="304.5" y="57.0" text-anchor="middle">82</text></g><g class="bar" tabindex="0"><title>독립 정확도 · B 7feat 고착런 제외: 78.9%</title><rect x="319.5" y="68.1" width="26.0" height="179.9" rx="2" fill="#8fb8ea"/><text class="val" x="332.5" y="64.1" text-anchor="middle">79</text></g><g class="bar" tabindex="0"><title>독립 정확도 · C 6feat 전체: 83.3%</title><rect x="347.5" y="58.1" width="26.0" height="189.9" rx="2" fill="#eb6834"/><text class="val" x="360.5" y="54.1" text-anchor="middle">83</text></g><g class="bar" tabindex="0"><title>독립 정확도 · D 6feat 고착런 제외: 75.9%</title><rect x="375.5" y="74.9" width="26.0" height="173.1" rx="2" fill="#f2b08f"/><text class="val" x="388.5" y="70.9" text-anchor="middle">76</text></g><text class="grp" x="347.5" y="282.0" text-anchor="middle">독립 정확도</text><g class="bar" tabindex="0"><title>독립 L3 recall · A 7feat 전체: 81.8%</title><rect x="492.5" y="61.5" width="26.0" height="186.5" rx="2" fill="#2a78d6"/><text class="val" x="505.5" y="57.5" text-anchor="middle">82</text></g><g class="bar" tabindex="0"><title>독립 L3 recall · B 7feat 고착런 제외: 91.4%</title><rect x="520.5" y="39.6" width="26.0" height="208.4" rx="2" fill="#8fb8ea"/><text class="val" x="533.5" y="35.6" text-anchor="middle">91</text></g><g class="bar" tabindex="0"><title>독립 L3 recall · C 6feat 전체: 89.4%</title><rect x="548.5" y="44.2" width="26.0" height="203.8" rx="2" fill="#eb6834"/><text class="val" x="561.5" y="40.2" text-anchor="middle">89</text></g><g class="bar" tabindex="0"><title>독립 L3 recall · D 6feat 고착런 제외: 93.4%</title><rect x="576.5" y="35.0" width="26.0" height="213.0" rx="2" fill="#f2b08f"/><text class="val" x="589.5" y="31.0" text-anchor="middle">93</text></g><text class="grp" x="548.5" y="282.0" text-anchor="middle">독립 L3 recall</text><g class="bar" tabindex="0"><title>독립 L3 precision · A 7feat 전체: 77.4%</title><rect x="693.5" y="71.5" width="26.0" height="176.5" rx="2" fill="#2a78d6"/><text class="val" x="706.5" y="67.5" text-anchor="middle">77</text></g><g class="bar" tabindex="0"><title>독립 L3 precision · B 7feat 고착런 제외: 70.7%</title><rect x="721.5" y="86.8" width="26.0" height="161.2" rx="2" fill="#8fb8ea"/><text class="val" x="734.5" y="82.8" text-anchor="middle">71</text></g><g class="bar" tabindex="0"><title>독립 L3 precision · C 6feat 전체: 76.5%</title><rect x="749.5" y="73.6" width="26.0" height="174.4" rx="2" fill="#eb6834"/><text class="val" x="762.5" y="69.6" text-anchor="middle">76</text></g><g class="bar" tabindex="0"><title>독립 L3 precision · D 6feat 고착런 제외: 69.3%</title><rect x="777.5" y="90.0" width="26.0" height="158.0" rx="2" fill="#f2b08f"/><text class="val" x="790.5" y="86.0" text-anchor="middle">69</text></g><text class="grp" x="749.5" y="282.0" text-anchor="middle">독립 L3 precision</text></svg></div>
+  <ul>
+    <li><b>고착 런을 빼면 좋아지지 않고 나빠진다</b>(B: 정확도 −3pt, precision −7pt). 혼잡 학습 예시가 885 → 268행으로 줄어 모델이 심각 쪽으로 치우치는 것으로 보인다. 이 실험은 "값이 깨끗해지는 효과"와 "데이터 손실"을 분리하지 못한다.</li>
+    <li><b>bitrate는 독립 세션에서 도움이 안 됐다</b>: C가 A와 정확도·precision이 비슷하고 recall은 더 높으며 시드 편차가 작다(g1 recall A 68±15.7 vs C 87±4.7). 반면 in-dist에서는 A가 낫다. <b>in-dist에서만 도움이 되고 세션이 바뀌면 흔들리는 feature</b>로 보인다.</li>
+    <li>이 결과와 별개로 <b>bitrate는 넣기로 결정</b>했다(사용자 결정). 따라서 과제는 "빼기"가 아니라 <b>오염된 학습 데이터를 어떻게 다루느냐</b>다.</li>
+  </ul>
+  <div class="callout warn"><p><strong>한계.</strong> Baseline만, 5시드다. EE·SDN은 확인하지 않았다. g1·g2·g3는 같은 집·같은 AP·같은 밤이라 독립성이 제한적이다.</p></div>
+</section>
+
+<section>
+  <h2><span class="n">06</span>평가 방식을 바꾼 이유</h2>
+  <p class="sub">기존 평가는 창(12행씩 묶음)을 무작위로 train/val/test에 나눈다. 이웃 창은 행 11개를 공유하므로 <b>test 창의 쌍둥이가 train에 들어 있다</b>. 그래서 in-dist 92~93%는 본 적 있는 런의 이웃 구간을 맞히는 능력까지 포함한 낙관적 수치다. 실제로 독립 세션에서는 78~84%로 내려간다.</p>
+  <ul>
+    <li><b>행을 섞은 뒤 창을 만드는 것은 안 된다</b>: 창이 시계열이 아니게 되어 추세(rssi_delta, 이동평균)와 배포 때의 입력(연속 12폴링)이 달라진다.</li>
+    <li><b>런 단위 분할만으로도 부족하다</b>: 같은 세션의 다른 런은 같은 날·같은 AP 상태·같은 링크 조건을 공유한다. bitrate 고착이 바로 이 세션 수준의 특수성이었다.</li>
+    <li><b>leave-one-session-out</b>: 세션(8/28, 9/1, g1, g2, g3)을 하나씩 통째로 빼고 나머지로 학습해 빠진 세션으로 테스트한다. 검증은 학습 세션마다 마지막 런을 통째로 분리해 쓴다. LOSO는 <b>성능 추정용</b>이고, 배포 모델은 고른 설계로 모든 세션을 합쳐 다시 학습한 EE 모델 하나다.</li>
+  </ul>
+  <div class="callout warn"><p><strong>한계.</strong> g1·g2·g3는 같은 집·같은 밤(g2·g3는 연속)이라 하나를 빼도 나머지가 학습에 남는다. <b>진짜 다른 날은 8/28과 9/1뿐</b>이라 g fold 수치는 낙관적이다.</p></div>
+</section>
+
+<section>
+  <h2><span class="n">07</span>LOSO 결과</h2>
+  <p class="sub">7-feature Baseline, 5시드 평균. "오염 포함"은 모든 런을 쓴 것, "품질 통과 런만"은 8/28 step_run4·5·6과 g1 spknee_a·spknee_b·step_b(1,787창)를 제외한 것이다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">빼고 테스트한 세션</th><th class="num">정확도 (포함 → 통과)</th><th class="num">L3 recall (포함 → 통과)</th><th class="num">L3 precision (포함 → 통과)</th><th class="num">혼잡→심각 오예측 (포함 → 통과)</th></tr></thead><tbody><tr class=""><td class="">8/28</td><td class="num">84.9 → 86.6</td><td class="num">43.6 → 42.5</td><td class="num">65.6 → 84.8</td><td class="num">4.0 → 2.9%</td></tr><tr class=""><td class="">9/1</td><td class="num">91.5 → 89.7</td><td class="num">88.5 → 88.2</td><td class="num">89.8 → 89.2</td><td class="num">15.1 → 15.8%</td></tr><tr class=""><td class="">g1 (통과 시 창 493·심각 90)</td><td class="num">89.3 → 92.7</td><td class="num">81.0 → 84.9</td><td class="num">93.6 → 91.5</td><td class="num">6.9 → 8.1%</td></tr><tr class=""><td class="">g2</td><td class="num">89.3 → 88.4</td><td class="num">91.2 → 92.5</td><td class="num">88.2 → 85.8</td><td class="num">22.5 → 27.7%</td></tr><tr class=""><td class="">g3</td><td class="num">87.0 → 84.4</td><td class="num">82.2 → 83.3</td><td class="num">79.3 → 69.3</td><td class="num">11.6 → 19.8%</td></tr><tr class="sep"><td class=""><b>세션 평균</b></td><td class="num"><b>88.4 → 88.4</b></td><td class="num"><b>77.3 → 78.3</b></td><td class="num"><b>83.3 → 84.1</b></td><td class="num"></td></tr></tbody></table></div><div class="legend"><span><i style="background:#2a78d6"></i>recall · 오염 포함</span><span><i style="background:#8fb8ea"></i>recall · 품질 통과 런만</span><span><i style="background:#eb6834"></i>precision · 오염 포함</span><span><i style="background:#f2b08f"></i>precision · 품질 통과 런만</span></div><div class="chart"><svg viewBox="0 0 860 300" role="img"><line class="grid" x1="46" x2="850" y1="248.0" y2="248.0"/><text x="40" y="252.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="202.4" y2="202.4"/><text x="40" y="206.4" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="156.8" y2="156.8"/><text x="40" y="160.8" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="111.2" y2="111.2"/><text x="40" y="115.2" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="65.6" y2="65.6"/><text x="40" y="69.6" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>8/28 · recall · 오염 포함: 43.6%</title><rect x="70.4" y="148.6" width="26.0" height="99.4" rx="2" fill="#2a78d6"/><text class="val" x="83.4" y="144.6" text-anchor="middle">44</text></g><g class="bar" tabindex="0"><title>8/28 · recall · 품질 통과 런만: 42.5%</title><rect x="98.4" y="151.1" width="26.0" height="96.9" rx="2" fill="#8fb8ea"/><text class="val" x="111.4" y="147.1" text-anchor="middle">42</text></g><g class="bar" tabindex="0"><title>8/28 · precision · 오염 포함: 65.6%</title><rect x="126.4" y="98.4" width="26.0" height="149.6" rx="2" fill="#eb6834"/><text class="val" x="139.4" y="94.4" text-anchor="middle">66</text></g><g class="bar" tabindex="0"><title>8/28 · precision · 품질 통과 런만: 84.8%</title><rect x="154.4" y="54.7" width="26.0" height="193.3" rx="2" fill="#f2b08f"/><text class="val" x="167.4" y="50.7" text-anchor="middle">85</text></g><text class="grp" x="126.4" y="282.0" text-anchor="middle">8/28</text><g class="bar" tabindex="0"><title>9/1 · recall · 오염 포함: 88.5%</title><rect x="231.2" y="46.2" width="26.0" height="201.8" rx="2" fill="#2a78d6"/><text class="val" x="244.2" y="42.2" text-anchor="middle">88</text></g><g class="bar" tabindex="0"><title>9/1 · recall · 품질 통과 런만: 88.2%</title><rect x="259.2" y="46.9" width="26.0" height="201.1" rx="2" fill="#8fb8ea"/><text class="val" x="272.2" y="42.9" text-anchor="middle">88</text></g><g class="bar" tabindex="0"><title>9/1 · precision · 오염 포함: 89.8%</title><rect x="287.2" y="43.3" width="26.0" height="204.7" rx="2" fill="#eb6834"/><text class="val" x="300.2" y="39.3" text-anchor="middle">90</text></g><g class="bar" tabindex="0"><title>9/1 · precision · 품질 통과 런만: 89.2%</title><rect x="315.2" y="44.6" width="26.0" height="203.4" rx="2" fill="#f2b08f"/><text class="val" x="328.2" y="40.6" text-anchor="middle">89</text></g><text class="grp" x="287.2" y="282.0" text-anchor="middle">9/1</text><g class="bar" tabindex="0"><title>g1 · recall · 오염 포함: 81.0%</title><rect x="392.0" y="63.3" width="26.0" height="184.7" rx="2" fill="#2a78d6"/><text class="val" x="405.0" y="59.3" text-anchor="middle">81</text></g><g class="bar" tabindex="0"><title>g1 · recall · 품질 통과 런만: 84.9%</title><rect x="420.0" y="54.4" width="26.0" height="193.6" rx="2" fill="#8fb8ea"/><text class="val" x="433.0" y="50.4" text-anchor="middle">85</text></g><g class="bar" tabindex="0"><title>g1 · precision · 오염 포함: 93.6%</title><rect x="448.0" y="34.6" width="26.0" height="213.4" rx="2" fill="#eb6834"/><text class="val" x="461.0" y="30.6" text-anchor="middle">94</text></g><g class="bar" tabindex="0"><title>g1 · precision · 품질 통과 런만: 91.5%</title><rect x="476.0" y="39.4" width="26.0" height="208.6" rx="2" fill="#f2b08f"/><text class="val" x="489.0" y="35.4" text-anchor="middle">92</text></g><text class="grp" x="448.0" y="282.0" text-anchor="middle">g1</text><g class="bar" tabindex="0"><title>g2 · recall · 오염 포함: 91.2%</title><rect x="552.8" y="40.1" width="26.0" height="207.9" rx="2" fill="#2a78d6"/><text class="val" x="565.8" y="36.1" text-anchor="middle">91</text></g><g class="bar" tabindex="0"><title>g2 · recall · 품질 통과 런만: 92.5%</title><rect x="580.8" y="37.1" width="26.0" height="210.9" rx="2" fill="#8fb8ea"/><text class="val" x="593.8" y="33.1" text-anchor="middle">92</text></g><g class="bar" tabindex="0"><title>g2 · precision · 오염 포함: 88.2%</title><rect x="608.8" y="46.9" width="26.0" height="201.1" rx="2" fill="#eb6834"/><text class="val" x="621.8" y="42.9" text-anchor="middle">88</text></g><g class="bar" tabindex="0"><title>g2 · precision · 품질 통과 런만: 85.8%</title><rect x="636.8" y="52.4" width="26.0" height="195.6" rx="2" fill="#f2b08f"/><text class="val" x="649.8" y="48.4" text-anchor="middle">86</text></g><text class="grp" x="608.8" y="282.0" text-anchor="middle">g2</text><g class="bar" tabindex="0"><title>g3 · recall · 오염 포함: 82.2%</title><rect x="713.6" y="60.6" width="26.0" height="187.4" rx="2" fill="#2a78d6"/><text class="val" x="726.6" y="56.6" text-anchor="middle">82</text></g><g class="bar" tabindex="0"><title>g3 · recall · 품질 통과 런만: 83.3%</title><rect x="741.6" y="58.1" width="26.0" height="189.9" rx="2" fill="#8fb8ea"/><text class="val" x="754.6" y="54.1" text-anchor="middle">83</text></g><g class="bar" tabindex="0"><title>g3 · precision · 오염 포함: 79.3%</title><rect x="769.6" y="67.2" width="26.0" height="180.8" rx="2" fill="#eb6834"/><text class="val" x="782.6" y="63.2" text-anchor="middle">79</text></g><g class="bar" tabindex="0"><title>g3 · precision · 품질 통과 런만: 69.3%</title><rect x="797.6" y="90.0" width="26.0" height="158.0" rx="2" fill="#f2b08f"/><text class="val" x="810.6" y="86.0" text-anchor="middle">69</text></g><text class="grp" x="769.6" y="282.0" text-anchor="middle">g3</text></svg></div>
+  <ul>
+    <li><b>세션 평균은 오염 제거로 거의 변하지 않는다</b>(88.4 → 88.4 / 77.3 → 78.3 / 83.3 → 84.1). 오염을 빼도 성능이 오르지 않는다.</li>
+    <li><b>g3 precision이 79.3 → 69.3%로 내려간다</b>. 학습에서 혼잡 라벨이 많은 오염 런을 빼서 혼잡 예시가 부족해졌기 때문으로 보인다(05절 B와 같은 현상).</li>
+    <li><b>학습 세션이 늘면 크게 좋아진다</b>: 캐노니컬만 학습한 기존 모델이 g3에서 정확도 69~77%, precision 45~56%였는데, g1·g2를 학습에 넣은 fold는 정확도 87%, precision 79%다. <b>세션 다양성이 가장 효과가 큰 방향</b>으로 보인다.</li>
+    <li><b>8/28만 recall이 낮다</b>(42~44%). 처음에는 8/28 테스트에 섞인 고착 런 탓이라고 가설을 세웠지만, 고착 런을 뺀 깨끗한 테스트(step_run1~3)에서도 42.5%라 <b>이 가설은 기각</b>됐다. 다음 절에서 다른 원인을 찾는다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">08</span>8/28 recall이 낮은 이유 — 심각의 유형</h2>
+  <p class="sub">세션별 심각(L3) 창을 원인 유형으로 나눴다. <b>8/28의 심각은 occupancy 주도가 40%뿐</b>이고 51%는 occupancy가 임계(75%) 미만인데 측정된 loss·latency로 붙은 심각이다(테스트에 쓴 품질 통과 런 105창 기준). 나머지 세션은 79~87%가 occupancy 주도다.</p>
+<div class="legend"><span><i style="background:#2a78d6"></i>occupancy 주도</span><span><i style="background:#eb6834"></i>occ 미달 + 측정된 loss/latency</span><span><i style="background:#8890a0"></i>occ 미달 + 프로브 stale</span></div><div class="chart"><svg viewBox="0 0 860 260" role="img"><line class="grid" x1="46" x2="850" y1="212.0" y2="212.0"/><text x="40" y="216.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="162.5" y2="162.5"/><text x="40" y="166.5" text-anchor="end">25</text><line class="grid" x1="46" x2="850" y1="113.0" y2="113.0"/><text x="40" y="117.0" text-anchor="end">50</text><line class="grid" x1="46" x2="850" y1="63.5" y2="63.5"/><text x="40" y="67.5" text-anchor="end">75</text><line class="grid" x1="46" x2="850" y1="14.0" y2="14.0"/><text x="40" y="18.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>8/28 · occupancy 주도: 40%</title><rect x="91.4" y="132.8" width="70.0" height="79.2" fill="#2a78d6"/><text class="val" x="126.4" y="176.4" text-anchor="middle" style="fill:#fff">40</text></g><g class="bar" tabindex="0"><title>8/28 · occ 미달 + 측정된 loss/latency: 51%</title><rect x="91.4" y="31.8" width="70.0" height="101.0" fill="#eb6834"/><text class="val" x="126.4" y="86.3" text-anchor="middle" style="fill:#fff">51</text></g><g class="bar" tabindex="0"><title>8/28 · occ 미달 + 프로브 stale: 9%</title><rect x="91.4" y="14.0" width="70.0" height="17.8" fill="#8890a0"/><text class="val" x="126.4" y="26.9" text-anchor="middle" style="fill:#fff">9</text></g><text class="grp" x="126.4" y="242.0" text-anchor="middle">8/28</text><g class="bar" tabindex="0"><title>9/1 · occupancy 주도: 87%</title><rect x="252.2" y="39.7" width="70.0" height="172.3" fill="#2a78d6"/><text class="val" x="287.2" y="129.9" text-anchor="middle" style="fill:#fff">87</text></g><g class="bar" tabindex="0"><title>9/1 · occ 미달 + 측정된 loss/latency: 2%</title><rect x="252.2" y="35.8" width="70.0" height="4.0" fill="#eb6834"/></g><g class="bar" tabindex="0"><title>9/1 · occ 미달 + 프로브 stale: 11%</title><rect x="252.2" y="14.0" width="70.0" height="21.8" fill="#8890a0"/><text class="val" x="287.2" y="28.9" text-anchor="middle" style="fill:#fff">11</text></g><text class="grp" x="287.2" y="242.0" text-anchor="middle">9/1</text><g class="bar" tabindex="0"><title>g1 · occupancy 주도: 79%</title><rect x="413.0" y="55.6" width="70.0" height="156.4" fill="#2a78d6"/><text class="val" x="448.0" y="137.8" text-anchor="middle" style="fill:#fff">79</text></g><g class="bar" tabindex="0"><title>g1 · occ 미달 + 측정된 loss/latency: 12%</title><rect x="413.0" y="31.8" width="70.0" height="23.8" fill="#eb6834"/><text class="val" x="448.0" y="47.7" text-anchor="middle" style="fill:#fff">12</text></g><g class="bar" tabindex="0"><title>g1 · occ 미달 + 프로브 stale: 9%</title><rect x="413.0" y="14.0" width="70.0" height="17.8" fill="#8890a0"/><text class="val" x="448.0" y="26.9" text-anchor="middle" style="fill:#fff">9</text></g><text class="grp" x="448.0" y="242.0" text-anchor="middle">g1</text><g class="bar" tabindex="0"><title>g2 · occupancy 주도: 87%</title><rect x="573.8" y="39.7" width="70.0" height="172.3" fill="#2a78d6"/><text class="val" x="608.8" y="129.9" text-anchor="middle" style="fill:#fff">87</text></g><g class="bar" tabindex="0"><title>g2 · occ 미달 + 측정된 loss/latency: 2%</title><rect x="573.8" y="35.8" width="70.0" height="4.0" fill="#eb6834"/></g><g class="bar" tabindex="0"><title>g2 · occ 미달 + 프로브 stale: 11%</title><rect x="573.8" y="14.0" width="70.0" height="21.8" fill="#8890a0"/><text class="val" x="608.8" y="28.9" text-anchor="middle" style="fill:#fff">11</text></g><text class="grp" x="608.8" y="242.0" text-anchor="middle">g2</text><g class="bar" tabindex="0"><title>g3 · occupancy 주도: 83%</title><rect x="734.6" y="47.7" width="70.0" height="164.3" fill="#2a78d6"/><text class="val" x="769.6" y="133.8" text-anchor="middle" style="fill:#fff">83</text></g><g class="bar" tabindex="0"><title>g3 · occ 미달 + 측정된 loss/latency: 6%</title><rect x="734.6" y="35.8" width="70.0" height="11.9" fill="#eb6834"/></g><g class="bar" tabindex="0"><title>g3 · occ 미달 + 프로브 stale: 11%</title><rect x="734.6" y="14.0" width="70.0" height="21.8" fill="#8890a0"/><text class="val" x="769.6" y="28.9" text-anchor="middle" style="fill:#fff">11</text></g><text class="grp" x="769.6" y="242.0" text-anchor="middle">g3</text></svg></div>
+  <ul>
+    <li>AP 텔레메트리는 채널 점유율을 직접 보므로 <b>occupancy 주도 심각은 잘 잡고(recall 82~92%)</b>, occupancy가 낮은 채 victim QoS만 깨지는 심각은 못 잡는다. 이전 분석의 유형별 recall(26~41%)과 방향이 같다.</li>
+    <li>즉 g1·g2·g3의 높은 recall은 <b>이 세션들의 심각이 대부분 occupancy 주도라서</b> 얻은 값일 수 있다. 8/28은 심각의 절반 가까이가 어려운 유형이라 recall이 낮은 것으로 보인다.</li>
+    <li>이는 <b>세션 구성(부하 프로파일)에 따라 성능이 크게 달라진다</b>는 뜻이므로, 발표·보고서에서 하나의 recall 수치를 내세우기보다 유형별로 함께 제시해야 한다.</li>
+  </ul>
+  <div class="callout warn"><p><strong>한계.</strong> 8/28 fold의 낮은 recall이 "유형 구성 때문"이라는 설명은 구성 비교에서 나온 것이고, 유형별로 통제해서 재학습한 검증은 하지 않았다.</p></div>
+</section>
+
+<section>
+  <h2><span class="n">09</span>종합 — 지금 보이는 문제점과 다음 단계</h2>
+  <h3>문제점</h3>
+  <ol>
+    <li><b>학습 데이터의 bitrate 오염과 라벨 편중</b>: 행의 53%가 고착 런이고, 혼잡 라벨의 70%가 거기서 나왔다. 단순 제외는 혼잡 예시를 없애 오히려 나빠진다.</li>
+    <li><b>평가의 낙관성</b>: 창 단위 분할은 이웃 창 유출을 포함한다. 세션 단위로 봐야 새 날에 대한 성능이 나온다.</li>
+    <li><b>세션 다양성 부족</b>: 세션이 5개뿐이고 g1·g2·g3는 같은 집·같은 밤이다. 학교 등 다른 장소는 확인하지 못했다.</li>
+    <li><b>심각 유형의 한계</b>: occupancy가 낮은 채 QoS만 깨지는 심각은 AP 텔레메트리로 잘 안 보인다(recall 40% 안팎). feature 설계만으로 풀리지 않을 수 있는 관측 한계다.</li>
+    <li><b>수집 환경 불안정</b>: AP 크래시·정체, bitrate 고착, 러너의 미감지(서버 다운, Pi 파일 이어 붙음)가 반복돼 깨끗한 데이터를 모으기 어렵다.</li>
+  </ol>
+  <h3>다음 단계 (제안)</h3>
+  <ul>
+    <li><b>재수집 범위를 좁힌다</b>: 전체가 아니라, bitrate가 깨끗한 조건에서 <b>혼잡 라벨과 경계 구간(점유율 55~75%)</b>, 그리고 <b>occupancy 미달 loss·latency 주도 심각</b>(8/28 유형)을 다른 날·다른 조건에서 모은다. 러너에 서버 생존 점검, Pi 파일 정리, bitrate 고착 감지를 넣는다.</li>
+    <li><b>평가 기준을 LOSO로 고정</b>하고, 이 기준에서 EE Fixed·Dynamic·SDN도 다시 비교한다(지금은 Baseline만).</li>
+    <li><b>bitrate 유지 방식</b>: 오염 런은 제외 대신 학습 가중치를 낮추거나 재수집분으로 대체해 혼잡 예시를 보존하는 방안을 검토한다.</li>
+    <li><b>배포 모델</b>: 고른 설계로 모든 세션을 합쳐 학습한 EE 모델 하나. 성능은 LOSO 평균(세션별 범위 포함)으로 인용한다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">10</span>후속 — 링크 상태를 바꿔 수집한 g4·g5와 7세션 LOSO</h2>
+  <p class="sub">05절의 결론(단순 제외는 해법이 아님)에 따라 <b>깨끗한 bitrate 조건에서 재수집</b>했다. 라벨과 세션이 엮이는 구조를 끊기 위해 <b>같은 프로파일(idle·step·spstep·gray)을 노트북 링크 상태만 바꿔</b> 두 번 돌렸다. 수집 전에 러너를 보완했다(아래).</p>
+  <h3>수집 결과</h3>
+<div class="tablewrap"><table><thead><tr><th class="">세션</th><th class="">링크 상태</th><th class="">런</th><th class="num">행</th><th class="">라벨 0/1/2/3 (게이트 전)</th><th class="">bitrate 미달</th></tr></thead><tbody><tr class=""><td class="">g4</td><td class="">좋음 (노트북 −47~−53dBm, AP측 108~135Mbps)</td><td class="">idle</td><td class="num">156</td><td class="">156/0/0/0</td><td class="">-</td></tr><tr class=""><td class="">g4</td><td class=""></td><td class="">step</td><td class="num">216</td><td class="">37/75/44/60</td><td class="">0%</td></tr><tr class=""><td class="">g4</td><td class=""></td><td class="">spstep</td><td class="num">171</td><td class="">26/49/17/79</td><td class="">1%</td></tr><tr class=""><td class="">g4</td><td class=""></td><td class="">gray</td><td class="num">265</td><td class="">38/41/169/17</td><td class="">0%</td></tr><tr class="sep"><td class="">g5</td><td class="">약함 (노트북 −61dBm, 45~60Mbps)</td><td class="">idle</td><td class="num">156</td><td class="">156/0/0/0</td><td class="">-</td></tr><tr class=""><td class="">g5</td><td class=""></td><td class="">step</td><td class="num">193</td><td class="">40/62/13/78</td><td class="">0%</td></tr><tr class=""><td class="">g5</td><td class=""></td><td class="">spstep</td><td class="num">153</td><td class="">33/0/15/105</td><td class="">0%</td></tr><tr class=""><td class="">g5</td><td class=""></td><td class="">gray</td><td class="num">183</td><td class="">34/0/11/138</td><td class="">0%</td></tr></tbody></table></div>
+  <ul>
+    <li><b>g4 gray</b>는 깨끗한 bitrate의 혼잡(2) 예시 169행을 준다. 학습 데이터에서 가장 부족했던 것이다.</li>
+    <li><b>g5는 링크가 약해 혼잡·경고 단계가 사라지고 바로 심각으로</b> 간다(gray 138/183, 지연 중앙값 340~430ms). 심각의 약 87%가 occupancy 미달의 지연·손실 주도라, 기존 모델이 못 잡던 유형이 대량 확보됐다. 같은 프로파일이 링크 상태에 따라 라벨이 크게 달라진다는 것 자체가 핵심 발견이다.</li>
+    <li><b>Netflix 오염</b>: g4 idle·step 1차 수집 중 S26에서 Netflix를 보고 있었다(idle에 20초 간격 4~29Mbps 급증, 혼잡 라벨 8행). 파일을 <code>_NETFLIX_contaminated</code>로 보존하고 재수집했다(재수집 idle은 156행 전부 0). 수집 중 노트북·폰에서 다른 통신은 금지다.</li>
+  </ul>
+  <h3>기존 배포 모델을 g4·g5에 적용하면 — 서로 반대로 실패</h3>
+<div class="legend"><span><i style="background:#8890a0"></i>정확도 (4모델 평균)</span><span><i style="background:#2a78d6"></i>L3 recall (4모델 평균)</span><span><i style="background:#eb6834"></i>L3 precision (4모델 평균)</span></div><div class="chart"><svg viewBox="0 0 860 300" role="img"><line class="grid" x1="46" x2="850" y1="248.0" y2="248.0"/><text x="40" y="252.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="202.4" y2="202.4"/><text x="40" y="206.4" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="156.8" y2="156.8"/><text x="40" y="160.8" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="111.2" y2="111.2"/><text x="40" y="115.2" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="65.6" y2="65.6"/><text x="40" y="69.6" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>g4 (링크 좋음) · 정확도 (4모델 평균): 66.7%</title><rect x="205.0" y="95.9" width="26.0" height="152.1" rx="2" fill="#8890a0"/><text class="val" x="218.0" y="91.9" text-anchor="middle">67</text></g><g class="bar" tabindex="0"><title>g4 (링크 좋음) · L3 recall (4모델 평균): 85.1%</title><rect x="233.0" y="54.0" width="26.0" height="194.0" rx="2" fill="#2a78d6"/><text class="val" x="246.0" y="50.0" text-anchor="middle">85</text></g><g class="bar" tabindex="0"><title>g4 (링크 좋음) · L3 precision (4모델 평균): 43.4%</title><rect x="261.0" y="149.0" width="26.0" height="99.0" rx="2" fill="#eb6834"/><text class="val" x="274.0" y="145.0" text-anchor="middle">43</text></g><text class="grp" x="247.0" y="282.0" text-anchor="middle">g4 (링크 좋음)</text><g class="bar" tabindex="0"><title>g5 (링크 약함) · 정확도 (4모델 평균): 72.5%</title><rect x="607.0" y="82.7" width="26.0" height="165.3" rx="2" fill="#8890a0"/><text class="val" x="620.0" y="78.7" text-anchor="middle">72</text></g><g class="bar" tabindex="0"><title>g5 (링크 약함) · L3 recall (4모델 평균): 55.3%</title><rect x="635.0" y="121.9" width="26.0" height="126.1" rx="2" fill="#2a78d6"/><text class="val" x="648.0" y="117.9" text-anchor="middle">55</text></g><g class="bar" tabindex="0"><title>g5 (링크 약함) · L3 precision (4모델 평균): 96.6%</title><rect x="663.0" y="27.8" width="26.0" height="220.2" rx="2" fill="#eb6834"/><text class="val" x="676.0" y="23.8" text-anchor="middle">97</text></g><text class="grp" x="649.0" y="282.0" text-anchor="middle">g5 (링크 약함)</text></svg></div>
+  <ul>
+    <li><b>g4</b>(g4·g5 합 1,397창 평가): 정확도 62~74%, recall 81~88%, <b>precision 43%</b>. 혼잡을 심각으로 오판한다(오탐의 87%). g4 gray는 혼잡이 많은데 모델이 심각으로 읽는다.</li>
+    <li><b>g5</b>: 정확도 70~74%, <b>recall 48~58%</b>, precision 97%. 지연 주도 심각을 놓친다.</li>
+    <li>심각 유형별 recall: occupancy 주도 <b>95%</b> / occ 미달+프로브 stale 54% / occ 미달+측정된 loss·latency <b>19%</b>. 관측 한계 유형이 실제로 약하다는 것이 g5로 확인됐다.</li>
+  </ul>
+  <h3>7세션 LOSO 결과 (품질 통과 런만, Baseline 5시드)</h3>
+<div class="tablewrap"><table><thead><tr><th class="">빼고 테스트한 세션</th><th class="num">정확도</th><th class="num">L3 recall</th><th class="num">L3 precision</th><th class="num">혼잡→심각 오예측</th></tr></thead><tbody><tr class=""><td class="">8/28</td><td class="num">87.3±2.4</td><td class="num">42.9±2.3</td><td class="num">80.5±12.2</td><td class="num">4.6%</td></tr><tr class=""><td class="">9/1</td><td class="num">90.1±1.3</td><td class="num">88.7±1.5</td><td class="num">86.0±3.2</td><td class="num">21.6%</td></tr><tr class=""><td class="">g1</td><td class="num">93.5±0.4</td><td class="num">90.0±7.0</td><td class="num">89.5±2.8</td><td class="num">13.1%</td></tr><tr class=""><td class="">g2</td><td class="num">88.3±1.0</td><td class="num">92.8±1.4</td><td class="num">86.8±2.5</td><td class="num">25.9%</td></tr><tr class=""><td class="">g3</td><td class="num">89.0±0.6</td><td class="num">82.8±1.0</td><td class="num">82.7±2.3</td><td class="num">8.9%</td></tr><tr class=""><td class="">g4</td><td class="num">89.8±1.0</td><td class="num">71.8±1.7</td><td class="num">92.9±3.9</td><td class="num">3.2%</td></tr><tr class=""><td class="">g5</td><td class="num">76.8±4.7</td><td class="num">63.0±8.6</td><td class="num">98.5±1.5</td><td class="num">6.3%</td></tr><tr class="sep"><td class=""><b>세션 평균</b></td><td class="num"><b>87.8</b></td><td class="num"><b>76.0</b></td><td class="num"><b>88.1</b></td><td class="num"></td></tr></tbody></table></div><div class="legend"><span><i style="background:#2a78d6"></i>L3 recall</span><span><i style="background:#eb6834"></i>L3 precision</span><span><i style="background:#8890a0"></i>정확도</span></div><div class="chart"><svg viewBox="0 0 860 300" role="img"><line class="grid" x1="46" x2="850" y1="248.0" y2="248.0"/><text x="40" y="252.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="202.4" y2="202.4"/><text x="40" y="206.4" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="156.8" y2="156.8"/><text x="40" y="160.8" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="111.2" y2="111.2"/><text x="40" y="115.2" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="65.6" y2="65.6"/><text x="40" y="69.6" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>8/28 · L3 recall: 42.9%</title><rect x="61.4" y="150.2" width="26.0" height="97.8" rx="2" fill="#2a78d6"/><text class="val" x="74.4" y="146.2" text-anchor="middle">43</text></g><g class="bar" tabindex="0"><title>8/28 · L3 precision: 80.5%</title><rect x="89.4" y="64.5" width="26.0" height="183.5" rx="2" fill="#eb6834"/><text class="val" x="102.4" y="60.5" text-anchor="middle">80</text></g><g class="bar" tabindex="0"><title>8/28 · 정확도: 87.3%</title><rect x="117.4" y="49.0" width="26.0" height="199.0" rx="2" fill="#8890a0"/><text class="val" x="130.4" y="45.0" text-anchor="middle">87</text></g><text class="grp" x="103.4" y="282.0" text-anchor="middle">8/28</text><g class="bar" tabindex="0"><title>9/1 · L3 recall: 88.7%</title><rect x="176.3" y="45.8" width="26.0" height="202.2" rx="2" fill="#2a78d6"/><text class="val" x="189.3" y="41.8" text-anchor="middle">89</text></g><g class="bar" tabindex="0"><title>9/1 · L3 precision: 86.0%</title><rect x="204.3" y="51.9" width="26.0" height="196.1" rx="2" fill="#eb6834"/><text class="val" x="217.3" y="47.9" text-anchor="middle">86</text></g><g class="bar" tabindex="0"><title>9/1 · 정확도: 90.1%</title><rect x="232.3" y="42.6" width="26.0" height="205.4" rx="2" fill="#8890a0"/><text class="val" x="245.3" y="38.6" text-anchor="middle">90</text></g><text class="grp" x="218.3" y="282.0" text-anchor="middle">9/1</text><g class="bar" tabindex="0"><title>g1 · L3 recall: 90.0%</title><rect x="291.1" y="42.8" width="26.0" height="205.2" rx="2" fill="#2a78d6"/><text class="val" x="304.1" y="38.8" text-anchor="middle">90</text></g><g class="bar" tabindex="0"><title>g1 · L3 precision: 89.5%</title><rect x="319.1" y="43.9" width="26.0" height="204.1" rx="2" fill="#eb6834"/><text class="val" x="332.1" y="39.9" text-anchor="middle">90</text></g><g class="bar" tabindex="0"><title>g1 · 정확도: 93.5%</title><rect x="347.1" y="34.8" width="26.0" height="213.2" rx="2" fill="#8890a0"/><text class="val" x="360.1" y="30.8" text-anchor="middle">94</text></g><text class="grp" x="333.1" y="282.0" text-anchor="middle">g1</text><g class="bar" tabindex="0"><title>g2 · L3 recall: 92.8%</title><rect x="406.0" y="36.4" width="26.0" height="211.6" rx="2" fill="#2a78d6"/><text class="val" x="419.0" y="32.4" text-anchor="middle">93</text></g><g class="bar" tabindex="0"><title>g2 · L3 precision: 86.8%</title><rect x="434.0" y="50.1" width="26.0" height="197.9" rx="2" fill="#eb6834"/><text class="val" x="447.0" y="46.1" text-anchor="middle">87</text></g><g class="bar" tabindex="0"><title>g2 · 정확도: 88.3%</title><rect x="462.0" y="46.7" width="26.0" height="201.3" rx="2" fill="#8890a0"/><text class="val" x="475.0" y="42.7" text-anchor="middle">88</text></g><text class="grp" x="448.0" y="282.0" text-anchor="middle">g2</text><g class="bar" tabindex="0"><title>g3 · L3 recall: 82.8%</title><rect x="520.9" y="59.2" width="26.0" height="188.8" rx="2" fill="#2a78d6"/><text class="val" x="533.9" y="55.2" text-anchor="middle">83</text></g><g class="bar" tabindex="0"><title>g3 · L3 precision: 82.7%</title><rect x="548.9" y="59.4" width="26.0" height="188.6" rx="2" fill="#eb6834"/><text class="val" x="561.9" y="55.4" text-anchor="middle">83</text></g><g class="bar" tabindex="0"><title>g3 · 정확도: 89.0%</title><rect x="576.9" y="45.1" width="26.0" height="202.9" rx="2" fill="#8890a0"/><text class="val" x="589.9" y="41.1" text-anchor="middle">89</text></g><text class="grp" x="562.9" y="282.0" text-anchor="middle">g3</text><g class="bar" tabindex="0"><title>g4 · L3 recall: 71.8%</title><rect x="635.7" y="84.3" width="26.0" height="163.7" rx="2" fill="#2a78d6"/><text class="val" x="648.7" y="80.3" text-anchor="middle">72</text></g><g class="bar" tabindex="0"><title>g4 · L3 precision: 92.9%</title><rect x="663.7" y="36.2" width="26.0" height="211.8" rx="2" fill="#eb6834"/><text class="val" x="676.7" y="32.2" text-anchor="middle">93</text></g><g class="bar" tabindex="0"><title>g4 · 정확도: 89.8%</title><rect x="691.7" y="43.3" width="26.0" height="204.7" rx="2" fill="#8890a0"/><text class="val" x="704.7" y="39.3" text-anchor="middle">90</text></g><text class="grp" x="677.7" y="282.0" text-anchor="middle">g4</text><g class="bar" tabindex="0"><title>g5 · L3 recall: 63.0%</title><rect x="750.6" y="104.4" width="26.0" height="143.6" rx="2" fill="#2a78d6"/><text class="val" x="763.6" y="100.4" text-anchor="middle">63</text></g><g class="bar" tabindex="0"><title>g5 · L3 precision: 98.5%</title><rect x="778.6" y="23.4" width="26.0" height="224.6" rx="2" fill="#eb6834"/><text class="val" x="791.6" y="19.4" text-anchor="middle">98</text></g><g class="bar" tabindex="0"><title>g5 · 정확도: 76.8%</title><rect x="806.6" y="72.9" width="26.0" height="175.1" rx="2" fill="#8890a0"/><text class="val" x="819.6" y="68.9" text-anchor="middle">77</text></g><text class="grp" x="792.6" y="282.0" text-anchor="middle">g5</text></svg></div>
+  <ul>
+    <li><b>g4·g5를 학습에 넣자 g3 precision이 69.3 → 82.7%로 올랐다</b>(5세션 LOSO 대비). 링크 상태 다양성이 효과가 크다는 근거다.</li>
+    <li>기존 모델이 g4·g5에서 보인 실패(g4 precision 43%, g5 recall 48~58%)가 LOSO에서는 완화된다(g4 precision 92.9%, g5 recall 63.0%). 다만 <b>g5 recall 63%는 여전히 낮다</b>. 링크가 약해 지연으로만 붙는 심각은 AP 텔레메트리로 어렵다.</li>
+    <li>세션 평균은 정확도 87.8%, recall 76.0%, precision 88.1%다. 세션별 recall 범위(42.9~92.8%)를 함께 제시해야 한다.</li>
+  </ul>
+  <div class="callout warn"><p><strong>한계.</strong> g1~g5는 같은 집·같은 AP·같은 밤이라 하나를 빼도 나머지가 학습에 남는다. <b>진짜 다른 날은 8/28과 9/1뿐</b>이라 g fold 수치는 낙관적이다. Baseline만 확인했고 EE·SDN은 하지 않았다.</p></div>
+  <h3>러너 보완 (<code>run_profile.sh</code>)</h3>
+  <ul>
+    <li><b>iperf3 서버 점검</b>: 시작 전 5201/5202/5203을 확인하고 죽어 있으면 재기동한다(실패 시 중단). 시험에서 의도적으로 내린 서버가 자동 복구됐다.</li>
+    <li><b>Pi 잔여 정리</b>: 같은 이름의 옛 CSV를 <code>_prev_시각</code>으로 옮기고 남은 수집기 프로세스를 종료한다(이어 붙음 방지). g4 재수집에서 동작을 확인했다.</li>
+    <li><b>AP 재부팅 감지</b>: AP uptime을 10초마다 기록하고 값이 줄면 크래시로 판정해 부하를 중단한다. 실제 크래시로는 아직 시험하지 못했다.</li>
+    <li>기존 bitrate 고착·품질 게이트는 유지하고, 세션 드라이버는 게이트 실패를 경고로 두고 계속 진행하는 변형을 쓴다.</li>
+  </ul>
+</section>
+
+<footer>
+  스크립트: <code>project/.tmp/exp_24g/</code> — <code>eval_g3.py</code>(기존 모델 평가), <code>why_g3.py</code>·<code>why_g3b.py</code>(오탐·bitrate 진단), <code>retrain_variants.py</code>(A~D 재학습), <code>loso.py</code>(LOSO). 수집 원본은 <code>session_0921_g3/</code>(미달·부분·이어 붙음 파일은 이름으로 구분해 보존), 결과 로그는 <code>eval_pool_*.txt</code>·<code>retrain_variants.log</code>·<code>loso.log</code>·<code>loso_clean.log</code>. 관련 문서: <code>session_test_summary.html</code>, <code>congestion_label_redesign.html</code>.
+</footer>
+
+</main>
+</body>
+</html>
