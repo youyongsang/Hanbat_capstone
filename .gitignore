@@ -2,3 +2,10 @@ __pycache__/
 *.py[cod]
 project/.tmp/
 캡스톤 디자인/
+
+# 5GHz 실험 라인(미채택, 26~27차) 산출물 — 로컬에만 보존, 커밋하지 않음 (2026-09-22 결정)
+project/checkpoints/ap_v2_5g_home/
+project/checkpoints/ap_v2_5g_home_6993rows/
+project/checkpoints/ap_v2_5g_home_no75/
+project/data/ap_metrics_v2_5g_home/
+project/data/ap_metrics_v2_5g_home_no75/
