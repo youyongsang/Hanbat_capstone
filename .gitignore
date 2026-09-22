@@ -9,3 +9,9 @@ project/checkpoints/ap_v2_5g_home_6993rows/
 project/checkpoints/ap_v2_5g_home_no75/
 project/data/ap_metrics_v2_5g_home/
 project/data/ap_metrics_v2_5g_home_no75/
+
+# 7세션 배포 재학습(28차 후속) 시드별 원본 체크포인트·학습 로그 — selected/(고른 시드, ONNX 포함)만 커밋
+project/checkpoints/ap_v2_redesign2_7sess_20260922/baseline_s*/
+project/checkpoints/ap_v2_redesign2_7sess_20260922/ee_s*/
+project/checkpoints/ap_v2_redesign2_7sess_20260922/sdn_s*/
+project/checkpoints/ap_v2_redesign2_7sess_20260922/logs/
