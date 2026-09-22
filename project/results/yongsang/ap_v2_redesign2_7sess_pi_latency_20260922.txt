@@ -1,0 +1,43 @@
+7세션 재학습 모델 Pi 지연 측정 (2026-09-22)
+조건: Raspberry Pi 4코어(ort 1.26), 유휴 상태(부하 0.00), 스로틀링 없음(throttled=0x0, 온도 44→70.6C), INT8 ONNX, 창당 5회 반복·워밍업 10회·perf_counter, 기존 배포 모델(OLD=k2m2 9/2)과 7세션 재학습 모델(NEW, 각 모델 val balanced acc 최고 시드=시드1)을 같은 창으로 A/B/A/B 2라운드 번갈아 측정. NEWVAL=7세션 val 1,227창, OLDTEST=기존 캐노니컬 test 365창(9/2 측정과 같은 창). 값은 avg ms, exit%는 1/2/3번 출구 비율.
+
+##### 데이터 NEWVAL (1227창)
+--- round 1
+EEFixed  OLD         avg=0.666 p50=0.649 exit%=27.71/39.36/32.93
+EEFixed  NEW         avg=0.632 p50=0.650 exit%=29.91/45.23/24.86
+EEDyn    OLD         avg=0.640 p50=0.677 exit%=30.24/53.46/16.30
+EEDyn    NEW         avg=0.632 p50=0.699 exit%=31.95/57.38/10.68
+SDN      OLD         avg=0.666 p50=0.649 exit%=26.65/42.95/30.40
+SDN      NEW         avg=0.724 p50=0.968 exit%=30.07/18.91/51.02
+Baseline OLD         avg=0.847 p50=0.845 exit%=-
+Baseline NEW         avg=0.846 p50=0.844 exit%=-
+--- round 2
+EEFixed  OLD         avg=0.657 p50=0.639 exit%=27.71/39.36/32.93
+EEFixed  NEW         avg=0.625 p50=0.636 exit%=29.91/45.23/24.86
+EEDyn    OLD         avg=0.651 p50=0.694 exit%=30.24/53.46/16.30
+EEDyn    NEW         avg=0.630 p50=0.695 exit%=31.95/57.38/10.68
+SDN      OLD         avg=0.676 p50=0.663 exit%=26.65/42.95/30.40
+SDN      NEW         avg=0.732 p50=0.979 exit%=30.07/18.91/51.02
+Baseline OLD         avg=0.849 p50=0.847 exit%=-
+Baseline NEW         avg=0.850 p50=0.849 exit%=-
+##### 데이터 OLDTEST (365창)
+--- round 1
+EEFixed  OLD         avg=0.624 p50=0.638 exit%=32.88/39.45/27.67
+EEFixed  NEW         avg=0.627 p50=0.621 exit%=35.34/29.04/35.62
+EEDyn    OLD         avg=0.626 p50=0.688 exit%=33.42/53.70/12.88
+EEDyn    NEW         avg=0.623 p50=0.676 exit%=35.89/47.12/16.99
+SDN      OLD         avg=0.577 p50=0.640 exit%=37.53/47.67/14.79
+SDN      NEW         avg=0.742 p50=0.973 exit%=30.41/13.70/55.89
+Baseline OLD         avg=0.838 p50=0.835 exit%=-
+Baseline NEW         avg=0.853 p50=0.851 exit%=-
+--- round 2
+EEFixed  OLD         avg=0.625 p50=0.635 exit%=32.88/39.45/27.67
+EEFixed  NEW         avg=0.639 p50=0.638 exit%=35.34/29.04/35.62
+EEDyn    OLD         avg=0.622 p50=0.682 exit%=33.42/53.70/12.88
+EEDyn    NEW         avg=0.622 p50=0.674 exit%=35.89/47.12/16.99
+SDN      OLD         avg=0.581 p50=0.645 exit%=37.53/47.67/14.79
+SDN      NEW         avg=0.730 p50=0.955 exit%=30.41/13.70/55.89
+Baseline OLD         avg=0.847 p50=0.845 exit%=-
+Baseline NEW         avg=0.863 p50=0.860 exit%=-
+temp=70.6'C
+throttled=0x0

@@ -1,0 +1,55 @@
+{
+  "note": "run-level split, multi-session pool; test.csv is a copy of val.csv (no held-out session)",
+  "pool": "project\\.tmp\\exp_24g\\pool_all2\\pool_relabeled.csv",
+  "excluded_scenarios": [
+    "step_run4",
+    "step_run5",
+    "step_run6",
+    "home_24g_spknee_a_0920_g1",
+    "home_24g_spknee_b_0920_g1",
+    "home_24g_step_b_0920_g1"
+  ],
+  "sessions": [
+    "0828",
+    "0901",
+    "g1",
+    "g2",
+    "g3",
+    "g4",
+    "g5"
+  ],
+  "val_runs": [
+    "home_24g_gray_0921_g3",
+    "home_24g_gray_0921_g5",
+    "home_24g_spstep_a_0920_g1",
+    "home_24g_spstep_b_0921_g2",
+    "home_24g_step_0921_g4",
+    "smallpkt_light_bursty_20260901",
+    "step_run3"
+  ],
+  "window_size": 12,
+  "features": [
+    "throughput_mbps",
+    "channel_occupancy_percent",
+    "tx_retry_ratio",
+    "rssi_dbm",
+    "rssi_delta_db",
+    "rssi_moving_avg_dbm",
+    "sta_tx_bitrate_mean"
+  ],
+  "train_windows": 3882,
+  "val_windows": 1227,
+  "train_label_distribution": {
+    "0": 1306,
+    "1": 664,
+    "2": 831,
+    "3": 1081
+  },
+  "val_label_distribution": {
+    "0": 195,
+    "1": 280,
+    "2": 409,
+    "3": 343
+  },
+  "scaler": "C:\\dev\\Hanbat_capstone\\project\\data\\ap_metrics_v2_redesign2\\scaler_params.json"
+}
