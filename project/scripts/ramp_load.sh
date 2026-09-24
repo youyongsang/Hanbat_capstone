@@ -160,13 +160,29 @@ cleanup() {
 }
 trap cleanup INT TERM
 
+# 보완(09-24): 단계 경계를 절대 시각(START_EPOCH, 5번째 인자)으로 맞춘다. 폰마다 단계 시작이 어긋나면
+# 먼저 연결한 폰의 UDP가 큐를 채워 나중 폰의 제어 연결(TCP)이 30초씩 멈췄음(h4 step, 양쪽 폰 재현).
+# 각 단계는 경계 1초 전에 끝나고, 두 폰이 링크가 빈 같은 순간에 다음 단계를 연결한다.
+START_EPOCH="${5:-$(date +%s)}"
 total=0
 for step in "${STEPS[@]}"; do
   rate="${step%%:*}"
   dur="${step##*:}"
+  start=$(( START_EPOCH + total ))
   total=$((total + dur))
+  wait_s=$(( start - $(date +%s) )); [ "$wait_s" -gt 0 ] && sleep "$wait_s"
   echo "--- [$(date +%H:%M:%S)] ${rate} x ${dur}s (누적 ${total}s) ---"
-  iperf3 -u -c "${TARGET_IP}" -p "${PORT}" -l "${PKT_LEN}" -b "${rate}" -t "${dur}"
+  # 보완(09-24): 혼잡 중 연결이 멈추거나 서버가 busy면 단계 전체가 조용히 빠지던 문제 —
+  # 단계 마감 시각까지 남은 시간으로 재시도(타임라인 유지). hang 대비 timeout으로 감쌈.
+  end=$(( START_EPOCH + total - 1 )); tries=0
+  while :; do
+    left=$(( end - $(date +%s) ))
+    [ "$left" -lt 3 ] && break
+    timeout $((left + 8)) iperf3 -u -c "${TARGET_IP}" -p "${PORT}" -l "${PKT_LEN}" -b "${rate}" -t "${left}" --connect-timeout 3000 && break
+    tries=$((tries + 1))
+    echo "!! [$(date +%H:%M:%S)] iperf3 실패 (재시도 ${tries}) — 단계 남은 ${left}s"
+    sleep 2
+  done
 done
 
 echo

@@ -35,26 +35,54 @@ for h in "${HOSTS[@]}"; do
   fi
 done
 
-PIDS=()
+SSHR=(-o ConnectTimeout=8)
+PLOG=ramp_last.log   # 폰 안의 로그 파일 (SSH가 끊겨도 남음)
+fetch_logs() {
+  for h in "${HOSTS[@]}"; do
+    timeout 20 ssh "${SSHR[@]}" "$h" "cat ${PLOG} 2>/dev/null" 2>/dev/null | sed "s/^/[${h}] /" || echo "!!! ${h} 로그 회수 실패"
+  done
+}
 cleanup() {
   echo
   echo ">>> 중단 — 원격 iperf3/ramp_load 정리 중"
   for h in "${HOSTS[@]}"; do
-    ssh -o ConnectTimeout=3 "$h" 'pkill -f iperf3 2>/dev/null; pkill -f ramp_load.sh 2>/dev/null; true' &
+    timeout 10 ssh "${SSHR[@]}" "$h" 'pkill -x iperf3 2>/dev/null; pkill -f "[r]amp_load.sh" 2>/dev/null; true' &
   done
   wait
-  for pid in "${PIDS[@]:-}"; do kill "$pid" 2>/dev/null || true; done
+  fetch_logs
+  exit 130
 }
 trap cleanup INT TERM
 
 echo "[2/2] 동시 실행 (Ctrl-C로 두 폰 모두 즉시 정지)"
+# 보완(09-24): h4에서 (a) 폰 부하가 출력 0줄로 통째로 빠지고 (b) AP 멈춤 때 SSH가 끊겨 30·40M 단계 로그가 사라짐.
+# → 폰에서 nohup으로 분리 실행하고 로그는 폰 안의 파일(${PLOG})에 쓴 뒤 끝나면 회수한다.
+#   12초 뒤 폰에서 ramp_load.sh가 안 돌면 그 폰만 재실행(같은 START_EPOCH라 진행 중인 단계에 합류).
+START_EPOCH=$(( $(date +%s) + 5 ))   # 두 폰 공통 단계 기준 시각(ramp_load.sh 5번째 인자) — SSH 기동 여유 5초
+echo "    단계 기준 시각 START_EPOCH=${START_EPOCH} ($(date -d @${START_EPOCH} +%H:%M:%S)), 폰 로그 ~/${PLOG}"
+launch() {  # $1=index, $2=리다이렉트(> 새로 / >> 이어서)
+  local h="${HOSTS[$1]}" p="${PORTS[$1]}"
+  timeout 15 ssh "${SSHR[@]}" "$h" "nohup bash ramp_load.sh ${p} ${PROFILE} ${TARGET_IP} ${PKT_LEN} ${START_EPOCH} ${2:->} ${PLOG} 2>&1 < /dev/null &"     || echo "!!! [$(date +%H:%M:%S)] ${h} 기동 SSH 실패"
+}
+running() { timeout 10 ssh "${SSHR[@]}" "$1" 'pgrep -f "[r]amp_load.sh" >/dev/null'; }   # 0=실행 중, 1=없음, 그 외=SSH 실패
+for i in "${!HOSTS[@]}"; do launch "$i" ">" & done; wait
+sleep 12
 for i in "${!HOSTS[@]}"; do
   h="${HOSTS[$i]}"
-  p="${PORTS[$i]}"
-  ( ssh "$h" "bash ramp_load.sh ${p} ${PROFILE} ${TARGET_IP} ${PKT_LEN}" 2>&1 | sed "s/^/[${h}] /" ) &
-  PIDS+=($!)
+  for try in 1 2; do
+    running "$h" && break
+    echo "!!! [$(date +%H:%M:%S)] ${h} ramp_load.sh 미실행 — 재실행 (${try}/2)"
+    timeout 10 ssh "${SSHR[@]}" "$h" 'pkill -x iperf3 2>/dev/null; true'
+    launch "$i" ">>"; sleep 8
+  done
 done
 
-wait "${PIDS[@]}"
+# 두 폰 모두 끝날 때까지 대기 (SSH 실패는 '실행 중'으로 간주 — AP 멈춤 동안 조기 종료 방지)
+while :; do
+  sleep 5; any=0
+  for h in "${HOSTS[@]}"; do running "$h"; rc=$?; [ "$rc" -ne 1 ] && any=1; done
+  [ "$any" -eq 0 ] && break
+done
+fetch_logs
 echo
 echo "=== 원격 램프 완료 — 파이 collect_metrics.py도 이제 중지할 것 ==="
