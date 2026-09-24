@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>9/24 집 세션 테스트</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#f5f7fa; --panel:#fcfcfb; --panel-raise:#ffffff;
+    --ink:#12151b; --ink-2:#4b5566; --ink-mute:#7c8494;
+    --rule:#e2e6ec; --rule-strong:#c9d0da;
+    --accent:#2a78d6; --warn:#b26a00; --bad:#c0392b; --good:#0c7a0c;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+    --shadow:0 1px 2px rgba(18,21,27,0.04), 0 8px 24px -12px rgba(18,21,27,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+      --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+      --rule:#242a33; --rule-strong:#333b47;
+      --accent:#3987e5; --warn:#e0a040; --bad:#e66767; --good:#3ec13e;
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0e1116; --panel:#1a1a19; --panel-raise:#20242c;
+    --ink:#f3f5f8; --ink-2:#b8c0cc; --ink-mute:#8890a0;
+    --rule:#242a33; --rule-strong:#333b47;
+    --accent:#3987e5; --warn:#e0a040; --bad:#e66767; --good:#3ec13e;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+  main { max-width:980px; margin:0 auto; padding:3.5rem 1.5rem 6rem; }
+  .eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.78rem; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .8rem; }
+  h1 { font-size:clamp(1.8rem,1.4rem + 1.6vw,2.4rem); line-height:1.2; margin:0 0 .8rem; letter-spacing:-.01em; text-wrap:balance; }
+  .lead { color:var(--ink-2); max-width:70ch; margin:0 0 2rem; }
+  section { margin-top:3.2rem; }
+  h2 { font-size:1.25rem; margin:0 0 .4rem; letter-spacing:-.005em; display:flex; gap:.6rem; align-items:baseline; }
+  h2 .n { font-family:"IBM Plex Mono",monospace; font-size:.8rem; color:var(--ink-mute); font-weight:500; }
+  h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; }
+  p { margin:.5rem 0 1rem; max-width:74ch; }
+  .sub { color:var(--ink-2); max-width:74ch; margin:0 0 1.2rem; }
+  code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule);
+    border-radius:3px; padding:.05em .32em; color:var(--ink-2); }
+  .callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent);
+    border-radius:4px; padding:.9rem 1.1rem; margin:1rem 0 1.4rem; }
+  .callout.warn { border-left-color:var(--warn); }
+  .callout.bad { border-left-color:var(--bad); }
+  .callout p { margin:.25rem 0; }
+  .callout strong { color:var(--ink); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1.2rem; }
+  .card { background:var(--panel-raise); border:1px solid var(--rule); border-radius:6px; padding:1.1rem 1.2rem; box-shadow:var(--shadow); }
+  .card h3 { margin-top:0; }
+  .tablewrap { overflow-x:auto; margin:.6rem 0 1.4rem; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; min-width:560px; }
+  th, td { padding:.5rem .7rem; text-align:left; border-bottom:1px solid var(--rule); vertical-align:top; }
+  th { color:var(--ink-mute); font-weight:600; font-size:.8rem; letter-spacing:.02em; white-space:nowrap; background:var(--panel); }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.86rem; white-space:nowrap; }
+  tr.sep td { border-top:2px solid var(--rule-strong); }
+  .tag { display:inline-block; font-size:.74rem; font-weight:600; padding:.08rem .5rem; border-radius:999px; border:1px solid var(--rule-strong); white-space:nowrap; }
+  .tag.use { color:var(--good); border-color:var(--good); }
+  .tag.train { color:var(--accent); border-color:var(--accent); }
+  .tag.quar { color:var(--bad); border-color:var(--bad); }
+  .tag.part { color:var(--warn); border-color:var(--warn); }
+  ul { padding-left:1.2rem; max-width:76ch; } li { margin:.35rem 0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin:1.4rem 0 .5rem; }
+  .kpi { background:var(--panel-raise); border:1px solid var(--rule); border-radius:6px; padding:.9rem 1rem; }
+  .kpi b { display:block; font-size:1.55rem; font-family:"IBM Plex Mono",monospace; letter-spacing:-.02em; }
+  .kpi span { color:var(--ink-2); font-size:.86rem; }
+  /* charts */
+  .chart { margin:.4rem 0 .6rem; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; }
+  .chart text { fill:var(--ink-2); font-size:11.5px; font-family:"IBM Plex Sans KR",system-ui,sans-serif; }
+  .chart text.val { fill:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:11px; }
+  .chart text.grp { fill:var(--ink); font-weight:600; font-size:12px; }
+  .chart .grid { stroke:var(--rule); stroke-width:1; }
+  .chart .bar { cursor:default; }
+  .chart .bar:hover, .chart .bar:focus { filter:brightness(1.12); outline:none; }
+  .legend { display:flex; flex-wrap:wrap; gap:.4rem 1.2rem; font-size:.86rem; color:var(--ink-2); margin:.2rem 0 .6rem; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:.4rem; vertical-align:-1px; }
+  details { margin:.4rem 0 1rem; } summary { cursor:pointer; color:var(--ink-2); font-size:.88rem; }
+  #tip { position:fixed; pointer-events:none; z-index:10; background:var(--panel-raise); border:1px solid var(--rule-strong);
+    border-radius:5px; padding:.4rem .6rem; font-size:.84rem; box-shadow:var(--shadow); opacity:0; transition:opacity .08s; max-width:260px; }
+  #tip b { font-family:"IBM Plex Mono",monospace; font-size:.95rem; display:block; }
+  #tip span { color:var(--ink-2); }
+  footer { margin-top:4rem; color:var(--ink-mute); font-size:.84rem; border-top:1px solid var(--rule); padding-top:1rem; }
+</style>
+</head>
+<body>
+<main>
+<p class="eyebrow">2.4GHz · 집 · 2026-09-24 · 28차 후속(17)</p>
+<h1>9/24 집 세션(h1~h4) 테스트</h1>
+<p class="lead">오늘 수집한 네 세션은 어떤 모델 학습에도 쓰지 않았다. 이 세션들로 세 가지를 확인했다. (1) 새 7세션 모델이 기존 배포 모델보다 실제로 나은지, (2) occupancy 문턱 규칙만 써도 되는지, (3) AP 송신 큐 깊이가 8번째 feature로 쓸모 있는지.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>73.9 → 83.7%</b><span>4-class 정확도, 기존 → 새 Baseline (2,957창 합산)</span></div>
+  <div class="kpi"><b>205 → 63</b><span>혼잡을 심각으로 오판한 창 (Baseline)</span></div>
+  <div class="kpi"><b>85.0%</b><span>occupancy 규칙만 썼을 때 정확도 (세션 평균) — 새 LSTM 82~83%보다 높음</span></div>
+  <div class="kpi"><b>+0.044</b><span>latency 원인 심각 AUC, 7-feature에 큐 추가 (4세션 모두 상승)</span></div>
+</div>
+
+<div class="callout">
+  <p><strong>한 줄 요약.</strong> 새 7세션 모델은 오탐을 크게 줄여 기존 모델보다 확실히 낫다. 그래도 occupancy 규칙보다 정확도가 높지는 않다. LSTM의 기여는 occupancy가 낮은데도 심각한 창(loss·latency 원인)을 일부 잡는 데 있다. 큐 깊이는 그중 latency 원인 심각에서만 일관된 신호를 보인다.</p>
+</div>
+
+<section>
+<h2><span class="n">0</span>오늘 수집한 세션</h2>
+<p class="sub">네 세션 모두 집, 2.4GHz, Opal AP, 폰 두 대(s21g·s26g)로 수집했고, 노트북은 victim 프로브를 받는다. 런 구성은 idle(부하 없음), step(10→40M 계단), spstep(소패킷 계단), gray(19M 고정 300초)다. 라벨은 k2m2 게이트로 다시 계산했다.</p>
+<div class="tablewrap"><table><thead><tr><th>세션</th><th>시각</th><th>조건</th><th class="num">행 (idle/step/spstep/gray)</th><th class="num">심각 창의 원인 (occupancy / latency / loss)</th></tr></thead><tbody>
+<tr><td>h1</td><td>14:51~15:21</td><td>링크 좋음, 부하 폰→노트북</td><td class="num">156 / 210 / 201 / 303</td><td class="num">77 / 6 / 16</td></tr>
+<tr><td>h2</td><td>15:57~16:27</td><td>노트북만 약한 링크(−62dBm)</td><td class="num">156 / 192 / 192 / 242</td><td class="num">39 / 32 / 43</td></tr>
+<tr><td>h3</td><td>16:45~17:18</td><td>노트북 약한 링크, <b>폰↔폰 부하</b>(노트북엔 프로브만)</td><td class="num">156 / 190 / 171 / 215</td><td class="num">118 / 76 / 58</td></tr>
+<tr><td>h4</td><td>18:20~21:51</td><td>폰 두 대 중간 약한 링크(−52dBm), 노트북 가까이</td><td class="num">156 / 205* / 168 / 236*</td><td class="num">148 / 25 / 21</td></tr>
+</tbody></table></div>
+<p>* h4는 step·gray를 여러 번 다시 받았다. 최종본은 step_redo5와 gray_redo3다. step_redo5는 30M 단계 대부분이 AP 멈춤 구간이고, 40M 단계는 폰 두 대가 모두 보냈는지 확인되지 않는다. 풀은 3,149행, 창은 2,957개다(라벨 0/1/2/3 = 887/734/677/659).</p>
+<details><summary>h4를 다시 받은 이유: 부하 도구 문제와 원인</summary>
+<ul>
+  <li>h4의 step·gray에서 폰 한 대의 부하가 빠지는 일이 반복됐다. 처음엔 s26만의 문제로 보였지만, 역할을 바꿔 시험하니 <b>두 폰 모두 같은 현상</b>이었다. 원인은 나중에 연결하는 폰의 iperf3 제어 연결(TCP)이 먼저 시작한 폰의 UDP 부하 큐에 묻혀 30초씩 멈추는 것이었다.</li>
+  <li>이 현상은 h2부터 매 세션 있었다(런마다 한 단계씩 빠짐). 폰 신호가 약한 세션일수록 심했다: h1(−35dBm)은 없었고 h4(−50~−57dBm)에서 가장 잦았다.</li>
+  <li>그래서 스크립트 세 가지를 고쳤다(다음 세션부터 적용). 두 폰의 단계 시작을 절대 시각으로 맞추고 실패하면 다시 시도하게 했다(<code>ramp_load.sh</code>). 노트북 iperf3 서버에 <code>--rcv-timeout 5000</code>을 붙였다. 폰 로그를 폰 안의 파일에 남기게 했다(<code>ramp_load_remote.sh</code>).</li>
+</ul>
+</details>
+</section>
+
+<section>
+<h2><span class="n">1</span>새 7세션 모델 vs 기존 배포 모델 (진짜 held-out)</h2>
+<p class="sub">기존 = <code>checkpoints/ap_v2_redesign2</code>(캐노니컬 2일치로 학습). 새 = <code>checkpoints/ap_v2_redesign2_7sess_20260922/selected</code>(7세션으로 학습). 둘 다 h1~h4를 한 번도 보지 않았다. 스크립트는 <code>eval_today.py</code>와 <code>eval_today_rule.py</code>다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">모델</th><th class="num">정확도</th><th class="num">혼잡(2) recall</th><th class="num">심각 precision</th><th class="num">심각 recall</th><th class="num">혼잡→심각 오판(창)</th></tr></thead><tbody><tr class=""><td class="">Baseline 기존</td><td class="num">73.9</td><td class="num">50.4</td><td class="num">63.4</td><td class="num">61.6</td><td class="num">205</td></tr><tr class=""><td class="">Baseline <b>새</b></td><td class="num">83.7</td><td class="num">69.0</td><td class="num">86.7</td><td class="num">64.2</td><td class="num">63</td></tr><tr class="sep"><td class="">EE Fixed 기존</td><td class="num">72.5</td><td class="num">39.4</td><td class="num">58.0</td><td class="num">73.0</td><td class="num">291</td></tr><tr class=""><td class="">EE Fixed <b>새</b></td><td class="num">83.2</td><td class="num">62.5</td><td class="num">79.0</td><td class="num">75.3</td><td class="num">118</td></tr><tr class="sep"><td class="">EE Dynamic 기존</td><td class="num">72.1</td><td class="num">38.3</td><td class="num">57.4</td><td class="num">73.0</td><td class="num">300</td></tr><tr class=""><td class="">EE Dynamic <b>새</b></td><td class="num">83.0</td><td class="num">61.4</td><td class="num">78.2</td><td class="num">76.3</td><td class="num">126</td></tr><tr class="sep"><td class="">SDN 기존</td><td class="num">73.4</td><td class="num">43.4</td><td class="num">61.2</td><td class="num">65.4</td><td class="num">239</td></tr><tr class=""><td class="">SDN <b>새</b></td><td class="num">82.4</td><td class="num">64.7</td><td class="num">80.8</td><td class="num">72.1</td><td class="num">104</td></tr></tbody></table></div>
+<div class="legend"><span><i style="background:#8890a0"></i>정확도 (기존 Baseline)</span><span><i style="background:#2a78d6"></i>정확도 (새 Baseline)</span><span><i style="background:#1baf7a"></i>심각 recall (새 Baseline)</span><span><i style="background:#eb6834"></i>심각 precision (새 Baseline)</span></div><div class="chart"><svg viewBox="0 0 860 280" role="img"><line class="grid" x1="46" x2="850" y1="228.0" y2="228.0"/><text x="40" y="232.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="186.4" y2="186.4"/><text x="40" y="190.4" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="144.8" y2="144.8"/><text x="40" y="148.8" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="103.2" y2="103.2"/><text x="40" y="107.2" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="61.6" y2="61.6"/><text x="40" y="65.6" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>h1 · 정확도 (기존 Baseline): 80.4</title><rect x="91.5" y="60.7" width="26.0" height="167.3" rx="2" fill="#8890a0"/><text class="val" x="104.5" y="56.7" text-anchor="middle">80</text></g><g class="bar" tabindex="0"><title>h1 · 정확도 (새 Baseline): 94.2</title><rect x="119.5" y="32.1" width="26.0" height="195.9" rx="2" fill="#2a78d6"/><text class="val" x="132.5" y="28.1" text-anchor="middle">94</text></g><g class="bar" tabindex="0"><title>h1 · 심각 recall (새 Baseline): 76.8</title><rect x="147.5" y="68.3" width="26.0" height="159.7" rx="2" fill="#1baf7a"/><text class="val" x="160.5" y="64.3" text-anchor="middle">77</text></g><g class="bar" tabindex="0"><title>h1 · 심각 precision (새 Baseline): 96.2</title><rect x="175.5" y="27.9" width="26.0" height="200.1" rx="2" fill="#eb6834"/><text class="val" x="188.5" y="23.9" text-anchor="middle">96</text></g><text class="grp" x="146.5" y="262" text-anchor="middle">h1</text><g class="bar" tabindex="0"><title>h2 · 정확도 (기존 Baseline): 71.0</title><rect x="292.5" y="80.4" width="26.0" height="147.6" rx="2" fill="#8890a0"/><text class="val" x="305.5" y="76.4" text-anchor="middle">71</text></g><g class="bar" tabindex="0"><title>h2 · 정확도 (새 Baseline): 78.2</title><rect x="320.5" y="65.3" width="26.0" height="162.7" rx="2" fill="#2a78d6"/><text class="val" x="333.5" y="61.3" text-anchor="middle">78</text></g><g class="bar" tabindex="0"><title>h2 · 심각 recall (새 Baseline): 35.1</title><rect x="348.5" y="155.0" width="26.0" height="73.0" rx="2" fill="#1baf7a"/><text class="val" x="361.5" y="151.0" text-anchor="middle">35</text></g><g class="bar" tabindex="0"><title>h2 · 심각 precision (새 Baseline): 88.9</title><rect x="376.5" y="43.1" width="26.0" height="184.9" rx="2" fill="#eb6834"/><text class="val" x="389.5" y="39.1" text-anchor="middle">89</text></g><text class="grp" x="347.5" y="262" text-anchor="middle">h2</text><g class="bar" tabindex="0"><title>h3 · 정확도 (기존 Baseline): 69.7</title><rect x="493.5" y="82.9" width="26.0" height="145.1" rx="2" fill="#8890a0"/><text class="val" x="506.5" y="78.9" text-anchor="middle">70</text></g><g class="bar" tabindex="0"><title>h3 · 정확도 (새 Baseline): 72.7</title><rect x="521.5" y="76.9" width="26.0" height="151.1" rx="2" fill="#2a78d6"/><text class="val" x="534.5" y="72.9" text-anchor="middle">73</text></g><g class="bar" tabindex="0"><title>h3 · 심각 recall (새 Baseline): 54.8</title><rect x="549.5" y="114.1" width="26.0" height="113.9" rx="2" fill="#1baf7a"/><text class="val" x="562.5" y="110.1" text-anchor="middle">55</text></g><g class="bar" tabindex="0"><title>h3 · 심각 precision (새 Baseline): 96.5</title><rect x="577.5" y="27.3" width="26.0" height="200.7" rx="2" fill="#eb6834"/><text class="val" x="590.5" y="23.3" text-anchor="middle">97</text></g><text class="grp" x="548.5" y="262" text-anchor="middle">h3</text><g class="bar" tabindex="0"><title>h4 · 정확도 (기존 Baseline): 73.5</title><rect x="694.5" y="75.1" width="26.0" height="152.9" rx="2" fill="#8890a0"/><text class="val" x="707.5" y="71.1" text-anchor="middle">74</text></g><g class="bar" tabindex="0"><title>h4 · 정확도 (새 Baseline): 88.0</title><rect x="722.5" y="44.9" width="26.0" height="183.1" rx="2" fill="#2a78d6"/><text class="val" x="735.5" y="40.9" text-anchor="middle">88</text></g><g class="bar" tabindex="0"><title>h4 · 심각 recall (새 Baseline): 87.1</title><rect x="750.5" y="46.8" width="26.0" height="181.2" rx="2" fill="#1baf7a"/><text class="val" x="763.5" y="42.8" text-anchor="middle">87</text></g><g class="bar" tabindex="0"><title>h4 · 심각 precision (새 Baseline): 76.5</title><rect x="778.5" y="68.9" width="26.0" height="159.1" rx="2" fill="#eb6834"/><text class="val" x="791.5" y="64.9" text-anchor="middle">76</text></g><text class="grp" x="749.5" y="262" text-anchor="middle">h4</text></svg></div>
+<ul>
+  <li><b>네 모델 모두 새 모델이 확실히 낫다.</b> 정확도가 약 10pt 오르고, 혼잡을 심각으로 오판하는 창이 1/2~1/3로 줄어 심각 precision이 약 20pt 오른다. g6(학교)에서 본 개선이 집의 새 세션 네 개에서도 재현됐다.</li>
+  <li><b>심각 recall은 거의 그대로다</b>(Baseline 61.6→64.2, EE Dynamic 73.0→76.3). 이득은 대부분 오탐 감소에서 나왔다.</li>
+  <li>7세션 LOSO 평균(정확도 87.8, 심각 recall 76.0, precision 88.1)보다 조금 낮다. 오늘 세션은 약한 링크와 폰↔폰 부하처럼 일부러 까다롭게 잡은 조건이다.</li>
+</ul>
+<h3>세션별 (새 모델)</h3>
+<div class="tablewrap"><table><thead><tr><th class="">세션</th><th class="">모델(새)</th><th class="num">정확도</th><th class="num">혼잡 recall</th><th class="num">심각 precision</th><th class="num">심각 recall</th><th class="num">혼잡→심각</th></tr></thead><tbody><tr class=""><td class="">h1</td><td class="">Baseline</td><td class="num">94.2</td><td class="num">87.4</td><td class="num">96.2</td><td class="num">76.8</td><td class="num">3</td></tr><tr class=""><td class=""></td><td class="">EE Fixed</td><td class="num">92.0</td><td class="num">81.8</td><td class="num">82.3</td><td class="num">79.8</td><td class="num">17</td></tr><tr class=""><td class=""></td><td class="">EE Dynamic</td><td class="num">91.8</td><td class="num">81.8</td><td class="num">81.4</td><td class="num">79.8</td><td class="num">18</td></tr><tr class=""><td class=""></td><td class="">SDN</td><td class="num">90.9</td><td class="num">86.2</td><td class="num">85.9</td><td class="num">79.8</td><td class="num">11</td></tr><tr class="sep"><td class="">h2</td><td class="">Baseline</td><td class="num">78.2</td><td class="num">65.6</td><td class="num">88.9</td><td class="num">35.1</td><td class="num">4</td></tr><tr class=""><td class=""></td><td class="">EE Fixed</td><td class="num">77.7</td><td class="num">66.1</td><td class="num">83.1</td><td class="num">47.4</td><td class="num">7</td></tr><tr class=""><td class=""></td><td class="">EE Dynamic</td><td class="num">77.5</td><td class="num">66.1</td><td class="num">83.6</td><td class="num">49.1</td><td class="num">7</td></tr><tr class=""><td class=""></td><td class="">SDN</td><td class="num">77.4</td><td class="num">68.2</td><td class="num">84.5</td><td class="num">43.0</td><td class="num">5</td></tr><tr class="sep"><td class="">h3</td><td class="">Baseline</td><td class="num">72.7</td><td class="num">30.9</td><td class="num">96.5</td><td class="num">54.8</td><td class="num">4</td></tr><tr class=""><td class=""></td><td class="">EE Fixed</td><td class="num">77.2</td><td class="num">22.3</td><td class="num">88.9</td><td class="num">73.0</td><td class="num">13</td></tr><tr class=""><td class=""></td><td class="">EE Dynamic</td><td class="num">77.6</td><td class="num">22.3</td><td class="num">89.1</td><td class="num">74.6</td><td class="num">13</td></tr><tr class=""><td class=""></td><td class="">SDN</td><td class="num">76.2</td><td class="num">28.7</td><td class="num">96.0</td><td class="num">66.3</td><td class="num">5</td></tr><tr class="sep"><td class="">h4</td><td class="">Baseline</td><td class="num">88.0</td><td class="num">74.6</td><td class="num">76.5</td><td class="num">87.1</td><td class="num">52</td></tr><tr class=""><td class=""></td><td class="">EE Fixed</td><td class="num">84.4</td><td class="num">62.5</td><td class="num">68.8</td><td class="num">92.3</td><td class="num">81</td></tr><tr class=""><td class=""></td><td class="">EE Dynamic</td><td class="num">83.7</td><td class="num">59.5</td><td class="num">67.2</td><td class="num">92.8</td><td class="num">88</td></tr><tr class=""><td class=""></td><td class="">SDN</td><td class="num">83.7</td><td class="num">61.6</td><td class="num">68.2</td><td class="num">92.8</td><td class="num">83</td></tr></tbody></table></div>
+<ul>
+  <li><b>h1</b>(링크 좋음)은 정확도 90.9~94.2%로 LOSO보다 높다.</li>
+  <li><b>h2</b>(노트북 약한 링크)는 심각 recall이 35~49%로 가장 낮다. 심각의 2/3가 loss·latency 원인이다.</li>
+  <li><b>h3</b>(폰↔폰)는 혼잡 recall이 22~31%로 무너진다. 규칙도 29.8%라 모델만의 문제가 아니다. 이 세션의 혼잡은 대부분 occupancy가 아니라 loss·latency 축에서 붙었다.</li>
+  <li><b>h4</b>(폰 중간 약한 링크)는 심각을 잘 잡지만(87~93%) 혼잡→심각 오판이 52~88창으로 많다.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="n">2</span>occupancy 문턱 규칙 vs LSTM vs 하이브리드</h2>
+<p class="sub"><b>규칙</b>: 창 마지막 시점의 occupancy_score만으로 등급을 정한다(0.25/0.5/0.75). occupancy_score는 모델 입력의 결정적 함수라 배포 시점에 프로브 없이 계산된다. <b>하이브리드</b>: LSTM이나 규칙 중 하나라도 심각이면 심각, 아니면 규칙 등급이다(09-23 정의와 같다). 아래 표는 네 세션을 같은 가중치로 평균한 값이다.</p>
+<div class="tablewrap"><table><thead><tr><th class="">방식</th><th class="num">정확도</th><th class="num">경고 recall</th><th class="num">혼잡 recall</th><th class="num">심각 precision</th><th class="num">심각 recall</th><th class="num">심각 recall: occupancy 주도</th><th class="num">latency 주도</th><th class="num">loss 주도</th></tr></thead><tbody><tr class=""><td class=""><b>규칙만</b></td><td class="num">85.0</td><td class="num">99.4</td><td class="num">71.5</td><td class="num">100.0</td><td class="num">58.8</td><td class="num">100.0</td><td class="num">0.0</td><td class="num">0.0</td></tr><tr class="sep"><td class="">Baseline 새</td><td class="num">83.3</td><td class="num">96.7</td><td class="num">64.6</td><td class="num">89.5</td><td class="num">63.4</td><td class="num">94.8</td><td class="num">25.4</td><td class="num">23.1</td></tr><tr class=""><td class="">하이브리드(규칙+Baseline 새)</td><td class="num">84.8</td><td class="num">99.1</td><td class="num">64.6</td><td class="num">89.9</td><td class="num">66.1</td><td class="num">100.0</td><td class="num">25.4</td><td class="num">23.1</td></tr><tr class="sep"><td class="">EE Fixed 새</td><td class="num">82.8</td><td class="num">91.4</td><td class="num">58.2</td><td class="num">80.8</td><td class="num">73.1</td><td class="num">95.7</td><td class="num">49.9</td><td class="num">45.1</td></tr><tr class=""><td class="">하이브리드(규칙+EE Fixed 새)</td><td class="num">85.1</td><td class="num">96.9</td><td class="num">57.2</td><td class="num">81.3</td><td class="num">75.5</td><td class="num">100.0</td><td class="num">49.9</td><td class="num">45.1</td></tr><tr class="sep"><td class="">EE Dynamic 새</td><td class="num">82.7</td><td class="num">91.1</td><td class="num">57.4</td><td class="num">80.3</td><td class="num">74.1</td><td class="num">95.1</td><td class="num">53.8</td><td class="num">45.7</td></tr><tr class=""><td class="">하이브리드(규칙+EE Dynamic 새)</td><td class="num">85.1</td><td class="num">96.9</td><td class="num">56.3</td><td class="num">80.9</td><td class="num">76.7</td><td class="num">100.0</td><td class="num">53.8</td><td class="num">45.7</td></tr><tr class="sep"><td class="">SDN 새</td><td class="num">82.0</td><td class="num">89.8</td><td class="num">61.2</td><td class="num">83.6</td><td class="num">70.5</td><td class="num">95.9</td><td class="num">43.4</td><td class="num">42.4</td></tr><tr class=""><td class="">하이브리드(규칙+SDN 새)</td><td class="num">84.9</td><td class="num">98.1</td><td class="num">59.8</td><td class="num">84.0</td><td class="num">72.7</td><td class="num">100.0</td><td class="num">43.4</td><td class="num">42.4</td></tr></tbody></table></div>
+<ul>
+  <li><b>규칙만으로 정확도 85.0%가 나온다.</b> 새 LSTM 네 종(82.0~83.3%)보다 높고, 경고·혼잡 recall도 가장 높다. 09-23 LOSO 결론(규칙 89.7 vs LSTM 87.8)이 held-out 세션에서도 재현됐다.</li>
+  <li>규칙의 심각 precision 100%는 정의상 당연하다. 라벨이 max(축)이라 occupancy가 심각이면 라벨도 반드시 심각이다. 대신 규칙은 <b>occupancy가 낮은 심각을 하나도 못 잡는다</b>(latency·loss 원인 recall 0%).</li>
+  <li><b>LSTM의 기여는 바로 그 부분</b>이다. latency 원인 25~54%, loss 원인 23~46%를 잡아 심각 recall을 규칙보다 4.6~15pt 올린다. EE 계열이 이 부분에서 가장 강하다.</li>
+  <li><b>하이브리드가 두 장점을 합친다.</b> 규칙+EE Dynamic은 정확도 85.1%(규칙과 같다)에 심각 recall 76.7%(전체 최고)다. 대가는 혼잡 recall이다. LSTM이 혼잡을 심각으로 올려 부르는 만큼 규칙보다 낮아진다(71.5 → 56~65).</li>
+</ul>
+<h3>세션별</h3>
+<div class="tablewrap"><table><thead><tr><th class="">세션</th><th class="num">정확도: 규칙</th><th class="num">Baseline 새</th><th class="num">하이브리드</th><th class="num">심각 recall: 규칙</th><th class="num">Baseline 새</th><th class="num">EE Dynamic 새</th></tr></thead><tbody><tr class=""><td class="">h1</td><td class="num">95.6</td><td class="num">94.2</td><td class="num">95.9</td><td class="num">77.8</td><td class="num">76.8</td><td class="num">79.8</td></tr><tr class=""><td class="">h2</td><td class="num">80.9</td><td class="num">78.2</td><td class="num">80.9</td><td class="num">34.2</td><td class="num">35.1</td><td class="num">49.1</td></tr><tr class=""><td class="">h3</td><td class="num">70.6</td><td class="num">72.7</td><td class="num">73.5</td><td class="num">46.8</td><td class="num">54.8</td><td class="num">74.6</td></tr><tr class=""><td class="">h4</td><td class="num">92.7</td><td class="num">88.0</td><td class="num">88.7</td><td class="num">76.3</td><td class="num">87.1</td><td class="num">92.8</td></tr></tbody></table></div>
+</section>
+
+<section>
+<h2><span class="n">3</span>AP 송신 큐 깊이 — 8번째 feature 후보</h2>
+<p class="sub">큐 값은 Pi 로거가 1초마다 덤프한 Opal debugfs(<code>lite_mem txq_cnt</code>, MAC 불필요)를 수집 행에 시각으로 맞춘 것이다. 두 가지로 검정했다: 폴링 단위 로지스틱 회귀(occ 55~75% 구간 혼잡 vs 심각, LOSO AUC)와 창 단위 LSTM LOSO(7-feature vs 8-feature, Baseline 5시드).</p>
+<h3>3-1 로지스틱 회귀 (h4 최종본으로 재계산)</h3>
+<div class="tablewrap"><table><thead><tr><th class="">특징 세트</th><th class="num">latency 주도 AUC: h1</th><th class="num">h2</th><th class="num">h3</th><th class="num">h4</th><th class="num">평균</th><th class="num">심각 전체 AUC 평균</th><th class="num">loss 주도 AUC 평균</th></tr></thead><tbody><tr class=""><td class="">① occupancy만</td><td class="num">0.797</td><td class="num">0.594</td><td class="num">0.708</td><td class="num">0.694</td><td class="num"><b>0.698</b></td><td class="num">0.622</td><td class="num">0.567</td></tr><tr class=""><td class="">② occupancy + 큐</td><td class="num">0.777</td><td class="num">0.679</td><td class="num">0.822</td><td class="num">0.697</td><td class="num"><b>0.744</b></td><td class="num">0.634</td><td class="num">0.551</td></tr><tr class="sep"><td class="">③ 기존 7-feature</td><td class="num">0.601</td><td class="num">0.687</td><td class="num">0.706</td><td class="num">0.797</td><td class="num"><b>0.698</b></td><td class="num">0.713</td><td class="num">0.713</td></tr><tr class=""><td class="">④ 7-feature + 큐</td><td class="num">0.674</td><td class="num">0.706</td><td class="num">0.779</td><td class="num">0.808</td><td class="num"><b>0.742</b></td><td class="num">0.705</td><td class="num">0.670</td></tr></tbody></table></div>
+<ul>
+  <li><b>latency 원인 심각</b>: 7-feature에 큐를 더하면 AUC가 0.698 → 0.742(+0.044)로 오르고, <b>네 세션 모두 상승</b>한다. 이전 계산(h4 원본 step 기준, +0.074)보다 폭은 작지만 방향은 같다.</li>
+  <li><b>심각 전체</b>는 0.713 → 0.705로 이득이 없다(이전 +0.020). <b>loss 원인</b>은 0.713 → 0.670으로 오히려 나빠진다.</li>
+  <li>큐 깊이는 "victim 앞 큐가 길어져 지연이 생기는" 경우의 신호이지 loss의 신호는 아니다. 앞선 분석(Cohen's d, 부분 상관)과 같은 결론이다.</li>
+</ul>
+<h3>3-2 LSTM LOSO: 7-feature vs 8-feature</h3>
+<div class="tablewrap"><table><thead><tr><th class="">테스트 세션</th><th class="">입력</th><th class="num">정확도</th><th class="num">심각 recall</th><th class="num">심각 precision</th><th class="num">혼잡 recall</th><th class="num">경고 recall</th></tr></thead><tbody><tr class=""><td class="">h1</td><td class="">7-feature</td><td class="num">81.0±2.4</td><td class="num">71.7±2.1</td><td class="num">84.3±6.0</td><td class="num">66.5±6.4</td><td class="num">79.3±7.5</td></tr><tr class=""><td class=""></td><td class="">8-feature</td><td class="num">77.5±2.1</td><td class="num">53.1±14.2</td><td class="num">75.5±8.8</td><td class="num">61.4±6.7</td><td class="num">78.7±5.5</td></tr><tr class="sep"><td class="">h2</td><td class="">7-feature</td><td class="num">74.4±1.7</td><td class="num">42.6±3.3</td><td class="num">86.9±3.6</td><td class="num">59.3±5.9</td><td class="num">91.4±0.9</td></tr><tr class=""><td class=""></td><td class="">8-feature</td><td class="num">75.5±0.6</td><td class="num">44.7±5.0</td><td class="num">82.9±2.8</td><td class="num">69.0±1.8</td><td class="num">84.7±1.1</td></tr><tr class="sep"><td class="">h3</td><td class="">7-feature</td><td class="num">74.7±2.1</td><td class="num">64.6±5.3</td><td class="num">95.2±0.8</td><td class="num">18.9±3.1</td><td class="num">93.9±3.3</td></tr><tr class=""><td class=""></td><td class="">8-feature</td><td class="num">77.4±0.9</td><td class="num">92.5±2.3</td><td class="num">68.5±2.3</td><td class="num">20.6±6.1</td><td class="num">52.3±5.8</td></tr><tr class="sep"><td class="">h4</td><td class="">7-feature</td><td class="num">72.4±2.8</td><td class="num">95.9±2.1</td><td class="num">53.7±3.2</td><td class="num">31.8±11.2</td><td class="num">61.0±5.9</td></tr><tr class=""><td class=""></td><td class="">8-feature</td><td class="num">74.8±4.3</td><td class="num">90.9±1.5</td><td class="num">61.2±6.3</td><td class="num">36.6±15.8</td><td class="num">83.8±5.9</td></tr><tr class="sep"><td class=""><b>세션 평균</b></td><td class=""><b>7-feature</b></td><td class="num"><b>75.6</b></td><td class="num"><b>68.7</b></td><td class="num"><b>80.0</b></td><td class="num"><b>44.1</b></td><td class="num"><b>81.4</b></td></tr><tr class=""><td class=""></td><td class=""><b>8-feature</b></td><td class="num"><b>76.3</b></td><td class="num"><b>70.3</b></td><td class="num"><b>72.0</b></td><td class="num"><b>46.9</b></td><td class="num"><b>74.9</b></td></tr></tbody></table></div>
+<div class="legend"><span><i style="background:#9fc3ee"></i>심각 recall 7f</span><span><i style="background:#2a78d6"></i>심각 recall 8f</span><span><i style="background:#c9d0da"></i>정확도 7f</span><span><i style="background:#4b5566"></i>정확도 8f</span></div><div class="chart"><svg viewBox="0 0 860 280" role="img"><line class="grid" x1="46" x2="850" y1="228.0" y2="228.0"/><text x="40" y="232.0" text-anchor="end">0</text><line class="grid" x1="46" x2="850" y1="186.4" y2="186.4"/><text x="40" y="190.4" text-anchor="end">20</text><line class="grid" x1="46" x2="850" y1="144.8" y2="144.8"/><text x="40" y="148.8" text-anchor="end">40</text><line class="grid" x1="46" x2="850" y1="103.2" y2="103.2"/><text x="40" y="107.2" text-anchor="end">60</text><line class="grid" x1="46" x2="850" y1="61.6" y2="61.6"/><text x="40" y="65.6" text-anchor="end">80</text><line class="grid" x1="46" x2="850" y1="20.0" y2="20.0"/><text x="40" y="24.0" text-anchor="end">100</text><g class="bar" tabindex="0"><title>h1 · 심각 recall 7f: 71.7</title><rect x="71.4" y="78.8" width="26.0" height="149.2" rx="2" fill="#9fc3ee"/><text class="val" x="84.4" y="74.8" text-anchor="middle">72</text></g><g class="bar" tabindex="0"><title>h1 · 심각 recall 8f: 53.1</title><rect x="99.4" y="117.5" width="26.0" height="110.5" rx="2" fill="#2a78d6"/><text class="val" x="112.4" y="113.5" text-anchor="middle">53</text></g><g class="bar" tabindex="0"><title>h1 · 정확도 7f: 81.0</title><rect x="127.4" y="59.5" width="26.0" height="168.5" rx="2" fill="#c9d0da"/><text class="val" x="140.4" y="55.5" text-anchor="middle">81</text></g><g class="bar" tabindex="0"><title>h1 · 정확도 8f: 77.5</title><rect x="155.4" y="66.8" width="26.0" height="161.2" rx="2" fill="#4b5566"/><text class="val" x="168.4" y="62.8" text-anchor="middle">77</text></g><text class="grp" x="126.4" y="262" text-anchor="middle">h1</text><g class="bar" tabindex="0"><title>h2 · 심각 recall 7f: 42.6</title><rect x="232.2" y="139.3" width="26.0" height="88.7" rx="2" fill="#9fc3ee"/><text class="val" x="245.2" y="135.3" text-anchor="middle">43</text></g><g class="bar" tabindex="0"><title>h2 · 심각 recall 8f: 44.7</title><rect x="260.2" y="134.9" width="26.0" height="93.1" rx="2" fill="#2a78d6"/><text class="val" x="273.2" y="130.9" text-anchor="middle">45</text></g><g class="bar" tabindex="0"><title>h2 · 정확도 7f: 74.4</title><rect x="288.2" y="73.2" width="26.0" height="154.8" rx="2" fill="#c9d0da"/><text class="val" x="301.2" y="69.2" text-anchor="middle">74</text></g><g class="bar" tabindex="0"><title>h2 · 정확도 8f: 75.5</title><rect x="316.2" y="71.0" width="26.0" height="157.0" rx="2" fill="#4b5566"/><text class="val" x="329.2" y="67.0" text-anchor="middle">76</text></g><text class="grp" x="287.2" y="262" text-anchor="middle">h2</text><g class="bar" tabindex="0"><title>h3 · 심각 recall 7f: 64.6</title><rect x="393.0" y="93.6" width="26.0" height="134.4" rx="2" fill="#9fc3ee"/><text class="val" x="406.0" y="89.6" text-anchor="middle">65</text></g><g class="bar" tabindex="0"><title>h3 · 심각 recall 8f: 92.5</title><rect x="421.0" y="35.5" width="26.0" height="192.5" rx="2" fill="#2a78d6"/><text class="val" x="434.0" y="31.5" text-anchor="middle">93</text></g><g class="bar" tabindex="0"><title>h3 · 정확도 7f: 74.7</title><rect x="449.0" y="72.6" width="26.0" height="155.4" rx="2" fill="#c9d0da"/><text class="val" x="462.0" y="68.6" text-anchor="middle">75</text></g><g class="bar" tabindex="0"><title>h3 · 정확도 8f: 77.4</title><rect x="477.0" y="67.1" width="26.0" height="160.9" rx="2" fill="#4b5566"/><text class="val" x="490.0" y="63.1" text-anchor="middle">77</text></g><text class="grp" x="448.0" y="262" text-anchor="middle">h3</text><g class="bar" tabindex="0"><title>h4 · 심각 recall 7f: 95.9</title><rect x="553.8" y="28.6" width="26.0" height="199.4" rx="2" fill="#9fc3ee"/><text class="val" x="566.8" y="24.6" text-anchor="middle">96</text></g><g class="bar" tabindex="0"><title>h4 · 심각 recall 8f: 90.9</title><rect x="581.8" y="38.9" width="26.0" height="189.1" rx="2" fill="#2a78d6"/><text class="val" x="594.8" y="34.9" text-anchor="middle">91</text></g><g class="bar" tabindex="0"><title>h4 · 정확도 7f: 72.4</title><rect x="609.8" y="77.5" width="26.0" height="150.5" rx="2" fill="#c9d0da"/><text class="val" x="622.8" y="73.5" text-anchor="middle">72</text></g><g class="bar" tabindex="0"><title>h4 · 정확도 8f: 74.8</title><rect x="637.8" y="72.4" width="26.0" height="155.6" rx="2" fill="#4b5566"/><text class="val" x="650.8" y="68.4" text-anchor="middle">75</text></g><text class="grp" x="608.8" y="262" text-anchor="middle">h4</text><g class="bar" tabindex="0"><title>평균 · 심각 recall 7f: 68.7</title><rect x="714.6" y="85.1" width="26.0" height="142.9" rx="2" fill="#9fc3ee"/><text class="val" x="727.6" y="81.1" text-anchor="middle">69</text></g><g class="bar" tabindex="0"><title>평균 · 심각 recall 8f: 70.3</title><rect x="742.6" y="81.7" width="26.0" height="146.3" rx="2" fill="#2a78d6"/><text class="val" x="755.6" y="77.7" text-anchor="middle">70</text></g><g class="bar" tabindex="0"><title>평균 · 정확도 7f: 75.6</title><rect x="770.6" y="70.7" width="26.0" height="157.3" rx="2" fill="#c9d0da"/><text class="val" x="783.6" y="66.7" text-anchor="middle">76</text></g><g class="bar" tabindex="0"><title>평균 · 정확도 8f: 76.3</title><rect x="798.6" y="69.3" width="26.0" height="158.7" rx="2" fill="#4b5566"/><text class="val" x="811.6" y="65.3" text-anchor="middle">76</text></g><text class="grp" x="769.6" y="262" text-anchor="middle">평균</text></svg></div>
+<ul>
+  <li><b>결론 불가(보류)</b>. 세션 평균은 정확도 75.6 → 76.3%, 심각 recall 68.7 → 70.3%로 조금 오르지만, 심각 precision은 80.0 → 72.0%, 경고 recall은 81.4 → 74.9%로 떨어진다.</li>
+  <li>세션마다 방향이 갈린다. <b>h3</b>는 심각 recall이 64.6 → 92.5%로 크게 오르지만 precision은 95.2 → 68.5%, 경고는 93.9 → 52.3%로 무너진다. 큐가 "심각 쪽으로 부르는 단서"로 쓰인 것이다. <b>h4</b>는 반대로 precision(+7.5)과 경고(+22.8)가 오르고 recall이 조금 내린다. <b>h1</b>은 recall이 71.7 → 53.1%(±14.2)로 흔들리고, <b>h2</b>는 거의 같다.</li>
+  <li><b>7-feature 자체가 약하다.</b> 세 세션(약 1,500창)으로만 학습해서 정확도가 75.6%다. 같은 세션에 7세션 모델을 적용하면 82~83%다(§1). 이 규모에서는 큐의 순수 기여를 가려낼 수 없다. 3세션판(h1~h3, 09-24 오후)과 같은 상황이 반복됐다.</li>
+  <li>폴링 단위 로지스틱에서 보이는 "latency 원인 심각에 대한 일관된 이득"(§3-1)이 LSTM 전체 성능으로는 아직 이어지지 않는다. 그 유형은 오늘 심각 창의 20% 정도(139/659)뿐이라, 전체 지표에서는 다른 변동에 묻힌다.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="n">4</span>결론과 다음</h2>
+<ul>
+  <li><b>배포 교체 근거가 하나 더 생겼다.</b> 새 7세션 모델은 held-out 네 세션에서 네 모델 모두 정확도 +9~11pt, 오탐 1/2~1/3을 보였다. g6(학교)와 같은 방향이다. 다만 심각 recall은 거의 그대로다.</li>
+  <li><b>보고서 비교표에 규칙 baseline이 반드시 들어가야 한다.</b> held-out에서도 규칙만으로 정확도 85.0%(세션 평균)가 나와 LSTM(82~83%)보다 높다. LSTM을 정당화하는 근거는 "occupancy 미달 심각 recall"(latency 25~54%, loss 23~46% vs 규칙 0%)이다. 운영안으로는 <b>규칙+EE 하이브리드</b>(정확도 85.1, 심각 recall 76.7)가 가장 균형이 좋다. 단, 혼잡 recall이 규칙보다 7~15pt 낮다.</li>
+  <li><b>큐 깊이는 후보로 남긴다.</b> latency 원인 심각에서는 두 번의 계산 모두 네 세션이 같은 방향이었다. 하지만 LSTM 8-feature 비교는 학습 세션이 적어 판단이 안 된다. 앞으로 모든 세션에 Pi 로거가 자동으로 붙으므로, 로거가 있는 세션이 6~7개 쌓이면 다시 비교한다.</li>
+  <li><b>h3(폰↔폰)의 혼잡은 occupancy가 아닌 축에서 붙는다.</b> 규칙과 LSTM 모두 혼잡 recall이 20~30%대다. 부하 구조에 따라 라벨 원인 분포가 크게 달라진다는 점을 보고서 한계로 적는다.</li>
+  <li><b>남은 것</b>: EE·SDN 하이브리드는 오프라인 재조합만 했다(재학습 없음). 8-feature 비교는 Baseline만 했다. step_redo5의 30M 구간(AP 멈춤)은 풀에 그대로 들어 있다.</li>
+</ul>
+</section>
+
+<footer>
+  스크립트·로그: <code>project/.tmp/exp_24g/</code> — <code>eval_today.py</code>(기존 vs 새), <code>eval_today_rule.py</code> → <code>eval_today_rule.log</code>·<code>eval_today_rule_rows.csv</code>(규칙·하이브리드 포함), <code>logit_q_test_today.py</code> → <code>logit_q_test_today.log</code>·<code>_rows.csv</code>, <code>loso_q8_today.py</code> → <code>loso_q8_today.log</code>·<code>loso_q8today_lm_cnt_rows.csv</code>, 이 페이지는 <code>build_today_report.py</code>가 만든다. 풀: <code>pool_today/</code>(h1~h3 + h4 최종본, k2m2 재라벨). 수집 원본: <code>session_0924_h1~h4/</code>. 관련 문서: <code>g3_bitrate_loso_analysis.html</code>, <code>session_test_summary.html</code>, <code>congestion_label_redesign.html</code>.
+</footer>
+
+</main>
+</body>
+</html>
