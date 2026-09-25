@@ -62,7 +62,7 @@ START_EPOCH=$(( $(date +%s) + 5 ))   # 두 폰 공통 단계 기준 시각(ramp_
 echo "    단계 기준 시각 START_EPOCH=${START_EPOCH} ($(date -d @${START_EPOCH} +%H:%M:%S)), 폰 로그 ~/${PLOG}"
 launch() {  # $1=index, $2=리다이렉트(> 새로 / >> 이어서)
   local h="${HOSTS[$1]}" p="${PORTS[$1]}"
-  timeout 15 ssh "${SSHR[@]}" "$h" "nohup bash ramp_load.sh ${p} ${PROFILE} ${TARGET_IP} ${PKT_LEN} ${START_EPOCH} ${2:->} ${PLOG} 2>&1 < /dev/null &"     || echo "!!! [$(date +%H:%M:%S)] ${h} 기동 SSH 실패"
+  timeout 15 ssh "${SSHR[@]}" "$h" "nohup env REVERSE=${REVERSE:-0} bash ramp_load.sh ${p} ${PROFILE} ${TARGET_IP} ${PKT_LEN} ${START_EPOCH} ${2:->} ${PLOG} 2>&1 < /dev/null &"     || echo "!!! [$(date +%H:%M:%S)] ${h} 기동 SSH 실패"
 }
 running() { timeout 10 ssh "${SSHR[@]}" "$1" 'pgrep -f "[r]amp_load.sh" >/dev/null'; }   # 0=실행 중, 1=없음, 그 외=SSH 실패
 for i in "${!HOSTS[@]}"; do launch "$i" ">" & done; wait

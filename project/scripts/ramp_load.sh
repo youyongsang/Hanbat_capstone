@@ -164,6 +164,9 @@ trap cleanup INT TERM
 # 먼저 연결한 폰의 UDP가 큐를 채워 나중 폰의 제어 연결(TCP)이 30초씩 멈췄음(h4 step, 양쪽 폰 재현).
 # 각 단계는 경계 1초 전에 끝나고, 두 폰이 링크가 빈 같은 순간에 다음 단계를 연결한다.
 START_EPOCH="${5:-$(date +%s)}"
+# 보완(09-26): REVERSE=1이면 iperf3 -R — 서버(유선 Pi)가 이 폰으로 보내는 다운링크 부하(셋업 B, ramp_load_wired.sh down)
+DIR_FLAG=""; [ "${REVERSE:-0}" = "1" ] && DIR_FLAG="-R"
+[ -n "$DIR_FLAG" ] && echo "방향        : 다운링크(-R, ${TARGET_IP} → 이 폰)"
 total=0
 for step in "${STEPS[@]}"; do
   rate="${step%%:*}"
@@ -178,7 +181,7 @@ for step in "${STEPS[@]}"; do
   while :; do
     left=$(( end - $(date +%s) ))
     [ "$left" -lt 3 ] && break
-    timeout $((left + 8)) iperf3 -u -c "${TARGET_IP}" -p "${PORT}" -l "${PKT_LEN}" -b "${rate}" -t "${left}" --connect-timeout 3000 && break
+    timeout $((left + 8)) iperf3 -u -c "${TARGET_IP}" -p "${PORT}" -l "${PKT_LEN}" -b "${rate}" -t "${left}" --connect-timeout 3000 ${DIR_FLAG} && break
     tries=$((tries + 1))
     echo "!! [$(date +%H:%M:%S)] iperf3 실패 (재시도 ${tries}) — 단계 남은 ${left}s"
     sleep 2
