@@ -97,7 +97,7 @@
 </head>
 <body>
 <main>
-<p class="eyebrow">2.4GHz · 집 · 2026-09-24~25 · 28차 후속(18)</p>
+<p class="eyebrow">2.4GHz · 집 · 2026-09-24~25 · 28차 후속(18)·(19)</p>
 <h1>h 세션 6개 테스트</h1>
 <p class="lead">9/24~25에 수집한 h 세션 6개(h1~h4, h6, h7)는 어떤 모델 학습에도 쓰지 않았다. 4세션판(<code>session_0924_h_test.html</code>)을 h6·h7까지 넓혀 같은 세 가지를 다시 확인했다. (1) 새 7세션 모델이 기존 배포 모델보다 나은지, (2) occupancy 문턱 규칙만 써도 되는지, (3) AP 송신 큐 깊이가 8번째 feature로 쓸모 있는지.</p>
 
@@ -105,11 +105,11 @@
   <div class="kpi"><b>76.7 → 85.1%</b><span>4-class 정확도(세션 평균), 기존 → 새 Baseline</span></div>
   <div class="kpi"><b>86.3%</b><span>occupancy 규칙만 썼을 때 정확도 — 새 LSTM 83.1~85.1%보다 높음</span></div>
   <div class="kpi"><b>+0.051</b><span>latency 원인 심각 AUC, 7-feature에 큐 추가 (6세션 모두 상승)</span></div>
-  <div class="kpi"><b>80.5 → 82.8%</b><span>LSTM LOSO 정확도, 7 → 8-feature (4세션 상승·2세션 보합)</span></div>
+  <div class="kpi"><b>+1.3~+2.3pt</b><span>LSTM LOSO 정확도, 7 → 8-feature — Baseline·EE Fixed·EE Dynamic·SDN 네 모델 모두</span></div>
 </div>
 
 <div class="callout">
-  <p><strong>한 줄 요약.</strong> 세션을 6개로 늘려도 앞선 결론은 그대로다. 새 모델이 기존 모델보다 확실히 낫고, 정확도는 규칙이 가장 높으며, LSTM의 몫은 occupancy가 낮은데도 심각한 창을 잡는 것이다. 달라진 점은 큐 feature다. LSTM LOSO에서 처음으로 8-feature가 정확도 기준 일관되게 앞섰다. 다만 심각 recall 이득은 대부분 폰↔폰 세션(h3) 하나에서 나왔으므로 "유망, 미확정"으로 둔다.</p>
+  <p><strong>한 줄 요약.</strong> 세션을 6개로 늘려도 앞선 결론은 그대로다. 새 모델이 기존 모델보다 확실히 낫고, 정확도는 규칙이 가장 높으며, LSTM의 몫은 occupancy가 낮은데도 심각한 창을 잡는 것이다. 달라진 점은 큐 feature다. LSTM LOSO에서 처음으로 8-feature가 정확도 기준 일관되게 앞섰고, 이 효과는 Baseline뿐 아니라 배포 후보인 EE와 SDN에서도 같은 방향이다. 심각 recall 이득은 대부분 폰↔폰 세션(h3) 하나에서 나오므로, 다른 장소에서 확인하기 전까지는 "채택 후보"로 둔다.</p>
 </div>
 
 <section>
@@ -183,6 +183,14 @@
   <li>학습 세션이 3개→5개로 늘어 7-feature 자체도 75.6→80.5%로 안정됐다. 4세션판의 "판단 불가"는 데이터가 적어서였던 것으로 보인다.</li>
   <li><b>심각 recall 이득(+6.0)은 대부분 h3에서 나왔다.</b> h3는 recall +33pt 대신 precision −23pt, 경고 −44pt다. h3를 빼면 정확도 +2.0, 심각 recall +0.7, precision +1.6이다. 정확도 이득은 h4(+7.2, precision +12)와 h1이 주도한다.</li>
 </ul>
+<h3>3-3 EE·SDN으로도 같은 비교 (6세션, 5시드, 데이터·분할 동일)</h3>
+<p class="sub">EE·SDN은 원본 학습 스크립트와 같게 학습했다(EE: 출구 손실 0.3/0.3/0.4, Fixed θ 0.3/0.6과 Dynamic θ를 한 모델로 평가 / SDN: 커리큘럼 손실 + val로 신뢰도 T 보정). 배치 예측이 원본 <code>infer_batch_stepwise</code>와 예측·출구 위치 모두 100% 같은지 먼저 확인했다. 스크립트 <code>loso_q8_6s_eesdn.py</code>.</p>
+<div class="tablewrap"><table><thead><tr><th class="">모델</th><th class="num">정확도 Δ h1</th><th class="num">h2</th><th class="num">h3</th><th class="num">h4</th><th class="num">h6</th><th class="num">h7</th><th class="num">정확도 세션 평균 7f → 8f</th><th class="num">심각 recall Δ</th><th class="num">심각 precision Δ</th></tr></thead><tbody><tr class=""><td class="">Baseline</td><td class="num">+2.3</td><td class="num">-0.2</td><td class="num">+3.6</td><td class="num">+7.1</td><td class="num">-0.1</td><td class="num">+1.1</td><td class="num">80.5 → <b>82.8</b></td><td class="num">+6.0</td><td class="num">-2.6</td></tr><tr class=""><td class="">EE Fixed</td><td class="num">+2.7</td><td class="num">+0.8</td><td class="num">+4.4</td><td class="num">+2.0</td><td class="num">+0.3</td><td class="num">+1.5</td><td class="num">79.8 → <b>81.8</b></td><td class="num">+5.9</td><td class="num">-2.3</td></tr><tr class=""><td class="">EE Dynamic</td><td class="num">+2.5</td><td class="num">+1.0</td><td class="num">+4.0</td><td class="num">+1.3</td><td class="num">+0.2</td><td class="num">+1.4</td><td class="num">79.7 → <b>81.4</b></td><td class="num">+5.4</td><td class="num">-2.1</td></tr><tr class=""><td class="">SDN</td><td class="num">+2.4</td><td class="num">+0.8</td><td class="num">+3.7</td><td class="num">+1.8</td><td class="num">-1.7</td><td class="num">+0.8</td><td class="num">79.4 → <b>80.7</b></td><td class="num">+5.4</td><td class="num">-4.3</td></tr></tbody></table></div>
+<ul>
+  <li><b>네 모델 모두 같은 방향이다.</b> 정확도 Δ 24칸 중 20칸이 양수이고, 음수 4칸 중 3칸은 −0.2 이하다. SDN h6(−1.7)만 조금 내려간다. 세션 평균 정확도는 네 모델 모두 +1.3~+2.3pt다. Baseline에서 본 효과가 배포 후보인 EE에서도 그대로 나온다.</li>
+  <li>심각 recall은 네 모델 모두 +5.4~+6.0pt, precision은 −2.2~−4.3pt다. recall 이득은 모든 모델에서 대부분 h3(폰↔폰)에서 나오고, h3에서는 경고 recall이 −35~−41pt 무너진다.</li>
+  <li>h3를 빼면 정확도 +0.8~+2.0, 심각 recall +0.6~+0.9, 심각 precision +1.6~+2.2(SDN만 −0.5)다. 심각 탐지는 비슷하고, 정확도와 precision이 조금 오르는 쪽이다.</li>
+</ul>
 </section>
 
 <section>
@@ -190,13 +198,13 @@
 <ul>
   <li><b>새 7세션 모델로의 배포 교체</b>: held-out 세션 6개(와 g6 학교)에서 일관되게 낫다. 교체 근거로 충분하다.</li>
   <li><b>보고서에는 규칙 baseline과 하이브리드를 꼭 넣는다.</b> 정확도는 규칙이 가장 높고, LSTM의 정당성은 occupancy 미달 심각 recall에 있다. 하이브리드는 심각 recall을 가장 높이지만 혼잡 recall을 17pt 내준다. 운영안으로 쓰려면 위 두 완화책의 오프라인 확인이 먼저다.</li>
-  <li><b>큐 깊이: "유망, 미확정"으로 한 단계 올린다.</b> 근거는 두 가지다. 로지스틱에서 latency 원인 심각 AUC가 6세션 모두 올랐고, LSTM 정확도가 4세션 상승·2세션 보합이다. 하지만 세션 6개·Baseline만이고 h3 효과가 섞여 있다. 다음 단계는 EE·SDN으로도 같은 비교를 하고, 로거가 있는 세션을 더 늘리는 것이다(특히 학교 등 다른 장소).</li>
+  <li><b>큐 깊이: "채택 후보"로 올린다.</b> 근거는 세 가지다. 로지스틱에서 latency 원인 심각 AUC가 6세션 모두 올랐고, LSTM 정확도가 Baseline·EE Fixed·EE Dynamic·SDN 네 모델 모두 세션 평균 +1.3~+2.3pt 올랐으며, 24칸 중 20칸이 양수다. 정식 승격 전에 남은 확인은 세 가지다. 다른 장소(학교) 세션에서 재현되는지, h3에 쏠린 심각 recall 이득과 경고 붕괴를 어떻게 볼지, 그리고 Pi가 매 폴링마다 AP debugfs를 읽도록 수집기를 고친 뒤 Pi 지연을 다시 재는 것이다.</li>
   <li><b>수집 조건 교훈</b>: 노트북만 멀리(−56~−62dBm) 두면 latency 원인 심각이 나온다(h2 32행, h7 24행). −53dBm(h6)에서는 거의 없다(2행). 세 기기를 모두 중간 거리에 두면 AP가 크래시한다(h5).</li>
 </ul>
 </section>
 
 <footer>
-  스크립트·로그: <code>project/.tmp/exp_24g/</code> — <code>eval_6s.py</code>·<code>eval_6s_rule.py</code> → <code>eval_6s_rule.log</code>·<code>eval_6s_rule_rows.csv</code>, <code>logit_q_test_6s.py</code> → <code>logit_q_test_6s.log</code>·<code>_rows.csv</code>, <code>loso_q8_6s.py</code> → <code>loso_q8_6s.log</code>·<code>loso_q8_6s_lm_cnt_rows.csv</code>. 이 페이지는 <code>build_6s_report.py</code> + <code>report_notes_6s.html</code>이 만든다. 풀: <code>pool_h6s/</code>(h1~h3 + h4 최종본 + h6(gray 절단) + h7, k2m2 재라벨). 수집 원본: <code>session_0924_h1~h4/</code>, <code>session_0925_h5~h7/</code>. 4세션판: <code>session_0924_h_test.html</code>.
+  스크립트·로그: <code>project/.tmp/exp_24g/</code> — <code>eval_6s.py</code>·<code>eval_6s_rule.py</code> → <code>eval_6s_rule.log</code>·<code>eval_6s_rule_rows.csv</code>, <code>logit_q_test_6s.py</code> → <code>logit_q_test_6s.log</code>·<code>_rows.csv</code>, <code>loso_q8_6s.py</code> → <code>loso_q8_6s.log</code>·<code>loso_q8_6s_lm_cnt_rows.csv</code>, <code>loso_q8_6s_eesdn.py</code> → <code>loso_q8_6s_ee.log</code>·<code>loso_q8_6s_sdn.log</code>, 4모델 합본 <code>loso_q8_6s_all4_rows.csv</code>. 이 페이지는 <code>build_6s_report.py</code> + <code>report_notes_6s.html</code>이 만든다. 풀: <code>pool_h6s/</code>(h1~h3 + h4 최종본 + h6(gray 절단) + h7, k2m2 재라벨). 수집 원본: <code>session_0924_h1~h4/</code>, <code>session_0925_h5~h7/</code>. 4세션판: <code>session_0924_h_test.html</code>.
 </footer>
 
 </main>
