@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_RAMP="${SCRIPT_DIR}/ramp_load.sh"
 
 HOSTS=(${PHONE_HOSTS:-s21 s26})
-PORTS=(5201 5202)
+PORTS=(${PHONE_PORTS:-5201 5202})   # 09-26: 유선 싱크(Pi)는 5211/5212 (Pi의 시스템 iperf3.service가 5201을 상시 점유)
 
 echo "=== 원격 램프 부하 오케스트레이터 (profile=${PROFILE}, target=${TARGET_IP}) ==="
 
