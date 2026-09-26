@@ -1,0 +1,143 @@
+<meta charset="utf-8">
+<title>다운링크 혼잡 맹점</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+</style>
+<main>
+<p class="eyebrow">2.4GHz · Opal AP · 2026-09-26 · 28차 후속(20)</p>
+<h1>다운링크 혼잡 맹점</h1>
+<p class="lead">부하를 받는 쪽과 victim(노트북)을 분리해 두 방향으로 수집했다. 폰이 유선 Pi로 올려 보내는 업링크(h8)와, Pi가 폰으로 내려보내는 다운링크(h9)다. 그 결과 지금 시스템은 다운링크 혼잡을 거의 보지 못한다는 것이 드러났다. 채널 점유율이 AP 자신의 송신을 세지 않기 때문이다.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>80% vs 17%</b><span>같은 부하량(AP 처리량 약 41)에서 채널 점유율, 업링크 vs 다운링크</span></div>
+  <div class="kpi alert"><b>929 / 929</b><span>h9 창 중 규칙·새 모델 4종이 "정상"으로 부른 창 (실제 경고 304·혼잡 183·심각 21)</span></div>
+  <div class="kpi"><b>3% → 150%</b><span>h9 step에서 AP 송신 시간 근사 (부하 전 → 40M×2). 점유율은 20% → 10%</span></div>
+  <div class="kpi alert"><b>45.3%</b><span>h9 정확도, AP 송신 시간을 8번째 feature로 넣어도 그대로 (5시드 전부)</span></div>
+</div>
+
+<div class="callout bad"><p><strong>핵심.</strong> 다운링크를 보여 주는 신호는 이미 수집되고 있다(AP가 보낸 패킷 수). 하지만 그 신호를 feature로 넣어도 모델은 배우지 못했다. 학습 데이터에 "AP 송신은 꽉 찼는데 점유율은 낮은" 상황이 한 번도 없었기 때문이다. 문제는 신호가 아니라 학습 데이터의 부하 방향 다양성이다.</p></div>
+
+<section>
+<h2>셋업: 부하가 어디로 가나</h2>
+<p class="sub">모든 셋업에서 victim 프로브(Pi → 노트북, 300kbps UDP)와 ping이 정답 라벨(jitter·loss·latency 축)을 만든다. 점유율 축은 AP가 잰 채널 busy 시간이다. 배치는 h7과 같게 맞췄다(부하 중 실측 폰 −39·−40dBm, 노트북 −61~−62dBm).</p>
+<div class="tw "><table><thead><tr><th class="">셋업</th><th class="">부하 흐름</th><th class="">노트북이 받는 것</th><th class="">AP 무선 송신 큐</th></tr></thead><tbody><tr><td class="">기본 (h1·h2·h4~h7)</td><td class=""><span class="flow">폰 → AP → 노트북</span></td><td class="">부하 + 프로브</td><td class="">노트북 앞 한 줄</td></tr><tr><td class="">h3</td><td class=""><span class="flow">폰 ↔ AP ↔ 폰</span></td><td class="">프로브만</td><td class="">폰 앞 두 줄</td></tr><tr><td class="">h8 업링크</td><td class=""><span class="flow">폰 → AP → 유선 Pi</span></td><td class="">프로브만</td><td class="">거의 없음 (유선으로 나감)</td></tr><tr><td class="">h9 다운링크</td><td class=""><span class="flow">유선 Pi → AP → 폰</span></td><td class="">프로브만</td><td class="">폰 앞 두 줄</td></tr></tbody></table></div>
+<p>h8은 공장의 카메라·센서 업로드, h9는 서버가 다른 무선 기기(HMI, AGV)에 내려보내는 상황에 해당한다. 두 세션 모두 네 런(idle, step, spstep, gray)을 완주했다. 두 폰 모든 단계 완주, 재시도 0, AP 크래시 0, 붙은 기기 수 항상 3, Pi 폴링 간격 1.01~1.06초.</p>
+</section>
+
+<section>
+<h2>점유율은 AP 자신의 송신을 세지 않는다</h2>
+<div class="legend"><span><i style="background:var(--s1)"></i>점유율 (현재 feature, survey busy)</span><span><i style="background:var(--s2)"></i>AP 송신 시간 근사</span></div>
+<div class="charts">
+<figure class="chart"><figcaption>h9 다운링크 step: 부하 단계별 중앙값 (%)</figcaption><svg viewBox="0 0 640 250" role="img" aria-label="h9 다운링크 step: 부하 단계별 중앙값 (%)"><line class="grid" x1="44" x2="632" y1="200.0" y2="200.0"/><text class="ax" x="38" y="204.0" text-anchor="end">0</text><line class="grid" x1="44" x2="632" y1="154.0" y2="154.0"/><text class="ax" x="38" y="158.0" text-anchor="end">40</text><line class="grid" x1="44" x2="632" y1="108.0" y2="108.0"/><text class="ax" x="38" y="112.0" text-anchor="end">80</text><line class="grid" x1="44" x2="632" y1="62.0" y2="62.0"/><text class="ax" x="38" y="66.0" text-anchor="end">120</text><line class="grid" x1="44" x2="632" y1="16.0" y2="16.0"/><text class="ax" x="38" y="20.0" text-anchor="end">160</text><line class="ref" x1="44" x2="632" y1="85.0" y2="85.0"/><text class="ax" x="630" y="81.0" text-anchor="end">100%</text><g><title>부하 전 · 점유율(현재): 20.0%</title><rect class="b1" x="70.0" y="177.0" width="22" height="23.0" rx="2"/><text class="val" x="81.0" y="173.0" text-anchor="middle">20</text></g><g><title>부하 전 · AP 송신 시간 근사: 3.2%</title><rect class="b2" x="94.0" y="196.3" width="22" height="3.7" rx="2"/><text class="val" x="105.0" y="192.3" text-anchor="middle">3</text></g><text class="grp" x="93.0" y="220" text-anchor="middle">부하 전</text><g><title>10M×2 · 점유율(현재): 20.0%</title><rect class="b1" x="168.0" y="177.0" width="22" height="23.0" rx="2"/><text class="val" x="179.0" y="173.0" text-anchor="middle">20</text></g><g><title>10M×2 · AP 송신 시간 근사: 50.7%</title><rect class="b2" x="192.0" y="141.7" width="22" height="58.3" rx="2"/><text class="val" x="203.0" y="137.7" text-anchor="middle">51</text></g><text class="grp" x="191.0" y="220" text-anchor="middle">10M×2</text><g><title>20M×2 · 점유율(현재): 20.0%</title><rect class="b1" x="266.0" y="177.0" width="22" height="23.0" rx="2"/><text class="val" x="277.0" y="173.0" text-anchor="middle">20</text></g><g><title>20M×2 · AP 송신 시간 근사: 96.4%</title><rect class="b2" x="290.0" y="89.1" width="22" height="110.9" rx="2"/><text class="val" x="301.0" y="85.1" text-anchor="middle">96</text></g><text class="grp" x="289.0" y="220" text-anchor="middle">20M×2</text><g><title>30M×2 · 점유율(현재): 13.8%</title><rect class="b1" x="364.0" y="184.1" width="22" height="15.9" rx="2"/><text class="val" x="375.0" y="180.1" text-anchor="middle">14</text></g><g><title>30M×2 · AP 송신 시간 근사: 135.6%</title><rect class="b2" x="388.0" y="44.0" width="22" height="156.0" rx="2"/><text class="val" x="399.0" y="40.0" text-anchor="middle">136</text></g><text class="grp" x="387.0" y="220" text-anchor="middle">30M×2</text><g><title>40M×2 · 점유율(현재): 10.0%</title><rect class="b1" x="462.0" y="188.5" width="22" height="11.5" rx="2"/><text class="val" x="473.0" y="184.5" text-anchor="middle">10</text></g><g><title>40M×2 · AP 송신 시간 근사: 150.0%</title><rect class="b2" x="486.0" y="27.5" width="22" height="172.5" rx="2"/><text class="val" x="497.0" y="23.5" text-anchor="middle">150+</text></g><text class="grp" x="485.0" y="220" text-anchor="middle">40M×2</text><g><title>부하 후 · 점유율(현재): 21.7%</title><rect class="b1" x="560.0" y="175.1" width="22" height="24.9" rx="2"/><text class="val" x="571.0" y="171.1" text-anchor="middle">22</text></g><g><title>부하 후 · AP 송신 시간 근사: 4.0%</title><rect class="b2" x="584.0" y="195.3" width="22" height="4.7" rx="2"/><text class="val" x="595.0" y="191.3" text-anchor="middle">4</text></g><text class="grp" x="583.0" y="220" text-anchor="middle">부하 후</text></svg></figure>
+<figure class="chart"><figcaption>h8 업링크 step: 부하 단계별 중앙값 (%)</figcaption><svg viewBox="0 0 640 250" role="img" aria-label="h8 업링크 step: 부하 단계별 중앙값 (%)"><line class="grid" x1="44" x2="632" y1="200.0" y2="200.0"/><text class="ax" x="38" y="204.0" text-anchor="end">0</text><line class="grid" x1="44" x2="632" y1="154.0" y2="154.0"/><text class="ax" x="38" y="158.0" text-anchor="end">40</text><line class="grid" x1="44" x2="632" y1="108.0" y2="108.0"/><text class="ax" x="38" y="112.0" text-anchor="end">80</text><line class="grid" x1="44" x2="632" y1="62.0" y2="62.0"/><text class="ax" x="38" y="66.0" text-anchor="end">120</text><line class="grid" x1="44" x2="632" y1="16.0" y2="16.0"/><text class="ax" x="38" y="20.0" text-anchor="end">160</text><line class="ref" x1="44" x2="632" y1="85.0" y2="85.0"/><text class="ax" x="630" y="81.0" text-anchor="end">100%</text><g><title>부하 전 · 점유율(현재): 20.0%</title><rect class="b1" x="70.0" y="177.0" width="22" height="23.0" rx="2"/><text class="val" x="81.0" y="173.0" text-anchor="middle">20</text></g><g><title>부하 전 · AP 송신 시간 근사: 3.0%</title><rect class="b2" x="94.0" y="196.5" width="22" height="3.5" rx="2"/><text class="val" x="105.0" y="192.5" text-anchor="middle">3</text></g><text class="grp" x="93.0" y="220" text-anchor="middle">부하 전</text><g><title>10M×2 · 점유율(현재): 66.7%</title><rect class="b1" x="168.0" y="123.3" width="22" height="76.7" rx="2"/><text class="val" x="179.0" y="119.3" text-anchor="middle">67</text></g><g><title>10M×2 · AP 송신 시간 근사: 3.1%</title><rect class="b2" x="192.0" y="196.5" width="22" height="3.5" rx="2"/><text class="val" x="203.0" y="192.5" text-anchor="middle">3</text></g><text class="grp" x="191.0" y="220" text-anchor="middle">10M×2</text><g><title>20M×2 · 점유율(현재): 80.0%</title><rect class="b1" x="266.0" y="108.0" width="22" height="92.0" rx="2"/><text class="val" x="277.0" y="104.0" text-anchor="middle">80</text></g><g><title>20M×2 · AP 송신 시간 근사: 2.0%</title><rect class="b2" x="290.0" y="197.6" width="22" height="2.4" rx="2"/><text class="val" x="301.0" y="193.6" text-anchor="middle">2</text></g><text class="grp" x="289.0" y="220" text-anchor="middle">20M×2</text><g><title>30M×2 · 점유율(현재): 89.7%</title><rect class="b1" x="364.0" y="96.9" width="22" height="103.1" rx="2"/><text class="val" x="375.0" y="92.9" text-anchor="middle">90</text></g><g><title>30M×2 · AP 송신 시간 근사: 2.7%</title><rect class="b2" x="388.0" y="196.9" width="22" height="3.1" rx="2"/><text class="val" x="399.0" y="192.9" text-anchor="middle">3</text></g><text class="grp" x="387.0" y="220" text-anchor="middle">30M×2</text><g><title>40M×2 · 점유율(현재): 90.0%</title><rect class="b1" x="462.0" y="96.5" width="22" height="103.5" rx="2"/><text class="val" x="473.0" y="92.5" text-anchor="middle">90</text></g><g><title>40M×2 · AP 송신 시간 근사: 2.0%</title><rect class="b2" x="486.0" y="197.7" width="22" height="2.3" rx="2"/><text class="val" x="497.0" y="193.7" text-anchor="middle">2</text></g><text class="grp" x="485.0" y="220" text-anchor="middle">40M×2</text><g><title>부하 후 · 점유율(현재): 20.7%</title><rect class="b1" x="560.0" y="176.2" width="22" height="23.8" rx="2"/><text class="val" x="571.0" y="172.2" text-anchor="middle">21</text></g><g><title>부하 후 · AP 송신 시간 근사: 2.6%</title><rect class="b2" x="584.0" y="197.0" width="22" height="3.0" rx="2"/><text class="val" x="595.0" y="193.0" text-anchor="middle">3</text></g><text class="grp" x="583.0" y="220" text-anchor="middle">부하 후</text></svg></figure>
+</div>
+<ul>
+  <li><b>h9</b>에서 부하는 실제로 다 전달됐다. 폰이 10→40M를 거의 손실 없이 받았다(40M에서 0.4~0.9%). 그런데 점유율은 부하 전과 같거나 오히려 낮다. AP가 초당 보낸 패킷은 218 → 2,437 → 4,684 → 6,877 → 9,216개로, 이론값(10M×2 ≈ 2,083, 40M×2 ≈ 8,333)과 맞게 올라간다.</li>
+  <li><b>h8</b>은 반대다. 폰이 보내는 전파는 점유율에 그대로 잡히고(67→90%), AP는 받은 패킷을 유선으로 넘기니 무선 송신 시간은 2~3%다.</li>
+  <li>그래서 이 AP(siwifi 드라이버)의 channel busy는 <b>다른 기기가 보낸 전파만</b> 세는 것으로 보인다. survey에 rx/tx time 줄이 없어서 드라이버 수준에서 직접 확인하지는 못했다.</li>
+</ul>
+<h3>AP 송신 시간 근사</h3>
+<p><code>AP 송신 시간(%) ≈ AP가 보낸 패킷 수 × 패킷 크기(bit) ÷ 평균 전송 속도 ÷ 폴링 간격 × 100</code>. 재료는 기존 CSV의 <code>tx_packets_delta</code>·<code>sta_tx_bitrate_mean</code>·<code>poll_interval_s</code>다. 프리앰블·ACK·경쟁 시간이 빠져 과소추정 쪽이지만, 평균 전송 속도를 쓰기 때문에 100%를 넘기도 한다. 그래서 방향은 정확하고 크기는 거칠다. 정확히 하려면 기기별 송신 바이트와 그 기기로 보낸 전송 속도로 합산해야 한다.</p>
+<div class="tw "><table><thead><tr><th class="">세션</th><th class="">부하 방향</th><th class="n">처리량</th><th class="n">점유율</th><th class="n">AP 송신 근사</th><th class="n">합계</th></tr></thead><tbody><tr><td class="">h1</td><td class="">폰 → 노트북</td><td class="n">77.6</td><td class="n">52%</td><td class="n">39%</td><td class="n"><b>97%</b></td></tr><tr><td class="">h2</td><td class="">폰 → 노트북</td><td class="n">62.1</td><td class="n">47%</td><td class="n">39%</td><td class="n"><b>88%</b></td></tr><tr><td class="">h3</td><td class="">폰 ↔ 폰</td><td class="n">44.1</td><td class="n">60%</td><td class="n">30%</td><td class="n"><b>91%</b></td></tr><tr><td class="">h4</td><td class="">폰 → 노트북</td><td class="n">44.6</td><td class="n">69%</td><td class="n">24%</td><td class="n"><b>88%</b></td></tr><tr><td class="">h6</td><td class="">폰 → 노트북</td><td class="n">63.7</td><td class="n">53%</td><td class="n">38%</td><td class="n"><b>98%</b></td></tr><tr><td class="">h7</td><td class="">폰 → 노트북</td><td class="n">60.6</td><td class="n">57%</td><td class="n">36%</td><td class="n"><b>90%</b></td></tr><tr><td class="">h8</td><td class="">폰 → 유선 Pi</td><td class="n">43.7</td><td class="n">87%</td><td class="n">2%</td><td class="n"><b>88%</b></td></tr><tr><td class="">h9</td><td class="">유선 Pi → 폰</td><td class="n">43.5</td><td class="n">17%</td><td class="n">112%</td><td class="n"><b>129%</b></td></tr></tbody></table></div>
+<p class="sub">step 런의 부하 행 중앙값(h4는 step_redo5). 기본 셋업도 점유율은 채널 사용의 일부만 봤다. 부하 런 전체(step·spstep·gray)로 보면 합계는 76~115%다.</p>
+</section>
+
+<section>
+<h2>h8·h9에서 규칙과 모델</h2>
+<div class="tw "><table><thead><tr><th class=""></th><th class="">h8 업링크</th><th class="">h9 다운링크</th></tr></thead><tbody><tr><td class="">창 / 라벨 0·1·2·3</td><td class="">890 / 224·14·183·469</td><td class="">929 / 421·304·183·21</td></tr><tr><td class="">라벨이 붙은 축 (라벨 > 0)</td><td class="">점유율 478 · loss 188</td><td class=""><b>latency 282 · loss 222</b> · 점유율 4</td></tr><tr><td class="">부하 행: 점유율 / retry / ping / 프로브 loss</td><td class="">80% / 0.36 / 48.7ms / 2.1%</td><td class="">17% / 0.05 / 65.5ms / 0.27%</td></tr><tr><td class="">규칙 (점유율 문턱)</td><td class="">정확도 97.1</td><td class="">정확도 45.7 · 경고·혼잡 recall 0</td></tr><tr><td class="">새 Baseline</td><td class="">91.8</td><td class=""><span class="pill bad">45.3 · 전부 정상</span></td></tr><tr><td class="">새 EE Fixed / Dynamic</td><td class="">77.8 · <span class="pill warn">부하 창 전부 심각</span></td><td class=""><span class="pill bad">45.3 · 전부 정상</span></td></tr><tr><td class="">새 SDN</td><td class="">82.0</td><td class=""><span class="pill bad">45.3 · 전부 정상</span></td></tr></tbody></table></div>
+<p class="sub">새 모델 = 7세션 배포 후보(<code>ap_v2_redesign2_7sess_20260922/selected</code>), 7-feature. 두 세션 모두 학습에 쓰지 않았다.</p>
+<ul>
+  <li><b>h9</b>: victim은 다운링크 혼잡 때문에 지연·손실을 겪었고(ping 중앙값 65.5ms), 라벨은 latency·loss 축으로 제대로 붙었다. 하지만 모델 입력 7개에는 그 상황이 거의 드러나지 않는다. 점유율 17%, retry 0.05로 겉보기에는 한가하다.</li>
+  <li><b>h8</b>: 규칙은 잘 맞는다(심각 대부분이 점유율 원인). 그런데 EE는 부하 구간을 전부 심각으로 불러 혼잡 recall이 0이다. 부하 방향만 바꿔도 크게 흔들린다.</li>
+</ul>
+</section>
+
+<section>
+<h2>AP 송신 시간을 feature로 넣으면</h2>
+<p class="sub">8세션 LOSO(h1~h4·h6~h9, 창 6,170), Baseline LSTM 5시드, 7-feature vs 8-feature(7 + AP 송신 시간 근사). 한 세션을 빼고 나머지 7세션으로 학습한다. h9를 시험할 때 모델은 다운링크 중심 세션을 본 적이 없다.</p>
+<div class="tw "><table><thead><tr><th class="">테스트 세션</th><th class="n">정확도 7f → 8f</th><th class="n">심각 recall</th><th class="n">심각 precision</th><th class="n">혼잡 recall</th><th class="n">경고 recall</th></tr></thead><tbody><tr><td class="">h1</td><td class="n">88.9 → 90.0</td><td class="n">72.3 → 74.5</td><td class="n">92.7 → 95.1</td><td class="n">82.5 → 84.5</td><td class="n">91.2 → 93.5</td></tr><tr><td class="">h2</td><td class="n">75.2 → 74.4</td><td class="n">40.2 → 53.5</td><td class="n">88.2 → 65.1</td><td class="n">60.1 → 55.0</td><td class="n">94.6 → 88.5</td></tr><tr><td class="">h3</td><td class="n">71.9 → 75.8</td><td class="n">53.3 → 67.8</td><td class="n">97.6 → 88.8</td><td class="n">34.3 → 30.9</td><td class="n">89.8 → 85.0</td></tr><tr><td class="">h4</td><td class="n">83.3 → 86.1</td><td class="n">91.3 → 85.4</td><td class="n">69.4 → 79.5</td><td class="n">67.5 → 78.4</td><td class="n">66.1 → 74.4</td></tr><tr><td class="">h6</td><td class="n">89.3 → 89.0</td><td class="n">94.0 → 92.9</td><td class="n">84.7 → 88.4</td><td class="n">82.5 → 77.3</td><td class="n">81.6 → 86.2</td></tr><tr><td class="">h7</td><td class="n">81.3 → 82.3</td><td class="n">63.3 → 68.3</td><td class="n">95.8 → 94.0</td><td class="n">50.6 → 50.6</td><td class="n">96.4 → 96.7</td></tr><tr><td class="">h8 <span class="pill warn">악화</span></td><td class="n">89.4 → 83.3</td><td class="n">98.2 → 98.4</td><td class="n">86.6 → 80.0</td><td class="n">55.5 → 28.9</td><td class="n">75.7 → 27.1</td></tr><tr><td class="">h9 <span class="pill bad">전부 정상 예측</span></td><td class="n">45.3 → 45.3</td><td class="n">0.0 → 0.0</td><td class="n">0.0 → 0.0</td><td class="n">0.0 → 0.0</td><td class="n">0.0 → 0.0</td></tr><tr><td class=""><b>8세션 평균</b></td><td class="n"><b>78.1 → 78.3</b></td><td class="n"><b>64.1 → 67.6</b></td><td class="n"><b>76.9 → 73.9</b></td><td class="n"><b>54.1 → 50.7</b></td><td class="n"><b>74.4 → 68.9</b></td></tr></tbody></table></div>
+<ul>
+  <li><b>h9는 7f·8f 모두, 다섯 시드 모두 929창 전부를 정상으로 예측했다.</b> feature를 넣어도 보완되지 않았다.</li>
+  <li>학습에 쓴 7세션에서는 AP 송신이 높으면 점유율도 같이 높았다. 기본 셋업은 업링크와 다운링크가 함께 있기 때문이다. "AP 송신은 높은데 점유율은 낮은" 조합은 처음 보는 입력이라, 모델은 익숙한 점유율 쪽을 믿은 것으로 보인다.</li>
+  <li>h9의 라벨은 latency·loss 원인이다. 원래 LSTM이 20~50%밖에 못 잡는 "숨은 혼잡·심각" 유형이다.</li>
+  <li><b>h8은 8f에서 나빠졌다</b>(경고 recall 75.7 → 27.1). "점유율은 높은데 AP 송신은 거의 0"인 조합도 학습에서 드물었다.</li>
+</ul>
+</section>
+
+<section>
+<h2>앞선 큐 feature와의 관계</h2>
+<ul>
+  <li>AP 전체 송신 큐(<code>lm_cnt</code>)를 8번째 feature로 넣은 6세션 비교에서는 네 모델 모두 정확도가 +1.3~2.3pt 올랐다. 하지만 폰↔폰(h3)에서 심각 precision이 −23~25pt 무너졌다.</li>
+  <li>원인: AP 큐는 <b>목적지 기기별 줄</b>이다. 기본 셋업은 노트북 앞 한 줄이었고(99분위 513~514, 약 512에서 막힘), h3는 폰 앞 두 줄이라 합계가 약 640까지 올랐다. 전체 큐의 기준이 목적지 수에 따라 흔들린다.</li>
+  <li>두 결과 모두 같은 결론으로 모인다. 지금까지의 좋은 수치는 대부분 <b>부하가 victim으로 몰리는 셋업</b>에서 나왔고, 부하 방향이 바뀌면 feature의 의미가 달라진다.</li>
+</ul>
+</section>
+
+<section>
+<h2>의미와 다음</h2>
+<ul>
+  <li><b>현재 한계</b>: 지금 모델(7-feature)과 규칙은 다운링크 중심 부하를 인식하지 못한다. 원인은 두 가지다. 점유율 측정이 AP 자신의 송신을 세지 않고, 학습 데이터가 업링크 성분이 있는 셋업뿐이다. "규칙 86%, 모델 83~85%"는 이 전제에서만 성립한다. 보고서의 핵심 한계로 기록해야 한다.</li>
+  <li><b>라벨도 같은 맹점이 있다</b>: 라벨의 점유율 축도 같은 측정값이다. h9는 프로브(latency·loss)가 대신 잡았지만, 점유율 75% 심각 기준은 원래 AP 송신까지 포함한 채널 사용률을 말한다.</li>
+  <li><b>다음 후보</b>
+    <ul>
+      <li>다운링크 세션(h10)을 하나 더 받아, h9를 학습에 넣고 h10으로 시험한다. "예가 있으면 배우는가"를 7f와 8f로 함께 확인한다.</li>
+      <li>h9를 런 단위로 나눠 빠르게 가늠한다(같은 세션이라 낙관적).</li>
+      <li>수집기에 기기별 송신 바이트·전송 속도를 기록해 정확한 AP 송신 시간을 만든다.</li>
+      <li>MT6000(mt76 드라이버)이 도착하면 자기 송신을 busy에 넣는지 확인한다.</li>
+    </ul>
+  </li>
+</ul>
+</section>
+
+<footer>
+스크립트·데이터: <code>project/.tmp/exp_24g/</code> — 수집 <code>session_0926_h8/</code>·<code>session_0926_h9/</code>(드라이버 <code>run_session_24g_h8.sh</code>·<code>_h9.sh</code>, 부하 <code>project/scripts/ramp_load_wired.sh</code>), 평가 <code>eval_h89.py</code>, AP 송신 근사 <code>est_airtime.py</code>, LOSO <code>loso_air.py</code> → <code>loso_air.log</code>·<code>loso_air_rows.csv</code>, 이 페이지 <code>build_downlink_report.py</code>. 기록: <code>.work-log/current.md</code> 28차 후속(20). 관련: <code>session_h6s_test.html</code>.
+</footer>
+</main>
