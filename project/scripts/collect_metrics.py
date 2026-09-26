@@ -148,6 +148,11 @@ CSV_COLUMNS = [
     "retry_score",
     "congestion_score",
     "label",
+    # 2026-09-26: AP 자기 송신 airtime 재료(모델 입력 아님). 이 AP(siwifi)의 survey busy는 자기 송신을 안 세서
+    # 다운링크 혼잡이 점유율에 안 보임(28차 후속 20) → 기기별 (송신 바이트 ÷ 그 기기 tx bitrate) 합으로 따로 추정.
+    "ap_tx_bytes_delta",          # 지난 폴링 이후 AP → 모든 station 송신 바이트 합
+    "ap_tx_airtime_s",            # Σ station (Δtx_bytes × 8 ÷ tx_bitrate) 초 — 프리앰블·ACK·재전송 미포함
+    "ap_tx_detail",               # "mac끝4:Δbytes:Mbps|..." 원자료(재계산용)
 ]
 
 # ============================================================
@@ -616,6 +621,29 @@ def summarize_stations(stations, previous_stations=None):
         sta_expected_thr_mean,
         sta_tx_mcs_mean,
     )
+
+
+def summarize_ap_tx_airtime(stations, previous_stations=None):
+    """AP 자기 송신 airtime 추정 재료 (2026-09-26, 모델 입력 아님).
+    station별 Δtx_bytes(AP → 그 station)를 그 station의 tx bitrate로 나눠 합산한다.
+    평균 rate 하나로 나누던 근사(ap_tx_air v1)가 100%를 넘던 문제를 줄이려는 것.
+    rate가 없거나 0인 station은 시간 합에서 빼고 바이트 합에만 넣는다."""
+    total_bytes = 0
+    airtime_s = 0.0
+    parts = []
+    for mac, s in stations.items():
+        prev = (previous_stations or {}).get(mac)
+        if prev is None:
+            continue
+        d = max(0, s.get("tx_bytes", 0) - prev.get("tx_bytes", 0))
+        if d <= 0:
+            continue
+        rate = s.get("tx_bitrate", 0.0)
+        total_bytes += d
+        if rate > 0:
+            airtime_s += d * 8 / (rate * 1e6)
+        parts.append(f"{mac[-5:].replace(':', '')}:{d}:{rate:g}")
+    return total_bytes, airtime_s, "|".join(parts)
 
 
 # ============================================================
@@ -1286,6 +1314,9 @@ def main():
                 sta_expected_thr_mean,
                 sta_tx_mcs_mean,
             ) = summarize_stations(station, previous_stations)
+            ap_tx_bytes_delta, ap_tx_airtime_s, ap_tx_detail = summarize_ap_tx_airtime(
+                station, previous_stations
+            )
 
             # ------------------------------------------------
             # 2. Channel Occupancy
@@ -1591,6 +1622,9 @@ def main():
                 retry_score,
                 congestion_score,
                 label,
+                int(ap_tx_bytes_delta),
+                round(ap_tx_airtime_s, 5),
+                ap_tx_detail,
             ])
 
             sample += 1
