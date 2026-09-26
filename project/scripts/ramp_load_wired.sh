@@ -6,14 +6,20 @@
 # Pi에 iperf3 서버(5211/5212)를 띄우고 ramp_load_remote.sh를 목적지 Pi로 호출한 뒤, 끝나거나 중단되면 그 서버만 정리한다.
 # Pi에서 도는 victim 프로브(ProbeRunner의 iperf3 클라이언트)는 건드리지 않도록 서버 명령줄만 골라 끈다.
 # 포트: Pi에는 시스템 iperf3.service가 5201을 상시 점유하므로 부하 서버는 5211/5212를 쓴다(PHONE_PORTS로 오케스트레이터에 전달).
-# 사용법: WIRED_MODE=up|down bash ramp_load_wired.sh [profile] [ignored_target] [pkt_len]   (두 번째 인자는 러너 호환용, 무시)
+#   mixed(셋업 C): s21 업링크 + s26 다운링크 동시 = 카메라 업로드 + 서버 명령 하달이 섞인 공장형.
+# 사용법: WIRED_MODE=up|down|mixed bash ramp_load_wired.sh [profile] [ignored_target] [pkt_len]   (두 번째 인자는 러너 호환용, 무시)
 set -uo pipefail
 PROFILE="${1:-step}"; PKT_LEN="${3:-1200}"; MODE="${WIRED_MODE:-up}"
 PI=capstone@192.168.8.109; PI_IP=192.168.8.109
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SSHO=(-o BatchMode=yes -o ConnectTimeout=8)
 export PHONE_PORTS="5211 5212"
-case "$MODE" in up) export REVERSE=0 ;; down) export REVERSE=1 ;; *) echo "!!! WIRED_MODE는 up|down" >&2; exit 2 ;; esac
+case "$MODE" in
+  up) export REVERSE=0 ;;
+  down) export REVERSE=1 ;;
+  mixed) export REVERSE=0 PHONE_REVERSE="0 1" ;;   # 09-27 혼합(셋업 C): 첫 폰(s21) 업링크 → Pi, 둘째 폰(s26) 다운링크 Pi → 폰
+  *) echo "!!! WIRED_MODE는 up|down|mixed" >&2; exit 2 ;;
+esac
 echo "=== 유선 싱크 램프 (mode=${MODE}, profile=${PROFILE}, Pi ${PI_IP}:5211/5212) ==="
 
 stop_servers() {
