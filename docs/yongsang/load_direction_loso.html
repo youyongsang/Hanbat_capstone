@@ -1,0 +1,137 @@
+<meta charset="utf-8">
+<title>부하 방향별 세션 시험</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+</style>
+<main>
+<p class="eyebrow">2.4GHz · 집 · h 세션 13개 · 2026-09-27 · 28차 후속(21)</p>
+<h1>부하 방향별 세션 시험</h1>
+<p class="lead">지금 배포 후보(7세션 모델)는 부하가 모두 노트북(victim)으로 가는 데이터로만 학습했다. 업링크·다운링크·혼합 부하 세션(h8~h14)을 모은 뒤, 세 가지를 확인했다. (A) 지금 모델은 새 방향에서 어떤가, (B) h 세션끼리 LOSO로 학습하면 Baseline은 나아지는가, (B2) 같은 조건에서 EE는 어떤가.</p>
+
+<div class="kpis">
+  <div class="kpi alert"><b>47 → 88%</b><span>업링크 h13에서 EE Fixed 정확도: 7세션 모델 → 다양한 방향으로 학습(LOSO)</span></div>
+  <div class="kpi alert"><b>57~72%</b><span>다운링크 세션 정확도, 다운링크 2세션을 학습에 넣어도 (심각 recall 0~19%)</span></div>
+  <div class="kpi"><b>80.4 vs 78.0</b><span>LOSO 세션 평균 정확도, Baseline vs EE Fixed (같은 데이터·분할)</span></div>
+  <div class="kpi"><b>98~99%</b><span>업링크·혼합에서 점유율 규칙의 정확도 (모든 모델보다 높음)</span></div>
+</div>
+
+<div class="callout"><p><strong>결론.</strong> EE가 업링크에서 크게 무너진 건 구조 탓이 아니라 학습 데이터 탓이었다. 업링크 세션을 학습에 넣자 EE도 88%까지 회복했고, 같은 조건에서 EE와 Baseline의 차이는 2pt 안쪽이다. 다운링크는 다운링크 세션 두 개를 학습해도 여전히 풀리지 않는다. 혼합은 h 세션만으로 학습하면 오히려 7세션 모델보다 나쁘다. 그래서 g(7세션)와 h를 모두 합친 재학습이 다음 단계다.</p></div>
+
+<section>
+<h2>세션과 시험 방법</h2>
+<p class="sub">모든 세션은 집, 2.4GHz, Opal AP, 폰 두 대(s21·s26)로 받았고, 노트북은 victim 프로브만 받는다(노트북 방향 세션은 부하도 받음). h5는 AP 크래시로 제외했다. 오염 구간은 잘라냈다: h6 gray 가족 폰 구간, h10 spstep·gray 재수집, h14 idle 노트북 백그라운드 다운로드 62행.</p>
+<ul>
+  <li><b>A</b>: 7세션 배포 후보(② = 8/28·9/1·g1~g5로 학습)와 점유율 규칙을 재학습 없이 h8~h14에 적용했다.</li>
+  <li><b>B</b>: h 세션 13개로 LOSO를 돌렸다. 한 세션을 빼고 나머지 12개로 학습한다(각 세션의 마지막 런은 검증). Baseline, 5시드, 7-feature.</li>
+  <li><b>B2</b>: B와 같은 분할·시드로 EE(Fixed·Dynamic)를 학습했다. 학습 방식은 원본 스크립트와 같다.</li>
+  <li>B·B2는 <b>h 세션만</b> 학습했다(g 세션 미포함). 학습 창은 폴드당 약 6,900개로 ②(3,882)보다 많지만, 노트북 방향 이외 방향은 폴드당 1~2세션뿐이다.</li>
+</ul>
+</section>
+
+<section>
+<h2>방향별 결과</h2>
+<h3>② 7세션 모델과 규칙 (재학습 없음, A)</h3>
+<div class="tw "><table><thead><tr><th class="">방향</th><th class="">② 7세션 모델 / 규칙</th><th class="n">정확도</th><th class="n">경고 R</th><th class="n">혼잡 R</th><th class="n">심각 R</th><th class="n">심각 P</th></tr></thead><tbody><tr><td class="">업링크</td><td class="">규칙만</td><td class="n">98.4</td><td class="n">96.0</td><td class="n">99.2</td><td class="n">97.2</td><td class="n">100.0</td></tr><tr><td class=""></td><td class="">Baseline</td><td class="n">89.3</td><td class="n">15.3</td><td class="n">82.9</td><td class="n">97.7</td><td class="n">76.1</td></tr><tr><td class=""></td><td class="">EE Fixed</td><td class="n">62.5</td><td class="n">8.3</td><td class="n">1.7</td><td class="n">99.7</td><td class="n">49.6</td></tr><tr><td class="">다운링크</td><td class="">규칙만</td><td class="n">58.3</td><td class="n">1.1</td><td class="n">1.6</td><td class="n">13.8</td><td class="n">100.0</td></tr><tr><td class=""></td><td class="">Baseline</td><td class="n">57.8</td><td class="n">0.6</td><td class="n">0.5</td><td class="n">1.9</td><td class="n">8.3</td></tr><tr><td class=""></td><td class="">EE Fixed</td><td class="n">57.7</td><td class="n">0.9</td><td class="n">0.3</td><td class="n">1.0</td><td class="n">8.3</td></tr><tr><td class="">혼합</td><td class="">규칙만</td><td class="n">98.6</td><td class="n">98.5</td><td class="n">23.3</td><td class="n">89.5</td><td class="n">100.0</td></tr><tr><td class=""></td><td class="">Baseline</td><td class="n">94.5</td><td class="n">89.8</td><td class="n">10.0</td><td class="n">28.9</td><td class="n">50.0</td></tr><tr><td class=""></td><td class="">EE Fixed</td><td class="n">92.6</td><td class="n">92.3</td><td class="n">13.3</td><td class="n">31.6</td><td class="n">50.0</td></tr></tbody></table></div>
+<h3>h 세션으로 학습한 LOSO (B·B2, 세션 평균)</h3>
+<div class="tw "><table><thead><tr><th class="">방향</th><th class="">모델</th><th class="n">정확도</th><th class="n">경고 R</th><th class="n">혼잡 R</th><th class="n">심각 R</th><th class="n">심각 P</th></tr></thead><tbody><tr><td class="">노트북 방향</td><td class="">Baseline (LOSO)</td><td class="n">84.8</td><td class="n">89.4</td><td class="n">70.4</td><td class="n">73.2</td><td class="n">86.7</td></tr><tr><td class=""></td><td class="">EE Fixed (LOSO)</td><td class="n">83.5</td><td class="n">88.4</td><td class="n">66.2</td><td class="n">73.5</td><td class="n">82.5</td></tr><tr><td class="">폰↔폰</td><td class="">Baseline (LOSO)</td><td class="n">72.0</td><td class="n">96.5</td><td class="n">27.4</td><td class="n">53.3</td><td class="n">96.8</td></tr><tr><td class=""></td><td class="">EE Fixed (LOSO)</td><td class="n">72.6</td><td class="n">94.5</td><td class="n">26.4</td><td class="n">56.0</td><td class="n">95.9</td></tr><tr><td class="">업링크</td><td class="">Baseline (LOSO)</td><td class="n">93.3</td><td class="n">61.6</td><td class="n">83.2</td><td class="n">96.6</td><td class="n">91.7</td></tr><tr><td class=""></td><td class="">EE Fixed (LOSO)</td><td class="n">88.0</td><td class="n">25.3</td><td class="n">74.9</td><td class="n">96.3</td><td class="n">88.7</td></tr><tr><td class="">다운링크</td><td class="">Baseline (LOSO)</td><td class="n">63.2</td><td class="n">40.0</td><td class="n">31.5</td><td class="n">7.3</td><td class="n">5.3</td></tr><tr><td class=""></td><td class="">EE Fixed (LOSO)</td><td class="n">63.0</td><td class="n">32.7</td><td class="n">34.3</td><td class="n">4.8</td><td class="n">5.2</td></tr><tr><td class="">혼합</td><td class="">Baseline (LOSO)</td><td class="n">86.3</td><td class="n">94.9</td><td class="n">16.7</td><td class="n">27.4</td><td class="n">50.0</td></tr><tr><td class=""></td><td class="">EE Fixed (LOSO)</td><td class="n">79.3</td><td class="n">94.8</td><td class="n">18.0</td><td class="n">27.4</td><td class="n">49.1</td></tr></tbody></table></div>
+<ul>
+  <li><b>업링크</b>: ②의 EE는 정확도 62.5%에 혼잡 recall 1.7%로 무너졌다. 업링크 세션을 학습하자 EE 88.0%·혼잡 recall 74.9%로 회복했다. 다만 경고 recall은 EE 25%, Baseline 62%로 아직 낮다.</li>
+  <li><b>다운링크</b>: 규칙과 ②는 거의 전부 "정상"이었다. 다운링크 2세션을 학습해도 정확도 63%, 심각 recall 5~7%, 혼잡 recall 31~34%다. 경고·혼잡 일부만 잡기 시작한 수준이다.</li>
+  <li><b>혼합</b>: ② Baseline 94.5% → LOSO 86.3%로 오히려 나빠졌다. 혼합은 학습에 1세션만 남고, g 세션(노트북 방향)도 빠져서 학습 데이터 자체가 부족했던 것으로 보인다. 혼합의 심각 지표는 held-out 심각이 2~19창뿐이라 참고만 한다.</li>
+  <li><b>노트북 방향</b>: LOSO Baseline 84.8·EE 83.5. ②가 학습한 방향과 같아서 크게 달라지지 않는다.</li>
+</ul>
+<h3>세션 평균 (LOSO)</h3>
+<div class="tw "><table><thead><tr><th class="">모델 (LOSO, h만 학습)</th><th class="n">정확도</th><th class="n">경고 R</th><th class="n">혼잡 R</th><th class="n">심각 R</th><th class="n">심각 P</th></tr></thead><tbody><tr><td class="">Baseline</td><td class="n">80.4</td><td class="n">75.1</td><td class="n">51.8</td><td class="n">53.0</td><td class="n">63.8</td></tr><tr><td class="">EE Fixed</td><td class="n">78.0</td><td class="n">67.3</td><td class="n">49.7</td><td class="n">52.7</td><td class="n">61.5</td></tr><tr><td class="">EE Dynamic</td><td class="n">77.2</td><td class="n">66.7</td><td class="n">48.8</td><td class="n">53.4</td><td class="n">60.7</td></tr></tbody></table></div>
+<p class="sub">같은 데이터·분할에서 EE는 Baseline보다 정확도가 약 2~3pt 낮고, 심각 recall은 비슷하다. ②에서 보인 큰 격차(h13 86.7 vs 47.3)는 구조 차이가 아니었다.</p>
+</section>
+
+<section>
+<h2>세션별 정확도</h2>
+<div class="tw "><table><thead><tr><th class="">세션</th><th class="">방향</th><th class="">배치</th><th class="n">규칙</th><th class="n">② Baseline</th><th class="n">② EE Fixed</th><th class="n">LOSO Baseline</th><th class="n">LOSO EE Fixed</th><th class="n">LOSO EE Dynamic</th></tr></thead><tbody><tr><td class="">h1</td><td class="">노트북 방향</td><td class="">링크 좋음</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n"><b>90.7</b></td><td class="n"><b>88.2</b></td><td class="n">87.8</td></tr><tr><td class="">h2</td><td class="">노트북 방향</td><td class="">노트북만 약함(−62)</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n"><b>75.7</b></td><td class="n"><b>74.7</b></td><td class="n">75.0</td></tr><tr><td class="">h4</td><td class="">노트북 방향</td><td class="">폰 중간 거리</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n"><b>85.8</b></td><td class="n"><b>83.2</b></td><td class="n">82.0</td></tr><tr><td class="">h6</td><td class="">노트북 방향</td><td class="">노트북 −53</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n"><b>89.9</b></td><td class="n"><b>89.4</b></td><td class="n">88.8</td></tr><tr><td class="">h7</td><td class="">노트북 방향</td><td class="">노트북 멀리</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n"><b>81.8</b></td><td class="n"><b>81.9</b></td><td class="n">81.3</td></tr><tr><td class="">h3</td><td class="">폰↔폰</td><td class="">노트북 약함</td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="n"><b>72.0</b></td><td class="n"><b>72.6</b></td><td class="n">73.1</td></tr><tr><td class="">h8</td><td class="">업링크</td><td class="">노트북 멀리</td><td class="n">97.1</td><td class="n">91.8</td><td class="n">77.8</td><td class="n"><b>90.8</b></td><td class="n"><b>87.8</b></td><td class="n">87.7</td></tr><tr><td class="">h13</td><td class="">업링크</td><td class="">노트북 가까이</td><td class="n">99.7</td><td class="n">86.7</td><td class="n">47.3</td><td class="n"><b>95.8</b></td><td class="n"><b>88.1</b></td><td class="n">87.4</td></tr><tr><td class="">h9</td><td class="">다운링크</td><td class="">노트북 멀리</td><td class="n">45.7</td><td class="n">45.3</td><td class="n">45.3</td><td class="n"><b>57.2</b></td><td class="n"><b>58.6</b></td><td class="n">58.6</td></tr><tr><td class="">h10</td><td class="">다운링크</td><td class="">노트북 멀리</td><td class="n">61.1</td><td class="n">60.3</td><td class="n">60.0</td><td class="n"><b>60.3</b></td><td class="n"><b>61.2</b></td><td class="n">61.2</td></tr><tr><td class="">h11</td><td class="">다운링크</td><td class="">노트북 가까이</td><td class="n">68.1</td><td class="n">67.9</td><td class="n">67.9</td><td class="n"><b>72.1</b></td><td class="n"><b>69.1</b></td><td class="n">69.1</td></tr><tr><td class="">h12</td><td class="">혼합</td><td class="">노트북 멀리</td><td class="n">98.5</td><td class="n">93.7</td><td class="n">95.0</td><td class="n"><b>86.7</b></td><td class="n"><b>86.2</b></td><td class="n">82.0</td></tr><tr><td class="">h14</td><td class="">혼합</td><td class="">노트북 가까이</td><td class="n">98.8</td><td class="n">95.3</td><td class="n">90.1</td><td class="n"><b>86.0</b></td><td class="n"><b>72.4</b></td><td class="n">69.5</td></tr></tbody></table></div>
+<p class="sub">② = 7세션 배포 후보(학습에 h 세션 없음). LOSO = 해당 세션을 뺀 h 12세션으로 학습한 5시드 평균. h1~h7은 ②와 규칙을 이번에 다시 돌리지 않아 비어 있다(앞선 6세션 문서 참고).</p>
+</section>
+
+<section>
+<h2>EE가 업링크에서 무너진 이유</h2>
+<ul>
+  <li><b>일찍 답하는 구조 탓이 아니다.</b> ② EE의 마지막 출구만 써도 h13 47.4%, h8 77.9%로 EE 실제 성적과 같다. 네트워크 전체가 이 세션을 심각으로 보도록 학습돼 있었다. h13 심각 오탐 499창 중 421창이 정답 혼잡이었다.</li>
+  <li><b>학습 데이터의 점유율 구간 구성이 원인이다.</b> 7세션 데이터에서 점유율 65~75% 창의 약 3분의 1이 심각이었다. 점유율은 혼잡 수준인데 victim의 loss·latency 때문에 심각이 된 "숨은 심각"이다. 이 구간에서는 재전송도 늘 0.4~0.5였다.</li>
+  <li><b>업링크는 같은 점유율에서 재전송이 거의 0이다.</b> 재전송 비율은 AP가 보낸 패킷 기준이라, AP가 거의 보내지 않는 업링크에서는 0에 가깝다. 모델은 이 조합을 본 적이 없어서 익숙한 점유율만 보고 판단했다. EE는 원래 이 구간을 심각 쪽으로 더 부르는 경향이 있었다(심각 recall은 높고 precision은 낮았다).</li>
+</ul>
+<div class="tw "><table><thead><tr><th class="">점유율 구간</th><th class="n">7세션 학습 데이터: 심각 비율</th><th class="n">재전송</th><th class="n">h 노트북 방향: 심각 비율</th><th class="n">재전송</th><th class="n">업링크: 심각 비율</th><th class="n">재전송</th></tr></thead><tbody><tr><td class="">55~65%</td><td class="n">16%</td><td class="n">0.40</td><td class="n">15%</td><td class="n">0.47</td><td class="n">1%</td><td class="n">0.03</td></tr><tr><td class="">65~75%</td><td class="n">31%</td><td class="n">0.45</td><td class="n">23%</td><td class="n">0.51</td><td class="n">8%</td><td class="n">0.15</td></tr></tbody></table></div>
+</section>
+
+<section>
+<h2>방향마다 "혼잡·심각"의 텔레메트리가 다르다</h2>
+<div class="tw "><table><thead><tr><th class="">방향</th><th class="">라벨</th><th class="n">행</th><th class="n">점유율</th><th class="n">처리량</th><th class="n">AP 송신</th><th class="n">재전송</th><th class="n">전송속도</th><th class="n">victim ping(ms)</th><th class="">심각 원인</th></tr></thead><tbody><tr><td class="">노트북 방향</td><td class="">혼잡</td><td class="n">880</td><td class="n">60%</td><td class="n">71</td><td class="n">27</td><td class="n">0.49</td><td class="n">72</td><td class="n">101</td><td class=""></td></tr><tr><td class=""></td><td class="">심각</td><td class="n">683</td><td class="n">79%</td><td class="n">64</td><td class="n">6</td><td class="n">0.50</td><td class="n">66</td><td class="n">150</td><td class="">latency 261 · 점유율 238 · loss 184</td></tr><tr><td class="">업링크</td><td class="">혼잡</td><td class="n">619</td><td class="n">63%</td><td class="n">41</td><td class="n">2</td><td class="n">0.04</td><td class="n">71</td><td class="n">7</td><td class=""></td></tr><tr><td class=""></td><td class="">심각</td><td class="n">668</td><td class="n">86%</td><td class="n">50</td><td class="n">1</td><td class="n">0.37</td><td class="n">67</td><td class="n">53</td><td class="">점유율 491 · loss 177</td></tr><tr><td class="">다운링크</td><td class="">혼잡</td><td class="n">378</td><td class="n">14%</td><td class="n">54</td><td class="n">51</td><td class="n">0.08</td><td class="n">49</td><td class="n">107</td><td class=""></td></tr><tr><td class=""></td><td class="">심각</td><td class="n">68</td><td class="n">10%</td><td class="n">80</td><td class="n">72</td><td class="n">0.07</td><td class="n">47</td><td class="n">74</td><td class="">loss 49 · latency 11 · 점유율 8</td></tr><tr><td class="">혼합</td><td class="">혼잡</td><td class="n">21</td><td class="n">43%</td><td class="n">66</td><td class="n">22</td><td class="n">0.13</td><td class="n">66</td><td class="n">76</td><td class=""></td></tr><tr><td class=""></td><td class="">심각</td><td class="n">21</td><td class="n">80%</td><td class="n">63</td><td class="n">8</td><td class="n">0.18</td><td class="n">46</td><td class="n">40</td><td class="">점유율 12 · loss 9</td></tr></tbody></table></div>
+<ul>
+  <li>노트북 방향의 심각은 점유율도 재전송도 높다. 지금 모델이 배운 유일한 모양이다.</li>
+  <li>업링크 심각은 점유율이 가장 높고(86%) AP 송신은 거의 0이다.</li>
+  <li>다운링크 심각은 점유율이 가장 낮다(10%). 대신 처리량과 AP 송신이 가장 높다. AP가 쏘는 전파는 점유율에 잡히지 않기 때문이다. "처리량은 높은데 점유율은 낮다"는 조합이 다운링크의 표시이고, 처리량은 이미 7개 입력 feature에 있다.</li>
+  <li>그래서 모델에게 필요한 건 새 feature보다 <b>이 조합들의 학습 예시</b>다. 점유율·재전송·처리량이 늘 같이 움직이는 데이터에서는 모델이 점유율 하나에만 기대게 된다.</li>
+</ul>
+</section>
+
+<section>
+<h2>다음: g + h 재학습과 가중치 비교</h2>
+<p>세 조건을 같은 held-out 네 세션(h7 노트북 방향 · h13 업링크 · h10 다운링크 · h12 혼합)으로 비교한다. 모델은 Baseline과 EE(Fixed·Dynamic), 5시드이고, 스크립트는 <code>retrain_gh.py</code>로 준비만 해 두었다(약 2.5시간).</p>
+<ul>
+  <li>(a) h만: 학습 창 4,964</li>
+  <li>(b) g + h, 가중치 없음: 학습 창 8,846 (노트북 방향 67%)</li>
+  <li>(c) g + h, 방향별 가중치: 같은 데이터, 방향 그룹마다 비중을 같게 뽑는다</li>
+</ul>
+<p class="sub">한계: held-out과 검증 런을 빼면 업링크·혼합 학습 창이 각 600개 안팎(h8·h14만)이라, (c)의 가중치가 이 두 세션을 5~10배 과표집한다. 다운링크의 심각 예시도 적다(3세션 합 68행). 결과가 부족하면 다운링크·혼합 세션을 더 받아야 한다.</p>
+</section>
+
+<footer>
+스크립트·로그: <code>project/.tmp/exp_24g/</code> — A <code>eval_hall_deployed.py</code>(<code>_rows.csv</code>), B <code>loso_hall.py</code>(<code>loso_hall.log</code>·<code>_rows.csv</code>), B2 <code>loso_hall_ee.py</code>(<code>loso_hall_ee.log</code>·<code>_rows.csv</code>), EE 출구 분석 <code>why_ee.py</code>, 풀 <code>pool_hall/</code>, 이 페이지 <code>build_direction_report.py</code>. 기록: <code>.work-log/current.md</code> 28차 후속(21). 관련: <code>downlink_blindspot.html</code>, <code>session_h6s_test.html</code>.
+</footer>
+</main>
