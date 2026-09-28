@@ -96,8 +96,13 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 
 <section>
 <h2>3. 8/28·9/1 세션을 빼고 학습해도 유지되는가</h2>
-<p>캐노니컬 test 365창은 g+h 평가에 쓸 수 없다(164창이 학습 런 안의 구간, 201창은 제외한 오염 런). 대신 8/28, 9/1을 각각 통째로 빼고 학습해 채점했다(2시드). 비교는 7세션 LOSO(Baseline 5시드).</p>
-<div class="tw"><table><thead><tr><th>빠진 세션</th><th>모델</th><th class="n">정확도</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead><tbody><tr><td>8/28</td><td>7세션 LOSO</td><td class="n">87.3</td><td class="n">42.9</td><td class="n">80.5</td></tr><tr><td>8/28</td><td>g+h Baseline</td><td class="n">88.5</td><td class="n">43.8</td><td class="n">90.3</td></tr><tr><td>8/28</td><td>g+h EE Fixed</td><td class="n">88.4</td><td class="n">51.9</td><td class="n">85.5</td></tr><tr><td>8/28</td><td>g+h EE Dynamic</td><td class="n">88.4</td><td class="n">55.2</td><td class="n">86.1</td></tr><tr><td>9/1</td><td>7세션 LOSO</td><td class="n">90.1</td><td class="n">88.7</td><td class="n">86.0</td></tr><tr><td>9/1</td><td>g+h Baseline</td><td class="n">92.1</td><td class="n">87.8</td><td class="n">94.0</td></tr><tr><td>9/1</td><td>g+h EE Fixed</td><td class="n">89.1</td><td class="n">86.5</td><td class="n">91.6</td></tr><tr><td>9/1</td><td>g+h EE Dynamic</td><td class="n">89.2</td><td class="n">88.3</td><td class="n">89.9</td></tr></tbody></table></div>
+<p>캐노니컬 test 365창은 g+h 평가에 쓸 수 없다(164창이 학습 런 안의 구간, 201창은 제외한 오염 런). 대신 8/28, 9/1을 각각 통째로 빼고 학습해 채점했다. 같은 방식으로 h 세션을 넣기 전과 후를 비교한다.</p>
+<ul>
+<li><b>h 추가 전 (6세션 학습)</b>: 7세션(8/28·9/1·g1~g5)에서 채점할 세션 하나를 뺀 나머지 6세션으로 학습(9/21 LOSO, Baseline 5시드). 예: 8/28 줄은 9/1·g1~g5로 학습.</li>
+<li><b>h 추가 후 (23세션 학습)</b>: 24세션에서 채점할 세션 하나를 뺀 23세션으로 학습(2시드). 예: 8/28 줄은 9/1·g1~g5·h 17세션으로 학습.</li>
+<li>기존 배포 모델(9/2)은 8/28·9/1로 학습했으므로 이 표에 넣을 수 없다. 9/22의 7세션 모델(7세션 전부 학습, 2절의 "7세션")과도 다르다.</li>
+</ul>
+<div class="tw"><table><thead><tr><th>빠진 세션</th><th>모델</th><th class="n">정확도</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead><tbody><tr><td>8/28</td><td>h 추가 전 (6세션) Baseline</td><td class="n">87.3</td><td class="n">42.9</td><td class="n">80.5</td></tr><tr><td>8/28</td><td>h 추가 후 (23세션) Baseline</td><td class="n">88.5</td><td class="n">43.8</td><td class="n">90.3</td></tr><tr><td>8/28</td><td>h 추가 후 (23세션) EE Fixed</td><td class="n">88.4</td><td class="n">51.9</td><td class="n">85.5</td></tr><tr><td>8/28</td><td>h 추가 후 (23세션) EE Dynamic</td><td class="n">88.4</td><td class="n">55.2</td><td class="n">86.1</td></tr><tr><td>9/1</td><td>h 추가 전 (6세션) Baseline</td><td class="n">90.1</td><td class="n">88.7</td><td class="n">86.0</td></tr><tr><td>9/1</td><td>h 추가 후 (23세션) Baseline</td><td class="n">92.1</td><td class="n">87.8</td><td class="n">94.0</td></tr><tr><td>9/1</td><td>h 추가 후 (23세션) EE Fixed</td><td class="n">89.1</td><td class="n">86.5</td><td class="n">91.6</td></tr><tr><td>9/1</td><td>h 추가 후 (23세션) EE Dynamic</td><td class="n">89.2</td><td class="n">88.3</td><td class="n">89.9</td></tr></tbody></table></div>
 <ul>
 <li>h 세션을 넣어도 기존 세션 성능은 떨어지지 않았고, 심각 precision은 5~10pt 올랐다.</li>
 <li>8/28의 심각 recall은 어느 모델로도 44~55%다. 8/28 심각의 56~71%가 점유율 미달인데 loss·latency로 붙은 심각이다.</li>
