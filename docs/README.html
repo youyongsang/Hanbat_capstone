@@ -85,23 +85,23 @@
   <h2><span class="dot"></span>처음 오면 이 5개</h2>
   <div class="cards">
     <div class="card"><span class="n">1</span><div>
-      <div class="t"><code>CLAUDE.md</code> (레포 루트)</div>
+      <div class="t"><a href="../CLAUDE.md"><code>CLAUDE.md</code></a> (레포 루트)</div>
       <div class="d">프로젝트 전체 맥락, 데이터 계보(1학기→1차→2차), 현재 수치, 자주 헷갈리는 점. <b>항상 여기부터.</b></div>
     </div></div>
     <div class="card"><span class="n">2</span><div>
-      <div class="t"><code>.work-log/current.md</code></div>
+      <div class="t"><a href="../.work-log/current.md"><code>.work-log/current.md</code></a></div>
       <div class="d">세션별 최신 진행·다음 할 일. <b>CLAUDE.md보다 최신</b> (수치가 어긋나면 이게 맞음).</div>
     </div></div>
     <div class="card"><span class="n">3</span><div>
-      <div class="t"><code>docs/yongsang/system_overview.html</code></div>
+      <div class="t"><a href="yongsang/system_overview.html"><code>docs/yongsang/system_overview.html</code></a></div>
       <div class="d">세 그림 한 장 — 데이터 계보 / 라벨 파이프라인 / 수집 토폴로지. 말로 된 걸 그림으로. 브라우저로.</div>
     </div></div>
     <div class="card"><span class="n">4</span><div>
-      <div class="t"><code>docs/yongsang/capstone2_vacation_summary.html</code></div>
+      <div class="t"><a href="yongsang/capstone2_vacation_summary.html"><code>docs/yongsang/capstone2_vacation_summary.html</code></a></div>
       <div class="d">방학(8/21~30) 개발 흐름 한 장 요약 — 6단계 타임라인 + 되돌린 결정 4건. 브라우저로.</div>
     </div></div>
     <div class="card"><span class="n">5</span><div>
-      <div class="t"><code>docs/yongsang/congestion_label_redesign.{md,html}</code></div>
+      <div class="t"><a href="yongsang/congestion_label_redesign.html"><code>docs/yongsang/congestion_label_redesign.{md,html}</code></a></div>
       <div class="d">라벨 정의의 <b>정본</b> (표준 앵커 + victim 프로브). HTML = 정의·근거 요약, MD = 전체 로그. 아래 "왜" 표의 절반이 이 문서.</div>
     </div></div>
   </div>
@@ -111,45 +111,45 @@
     <thead><tr><th>알고 싶은 것</th><th>어디를 보면 되나</th></tr></thead>
     <tbody>
       <tr class="star"><td class="q"><span class="star">★</span> 왜 이런 라벨(정상/경고/혼잡/심각)을 정했나</td>
-        <td><code>congestion_label_redesign.{md,html}</code> — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max" + "지속성 게이트"(2026-09-02)</td></tr>
+        <td><a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max" + "지속성 게이트"(2026-09-02)</td></tr>
       <tr><td class="q">왜 지속성 게이트인가 (단발 프로브 스파이크 label 3 → 혼잡)</td>
-        <td><code>congestion_label_redesign.{md,html}</code> §4 "지속성 게이트" + <code>.work-log/current.md</code> 17차 — 배포 EE 오답의 최대군이 1폴링짜리 스파이크, 게이트로 전 모델 +1.5~2.4pt</td></tr>
+        <td><a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> §4 "지속성 게이트" + <a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 17차 — 배포 EE 오답의 최대군이 1폴링짜리 스파이크, 게이트로 전 모델 +1.5~2.4pt</td></tr>
       <tr><td class="q">congestion_score는 어떻게 계산하나</td>
-        <td><code>congestion_label_redesign.{md,html}</code> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
+        <td><a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
       <tr class="star"><td class="q"><span class="star">★</span> 7개 feature 각각이 뭔가 / 계산·스무딩·스케일러</td>
-        <td><code>docs/yongsang/model_features.{md,html}</code> — feature 레퍼런스 (정본은 <code>project/utils/ap_features.py</code>)</td></tr>
+        <td><a href="yongsang/model_features.html"><code>docs/yongsang/model_features.{md,html}</code></a> — feature 레퍼런스 (정본은 <a href="../project/utils/ap_features.py"><code>project/utils/ap_features.py</code></a>)</td></tr>
       <tr><td class="q">왜 latency·jitter를 모델 입력에서 뺐나</td>
-        <td><code>model_features.{md,html}</code> §3 + <code>congestion_label_redesign.{md,html}</code> §5 — 정답 leakage + 배포 시점엔 없는 측정</td></tr>
+        <td><a href="yongsang/model_features.html"><code>model_features.{md,html}</code></a> §3 + <a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> §5 — 정답 leakage + 배포 시점엔 없는 측정</td></tr>
       <tr><td class="q">왜 feature가 7개인가 (9→6→7), <code>sta_tx_bitrate_mean</code>은 왜</td>
-        <td><code>model_features.{md,html}</code> §2(7번)·§5 + <code>.work-log/current.md</code> "2026-08-29 2차"</td></tr>
+        <td><a href="yongsang/model_features.html"><code>model_features.{md,html}</code></a> §2(7번)·§5 + <a href="../.work-log/current.md"><code>.work-log/current.md</code></a> "2026-08-29 2차"</td></tr>
       <tr><td class="q">왜 <code>class-weight-power=0.0</code>인가</td>
-        <td>아티팩트 "Class-Weight-Power Zero" (<code>.work-log/current.md</code> 4~5차 체크포인트에 링크·표)</td></tr>
+        <td>아티팩트 "Class-Weight-Power Zero" (<a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 4~5차 체크포인트에 링크·표)</td></tr>
       <tr><td class="q">왜 window size 12인가 (10→12)</td>
-        <td><code>.work-log/current.md</code> 15차 — window/lr/batch/EMA 스윕에서 12만 이득 (EE 정확도 +1.2pt, Label3 F1 분산 절반). <code>docs/yongsang/capstone2_vacation_summary.html</code> §07</td></tr>
+        <td><a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 15차 — window/lr/batch/EMA 스윕에서 12만 이득 (EE 정확도 +1.2pt, Label3 F1 분산 절반). <a href="yongsang/capstone2_vacation_summary.html"><code>docs/yongsang/capstone2_vacation_summary.html</code></a> §07</td></tr>
       <tr><td class="q">목표1(95%) 재공략 4연타</td>
-        <td><code>.work-log/current.md</code> 15차(window)·16차(데이터 +436행, L3만)·17차(라벨 지속성 게이트 k3m2)·18차(k·m 스윕 → k2m2 채택, L3 recall·F1 전 모델 개선). <code>docs/yongsang/model_results.html</code> "변경" 절</td></tr>
+        <td><a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 15차(window)·16차(데이터 +436행, L3만)·17차(라벨 지속성 게이트 k3m2)·18차(k·m 스윕 → k2m2 채택, L3 recall·F1 전 모델 개선). <a href="yongsang/model_results.html"><code>docs/yongsang/model_results.html</code></a> "변경" 절</td></tr>
       <tr><td class="q">AP가 왜 자꾸 크래시하나 / 부하는 얼마까지</td>
-        <td><code>docs/yongsang/ap_crash_analysis.{md,html}</code> — 신호 비대칭(capture effect)이 핵심</td></tr>
+        <td><a href="yongsang/ap_crash_analysis.html"><code>docs/yongsang/ap_crash_analysis.{md,html}</code></a> — 신호 비대칭(capture effect)이 핵심</td></tr>
       <tr><td class="q">ONNX를 왜 이렇게 배포했나 (staged→unified If→INT8)</td>
-        <td><code>docs/yongsang/onnx_early_exit_redesign.{md,html}</code></td></tr>
+        <td><a href="yongsang/onnx_early_exit_redesign.html"><code>docs/yongsang/onnx_early_exit_redesign.{md,html}</code></a></td></tr>
       <tr><td class="q">SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가</td>
-        <td><code>docs/yongsang/sdn_comparison.html</code> — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 <code>project/models/sdn_lstm.py</code> docstring (Kaya et al. 2019 재구현) + <code>.work-log/current.md</code> 8~9차 + <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code></td></tr>
+        <td><a href="yongsang/sdn_comparison.html"><code>docs/yongsang/sdn_comparison.html</code></a> — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 <a href="../project/models/sdn_lstm.py"><code>project/models/sdn_lstm.py</code></a> docstring (Kaya et al. 2019 재구현) + <a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 8~9차 + <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code></td></tr>
       <tr><td class="q">현행 배포 모델(24세션)·처음 보는 세션 성능·채널 전환 규칙</td>
-        <td><code>docs/yongsang/final_model_24sess.html</code> (2026-09-28) — 선택 근거(기존·7세션·g+h 비교, 8/28·9/1 LOSO), 방향별 성능, 남은 오답 원인, 전환 규칙, Pi 지연. 부하 방향별 시험 경위는 <code>load_direction_loso.html</code>·<code>downlink_blindspot.html</code></td></tr>
+        <td><a href="yongsang/final_model_24sess.html"><code>docs/yongsang/final_model_24sess.html</code></a> (2026-09-28) — 선택 근거(기존·7세션·g+h 비교, 8/28·9/1 LOSO), 방향별 성능, 남은 오답 원인, 전환 규칙, Pi 지연. 부하 방향별 시험 경위는 <a href="yongsang/load_direction_loso.html"><code>load_direction_loso.html</code></a>·<a href="yongsang/downlink_blindspot.html"><code>downlink_blindspot.html</code></a></td></tr>
       <tr><td class="q">정확도·지연 결과 그래프로 (9/2 캐노니컬 배포 기준)</td>
-        <td><code>docs/yongsang/model_results.html</code> (인터랙티브) — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. <b>발표 슬라이드용 이미지는 <code>docs/yongsang/figures/</code></b> (SVG·PNG). 수치 정본은 <code>ap_model_comparison_redesign2.{txt,csv}</code> + <code>ap_v2_redesign2_pi_latency_comparison.txt</code></td></tr>
+        <td><a href="yongsang/model_results.html"><code>docs/yongsang/model_results.html</code></a> (인터랙티브) — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. <b>발표 슬라이드용 이미지는 <code>docs/yongsang/figures/</code></b> (SVG·PNG). 수치 정본은 <code>ap_model_comparison_redesign2.{txt,csv}</code> + <code>ap_v2_redesign2_pi_latency_comparison.txt</code></td></tr>
       <tr><td class="q">Fixed θ vs Dynamic θ 차이</td>
-        <td><code>CLAUDE.md</code> "해석 기준" 6번</td></tr>
+        <td><a href="../CLAUDE.md"><code>CLAUDE.md</code></a> "해석 기준" 6번</td></tr>
       <tr><td class="q">데모를 어떻게 돌리나</td>
-        <td><code>project/demo/README.md</code></td></tr>
+        <td><a href="../project/demo/README.md"><code>project/demo/README.md</code></a></td></tr>
       <tr><td class="q">데모를 (팀이) 어떻게 만드나</td>
-        <td><code>project/demo/API.md</code> — API·SSE 스키마·모델 계약·확장 항목</td></tr>
+        <td><a href="../project/demo/API.md"><code>project/demo/API.md</code></a> — API·SSE 스키마·모델 계약·확장 항목</td></tr>
       <tr><td class="q">발표 정량 목표·지표</td>
-        <td><code>CLAUDE.md</code> 상단 "정량적 목표" + <code>docs/캡스톤디자인I_최종발표.pptx</code></td></tr>
+        <td><a href="../CLAUDE.md"><code>CLAUDE.md</code></a> 상단 "정량적 목표" + <code>docs/캡스톤디자인I_최종발표.pptx</code></td></tr>
       <tr><td class="q">처음부터 재현하는 명령어</td>
-        <td><code>docs/terminal_command_guide.md</code> + <code>CLAUDE.md</code> "재현 명령어"</td></tr>
+        <td><a href="terminal_command_guide.md"><code>docs/terminal_command_guide.md</code></a> + <a href="../CLAUDE.md"><code>CLAUDE.md</code></a> "재현 명령어"</td></tr>
       <tr><td class="q">환경 셋업 (conda <code>capstone</code>, torch DLL 등)</td>
-        <td><code>docs/yongsang/environment.md</code> + <code>CLAUDE.md</code> "자주 헷갈리는 점"</td></tr>
+        <td><a href="yongsang/environment.md"><code>docs/yongsang/environment.md</code></a> + <a href="../CLAUDE.md"><code>CLAUDE.md</code></a> "자주 헷갈리는 점"</td></tr>
     </tbody>
   </table></div>
 
@@ -173,25 +173,25 @@
   <div class="tw"><table>
     <thead><tr><th>문서</th><th>상태</th></tr></thead>
     <tbody>
-      <tr><td class="stale-s"><code>congestion_label_criteria.{md,html}</code></td><td>옛 라벨 정의(가중합 4 sub-score 시절). <code>congestion_label_redesign.{md,html}</code>가 대체. 문서 전체 stale — 상단 배너 참고.</td></tr>
+      <tr><td class="stale-s"><code>congestion_label_criteria.{md,html}</code></td><td>옛 라벨 정의(가중합 4 sub-score 시절). <a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a>가 대체. 문서 전체 stale — 상단 배너 참고.</td></tr>
       <tr><td class="stale-s"><code>README_AP_V2.md</code></td><td>9-feature·가중합 시절. stale (내용은 redirect 스텁으로 축약됨).</td></tr>
       <tr><td class="stale-s"><code>dummy_data_spec.md</code></td><td>1학기, 시뮬레이터 데이터 전 임시 스펙.</td></tr>
-      <tr><td class="stale-s"><code>docs/yongsang/result_text_analysis.md</code></td><td><code>yongsang</code> 브랜치 결과 분석. 이 브랜치와 무관.</td></tr>
+      <tr><td class="stale-s"><a href="yongsang/result_text_analysis.md"><code>docs/yongsang/result_text_analysis.md</code></a></td><td><code>yongsang</code> 브랜치 결과 분석. 이 브랜치와 무관.</td></tr>
       <tr><td class="stale-s"><code>docs/hochung/*</code> · <code>docs/yena/*</code> · <code>guideline_*</code> · <code>stage*_work_log.md</code></td><td>1학기·방학 팀원별 계획서·단계별 work log. 맥락용으로 보존.</td></tr>
-      <tr><td class="stale-s"><code>docs/vacation_activity_overview.md</code></td><td>팀 전체 방학 활동 개요 (yongsang 시점은 위 #3 요약이 더 최신).</td></tr>
-      <tr><td class="stale-s"><code>.work-log/progress.md</code></td><td>초기 일자별 메모. <code>current.md</code>가 현행.</td></tr>
+      <tr><td class="stale-s"><a href="vacation_activity_overview.md"><code>docs/vacation_activity_overview.md</code></a></td><td>팀 전체 방학 활동 개요 (yongsang 시점은 위 #3 요약이 더 최신).</td></tr>
+      <tr><td class="stale-s"><a href="../.work-log/progress.md"><code>.work-log/progress.md</code></a></td><td>초기 일자별 메모. <code>current.md</code>가 현행.</td></tr>
     </tbody>
   </table></div>
 
   <h2><span class="dot"></span>HTML로 읽기 좋은 것</h2>
   <p class="sub">브라우저로 열면 표·차트가 렌더된다:
-    <code>system_overview.html</code> · <code>capstone2_vacation_summary.html</code> · <code>congestion_label_redesign.html</code> · <code>model_features.html</code> · <code>sdn_comparison.html</code> · <code>model_results.html</code> · <code>onnx_early_exit_redesign.html</code> ·
-    <code>ap_crash_analysis.html</code> · <code>congestion_label_criteria.html</code>(archived) ·
-    <code>docs/capstone1_summary.html</code>(1학기)</p>
-  <p class="sub">발행 아티팩트 (링크는 <code>.work-log/current.md</code>): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".</p>
+    <a href="yongsang/system_overview.html"><code>system_overview.html</code></a> · <a href="yongsang/capstone2_vacation_summary.html"><code>capstone2_vacation_summary.html</code></a> · <a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.html</code></a> · <a href="yongsang/model_features.html"><code>model_features.html</code></a> · <a href="yongsang/sdn_comparison.html"><code>sdn_comparison.html</code></a> · <a href="yongsang/model_results.html"><code>model_results.html</code></a> · <a href="yongsang/onnx_early_exit_redesign.html"><code>onnx_early_exit_redesign.html</code></a> ·
+    <a href="yongsang/ap_crash_analysis.html"><code>ap_crash_analysis.html</code></a> · <a href="yongsang/congestion_label_criteria.html"><code>congestion_label_criteria.html</code></a>(archived) ·
+    <a href="capstone1_summary.html"><code>docs/capstone1_summary.html</code></a>(1학기)</p>
+  <p class="sub">발행 아티팩트 (링크는 <a href="../.work-log/current.md"><code>.work-log/current.md</code></a>): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".</p>
 
   <div class="foot">
-    이 파일은 <a href="README.md"><code>docs/README.md</code></a>의 HTML 판. 내용이 어긋나면 <code>.md</code>가 정본.
+    이 파일은 <a href="README.md"><a href="README.md"><code>docs/README.md</code></a></a>의 HTML 판. 내용이 어긋나면 <code>.md</code>가 정본.
     <br>파일명을 눌러 이동 — <code>.html</code>은 이 폴더 기준 상대링크, 나머지는 GitHub(<code>capstoneDesign2</code>)로 연다(↗).
   </div>
 

@@ -65,11 +65,19 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 </div>
 
 <section>
+<h2>0. 부하 방향: 어떤 데이터인가</h2>
+<p>모든 세션에서 정답 라벨은 같은 방식으로 만든다. Pi가 노트북에 보내는 300kbps UDP(victim 프로브)와 ping이 jitter·loss·latency 축을 만들고, AP가 잰 채널 점유율이 점유율 축을 만든다. 세션마다 다른 것은 <b>부하 트래픽(폰 두 대의 iperf3)이 어디서 어디로 흐르는가</b>다.</p>
+<div class="tw"><table><thead><tr><th>방향</th><th>부하 흐름</th><th>세션</th><th>공장에서는</th><th>점유율에 보이나</th></tr></thead><tbody><tr><td>노트북 방향 (기본)</td><td>폰 → AP → 노트북 (부하와 victim이 같은 기기)</td><td>8/28·9/1·g1~g5, h1·h2·h4·h6·h7</td><td>여러 기기가 한 무선 단말로 몰리는 경우</td><td>보임</td></tr><tr><td>폰↔폰</td><td>폰 → AP → 폰</td><td>h3</td><td>무선 기기끼리 직접 주고받는 경우 (공장엔 드묾)</td><td>보임</td></tr><tr><td>업링크</td><td>폰 → AP → 유선 Pi</td><td>h8·h13·h18</td><td>카메라·센서가 서버로 올리는 경우</td><td>보임 (폰 전파를 셈)</td></tr><tr><td>다운링크</td><td>유선 Pi → AP → 폰 (<code>iperf3 -R</code>)</td><td>h9·h10·h11·h15·h16</td><td>서버가 HMI·AGV 등 무선 기기로 내려보내는 경우</td><td><b>안 보임</b> (AP 자신의 송신은 안 셈)</td></tr><tr><td>혼합</td><td>폰 하나는 업링크, 다른 하나는 다운링크</td><td>h12·h14·h17</td><td>올리는 기기와 받는 기기가 섞인 경우</td><td>업링크 몫만 보임 (h17 고부하는 다운링크가 채널을 차지해 사실상 다운링크)</td></tr></tbody></table></div>
+<p class="sub">h 세션 17개(h5는 AP 크래시로 제외)는 9/24~9/27 집에서 모았다. 노트북·폰 배치(거리·신호)도 세션마다 바꿨다. 다운링크가 안 보이는 원인은 <code>downlink_blindspot.html</code>, 방향별 첫 시험은 <code>load_direction_loso.html</code>.</p>
+</section>
+
+<section>
 <h2>1. 어떤 방식으로 학습할지: 처음 보는 세션으로 비교</h2>
-<p>h7(노트북 방향)·h13(업링크)·h10(다운링크)·h12(혼합)를 학습에서 통째로 빼고 채점했다. 학습 조건은 (a) h 세션만, (b) g+h 가중치 없음, (c) g+h 부하 방향별 가중치. 5시드 기준 (b)가 가장 좋고 안정적이었고, (c)는 작은 방향 세션을 과하게 뽑아 정확도가 1.5~2pt 떨어져 기각했다.</p>
+<p>h7(노트북 방향)·h13(업링크)·h10(다운링크)·h12(혼합)를 학습에서 통째로 빼고, <b>나머지 20세션(g 7 + h 13)으로 학습한 시험용 모델</b>로 채점했다. 이 시험용 모델은 점수를 재는 데만 쓰고, 배포 모델은 24세션 전부로 다시 학습했다(4절). 학습 조건은 (a) h 세션만, (b) g+h 가중치 없음, (c) g+h 부하 방향별 가중치. 5시드 기준 (b)가 가장 좋고 안정적이었고, (c)는 작은 방향 세션을 과하게 뽑아 정확도가 1.5~2pt 떨어져 기각했다.</p>
 <h3>h10을 뺀 3세션 합산 (2,638창, 조건 b, 2시드)</h3>
 <div class="tw"><table><thead><tr><th>모델</th><th class="n">정확도</th><th class="n">정상</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead><tbody><tr><td>Baseline</td><td class="n">91.2</td><td class="n">98.6</td><td class="n">90.8</td><td class="n">82.1</td><td class="n">82.6</td><td class="n">93.4</td></tr><tr><td>SDN</td><td class="n">90.0</td><td class="n">94.9</td><td class="n">86.9</td><td class="n">85.4</td><td class="n">86.3</td><td class="n">91.0</td></tr><tr><td>EE Fixed</td><td class="n">91.3</td><td class="n">98.4</td><td class="n">89.7</td><td class="n">81.8</td><td class="n">85.9</td><td class="n">90.4</td></tr><tr><td>EE Dynamic</td><td class="n">91.1</td><td class="n">98.2</td><td class="n">89.9</td><td class="n">81.9</td><td class="n">84.6</td><td class="n">89.5</td></tr><tr><td>(참고) 점유율 규칙</td><td class="n">94.5</td><td class="n">100</td><td class="n">97.1</td><td class="n">88.4</td><td class="n">82.1</td><td class="n">100</td></tr></tbody></table></div>
-<p class="sub">점유율 규칙은 라벨의 점유율 축을 그대로 옮긴 것이라 정확도가 높게 나올 수밖에 없다. 비교 기준으로만 쓴다. 심각 recall은 SDN·EE가 규칙보다 4pt 높다.</p>
+<p class="sub">점유율 규칙은 라벨의 점유율 축을 그대로 옮긴 것이라 정확도가 높게 나올 수밖에 없다. 비교 기준으로만 쓴다.</p>
+<div class="callout"><p><b>심각은 LSTM이 규칙보다 더 잡는다.</b> 합산 심각 recall SDN 86.3·EE Fixed 85.9 vs 규칙 82.1(Baseline 82.6은 규칙과 비슷). 이득은 거의 h7에서 나온다: h7 심각 recall 규칙 59.3 → Baseline 67.0 · EE Fixed 68.3 · SDN 72.0. 점유율은 75% 미만인데 loss·latency로 심각이 된 경우라 규칙은 원리상 잡을 수 없다. h13(업링크)은 점유율만으로 심각이 보여 규칙·EE 모두 99.0. 대가로 심각 precision은 규칙 100% 대비 89~93%. 차이는 심각 창 약 14개, 2시드라 크기는 조심해서 본다.</p></div>
 </section>
 
 <section>
