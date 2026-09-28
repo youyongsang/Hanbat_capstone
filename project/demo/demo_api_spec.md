@@ -348,7 +348,7 @@ Base URL: `http://<파이>:9000` (유선 관리 서브넷 경유). 브라우저�
   "persistence_gate": { "k": 2, "m": 2 }
 }
 ```
-(`trained_on_rows`/`trained_at`는 2026-09-02 k2m2 재배포 기준 — CLAUDE.md "최신 평가 결과" 참고. `persistence_gate`는 이 문서 §2.3 이후 신규 개념, `congestion_formula`가 non-occ 축 심각을 붙이기 전 마지막 필터로 통과시킨다.)
+(**2026-09-28 갱신**: 배포 모델이 24세션 모델로 바뀌었다 — 학습 창 13,858 / val 5,575, `trained_at` 2026-09-28, 체크포인트 `checkpoints/ap_v2_redesign2_24sess_20260928/selected/`. 아래 예시 값은 9/2 기준 그대로 둔다.) (`trained_on_rows`/`trained_at`는 2026-09-02 k2m2 재배포 기준 — CLAUDE.md "최신 평가 결과" 참고. `persistence_gate`는 이 문서 §2.3 이후 신규 개념, `congestion_formula`가 non-occ 축 심각을 붙이기 전 마지막 필터로 통과시킨다.)
 
 대시보드는 시작 시 `/meta`를 1회 읽어 feature 순서·앵커·문턱을 표시에 쓴다. **`scaler.sha256`이 학습 때와 다르면 결과를 신뢰하지 말 것**(재라벨링/재변환 후 ONNX·scaler 동기 안 맞음 신호 — feature 개수가 바뀔 때마다(9→6→7) 실제로 반복된 문제였다).
 

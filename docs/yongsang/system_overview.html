@@ -268,6 +268,8 @@
     </nav>
   </header>
 
+  <div class="callout"><span>★</span><span><b>현행 배포 모델 (2026-09-28)</b> — 배포 모델이 24세션(g+h) 모델로 바뀌었다. 데이터 계보는 이 그림 이후 7세션(g1~g5, 09-22) → 24세션(h1~h18, 부하 방향 다양화, 09-28)으로 늘었다. 라벨 파이프라인·수집 토폴로지는 그대로이고, 업링크(폰→유선 Pi)·다운링크(Pi→폰)·혼합 부하 설정이 추가됐다(다운링크는 Opal 점유율에 안 잡힘). 최신 결과는 <code>docs/yongsang/final_model_24sess.html</code>와 <code>CLAUDE.md</code> "현행 배포 모델" 절을 본다: 처음 보는 세션(h7·h13·h12) EE Fixed 정확도 91.3%·심각 recall 85.9%·precision 90.4%, 다운링크 우세 세션 55~64%(측정 한계), Pi INT8 EE Fixed 0.58~0.68ms / Baseline 0.85~0.86ms(전부 &lt;1ms).</span></div>
+
   <!-- ============ 1 ============ -->
   <section id="lineage">
     <h2><span class="step">01</span> 데이터 계보</h2>

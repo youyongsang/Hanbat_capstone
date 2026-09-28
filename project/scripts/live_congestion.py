@@ -66,7 +66,7 @@ LABEL_NAMES = {0: "정상", 1: "경고", 2: "혼잡", 3: "심각"}
 
 def parse_args() -> argparse.Namespace:
     here = Path(__file__).resolve().parent
-    ck = PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2"
+    ck = PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2_24sess_20260928" / "selected"  # 배포 모델 (2026-09-28, 24세션)
     # 저장소면 checkpoints/, 번들이면 스크립트 옆에 onnx·scaler가 있음.
     default_model = ck / "ap_early_exit_fixed_unified_int8_v2.onnx"
     if not default_model.exists():

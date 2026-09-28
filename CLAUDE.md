@@ -22,11 +22,12 @@
 
 **발표자료(`docs/캡스톤디자인I_최종발표.pptx`) 슬라이드 8 "정량적 목표"**:
 - 목표1 = Raspberry Pi 환경에서 **혼잡 분류 정확도 95% 이상** — 슬라이드 8 원문은 4-class 정확도 기준이지만, **2026-09-13(24차)부터 목표1을 "L3(심각) recall/precision이 메인 지표, 4-class 95%는 부차 지표"로 재정의**했다. 근거: 슬라이드 7 최종 목표 문장("혼잡 판단 → 채널 전환 필요 여부 판단")상 채널 전환은 심각(3)에서만 발동되므로 0↔1↔2 사이의 작은 혼동은 전환 판단과 무관하고, 실제로 중요한 결정 경계는 혼잡(2)↔심각(3) 하나뿐 — 이게 정확히 기존에 추적해온 L3 recall/precision/F1과 같은 지표다. 4-class 정확도 카드(데이터 추가 22차 이득≈0, feature 추가 24차 오히려 손해)가 소진된 뒤 내려진 결정. 상세: `.work-log/current.md` 24차, `docs/yongsang/congestion_label_redesign.{md,html}`.
+  - **2026-09-28 현행 배포(24세션) 기준 처음 보는 세션 수치**: h7·h13·h12 합산 EE Fixed 정확도 91.3%·심각 recall 85.9%·precision 90.4%, 8/28·9/1 LOSO 88~92%, 다운링크 우세 세션 55~64%(측정 한계). 아래 18차 수치는 9/2 캐노니컬 배포 기준(세션 내 분할이라 낙관적). 상세 "현행 배포 모델" 절.
   - **메인 지표 — L3 recall/precision/F1** (k2m2 게이트, 18차 5시드 평균): recall Baseline 87.1±1.9 / **SDN 87.6±1.8(최고)** / EE Fixed 85.7±3.7 / EE Dynamic 83.8±3.2. F1: SDN 86.4±1.3 / **EE Dynamic 86.7±1.8(최고)** / EE Fixed 85.9±2.5 / Baseline 84.3±3.5. 단일 배포 체크포인트 precision: EE Fixed 84 / EE Dynamic 86 / SDN 83. 정상↔심각 혼동은 0건 — 남은 오답은 전부 혼잡(2)과의 인접 경계.
   - **부차 지표 — 4-class 정확도** (window 12 + 데이터 2551 + 라벨 지속성 게이트 k=2/m=2, 18차): **EE 배포 Fixed 92.3% / Dynamic 92.9%, 5시드 평균 EE Fixed 91.7±0.7 · Dynamic 92.3±0.7**. 단일 배포 최고는 SDN seed0 **92.3%**(T=0.72), Baseline seed2 89.9%(약한 draw). **17차의 SDN 94.8%보다 낮아졌지만 이는 k2m2의 손해가 아니라 이번 draw가 5시드 평균에 더 가까운 정직한 값이기 때문**(17차 94.8%는 SDN 5시드 평균 93.3±0.9보다 +1.6σ 튄 값이었음) — 상한선: Baseline 5시드 92.7±1.5, SDN 91.9±1.0. (**±1 등급 허용 정확도는 재프레이밍 근거로 부적절 — 2026-09-13 정정**: 정상↔경고·경고↔혼잡 오차와 혼잡↔심각 오차를 동일 취급하는데, 실제로 채널 전환은 심각에서만 발동되므로 혼잡↔심각 오차만 결정을 뒤집는 유일한 에러다. 재프레이밍의 진짜 근거는 위 메인 지표(L3 recall/precision)뿐 — 상세: `.work-log/current.md` 25차 후속.)
   - **4-class 95%도 별도 경로로 재달성 가능 — 하이브리드 패시브+능동 프로브 트리거** (2026-09-14, 25차 후속): 패시브 LSTM 확신이 낮을 때만(softmax 최대확률 < θ) 짧게(~2초) 능동 victim 프로브를 발동해 실측으로 확정하는 Early-Exit식 구조. 캐노니컬 test 365창(진짜 probe 정답 보유)으로 오프라인 시뮬레이션한 결과 **프로브 트리거율 3.4%만으로 4-class 정확도 93.2%→95.0%**(8.3%면 96.4%), 5시드 검증 완료. 배포 시 "협조 기기 1대 상시 배치 + 드물게만 짧게 찌름"으로 완화되는 대가가 있으나 목표2(<1ms)는 92~97%의 주경로엔 영향 없음. 실제 구현은 스코프 밖, 향후 연구로 제시. 상세: `docs/yongsang/congestion_label_redesign.{md,html}` §5 "남는 관측 한계를 넘는 법".
   - **k2m2의 실질 성과는 L3(심각) recall·F1이 전 모델 6~10pt/1.5~3.0pt 개선된 것** (예: EE Fixed L3 recall 75.2→85.7%, F1 82.9→85.9%) — 좁은 의미의 4-class 95% 문턱과는 별개로 실제 심각 탐지력(메인 지표)은 뚜렷이 나아짐. 남은 오답 구간은 k2m2로 재확인 필요(k3m2 시절엔 지속형 3↔2 + occ 72~73 경계로 분석됨).
-- 목표2 = **추론 지연 < 1ms** — 달성. **2026-09-02 Pi 재측정 (window 12, 2551+k2m2게이트, test 365창)**: Baseline 0.864 / EE Fixed 0.625 / EE Dynamic 0.632 / SDN 0.575ms — 전부 avg <1ms. EE Fixed가 Baseline −28%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.327/0.644/0.953 vs 0.332/0.646/0.962) — SDN 평균이 낮은 건 T=0.72가 exit1을 front-load한 것.
+- 목표2 = **추론 지연 < 1ms** — 달성. **2026-09-28 24세션 배포 모델 Pi 재측정(INT8, 기존 번들과 A/B 2라운드)**: 새 val 1,500창 기준 Baseline 0.864 / EE Fixed 0.680 / EE Dynamic 0.689 / SDN 0.621ms, 캐노니컬 test 365창 기준 Baseline 약 0.85 / EE Fixed 0.579 / EE Dynamic 0.590 / SDN 0.569ms — 전부 <1ms, EE Fixed가 Baseline −21~32%, 스로틀링 없음. 상세 `docs/yongsang/final_model_24sess.html` 7절. 이전(9/2 캐노니컬 배포) 기록: **2026-09-02 Pi 재측정 (window 12, 2551+k2m2게이트, test 365창)**: Baseline 0.864 / EE Fixed 0.625 / EE Dynamic 0.632 / SDN 0.575ms — 전부 avg <1ms. EE Fixed가 Baseline −28%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.327/0.644/0.953 vs 0.332/0.646/0.962) — SDN 평균이 낮은 건 T=0.72가 exit1을 front-load한 것.
 - SDN 비교는 원래 정량 목표가 아니다. 핵심 기여 주장은 "간섭 감지에 Early Exit LSTM 구조를 최초 적용"이고, "혼잡 판단 → 채널 전환 필요 여부 + 전환 명령 후보 생성"까지가 최종 목표 문장(슬라이드 7).
 
 ## 배경 (1학기 → 1차 → 2차)
@@ -64,9 +65,12 @@ project/models/sdn_lstm.py                             SDNLSTM: SDNInternalClass
 project/scripts/evaluate_ap_early_exit.py              평가
 project/scripts/forecast_eval_redesign.py              조기경보(k폴링 뒤 라벨) 재평가
 project/scripts/generate_ap_comparison.py              Baseline/SDN/Proposed 비교표 생성
-project/data/ap_metrics_v2_redesign2/                  현행 windowed train/val/test, scaler_params.json, dataset_summary.json
-project/checkpoints/ap_v2_redesign2/                   현행 Early Exit LSTM 체크포인트 (배포 기준)
-project/deploy/raspberry_pi_ap_v2/                     Pi 배포 번들 (ONNX staged/unified/int8_v2 + bench 스크립트)
+project/data/ap_metrics_v2_redesign2/                  캐노니컬 windowed train/val/test(8/28·9/1, 창 단위 분할), scaler_params.json(← 모든 배포 모델이 공유하는 스케일러)
+project/checkpoints/ap_v2_redesign2/                   9/2 캐노니컬 체크포인트 (2026-09-28까지 배포 기준, 이제 이전 모델)
+project/data/ap_metrics_v2_redesign2_24sess_20260928/  ★ 현행 배포 데이터셋: 24세션(8/28·9/1·g1~g5·h1~h4·h6~h18) 런 단위 분할, train 13,858 / val 5,575창 (test.csv=val 사본, 성능 지표 아님)
+project/checkpoints/ap_v2_redesign2_24sess_20260928/selected/  ★ 현행 배포 체크포인트+ONNX (EE s0, Baseline s1, SDN s1 T=0.62; selected_seeds.json)
+project/deploy/raspberry_pi_ap_v2/                     Pi 배포 번들 (2026-09-28 24세션 ONNX로 교체, 기존은 archived_canonical_k2m2_20260902/, test.csv=새 val 1,500창) — live_congestion.py·demo_state.py 기본 모델도 24세션
+docs/yongsang/final_model_24sess.html                  ★ 24세션 최종 모델 보고서 (선택 근거·처음 보는 세션 성능·오답 원인·채널 전환 규칙·Pi 지연)
 project/results/yongsang/ap_v2_redesign2_eval_report.txt          현행 평가 리포트
 project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt Pi 실측 지연 비교 (Baseline/SDN/Proposed)
 project/results/yongsang/ap_v2_redesign2_forecast_eval.txt        조기경보 프레이밍 결과 (k3m2 시절 마지막 실행 — k2m2로 재실행 안 함, canonical 경로에 없음. `*_k3m2_archived_20260902.txt` 참고)
@@ -139,7 +143,21 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 - **class weight power = 0.0** (`--class-weight-power`, `compute_class_weights`) — 클래스 가중치를 아예 안 씀(plain CE). **2026-08-30 재스윕(0.0/0.1/0.15/0.2/0.3/0.5/0.7/0.85/1.0, 3시드씩)에서 power=0.0이 정확도(91.3%±0.5% vs power=1.0의 87.0%±1.1%)·Label3 F1(69.8% vs 63.2%) 둘 다 최고, 트레이드오프 없음**이라 기본값을 1.0→0.0으로 변경. 옛 1.0은 2026-08-23에 4-feature·train label3=23개 시절 "power≤0.85면 label3 recall 절벽" 때문에 정한 값인데, 7-feature·train label3=141개가 되면서 그 절벽이 사라짐(옛 결정을 재검증 안 해 계속 손해보고 있었음). 상세: work-log 4~5차 체크포인트(2026-08-30).
 - `train_*.py` 전부에 `--seed` 옵션 있음(기본 `None` = 기존 동작). **하이퍼파라미터 A/B 비교는 반드시 여러 시드로** — 단일 실행 비교가 노이즈였던 전례가 여러 번 있었다.
 
-### 최신 평가 결과 (2026-09-02, 7-feature `ap_metrics_v2_redesign2`, **window 12 + 데이터 2551 + 라벨 지속성 게이트 k=2/m=2**)
+### ★ 현행 배포 모델 (2026-09-28, 24세션 g+h) — 이 절이 최신, 아래 "최신 평가 결과(2026-09-02)"는 이전 캐노니컬 배포 기록
+
+- **무엇**: 24세션(8/28·9/1·g1~g5 + h1~h4·h6~h18, 부하 방향 노트북·업링크·다운링크·혼합·폰↔폰) 런 단위 분할로 Baseline·EE·SDN 5시드 학습, val balanced acc 최고 시드 선택(EE s0, Baseline s1, SDN s1 T=0.62). 모델 구조·하이퍼파라미터·7-feature·window 12·스케일러는 그대로. Pi `~/ap_pi_v2` 교체 완료(기존은 Pi `archived_canonical_k2m2_20260902/`).
+- **보고할 성능 = 처음 보는 세션(학습에서 통째로 뺀 세션)** — 같은 방식(g+h)으로 학습한 모델, 2시드:
+  - h7(노트북 방향)·h13(업링크)·h12(혼합) 합산 2,638창: 정확도 Baseline 91.2 / SDN 90.0 / **EE Fixed 91.3** / EE Dynamic 91.1, 심각 recall 82.6 / 86.3 / **85.9** / 84.6, 심각 precision 93.4 / 91.0 / 90.4 / 89.5.
+  - 8/28을 뺀 LOSO: 정확도 88.4~88.5, 심각 recall 44~55(8/28 심각의 56~71%가 점유율 미달 loss·latency 주도). 9/1을 뺀 LOSO: 89.1~92.1, 심각 recall 86.5~88.3. 7세션 LOSO(87.3/42.9, 90.1/88.7)보다 같거나 높고 심각 precision +5~10pt.
+  - **다운링크 우세 세션(h9·h10·h11·h15·h16, 사실상 h17 포함)은 55~64%** — Opal 점유율(survey busy)이 AP 자신의 송신을 빼서 다운링크 혼잡이 안 보이는 측정 한계. 보고 시 "점유율에 보이는 부하 약 88~92% / 다운링크 우세 55~64%"로 나눠 제시.
+- **기존·7세션 모델과 같은 창 비교(h7·h13·h12)**: EE Fixed 80.0(기존) → 73.9(7세션) → 91.3(g+h). 이득은 거의 업링크 h13(47~78 → 96%)에서 나옴, 기존 방향 h7은 80~82로 동일. 데이터 양이 아니라 **못 본 부하 방향을 넣은 효과**(7세션은 기존보다 데이터가 많아도 업링크에서 더 나빴음).
+- **캐노니컬 test 365창(참고, 공정한 시험 아님)**: EE Fixed 92.3(기존) → 93.2(24세션), Baseline 89.9 → 90.7. 24세션은 164창이 속한 런을 학습했으므로 이득으로 인용하지 말 것 — 학습에서 뺀 오염 run4~6 201창에서 93.5%(기존 94.5%)로 "기존 환경에서 손해 없음"만 확인.
+- **남은 오답의 정체**(val, 다운링크·폰↔폰·h17 제외): 라벨이 점유율로 설명되는 창(90%)은 EE 95.2%, 점유율 미달 loss·latency 라벨(10%)은 37.9% → 오답의 58%. 나머지는 혼잡↔심각 전환 시점 근처(점유율 60~75%). 같은 종류 데이터·패시브 feature·게이트 확장으로는 안 풀림 — 새 신호(MT6000 airtime 또는 능동 프로브) 필요.
+- **채널 전환 규칙**(처음 보는 세션 예측, 심각 사건 19개): 전환 명령은 "최근 3폴링 중 2번 심각 + 쿨다운 30폴링"이 균형점(EE Fixed 지속 심각 86% 탐지, 지연 약 2폴링, 헛된 전환 즉시 전환의 절반). 화면 표시용 `--confirm 3`은 전환용으로 느림(8폴링, 탐지 55~75%). 사건 수가 적어 방향성만.
+- **ONNX 검증**(val 5,575창): unified fp32 EE Fixed·Dynamic·Baseline 5,575/5,575 일치, INT8 0.2~0.6% 창만 차이(정확도 차 ≤0.1pt).
+- **평가 원칙**: 이후 held-out(h19 혼합 고부하, 학교 g6)은 이 모델로 채점만 하고 결과를 보고 모델을 다시 고르지 않는다. 상세: `docs/yongsang/final_model_24sess.html`, `.work-log/current.md` 28차 후속(22).
+
+### 최신 평가 결과 (2026-09-02, 7-feature `ap_metrics_v2_redesign2`, **window 12 + 데이터 2551 + 라벨 지속성 게이트 k=2/m=2**) — 이전 캐노니컬 배포 기록
 
 정확한 최신 수치는 `.work-log/current.md` 18차/9차 체크포인트. windowed test **365** 샘플 (label 분포 0:109 / 1:82 / 2:132 / 3:42).
 
@@ -252,3 +270,4 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 5. PC wall-time만으로 Early Exit 속도 우위를 주장하면 위험하다 — 최종 속도 주장은 Raspberry Pi INT8 실측 기준(현재 0.6~0.8ms, 목표2 <1ms 달성).
 6. Fixed/Dynamic은 별도 backbone을 새로 학습하는 것이 아니라, 같은 Early Exit backbone에서 threshold 정책(고정 θ vs 변동률 기반 θ)만 바꿔 평가하는 구조이다. **SDN은 다르다** — 2026-08-30 논문 충실 재구현으로 pooling IC head + 램프 loss + 캘리브레이션 T를 실제로 별도 학습(base 백본만 공유). "SDN-style이 EE와 사실상 같은 네트워크"라는 옛 서술은 이 재구현 이전 기준이며 stale.
 7. **목표1은 2026-09-13(24차)부터 L3(심각) recall/precision이 메인 지표, 4-class 95%는 부차 지표다** — 좁은 의미의 "Pi 정확도 95%"만 붙잡고 있지 말 것. 4-class 정확도 카드는 데이터 추가(22차, 이득≈0)·feature 추가(24차, `expected throughput`+MCS index 시도했으나 5시드 전부 손해)로 소진됐고, 사용자 논리("전환은 심각에서만 발동되니 0↔1↔2 혼동은 무관, 중요한 건 혼잡(2)↔심각(3) 경계뿐")로 메인 지표를 바꾸기로 확정했다. 18차 k2m2 게이트 후 5시드 평균: 4-class 정확도 Baseline 92.7% / SDN 91.9% / EE Fixed 91.7% / EE Dynamic 92.3%(사실상 동급, 단일 배포 최고 SDN 92.3%) — 이건 이제 부차 지표. **메인 지표(L3 recall)는 SDN 87.6%(최고)/EE Fixed 85.7%/EE Dynamic 83.8%/Baseline 87.1%로 k2m2가 전 모델 크게 개선**(예: EE Fixed 75.2→85.7%)시킨 것이 실질 성과다. 단일 배포 4-class 정확도는 17차의 운 좋은 draw(SDN 94.8%)보다 낮아졌지만 — 5시드 평균이 진짜 대표값이라는 원칙을 잊지 말 것. Proposed(EE)의 가치 주장은 정확도가 아니라 속도·효율(Pi에서 Baseline 대비 -28%) + L3 탐지력.
+8. **현행 배포 모델은 2026-09-28부터 24세션(g+h) 모델**(`checkpoints/ap_v2_redesign2_24sess_20260928/selected/`, Pi 교체 완료)이다. 위 7번의 92%대·5시드 수치는 9/2 캐노니컬(8/28·9/1 창 단위 분할) 기준 기록이다. 성능을 인용할 때는 처음 보는 세션 수치(점유율에 보이는 부하 88~92%, EE Fixed 심각 recall 85.9%·precision 90.4% on h7·h13·h12, 다운링크 우세 55~64%)를 쓰고, 캐노니컬 test 365창 수치는 참고로만 쓴다.

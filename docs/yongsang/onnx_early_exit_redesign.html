@@ -463,6 +463,8 @@
     </div>
   </header>
 
+  <div class="callout"><span>★</span><span><b>현행 배포 모델 (2026-09-28)</b> — 배포 모델이 24세션(g+h) 모델로 바뀌었다. 이 문서의 방법론(staged → unified If 노드 → INT8 stage별 양자화 후 재조립)은 그대로 쓰였다. 24세션 ONNX도 같은 6개 스크립트로 재수출했고 val 5,575창에서 unified fp32 완전 일치, INT8 0.2~0.6% 창만 차이. 최신 결과는 <code>docs/yongsang/final_model_24sess.html</code>와 <code>CLAUDE.md</code> "현행 배포 모델" 절을 본다: 처음 보는 세션(h7·h13·h12) EE Fixed 정확도 91.3%·심각 recall 85.9%·precision 90.4%, 다운링크 우세 세션 55~64%(측정 한계), Pi INT8 EE Fixed 0.58~0.68ms / Baseline 0.85~0.86ms(전부 &lt;1ms).</span></div>
+
   <div class="callout"><span>ℹ</span><span><b>이후 업데이트 (2026-08-29 ~ 08-30)</b> — 이 문서 본문의 수치는 최초(6-feature, 균등 exit 가중치, class-weight-power=1.0) 시점 기록으로 보존한다. <b>방법론적 결론(staged가 세션 호출 오버헤드로 느림 → unified If 노드 → INT8은 stage별 양자화 후 재조립)은 그대로 유효.</b> 그 뒤 바뀐 것:
   <br>· <b>2026-08-29</b>: <code class="mono">sta_tx_bitrate_mean</code>을 7번째 입력 feature로 승격, Baseline/SDN/Proposed 전부 재학습·재수출. 학습 파이프라인에 <code class="mono">--seed</code> 추가. 한때 시도했던 SDN-스타일 exit-loss 가중치 승격은 다중 시드 검증에서 노이즈로 판명 → 균등(0.3/0.3/0.4) 유지.
   <br>· <b>2026-08-30</b>: <code class="mono">--class-weight-power</code> 기본값 1.0 → 0.0 (재스윕에서 정확도·Label3 F1 둘 다 최고). 세 모델 재학습·5시드 특성화. Baseline 배포를 seed0→seed3으로 교체(val-best, seed0의 92.3%는 운 좋은 test draw였음).

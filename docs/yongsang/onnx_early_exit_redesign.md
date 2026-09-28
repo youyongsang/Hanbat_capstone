@@ -12,6 +12,8 @@
 >
 > **(업데이트 — 2026-09-02, 18차, 게이트 k·m 스윕 → k=2/m=2 채택)** 방법론적 결론 불변. 17차의 k=3/m=2는 스윕 없이 정한 값이었다 — 6개 config(nogate·k2m2·k3m2·k3m3·k5m2·k5m3) x 5시드 스윕 결과 **k=2/m=2**가 강등 35개로 L3 recall·F1 최고임을 확인, 채택. 세 모델 재학습·재배포 → ONNX 6개 재수출. 로컬 parity (test 365창): EE unified fp32 = PyTorch 365/365, INT8 v2 fixed 364/365 · dynamic 365/365, Baseline INT8 365/365, SDN INT8 364/365 (T=0.72). Pi INT8 실측: Baseline 0.864 / SDN 0.575 / Proposed Fixed **0.625** / Dynamic 0.632ms — 전부 avg <1ms, EE Fixed = Baseline −28%. per-exit는 EE가 SDN보다 전 stage 가벼움(0.327/0.644/0.953 vs 0.332/0.646/0.962) — SDN 평균이 낮은 건 T=0.72가 exit1을 37.5%로 front-load한 것. k3m2 대비 정확도는 ±1σ 안에서 보합, L3 recall·F1은 전 모델 개선(예: EE Fixed recall 75.2→85.7%, F1 82.9→85.9%). 상세: `.work-log/current.md` 18차, `ap_v2_redesign2_pi_latency_comparison.txt` 9차.
 
+> **(업데이트 — 2026-09-28, 24세션 배포 모델)** 방법론적 결론 불변. 배포 모델을 24세션(g 7 + h 17, 런 단위 분할) 모델로 교체하며 같은 6개 스크립트로 재수출 — val 5,575창 parity: EE unified fp32 = PyTorch 5,575/5,575(Fixed·Dynamic), INT8 v2 Fixed 5,562·Dynamic 5,558, Baseline INT8 5,543, SDN INT8 5,553(T=0.62). Pi INT8 A/B(기존 번들과 2라운드): 새 val 1,500창 EE Fixed 0.680 / Dynamic 0.689 / SDN 0.621 / Baseline 0.864ms, 캐노니컬 test 365창 EE Fixed 0.579 / Dynamic 0.590 / SDN 0.569 / Baseline 약 0.85ms — 전부 <1ms, EE Fixed = Baseline −21~32%. 상세: `docs/yongsang/final_model_24sess.html`, `.work-log/current.md` 28차 후속(22).
+
 ## 배경
 
 Early Exit LSTM은 학습 시 `EarlyExitLSTM.forward()`가 3개 exit(lstm1/2/3 각각 뒤에 분류기)의 로짓을 전부 반환하고, 추론 시엔 `infer_batch_stepwise()`가 앞 exit의 entropy가 임계값(θ) 아래면 뒤 레이어를 계산하지 않고 즉시 반환한다. 이 "레이어를 실제로 건너뛴다"는 동작을 파이 실기기에서도 재현하려면 ONNX로 내보낼 때 그 조건부 실행을 어떻게 표현할지가 문제였다.

@@ -260,6 +260,8 @@
     <div class="callout"><span>▸</span><span><b>SDN을 이기는 것이 목표가 아니다.</b> 백본을 완전히 똑같이 고정해두고 <b>SDN이 실제로 규정하는 3축만</b> 논문대로 바꿔서, 그 설계 차이가 결과에 어떻게 나타나는지 보는 <b>통제 비교(controlled comparison)</b>다. 주장은 "우리가 더 정확하다"가 아니라 "동급 정확도 + per-exit로 더 가벼운 exit head + per-model 캘리브레이션 불필요 + 트래픽 적응형 임계값 가능".</span></div>
   </header>
 
+  <div class="callout"><span>★</span><span><b>현행 배포 모델 (2026-09-28)</b> — 배포 모델이 24세션(g+h) 모델로 바뀌었다. 이 페이지의 SDN 비교 수치는 9/2 캐노니컬 배포 기준이다. 24세션 모델에서도 네 모델은 동급(처음 보는 세션 Baseline 91.2 / SDN 90.0 / EE Fixed 91.3 / EE Dynamic 91.1)이고 SDN T=0.62. 최신 결과는 <code>docs/yongsang/final_model_24sess.html</code>와 <code>CLAUDE.md</code> "현행 배포 모델" 절을 본다: 처음 보는 세션(h7·h13·h12) EE Fixed 정확도 91.3%·심각 recall 85.9%·precision 90.4%, 다운링크 우세 세션 55~64%(측정 한계), Pi INT8 EE Fixed 0.58~0.68ms / Baseline 0.85~0.86ms(전부 &lt;1ms).</span></div>
+
   <section>
     <h2><span class="step">01</span> SDN이 뭔가</h2>
     <p class="lede"><b>SDN = Shallow-Deep Networks</b> (Kaya, Hong, Dumitras — ICML 2019, <code>github.com/yigitcankaya/Shallow-Deep-Networks</code>). "이미 학습된 네트워크에 중간 분류기(internal classifier, IC)를 붙여, 쉬운 입력은 앞쪽에서 조기 종료시켜 추론을 싸게" 하는 <b>대표적인 기존 조기종료 방법</b>. 우리 과제에서는 "간섭 감지에 Early Exit LSTM을 최초 적용"이라는 기여 주장을 뒷받침할 <b>선행연구(prior-art) 비교점</b> 역할.</p>

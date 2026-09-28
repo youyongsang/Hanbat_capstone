@@ -75,7 +75,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--s21-port", type=int, default=5201, help="S21 부하용 iperf3 -s 포트")
     p.add_argument("--s26-port", type=int, default=5202, help="S26 부하용 iperf3 -s 포트")
     p.add_argument("--model", type=Path,
-                   default=_resolve(PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2" / MODEL_NAME,
+                   default=_resolve(PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2_24sess_20260928" / "selected" / MODEL_NAME,  # 2026-09-28 24세션
                                     MODEL_NAME))
     p.add_argument("--scaler", type=Path,
                    default=_resolve(PROJECT_ROOT / "data" / "ap_metrics_v2_redesign2" / "scaler_params.json",

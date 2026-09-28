@@ -167,7 +167,7 @@ Pi(서버 자신)·AP·S21·S26을 한 번에 점검. "연결확인" 버튼용.
 | feature 순서 | `throughput_mbps, channel_occupancy_percent, tx_retry_ratio, rssi_dbm, rssi_delta_db, rssi_moving_avg_dbm, sta_tx_bitrate_mean` | `project/utils/ap_features.py` (정본) |
 | window | 최근 **10** 폴링, shape `[1, 10, 7]` float32 | 학습이 window 10 |
 | 정규화 | `(x − min)/(max − min)`, `[0,1]` clip | `data/ap_metrics_v2_redesign2/scaler_params.json` — **학습 때 그 파일** 써야 함 |
-| ONNX | `checkpoints/ap_v2_redesign2/ap_early_exit_fixed_unified_int8_v2.onnx` | unified If-노드 + INT8. 입력 1개, 출력 2개(logits, exit_point) |
+| ONNX | `checkpoints/ap_v2_redesign2_24sess_20260928/selected/ap_early_exit_fixed_unified_int8_v2.onnx` (2026-09-28 24세션 배포 모델, 이전 `checkpoints/ap_v2_redesign2/`) | unified If-노드 + INT8. 입력 1개, 출력 2개(logits, exit_point) |
 | feature 안정화 (학습 시점 계약) | occ = 3폴링 median · tx_retry_ratio = 5폴링 rolling 비율(denom≥50) · rssi_moving_avg = 5폴링 평균 | `collect_metrics.py` 가 이렇게 계산해서 학습 데이터를 만듦 |
 | 라벨 | 0 정상 / 1 경고 / 2 혼잡 / 3 심각 | congestion_score 문턱 0.25/0.50/0.75 |
 | debounce (모델 밖) | `raw_label` N폴링 연속 일치 시 `label` 갱신. 레퍼런스 N=5 | 데모 표시용. 평가엔 미포함 |

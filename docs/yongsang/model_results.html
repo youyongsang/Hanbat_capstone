@@ -137,6 +137,8 @@
     <p><code>ap_model_comparison_redesign2.{txt,csv}</code>의 수치를 그래프로. window 12 · <b>2551행 + 라벨 지속성 게이트 k=2/m=2</b> · 5시드 평균(정확도·F1, test 365) + Raspberry Pi INT8 실측(지연) — 2026-09-02.</p>
   </header>
 
+  <div class="callout"><span>★</span><span><b>현행 배포 모델 (2026-09-28)</b> — 배포 모델이 24세션(g+h) 모델로 바뀌었다. 이 페이지의 수치는 9/2 캐노니컬 배포(8/28·9/1, 창 단위 분할 test 365창) 기준 기록이며, 세션 내 분할이라 낙관적이다. 최신 결과는 <code>docs/yongsang/final_model_24sess.html</code>와 <code>CLAUDE.md</code> "현행 배포 모델" 절을 본다: 처음 보는 세션(h7·h13·h12) EE Fixed 정확도 91.3%·심각 recall 85.9%·precision 90.4%, 다운링크 우세 세션 55~64%(측정 한계), Pi INT8 EE Fixed 0.58~0.68ms / Baseline 0.85~0.86ms(전부 &lt;1ms).</span></div>
+
   <section>
     <h2><span class="step">목표</span> 발표 정량 목표 대비</h2>
     <div class="kpis">
