@@ -35,7 +35,7 @@ DEFAULT_SCALER = PROJECT_ROOT / "data" / "ap_metrics_v2_redesign2" / "scaler_par
 
 
 def session_of(scenario: str) -> str:
-    match = re.search(r"_(g\d)$", scenario)
+    match = re.search(r"_(g\d|h\d+)$", scenario)  # 2026-09-28: h sessions (h1~h18)
     if match:
         return match.group(1)
     return "0828" if scenario.startswith("step_run") else "0901"

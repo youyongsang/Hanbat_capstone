@@ -1,0 +1,7 @@
+{
+  "Baseline": 1,
+  "EE Fixed": 0,
+  "EE Dynamic": 0,
+  "SDN": 1,
+  "criterion": "val_balanced_accuracy (run-level split, 24 sessions)"
+}
