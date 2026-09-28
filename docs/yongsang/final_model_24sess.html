@@ -1,0 +1,159 @@
+<meta charset="utf-8">
+<title>24세션 최종 모델</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+.chart .b3 { fill:var(--good); } .note { color:var(--mute); font-size:.84rem; }
+</style>
+<main>
+<p class="eyebrow">2.4GHz · g 7세션 + h 17세션 · 2026-09-27~28 · 28차 후속(22)</p>
+<h1>24세션 최종 모델</h1>
+<p class="lead">부하 방향(노트북·업링크·다운링크·혼합)을 다양하게 모은 h 세션까지 합쳐 배포 모델을 다시 만들었다. 이 문서는 그 결정의 근거(처음 보는 세션으로 한 시험), 최종 모델 학습·ONNX 검증, 남은 오답의 정체, 채널 전환 규칙 평가를 정리한다.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>47 → 96%</b><span>업링크 세션 h13, EE Fixed 정확도 (7세션 모델 → g+h 방식)</span></div>
+  <div class="kpi"><b>88 ~ 92%</b><span>처음 보는 세션 정확도 (h7·h13·h12, 8/28, 9/1; 다운링크 제외)</span></div>
+  <div class="kpi"><b>95.2%</b><span>라벨이 점유율로 설명되는 창에서 EE 정확도 (val)</span></div>
+  <div class="kpi alert"><b>55 ~ 64%</b><span>다운링크 우세 세션 (점유율에 AP 자신의 송신이 안 잡힘)</span></div>
+</div>
+
+<section>
+<h2>1. 어떤 방식으로 학습할지: 처음 보는 세션으로 비교</h2>
+<p>h7(노트북 방향)·h13(업링크)·h10(다운링크)·h12(혼합)를 학습에서 통째로 빼고 채점했다. 학습 조건은 (a) h 세션만, (b) g+h 가중치 없음, (c) g+h 부하 방향별 가중치. 5시드 기준 (b)가 가장 좋고 안정적이었고, (c)는 작은 방향 세션을 과하게 뽑아 정확도가 1.5~2pt 떨어져 기각했다.</p>
+<h3>h10을 뺀 3세션 합산 (2,638창, 조건 b, 2시드)</h3>
+<div class="tw"><table><thead><tr><th>모델</th><th class="n">정확도</th><th class="n">정상</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead><tbody><tr><td>Baseline</td><td class="n">91.2</td><td class="n">98.6</td><td class="n">90.8</td><td class="n">82.1</td><td class="n">82.6</td><td class="n">93.4</td></tr><tr><td>SDN</td><td class="n">90.0</td><td class="n">94.9</td><td class="n">86.9</td><td class="n">85.4</td><td class="n">86.3</td><td class="n">91.0</td></tr><tr><td>EE Fixed</td><td class="n">91.3</td><td class="n">98.4</td><td class="n">89.7</td><td class="n">81.8</td><td class="n">85.9</td><td class="n">90.4</td></tr><tr><td>EE Dynamic</td><td class="n">91.1</td><td class="n">98.2</td><td class="n">89.9</td><td class="n">81.9</td><td class="n">84.6</td><td class="n">89.5</td></tr><tr><td>(참고) 점유율 규칙</td><td class="n">94.5</td><td class="n">100</td><td class="n">97.1</td><td class="n">88.4</td><td class="n">82.1</td><td class="n">100</td></tr></tbody></table></div>
+<p class="sub">점유율 규칙은 라벨의 점유율 축을 그대로 옮긴 것이라 정확도가 높게 나올 수밖에 없다. 비교 기준으로만 쓴다. 심각 recall은 SDN·EE가 규칙보다 4pt 높다.</p>
+</section>
+
+<section>
+<h2>2. 기존 배포·7세션 모델과 같은 창으로 비교</h2>
+<p>세 모델 모두 h 세션을 학습에 쓰지 않았으므로 공정한 비교다. 기존·7세션은 배포 체크포인트 1개, g+h는 2시드 평균.</p>
+<div class="tw"><table><thead><tr><th>모델</th><th class="n">기존(8/28·9/1)</th><th class="n">7세션(g)</th><th class="n">g+h</th></tr></thead><tbody><tr><td>Baseline</td><td class="n">85.3</td><td class="n">88.0</td><td class="n">91.2</td></tr><tr><td>SDN</td><td class="n">81.8</td><td class="n">78.4</td><td class="n">90.0</td></tr><tr><td>EE Fixed</td><td class="n">80.0</td><td class="n">73.9</td><td class="n">91.3</td></tr><tr><td>EE Dynamic</td><td class="n">72.6</td><td class="n">73.4</td><td class="n">91.1</td></tr></tbody></table></div>
+<div class="charts">
+<figure class="chart"><figcaption>세션별 EE Fixed 정확도 (%)</figcaption><div class="legend"><span><i class="b1" style="background:var(--s1)"></i>기존</span><span><i class="b2" style="background:var(--s2)"></i>7세션</span><span><i class="b3" style="background:var(--good)"></i>g+h</span></div><svg viewBox="0 0 640 270" role="img" aria-label="세션별 EE Fixed 정확도 (%)"><line class="grid" x1="40" x2="630" y1="230.0" y2="230.0"/><text class="ax" x="34" y="234.0" text-anchor="end">0</text><line class="grid" x1="40" x2="630" y1="187.2" y2="187.2"/><text class="ax" x="34" y="191.2" text-anchor="end">20</text><line class="grid" x1="40" x2="630" y1="144.4" y2="144.4"/><text class="ax" x="34" y="148.4" text-anchor="end">40</text><line class="grid" x1="40" x2="630" y1="101.6" y2="101.6"/><text class="ax" x="34" y="105.6" text-anchor="end">60</text><line class="grid" x1="40" x2="630" y1="58.8" y2="58.8"/><text class="ax" x="34" y="62.8" text-anchor="end">80</text><line class="grid" x1="40" x2="630" y1="16.0" y2="16.0"/><text class="ax" x="34" y="20.0" text-anchor="end">100</text><rect class="b1" x="54.8" y="56.9" width="37.3" height="173.1"/><text class="val" x="73.4" y="52.9" text-anchor="middle">81</text><rect class="b2" x="94.1" y="54.1" width="37.3" height="175.9"/><text class="val" x="112.8" y="50.1" text-anchor="middle">82</text><rect class="b3" x="133.4" y="53.9" width="37.3" height="176.1"/><text class="val" x="152.1" y="49.9" text-anchor="middle">82</text><text class="grp" x="113.8" y="248" text-anchor="middle">h7 노트북</text><rect class="b1" x="202.2" y="63.7" width="37.3" height="166.3"/><text class="val" x="220.9" y="59.7" text-anchor="middle">78</text><rect class="b2" x="241.6" y="128.8" width="37.3" height="101.2"/><text class="val" x="260.2" y="124.8" text-anchor="middle">47</text><rect class="b3" x="280.9" y="24.8" width="37.3" height="205.2"/><text class="val" x="299.6" y="20.8" text-anchor="middle">96</text><text class="grp" x="261.2" y="248" text-anchor="middle">h13 업링크</text><rect class="b1" x="349.8" y="55.4" width="37.3" height="174.6"/><text class="val" x="368.4" y="51.4" text-anchor="middle">82</text><rect class="b2" x="389.1" y="26.7" width="37.3" height="203.3"/><text class="val" x="407.8" y="22.7" text-anchor="middle">95</text><rect class="b3" x="428.4" y="30.3" width="37.3" height="199.7"/><text class="val" x="447.1" y="26.3" text-anchor="middle">93</text><text class="grp" x="408.8" y="248" text-anchor="middle">h12 혼합</text><rect class="b1" x="497.2" y="101.4" width="37.3" height="128.6"/><text class="val" x="515.9" y="97.4" text-anchor="middle">60</text><rect class="b2" x="536.6" y="101.6" width="37.3" height="128.4"/><text class="val" x="555.2" y="97.6" text-anchor="middle">60</text><rect class="b3" x="575.9" y="94.1" width="37.3" height="135.9"/><text class="val" x="594.6" y="90.1" text-anchor="middle">64</text><text class="grp" x="556.2" y="248" text-anchor="middle">h10 다운링크</text></svg></figure>
+</div>
+<ul>
+<li><b>이득은 거의 h13(업링크)에서 나왔다.</b> 기존·7세션 모델은 업링크 혼잡을 거의 전부 심각으로 판정했다(7세션 EE 혼잡 recall 3%, 심각 precision 28%). g+h는 혼잡 recall 93%, 심각 precision 92%.</li>
+<li>h7(기존과 같은 방향)은 세 모델 모두 80~82%로 같다. h12(혼합)는 93~95%로 같고, g+h가 1~2pt 낮은 건 시드 하나의 정상↔경고 혼동 때문이다(채널 전환과 무관). 실제 심각 2창은 g+h만 잡았다.</li>
+<li>7세션 모델은 기존보다 데이터가 많은데도 업링크에서 더 나빴다. 양보다 <b>못 본 부하 방향을 넣은 것</b>이 효과를 냈다.</li>
+</ul>
+</section>
+
+<section>
+<h2>3. 8/28·9/1 세션을 빼고 학습해도 유지되는가</h2>
+<p>캐노니컬 test 365창은 g+h 평가에 쓸 수 없다(164창이 학습 런 안의 구간, 201창은 제외한 오염 런). 대신 8/28, 9/1을 각각 통째로 빼고 학습해 채점했다(2시드). 비교는 7세션 LOSO(Baseline 5시드).</p>
+<div class="tw"><table><thead><tr><th>빠진 세션</th><th>모델</th><th class="n">정확도</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead><tbody><tr><td>8/28</td><td>7세션 LOSO</td><td class="n">87.3</td><td class="n">42.9</td><td class="n">80.5</td></tr><tr><td>8/28</td><td>g+h Baseline</td><td class="n">88.5</td><td class="n">43.8</td><td class="n">90.3</td></tr><tr><td>8/28</td><td>g+h EE Fixed</td><td class="n">88.4</td><td class="n">51.9</td><td class="n">85.5</td></tr><tr><td>8/28</td><td>g+h EE Dynamic</td><td class="n">88.4</td><td class="n">55.2</td><td class="n">86.1</td></tr><tr><td>9/1</td><td>7세션 LOSO</td><td class="n">90.1</td><td class="n">88.7</td><td class="n">86.0</td></tr><tr><td>9/1</td><td>g+h Baseline</td><td class="n">92.1</td><td class="n">87.8</td><td class="n">94.0</td></tr><tr><td>9/1</td><td>g+h EE Fixed</td><td class="n">89.1</td><td class="n">86.5</td><td class="n">91.6</td></tr><tr><td>9/1</td><td>g+h EE Dynamic</td><td class="n">89.2</td><td class="n">88.3</td><td class="n">89.9</td></tr></tbody></table></div>
+<ul>
+<li>h 세션을 넣어도 기존 세션 성능은 떨어지지 않았고, 심각 precision은 5~10pt 올랐다.</li>
+<li>8/28의 심각 recall은 어느 모델로도 44~55%다. 8/28 심각의 56~71%가 점유율 미달인데 loss·latency로 붙은 심각이다.</li>
+<li>9/1에서 EE의 혼잡 recall이 시드에 따라 크게 흔들렸다(70.8±19). 최종 모델은 5시드 중 val로 고른다.</li>
+<li>step_run2의 bitrate 6.5는 부하가 없을 때만 나타나(부하 중 4.7%) 오염이 아니다. 오염 런 run4~6은 부하 중에도 61~72%가 6.5였다.</li>
+</ul>
+</section>
+
+<section>
+<h2>4. 최종 모델 (24세션 전부)</h2>
+<p><code>data/ap_metrics_v2_redesign2_24sess_20260928</code>: 24세션, 오염 6런 제외, 각 세션의 마지막 런을 val로(train 13,858 / val 5,575창). 스케일러는 캐노니컬 그대로라 Pi 설정은 바뀌지 않는다. Baseline·EE·SDN 각 5시드를 학습해 val balanced accuracy 최고 시드를 골랐다: <b>EE seed 0, Baseline seed 1, SDN seed 1 (T=0.62)</b>. 결과 <code>checkpoints/ap_v2_redesign2_24sess_20260928/selected/</code>.</p>
+<div class="callout"><p>val은 에폭·시드 선택에 썼으므로 성능 지표가 아니다. 보고할 성능은 1~3절의 처음 보는 세션 결과를 쓴다. 이후 수집할 held-out(h19 혼합 고부하, 학교 g6)은 이 모델로 채점만 하고, 결과를 보고 모델을 다시 고르지 않는다.</p></div>
+<h3>부하 방향별 val (정확도 / 심각 recall / 심각 precision)</h3>
+<div class="tw"><table><thead><tr><th>방향 (창 / 심각)</th><th class="n">Baseline</th><th class="n">EE Fixed</th><th class="n">EE Dynamic</th><th class="n">SDN</th></tr></thead><tbody><tr><td>폰→노트북 (2,330 / 494)</td><td class="n">85.4 / 74.5 / 81.6</td><td class="n">84.9 / 74.7 / 79.9</td><td class="n">84.2 / 74.7 / 78.3</td><td class="n">83.9 / 76.7 / 83.8</td></tr><tr><td>업링크 (925 / 191)</td><td class="n">95.1 / 93.2 / 88.1</td><td class="n">95.4 / 93.2 / 87.3</td><td class="n">95.2 / 93.2 / 86.8</td><td class="n">94.2 / 95.3 / 82.7</td></tr><tr><td>혼합 (873 / 4)</td><td class="n">86.4</td><td class="n">86.3</td><td class="n">85.8</td><td class="n">84.4</td></tr><tr><td>다운링크 (1,244 / 51)</td><td class="n">57.6 / 0 / –</td><td class="n">58.8 / 0 / –</td><td class="n">58.8 / 0 / –</td><td class="n">56.1 / 3.9 / 66.7</td></tr><tr><td>폰↔폰 h3 (203 / 74)</td><td class="n">44.8 / 37.8 / 80.0</td><td class="n">44.8 / 37.8 / 84.8</td><td class="n">45.3 / 39.2 / 85.3</td><td class="n">39.4 / 24.3 / 78.3</td></tr><tr><td>다운링크·폰↔폰 제외 (4,128 / 689)</td><td class="n">87.8 / 79.2 / 83.6</td><td class="n">87.5 / 79.4 / 82.1</td><td class="n">87.0 / 79.4 / 80.9</td><td class="n">86.3 / 81.4 / 83.5</td></tr><tr><td>전체 (5,575 / 814)</td><td class="n">79.5</td><td class="n">79.6</td><td class="n">79.2</td><td class="n">77.9</td></tr></tbody></table></div>
+<p class="sub">exit 분포(exit1/2/3): EE Fixed 24/42/34%, EE Dynamic 30/45/25%, SDN 38/37/25%. EE는 정확도를 거의 잃지 않고 창의 약 2/3를 exit3 전에 끝낸다.</p>
+<h3>ONNX 재수출·검증 (val 5,575창, PyTorch 대비)</h3>
+<div class="tw"><table><thead><tr><th>모델</th><th class="n">fp32 일치</th><th class="n">INT8 일치</th><th class="n">정확도 차</th></tr></thead><tbody><tr><td>EE Fixed (unified)</td><td class="n">5,575 / 5,575</td><td class="n">5,562 / 5,575</td><td class="n">0.0pt</td></tr><tr><td>EE Dynamic (unified)</td><td class="n">5,575 / 5,575</td><td class="n">5,558 / 5,575</td><td class="n">+0.1pt</td></tr><tr><td>Baseline</td><td class="n">5,575 / 5,575</td><td class="n">5,543 / 5,575</td><td class="n">−0.1pt</td></tr><tr><td>SDN (T=0.62)</td><td class="n">–</td><td class="n">5,553 / 5,575</td><td class="n">0.0pt</td></tr></tbody></table></div>
+</section>
+
+<section>
+<h2>5. 남은 오답은 어디서 나오나</h2>
+<p>다운링크·폰↔폰·h17을 뺀 val 3,893창에서 EE Fixed 오답 403개(10.4%)를 라벨의 원인별로 나눴다.</p>
+<div class="tw"><table><thead><tr><th>라벨의 원인</th><th class="n">창</th><th class="n">EE 정확도</th><th class="n">Baseline 정확도</th></tr></thead><tbody><tr><td>점유율이 기준을 넘어 붙은 라벨</td><td class="n">3,518 (90%)</td><td class="n">95.2</td><td class="n">95.3</td></tr><tr><td>점유율 미달, loss·latency로 붙은 라벨</td><td class="n">375 (10%)</td><td class="n">37.9</td><td class="n">38.7</td></tr></tbody></table></div>
+<ul>
+<li><b>오답의 58%가 점유율 미달 loss·latency 라벨에서 나온다.</b> 심각의 주원인은 victim 손실(191창), 지연(58창). 채널은 바빠 보이지 않는데 VoIP만 깨지는 상황이라 AP 텔레메트리에 신호가 없다. 이런 혼잡의 68%, 심각의 100%가 직전 폴링에도 같은 등급이라 단발 노이즈가 아니다.</li>
+<li>점유율 라벨 쪽 남은 오답은 대부분 혼잡→심각(90창, 점유율 60~75%). 이 중 39%는 3폴링 안에 실제 심각이 되고, 33%는 직전 3폴링 안에 심각이었다. 심각에 들어가고 나오는 시점 근처에서 한두 폴링 어긋난 것이다.</li>
+<li>세션별로는 h17(54%), h7(68~71%), h2(72~75%)가 낮다. h17은 혼합으로 분류했지만 고부하에서 AP 다운링크가 채널을 독차지해 사실상 다운링크 세션이다(점유율 중앙값 20%). h7·h2는 심각 대부분이 loss·latency 원인이다.</li>
+<li>h17까지 빼면 val 정확도는 Baseline 약 89.8%, EE Fixed 약 89.6%.</li>
+</ul>
+<div class="callout bad"><p>같은 종류 데이터 추가(22차, 5GHz, g+h), 패시브 feature 추가(24~25차, 28차 후속 14), 라벨 게이트 확장(이득 1pt 이하)으로는 이 두 원인이 풀리지 않는다. 남은 방법은 새 신호(MT6000의 airtime·기기별 통계, 또는 능동 프로브 하이브리드)다.</p></div>
+</section>
+
+<section>
+<h2>6. 채널 전환 규칙</h2>
+<p>라이브 추론(<code>live_congestion.py --confirm 3</code>)은 같은 예측이 3번 연속이어야 표시를 바꾼다. 창 단위로 재면 이 규칙이 정확도를 89.6→82.9%로 낮추지만, 심각이 아닌데 심각이 뜨는 구간은 36→4개로 줄인다. 그래서 창 정확도가 아니라 전환 명령 단위로 따로 평가했다.</p>
+<p class="sub">처음 보는 세션 예측(h7·h13·h12, 8/28·9/1; 2시드, 1.32시간). 30폴링 안에 다시 시작된 심각은 한 사건으로 묶고(19개, 2폴링 이상 14개), 전환 후 30폴링은 재전환 금지, 전환 앞뒤 3폴링 안에 실제 심각이 없으면 헛된 전환.</p>
+<div class="tw"><table><thead><tr><th>EE Fixed 전환 규칙</th><th class="n">사건 탐지</th><th class="n">2폴링 이상 사건</th><th class="n">반응 지연(중앙, 폴링)</th><th class="n">헛된 전환</th></tr></thead><tbody><tr><td>심각 1번이면 전환</td><td class="n">92%</td><td class="n">89%</td><td class="n">0</td><td class="n">4.5</td></tr><tr><td>3폴링 중 2번</td><td class="n">71%</td><td class="n">86%</td><td class="n">2.3</td><td class="n">2.5</td></tr><tr><td>2번 연속</td><td class="n">68%</td><td class="n">86%</td><td class="n">5.5</td><td class="n">2.5</td></tr><tr><td>3번 연속 (현재 표시 방식)</td><td class="n">55%</td><td class="n">75%</td><td class="n">8.3</td><td class="n">0.5</td></tr></tbody></table></div>
+<ul>
+<li>처음 보는 세션에서는 헛된 전환 자체가 드물다(시간당 0~3.4회). val에서 본 헛경보 구간 대부분은 실제 심각 앞뒤 3폴링 안이었다.</li>
+<li><b>"3폴링 중 2번" + 쿨다운</b>이 균형점이다. 지속 심각은 즉시 전환과 거의 같게 잡고(86% vs 89%), 헛된 전환은 절반. 놓치는 것은 주로 1폴링짜리 순간 심각이다.</li>
+<li>화면 표시 규칙(3번 연속)과 전환 명령 규칙은 따로 둔다. 3번 연속은 전환용으로는 느리다(8폴링).</li>
+<li>사건이 19개뿐이라 규칙 간 차이는 사건 몇 개 수준이다. 방향성으로만 본다. 다운링크(h10)는 어떤 규칙으로도 거의 못 잡는다.</li>
+</ul>
+</section>
+
+<section>
+<h2>7. Pi 지연 (INT8, A/B)</h2>
+<p>기존 배포 번들(9/2 캐노니컬, <code>~/ap_pi_v2</code>)과 24세션 번들(<code>~/ap_pi_v2_24sess</code>)을 같은 창으로 2라운드 번갈아 측정. NEWVAL = 새 val에서 무작위 1,500창, OLDTEST = 기존 캐노니컬 test 365창. <b>값은 창 하나의 추론 지연(ms)이며 낮을수록 빠르다.</b> 정확도가 아니다.</p>
+<div class="tw"><table><thead><tr><th>데이터</th><th>모델</th><th>번들</th><th class="n">라운드별 avg ms</th><th class="n">평균 ms</th><th class="n">exit1/2/3 %</th></tr></thead><tbody><tr><td>NEWVAL</td><td>EE Fixed</td><td>기존(9/2)</td><td class="n">0.668 / 0.674</td><td class="n">0.671</td><td class="n">16.93/56.53/26.53</td></tr><tr><td>NEWVAL</td><td>EE Fixed</td><td>24세션</td><td class="n">0.675 / 0.685</td><td class="n">0.680</td><td class="n">23.00/43.27/33.73</td></tr><tr><td>NEWVAL</td><td>EE Dynamic</td><td>기존(9/2)</td><td class="n">0.702 / 0.675</td><td class="n">0.689</td><td class="n">18.93/69.73/11.33</td></tr><tr><td>NEWVAL</td><td>EE Dynamic</td><td>24세션</td><td class="n">0.689 / 0.688</td><td class="n">0.688</td><td class="n">29.60/44.47/25.93</td></tr><tr><td>NEWVAL</td><td>SDN</td><td>기존(9/2)</td><td class="n">0.622 / 0.620</td><td class="n">0.621</td><td class="n">36.13/42.40/21.47</td></tr><tr><td>NEWVAL</td><td>SDN</td><td>24세션</td><td class="n">0.623 / 0.619</td><td class="n">0.621</td><td class="n">38.20/35.53/26.27</td></tr><tr><td>NEWVAL</td><td>Baseline</td><td>기존(9/2)</td><td class="n">0.874 / 0.864</td><td class="n">0.869</td><td class="n">-</td></tr><tr><td>NEWVAL</td><td>Baseline</td><td>24세션</td><td class="n">0.868 / 0.860</td><td class="n">0.864</td><td class="n">-</td></tr><tr><td>OLDTEST</td><td>EE Fixed</td><td>기존(9/2)</td><td class="n">0.633 / 0.625</td><td class="n">0.629</td><td class="n">32.88/39.45/27.67</td></tr><tr><td>OLDTEST</td><td>EE Fixed</td><td>24세션</td><td class="n">0.580 / 0.578</td><td class="n">0.579</td><td class="n">38.63/44.38/16.99</td></tr><tr><td>OLDTEST</td><td>EE Dynamic</td><td>기존(9/2)</td><td class="n">0.633 / 0.623</td><td class="n">0.628</td><td class="n">33.42/53.70/12.88</td></tr><tr><td>OLDTEST</td><td>EE Dynamic</td><td>24세션</td><td class="n">0.581 / 0.598</td><td class="n">0.589</td><td class="n">40.82/53.97/5.21</td></tr><tr><td>OLDTEST</td><td>SDN</td><td>기존(9/2)</td><td class="n">0.575 / 0.582</td><td class="n">0.579</td><td class="n">37.53/47.67/14.79</td></tr><tr><td>OLDTEST</td><td>SDN</td><td>24세션</td><td class="n">0.579 / 0.559</td><td class="n">0.569</td><td class="n">45.75/39.73/14.52</td></tr><tr><td>OLDTEST</td><td>Baseline</td><td>기존(9/2)</td><td class="n">0.851 / 0.859</td><td class="n">0.855</td><td class="n">-</td></tr><tr><td>OLDTEST</td><td>Baseline</td><td>24세션</td><td class="n">0.852 / 0.853</td><td class="n">0.853</td><td class="n">-</td></tr></tbody></table></div>
+<p class="sub">전부 1ms 미만(목표2 유지), 스로틀링 없음(38→67℃). EE Fixed는 Baseline보다 21~32% 빠르다. 기존·새 모델 차이(±0.05ms)는 exit 분포 차이다. 측정 후 라이브 <code>~/ap_pi_v2</code>를 새 모델로 교체했고 기존 파일은 Pi의 <code>archived_canonical_k2m2_20260902/</code>에 보관했다.</p>
+<h3>같은 365창에서 정확도 (PyTorch)</h3>
+<div class="tw"><table><thead><tr><th>모델</th><th class="n">전체</th><th class="n">심각 recall</th><th class="n">심각 precision</th><th class="n">run1~3·smallpkt 164창</th><th class="n">오염 run4~6 201창</th></tr></thead><tbody><tr><td>EE Fixed 기존(9/2)</td><td class="n">92.3</td><td class="n">88.1</td><td class="n">84.1</td><td class="n">89.6</td><td class="n">94.5</td></tr><tr><td>EE Fixed 7세션</td><td class="n">87.7</td><td class="n">88.1</td><td class="n">59.7</td><td class="n">87.8</td><td class="n">87.6</td></tr><tr><td>EE Fixed 24세션</td><td class="n">93.2</td><td class="n">90.5</td><td class="n">79.2</td><td class="n">92.7</td><td class="n">93.5</td></tr><tr><td>Baseline 기존(9/2)</td><td class="n">89.9</td><td class="n">90.5</td><td class="n">69.1</td><td class="n">89.0</td><td class="n">90.5</td></tr><tr><td>Baseline 7세션</td><td class="n">92.9</td><td class="n">81.0</td><td class="n">81.0</td><td class="n">90.9</td><td class="n">94.5</td></tr><tr><td>Baseline 24세션</td><td class="n">90.7</td><td class="n">88.1</td><td class="n">72.5</td><td class="n">91.5</td><td class="n">90.0</td></tr></tbody></table></div>
+<p class="sub">이 365창은 누구에게도 공정한 시험이 아니다. 기존·7세션은 같은 런의 이웃 구간으로 학습했고, 24세션은 164창이 속한 런을 통째로 학습했다(오염 run4~6 201창은 학습 제외). "기존 환경에서 떨어지지 않았다"는 확인용으로만 본다.</p>
+</section>
+
+<section>
+<h2>8. 보고할 수치</h2>
+<ul>
+<li><b>점유율에 보이는 부하</b>(노트북 방향·업링크·혼합): 처음 보는 세션 정확도 88~92%, 심각 recall 82~86%(h7·h13·h12), precision 89~94%.</li>
+<li><b>다운링크 우세</b>(h9·h10·h11·h15·h16·h17): 55~64%. 점유율 측정이 AP 자신의 송신을 빼는 측정 한계로 명시.</li>
+<li>발표 자료의 92~93%는 같은 세션 안에서 떼어 낸 test라 낙관적이었다. 세션 단위 수치와 함께 제시한다.</li>
+<li>폰↔폰(h3)은 세션 하나뿐이고 공장 시나리오와 거리가 있어 미검증으로 둔다.</li>
+</ul>
+</section>
+
+<footer>생성 <code>project/.tmp/exp_24g/build_final24_report.py</code> · 원자료 <code>retrain_gh_*</code>, <code>cmp_old_7s_gh*.py</code>, <code>val24_ee.py</code>, <code>val24_err.py</code>, <code>switch_policy_eval.py</code>, <code>verify_onnx_24sess.py</code> · 상세 <code>.work-log/current.md</code> 28차 후속(22)</footer>
+</main>
