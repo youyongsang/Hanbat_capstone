@@ -95,6 +95,27 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 </section>
 
 <section>
+<h2>2-1. 왜 업링크에서 틀렸고, 무엇을 배워 고쳤나</h2>
+<p>victim 프로브는 유선 Pi → AP → 노트북 300kbps다. AP는 목적지마다 송신 줄을 따로 둔다. 부하가 어느 줄에 서느냐에 따라 같은 점유율에서도 victim이 겪는 일이 달라진다.</p>
+<div class="tw"><table><thead><tr><th>심각 라벨 중</th><th class="n">h7 노트북 방향</th><th class="n">h13 업링크</th></tr></thead><tbody><tr><td>점유율 75% 이상</td><td class="n">59%</td><td class="n">99%</td></tr><tr><td>loss가 심각 기준 이상</td><td class="n">65%</td><td class="n">17%</td></tr><tr><td>지연이 심각 기준 이상</td><td class="n">67%</td><td class="n">0%</td></tr><tr><td>점유율 미달인데 loss·지연으로 심각</td><td class="n">약 41%</td><td class="n">약 1%</td></tr></tbody></table></div>
+<ul>
+<li><b>노트북 방향</b>: 폰 부하가 AP의 노트북 줄에 쌓이고 victim도 같은 줄에 선다. 채널이 60~70%일 때 이미 줄이 밀려 victim이 먼저 깨진다. 이 줄은 AP 자신의 송신이라 점유율에 안 잡힌다(다운링크 맹점과 같은 원인).</li>
+<li><b>업링크</b>: 부하는 AP에서 유선으로 빠져 노트북 줄이 비어 있다. victim은 채널이 거의 포화돼야 깨지고, 그때는 점유율이 이미 75%를 넘는다. 그래서 라벨이 거의 점유율로 정해진다.</li>
+<li>노트북 방향 데이터만 본 모델은 "점유율 60~75%면 심각일 수 있다"를 배웠고(7세션 데이터에서 이 구간 약 31%가 심각), 업링크의 같은 구간(거의 전부 혼잡)을 심각으로 판정했다. h13 혼잡 recall 기존 EE 53% · 7세션 EE 3%.</li>
+</ul>
+<h3>점유율 60~75% 구간에서 무엇으로 갈리나 (원본 값 중앙값, g+h 전체)</h3>
+<div class="tw"><table><thead><tr><th>feature</th><th class="n">노트북·심각 (414행)</th><th class="n">노트북·혼잡 (1,281)</th><th class="n">업링크·혼잡 (1,022)</th><th class="n">업링크·심각 (22)</th><th class="n">d (노트북 심각 vs 업링크 혼잡)</th></tr></thead><tbody><tr><td>점유율 %</td><td class="n">69</td><td class="n">67</td><td class="n">63</td><td class="n">70</td><td class="n">0.71</td></tr><tr><td><b>tx_retry_ratio</b></td><td class="n">0.41</td><td class="n">0.47</td><td class="n">0.09</td><td class="n">0.40</td><td class="n">1.39</td></tr><tr><td><b>RSSI 이동평균 dBm</b></td><td class="n">−49</td><td class="n">−48</td><td class="n">−40</td><td class="n">−49</td><td class="n">−1.68</td></tr><tr><td>처리량 Mbps</td><td class="n">49</td><td class="n">63</td><td class="n">41</td><td class="n">41</td><td class="n">0.69</td></tr><tr><td>bitrate Mbps</td><td class="n">67</td><td class="n">81</td><td class="n">60</td><td class="n">90</td><td class="n">0.23</td></tr></tbody></table></div>
+<h3>최종 모델이 이 구간에서 기대는 feature (val 1,247창, feature 하나씩 섞었을 때 정확도 하락)</h3>
+<div class="tw"><table><thead><tr><th>섞은 feature</th><th class="n">Baseline</th><th class="n">EE (exit3)</th></tr></thead><tbody><tr><td>tx_retry_ratio</td><td class="n">−17.7pt</td><td class="n">−10.5pt</td></tr><tr><td>RSSI 이동평균</td><td class="n">−11.3pt</td><td class="n">−2.3pt</td></tr><tr><td>점유율</td><td class="n">0</td><td class="n">−1.0pt</td></tr><tr><td>처리량·bitrate·RSSI·RSSI 변화</td><td class="n">≈0</td><td class="n">≈0</td></tr></tbody></table></div>
+<ul>
+<li><b>tx_retry_ratio는 물리적으로 말이 되는 신호다.</b> AP가 신호 약한 노트북(−61dBm)으로 대량 송신하면 재전송이 많아지고(0.41~0.47), 그 줄이 밀려 victim이 깨진다. 업링크는 AP가 무선으로 거의 안 보내 재전송이 적다(0.09). 점유율이 못 보는 AP 송신 쪽 상태를 일부 알려 주는 유일한 feature다.</li>
+<li><b>RSSI 의존은 배치 편향일 수 있다.</b> 업링크 h13은 폰을 AP 가까이 두어 RSSI가 높다. 업링크 심각 22행은 RSSI −49·retry 0.40으로 노트북 방향 심각과 같아서, 방향보다 링크 상태·재전송이 진짜 변수로 보인다. bitrate가 런 정체성 대리 변수였던 전례와 같은 함정일 수 있다. 다만 중간 거리 업링크 h18(−46~−47)도 95% 이상이라 RSSI에만 기대지는 않는다.</li>
+<li>확인 방법: 업링크를 먼 배치에서 한 세션 모아 모델은 고정한 채 채점한다.</li>
+</ul>
+<p class="note">분석 <code>band_feature_probe.py</code>. 순열 중요도는 5회 평균, 원인 해석은 데이터 패턴과 AP 줄 구조에서 추론한 것이며 줄 길이를 직접 재서 확정하지는 않았다.</p>
+</section>
+
+<section>
 <h2>3. 8/28·9/1 세션을 빼고 학습해도 유지되는가</h2>
 <p>캐노니컬 test 365창은 g+h 평가에 쓸 수 없다(164창이 학습 런 안의 구간, 201창은 제외한 오염 런). 대신 8/28, 9/1을 각각 통째로 빼고 학습해 채점했다. 같은 방식으로 h 세션을 넣기 전과 후를 비교한다.</p>
 <ul>
