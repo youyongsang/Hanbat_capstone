@@ -53,9 +53,9 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 .chart .b3 { fill:var(--good); } .note { color:var(--mute); font-size:.84rem; }
 </style>
 <main>
-<p class="eyebrow">2.4GHz · g 7세션 + h 17세션 · 2026-09-27~28 · 28차 후속(22)</p>
+<p class="eyebrow">2.4GHz · g 7세션 + h 17세션 · 2026-09-27~29 · 28차 후속(22)</p>
 <h1>24세션 최종 모델</h1>
-<p class="lead">부하 방향(노트북·업링크·다운링크·혼합)을 다양하게 모은 h 세션까지 합쳐 배포 모델을 다시 만들었다. 이 문서는 그 결정의 근거(처음 보는 세션으로 한 시험), 최종 모델 학습·ONNX 검증, 남은 오답의 정체, 채널 전환 규칙 평가를 정리한다.</p>
+<p class="lead">부하 방향(노트북·업링크·다운링크·혼합)을 다양하게 모은 h 세션까지 합쳐 배포 모델을 다시 만들었다. 이 문서는 그 결정의 근거(처음 보는 세션으로 한 시험), 부하 방향에 따라 모델이 틀리고 고쳐진 이유(점유율 60~75% 구간에서 재전송 비율이 방향을 가름), 최종 모델 학습·ONNX 검증, 남은 오답의 정체, 채널 전환 규칙, Pi 지연을 정리한다.</p>
 
 <div class="kpis">
   <div class="kpi"><b>47 → 96%</b><span>업링크 세션 h13, EE Fixed 정확도 (7세션 모델 → g+h 방식)</span></div>
@@ -67,8 +67,9 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 <section>
 <h2>0. 부하 방향: 어떤 데이터인가</h2>
 <p>모든 세션에서 정답 라벨은 같은 방식으로 만든다. Pi가 노트북에 보내는 300kbps UDP(victim 프로브)와 ping이 jitter·loss·latency 축을 만들고, AP가 잰 채널 점유율이 점유율 축을 만든다. 세션마다 다른 것은 <b>부하 트래픽(폰 두 대의 iperf3)이 어디서 어디로 흐르는가</b>다.</p>
-<div class="tw"><table><thead><tr><th>방향</th><th>부하 흐름</th><th>세션</th><th>공장에서는</th><th>점유율에 보이나</th></tr></thead><tbody><tr><td>노트북 방향 (기본)</td><td>폰 → AP → 노트북 (부하와 victim이 같은 기기)</td><td>8/28·9/1·g1~g5, h1·h2·h4·h6·h7</td><td>여러 기기가 한 무선 단말로 몰리는 경우</td><td>보임</td></tr><tr><td>폰↔폰</td><td>폰 → AP → 폰</td><td>h3</td><td>무선 기기끼리 직접 주고받는 경우 (공장엔 드묾)</td><td>보임</td></tr><tr><td>업링크</td><td>폰 → AP → 유선 Pi</td><td>h8·h13·h18</td><td>카메라·센서가 서버로 올리는 경우</td><td>보임 (폰 전파를 셈)</td></tr><tr><td>다운링크</td><td>유선 Pi → AP → 폰 (<code>iperf3 -R</code>)</td><td>h9·h10·h11·h15·h16</td><td>서버가 HMI·AGV 등 무선 기기로 내려보내는 경우</td><td><b>안 보임</b> (AP 자신의 송신은 안 셈)</td></tr><tr><td>혼합</td><td>폰 하나는 업링크, 다른 하나는 다운링크</td><td>h12·h14·h17</td><td>올리는 기기와 받는 기기가 섞인 경우</td><td>업링크 몫만 보임 (h17 고부하는 다운링크가 채널을 차지해 사실상 다운링크)</td></tr></tbody></table></div>
+<div class="tw"><table><thead><tr><th>방향</th><th>부하 흐름</th><th>세션</th><th>공장에서는</th><th>점유율에 보이나</th></tr></thead><tbody><tr><td>노트북 방향 (기본)</td><td>폰 → AP → 노트북 (부하와 victim이 같은 기기)</td><td>8/28·9/1·g1~g5, h1·h2·h4·h6·h7</td><td>여러 기기가 한 무선 단말로 몰리는 경우</td><td>폰 → AP 구간만 보임 (AP → 노트북 구간은 안 셈, 2-1절)</td></tr><tr><td>폰↔폰</td><td>폰 → AP → 폰</td><td>h3</td><td>무선 기기끼리 주고받는 경우 (주 흐름은 아니지만 무선 브리지로 붙은 PLC·HMI, 핸드헬드 단말·무선 프린터 등)</td><td>절반만 보임 (폰 → AP 구간만, AP → 폰 구간은 안 셈)</td></tr><tr><td>업링크</td><td>폰 → AP → 유선 Pi</td><td>h8·h13·h18</td><td>카메라·센서가 서버로 올리는 경우</td><td>보임 (무선 구간이 모두 폰의 송신)</td></tr><tr><td>다운링크</td><td>유선 Pi → AP → 폰 (<code>iperf3 -R</code>)</td><td>h9·h10·h11·h15·h16</td><td>서버가 HMI·AGV 등 무선 기기로 내려보내는 경우</td><td><b>안 보임</b> (AP 자신의 송신은 안 셈)</td></tr><tr><td>혼합</td><td>폰 하나는 업링크, 다른 하나는 다운링크</td><td>h12·h14·h17</td><td>올리는 기기와 받는 기기가 섞인 경우</td><td>업링크 몫만 보임 (h17 고부하는 다운링크가 채널을 차지해 사실상 다운링크)</td></tr></tbody></table></div>
 <p class="sub">h 세션 17개(h5는 AP 크래시로 제외)는 9/24~9/27 집에서 모았다. 노트북·폰 배치(거리·신호)도 세션마다 바꿨다. 다운링크가 안 보이는 원인은 <code>downlink_blindspot.html</code>, 방향별 첫 시험은 <code>load_direction_loso.html</code>.</p>
+<div class="callout"><p><b>점유율이 무엇을 세는가.</b> Opal(siwifi 드라이버)의 채널 점유율은 다른 기기가 보낸 전파를 들은 시간만 센다. AP 자신이 보낸 시간은 빠진다. 그래서 AP가 무선으로 내보내는 구간(다운링크 전체, 노트북 방향의 AP → 노트북, 폰↔폰의 AP → 폰)은 점유율에 안 잡힌다. AP 송신 시간을 보정할 믿을 만한 텔레메트리도 없다(송신량은 있지만 프레임별 전송 속도가 없어 시간으로 못 바꾼다. 이전 추정은 100%를 넘었다). 이 AP에서는 풀 수 없는 측정 한계다.</p></div>
 </section>
 
 <section>
@@ -137,7 +138,7 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 <p><code>data/ap_metrics_v2_redesign2_24sess_20260928</code>: 24세션, 오염 6런 제외, 각 세션의 마지막 런을 val로(train 13,858 / val 5,575창). 스케일러는 캐노니컬 그대로라 Pi 설정은 바뀌지 않는다. Baseline·EE·SDN 각 5시드를 학습해 val balanced accuracy 최고 시드를 골랐다: <b>EE seed 0, Baseline seed 1, SDN seed 1 (T=0.62)</b>. 결과 <code>checkpoints/ap_v2_redesign2_24sess_20260928/selected/</code>.</p>
 <div class="callout"><p>val은 에폭·시드 선택에 썼으므로 성능 지표가 아니다. 보고할 성능은 1~3절의 처음 보는 세션 결과를 쓴다. 이후 수집할 held-out(h19 혼합 고부하, 학교 g6)은 이 모델로 채점만 하고, 결과를 보고 모델을 다시 고르지 않는다.</p></div>
 <h3>부하 방향별 val (정확도 / 심각 recall / 심각 precision)</h3>
-<div class="tw"><table><thead><tr><th>방향 (창 / 심각)</th><th class="n">Baseline</th><th class="n">EE Fixed</th><th class="n">EE Dynamic</th><th class="n">SDN</th></tr></thead><tbody><tr><td>폰→노트북 (2,330 / 494)</td><td class="n">85.4 / 74.5 / 81.6</td><td class="n">84.9 / 74.7 / 79.9</td><td class="n">84.2 / 74.7 / 78.3</td><td class="n">83.9 / 76.7 / 83.8</td></tr><tr><td>업링크 (925 / 191)</td><td class="n">95.1 / 93.2 / 88.1</td><td class="n">95.4 / 93.2 / 87.3</td><td class="n">95.2 / 93.2 / 86.8</td><td class="n">94.2 / 95.3 / 82.7</td></tr><tr><td>혼합 (873 / 4)</td><td class="n">86.4</td><td class="n">86.3</td><td class="n">85.8</td><td class="n">84.4</td></tr><tr><td>다운링크 (1,244 / 51)</td><td class="n">57.6 / 0 / –</td><td class="n">58.8 / 0 / –</td><td class="n">58.8 / 0 / –</td><td class="n">56.1 / 3.9 / 66.7</td></tr><tr><td>폰↔폰 h3 (203 / 74)</td><td class="n">44.8 / 37.8 / 80.0</td><td class="n">44.8 / 37.8 / 84.8</td><td class="n">45.3 / 39.2 / 85.3</td><td class="n">39.4 / 24.3 / 78.3</td></tr><tr><td>다운링크·폰↔폰 제외 (4,128 / 689)</td><td class="n">87.8 / 79.2 / 83.6</td><td class="n">87.5 / 79.4 / 82.1</td><td class="n">87.0 / 79.4 / 80.9</td><td class="n">86.3 / 81.4 / 83.5</td></tr><tr><td>전체 (5,575 / 814)</td><td class="n">79.5</td><td class="n">79.6</td><td class="n">79.2</td><td class="n">77.9</td></tr></tbody></table></div>
+<div class="tw"><table><thead><tr><th>방향 (창 / 심각)</th><th class="n">Baseline</th><th class="n">EE Fixed</th><th class="n">EE Dynamic</th><th class="n">SDN</th></tr></thead><tbody><tr><td>노트북 방향 (2,330 / 494)</td><td class="n">85.4 / 74.5 / 81.6</td><td class="n">84.9 / 74.7 / 79.9</td><td class="n">84.2 / 74.7 / 78.3</td><td class="n">83.9 / 76.7 / 83.8</td></tr><tr><td>업링크 (925 / 191)</td><td class="n">95.1 / 93.2 / 88.1</td><td class="n">95.4 / 93.2 / 87.3</td><td class="n">95.2 / 93.2 / 86.8</td><td class="n">94.2 / 95.3 / 82.7</td></tr><tr><td>혼합 (873 / 4)</td><td class="n">86.4</td><td class="n">86.3</td><td class="n">85.8</td><td class="n">84.4</td></tr><tr><td>다운링크 (1,244 / 51)</td><td class="n">57.6 / 0 / –</td><td class="n">58.8 / 0 / –</td><td class="n">58.8 / 0 / –</td><td class="n">56.1 / 3.9 / 66.7</td></tr><tr><td>폰↔폰 h3 (203 / 74)</td><td class="n">44.8 / 37.8 / 80.0</td><td class="n">44.8 / 37.8 / 84.8</td><td class="n">45.3 / 39.2 / 85.3</td><td class="n">39.4 / 24.3 / 78.3</td></tr><tr><td>다운링크·폰↔폰 제외 (4,128 / 689)</td><td class="n">87.8 / 79.2 / 83.6</td><td class="n">87.5 / 79.4 / 82.1</td><td class="n">87.0 / 79.4 / 80.9</td><td class="n">86.3 / 81.4 / 83.5</td></tr><tr><td>전체 (5,575 / 814)</td><td class="n">79.5</td><td class="n">79.6</td><td class="n">79.2</td><td class="n">77.9</td></tr></tbody></table></div>
 <p class="sub">exit 분포(exit1/2/3): EE Fixed 24/42/34%, EE Dynamic 30/45/25%, SDN 38/37/25%. EE는 정확도를 거의 잃지 않고 창의 약 2/3를 exit3 전에 끝낸다.</p>
 <h3>ONNX 재수출·검증 (val 5,575창, PyTorch 대비)</h3>
 <div class="tw"><table><thead><tr><th>모델</th><th class="n">fp32 일치</th><th class="n">INT8 일치</th><th class="n">정확도 차</th></tr></thead><tbody><tr><td>EE Fixed (unified)</td><td class="n">5,575 / 5,575</td><td class="n">5,562 / 5,575</td><td class="n">0.0pt</td></tr><tr><td>EE Dynamic (unified)</td><td class="n">5,575 / 5,575</td><td class="n">5,558 / 5,575</td><td class="n">+0.1pt</td></tr><tr><td>Baseline</td><td class="n">5,575 / 5,575</td><td class="n">5,543 / 5,575</td><td class="n">−0.1pt</td></tr><tr><td>SDN (T=0.62)</td><td class="n">–</td><td class="n">5,553 / 5,575</td><td class="n">0.0pt</td></tr></tbody></table></div>
@@ -152,6 +153,7 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 <li>점유율 라벨 쪽 남은 오답은 대부분 혼잡→심각(90창, 점유율 60~75%). 이 중 39%는 3폴링 안에 실제 심각이 되고, 33%는 직전 3폴링 안에 심각이었다. 심각에 들어가고 나오는 시점 근처에서 한두 폴링 어긋난 것이다.</li>
 <li>세션별로는 h17(54%), h7(68~71%), h2(72~75%)가 낮다. h17은 혼합으로 분류했지만 고부하에서 AP 다운링크가 채널을 독차지해 사실상 다운링크 세션이다(점유율 중앙값 20%). h7·h2는 심각 대부분이 loss·latency 원인이다.</li>
 <li>h17까지 빼면 val 정확도는 Baseline 약 89.8%, EE Fixed 약 89.6%.</li>
+<li>점유율 미달 loss·latency 라벨은 주로 노트북 방향에서 나온다. 부하와 victim이 AP의 같은 송신 줄에 서서 줄이 먼저 밀리는데, 그 줄은 AP 자신의 송신이라 점유율에 안 보인다(2-1절). 다운링크 맹점과 원인이 같다. 모델은 재전송 비율로 이 상황을 일부만 알아챈다.</li>
 </ul>
 <div class="callout bad"><p>같은 종류 데이터 추가(22차, 5GHz, g+h), 패시브 feature 추가(24~25차, 28차 후속 14), 라벨 게이트 확장(이득 1pt 이하)으로는 이 두 원인이 풀리지 않는다. 남은 방법은 새 신호(MT6000의 airtime·기기별 통계, 또는 능동 프로브 하이브리드)다.</p></div>
 </section>
@@ -183,11 +185,13 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 <h2>8. 보고할 수치</h2>
 <ul>
 <li><b>점유율에 보이는 부하</b>(노트북 방향·업링크·혼합): 처음 보는 세션 정확도 88~92%, 심각 recall 82~86%(h7·h13·h12), precision 89~94%.</li>
-<li><b>다운링크 우세</b>(h9·h10·h11·h15·h16·h17): 55~64%. 점유율 측정이 AP 자신의 송신을 빼는 측정 한계로 명시.</li>
+<li><b>다운링크 우세</b>(h9·h10·h11·h15·h16·h17): 55~64%. 점유율 측정이 AP 자신의 송신을 빼는 측정 한계로 명시. 다운링크 심각은 채널 용량(약 100M) 초과에서만, 대부분 loss로 생긴다.</li>
+<li><b>LSTM이 규칙보다 나은 점</b>: 점유율 미달 loss·latency 심각의 일부를 잡는다(h7 심각 recall 규칙 59 → 모델 67~72). 대가로 심각 precision은 규칙 100% 대비 89~93%.</li>
+<li><b>왜 되나</b>: 점유율이 애매한 60~75% 구간에서 tx_retry_ratio(AP 송신 재전송 비율)가 혼잡과 심각을 가른다. 라벨 축에서는 뺐지만 모델 입력으로서는 점유율을 보완하는 핵심 feature다. RSSI 의존은 세션 배치 편향일 수 있어 확인이 필요하다.</li>
 <li>발표 자료의 92~93%는 같은 세션 안에서 떼어 낸 test라 낙관적이었다. 세션 단위 수치와 함께 제시한다.</li>
-<li>폰↔폰(h3)은 세션 하나뿐이고 공장 시나리오와 거리가 있어 미검증으로 둔다.</li>
+<li>폰↔폰(h3)은 점유율에 절반만 잡히는 부분 맹점이고, 세션 하나뿐이라(val 45%) 미검증 시나리오로 둔다. 다운링크와 같은 원인이라 이 AP로 데이터를 더 모아도 풀리지 않는다. AP 자신의 송신 airtime을 세는 하드웨어(MT6000 등, 도착 후 확인)가 필요하다.</li>
 </ul>
 </section>
 
-<footer>생성 <code>project/.tmp/exp_24g/build_final24_report.py</code> · 원자료 <code>retrain_gh_*</code>, <code>cmp_old_7s_gh*.py</code>, <code>val24_ee.py</code>, <code>val24_err.py</code>, <code>switch_policy_eval.py</code>, <code>verify_onnx_24sess.py</code> · 상세 <code>.work-log/current.md</code> 28차 후속(22)</footer>
+<footer>생성 <code>project/.tmp/exp_24g/build_final24_report.py</code> · 원자료 <code>retrain_gh_*</code>, <code>cmp_old_7s_gh*.py</code>, <code>val24_ee.py</code>, <code>val24_err.py</code>, <code>switch_policy_eval.py</code>, <code>band_feature_probe.py</code>, <code>canon365_old_new.py</code>, <code>verify_onnx_24sess.py</code> · 상세 <code>.work-log/current.md</code> 28차 후속(22)</footer>
 </main>
