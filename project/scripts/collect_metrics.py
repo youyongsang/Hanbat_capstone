@@ -17,7 +17,7 @@ IS_WINDOWS = platform.system() == "Windows"
 # 기본 설정
 # ============================================================
 
-AP_IP = "192.168.8.1"
+AP_IP = os.environ.get("AP_IP", "192.168.8.1")  # 2026-09-29: MT6000 등 다른 AP용 오버라이드
 # latency 측정 대상. 2026-08-27: 폰(191)은 ICMP 절전/디프라이어리티제이션
 # 때문에 idle RTT가 31~295ms로 요동쳐서 latency 축이 못 쓸 수준이었다.
 # 노트북은 ICMP에 즉시·일정하게 응답한다. Pi→AP(유선)→노트북(무선
@@ -153,6 +153,14 @@ CSV_COLUMNS = [
     "ap_tx_bytes_delta",          # 지난 폴링 이후 AP → 모든 station 송신 바이트 합
     "ap_tx_airtime_s",            # Σ station (Δtx_bytes × 8 ÷ tx_bitrate) 초 — 프리앰블·ACK·재전송 미포함
     "ap_tx_detail",               # "mac끝4:Δbytes:Mbps|..." 원자료(재계산용)
+    # 2026-09-29: MT6000(mt76) 전용 airtime 계측(모델 입력 아님). Opal(siwifi)은 이 줄들을 안 뱉어 빈칸.
+    # 근거: OpenWrt 포럼 스레드 173524 #3114(GL-MT6000, 순정 OpenWrt 스냅샷)의 station/survey dump 출력.
+    # 주의: mt76의 survey busy는 AP 자기 송신을 포함(busy ≈ receive + transmit) — Opal의 busy(송신 제외)와 의미가 다름.
+    "channel_bss_rx_time_percent",  # survey "channel BSS receive time" % — 우리 BSS 기기에서 받은 시간
+    "sta_tx_airtime_pct",           # Σ station Δ"tx duration" ÷ 폴링 간격 × 100 — AP가 무선 기기들에게 송신한 시간
+    "sta_rx_airtime_pct",           # Σ station Δ"rx duration" ÷ 폴링 간격 × 100 — 무선 기기들이 AP로 보낸 시간
+    "sta_tx_airtime_max_pct",       # 가장 많이 받은 station 하나의 tx duration % (노트북 줄 적체 후보)
+    "sta_airtime_detail",           # "mac끝4:Δtx_us:Δrx_us:weight|..." 원자료(기기별 재계산용)
 ]
 
 # ============================================================
@@ -394,7 +402,7 @@ def parse_ap_cycle(text):
         station_marker not in text
         or survey_marker not in text
     ):
-        return None, (None, None, None, None, None)
+        return None, (None, None, None, None, None, None)
 
     station_text = text.split(station_marker, 1)[1]
     station_text, survey_text = station_text.split(
@@ -451,6 +459,11 @@ def parse_station_info(output):
                 # 변별력 실험용) — 아직 모델 입력엔 안 들어감, CSV에만 쌓는다.
                 "tx_mcs": None,
                 "expected_thr_mbps": None,
+                # 2026-09-29: mt76(MT6000) 누적 airtime 카운터(µs)·airtime fairness 가중치.
+                # siwifi(Opal)는 이 줄이 없어 None으로 남는다.
+                "tx_duration_us": None,
+                "rx_duration_us": None,
+                "airtime_weight": None,
             }
             continue
 
@@ -539,6 +552,17 @@ def parse_station_info(output):
                 current["rx_bitrate"] = float(
                     match.group(1)
                 )
+
+        elif line.startswith("tx duration:") or line.startswith("rx duration:"):
+            match = re.search(r"(\d+)\s*us", line)
+            if match:
+                key = "tx_duration_us" if line.startswith("tx") else "rx_duration_us"
+                current[key] = int(match.group(1))
+
+        elif line.startswith("airtime weight:"):
+            match = re.search(r"(\d+)", line)
+            if match:
+                current["airtime_weight"] = int(match.group(1))
 
     if current_mac is not None:
         stations[current_mac] = current
@@ -646,6 +670,34 @@ def summarize_ap_tx_airtime(stations, previous_stations=None):
     return total_bytes, airtime_s, "|".join(parts)
 
 
+def summarize_sta_airtime(stations, previous_stations=None):
+    """station별 실제 airtime 증분 (2026-09-29, MT6000/mt76 전용, 모델 입력 아님).
+    `iw station dump`의 누적 "tx duration"/"rx duration"(µs) 차분. 반환 단위는 µs이고
+    폴링 간격으로 나눈 %는 저장 시점에 계산한다. 어떤 station에도 duration 줄이 없으면
+    (Opal/siwifi) None을 돌려 CSV에 빈칸으로 남긴다. 카운터가 줄면(재연결) 그 station은 뺀다."""
+    if not any(s.get("tx_duration_us") is not None for s in stations.values()):
+        return None
+    tx_sum = rx_sum = tx_max = 0
+    parts = []
+    for mac, s in stations.items():
+        prev = (previous_stations or {}).get(mac)
+        if prev is None or s.get("tx_duration_us") is None or prev.get("tx_duration_us") is None:
+            continue
+        dtx = s["tx_duration_us"] - prev["tx_duration_us"]
+        drx = (s.get("rx_duration_us") or 0) - (prev.get("rx_duration_us") or 0)
+        if dtx < 0 or drx < 0:
+            continue
+        tx_sum += dtx; rx_sum += drx; tx_max = max(tx_max, dtx)
+        parts.append(f"{mac[-5:].replace(':', '')}:{dtx}:{drx}:{s.get('airtime_weight') if s.get('airtime_weight') is not None else ''}")
+    return tx_sum, rx_sum, tx_max, "|".join(parts)
+
+
+def airtime_percent(us, interval_s):
+    if us is None or not interval_s or interval_s <= 0:
+        return ""
+    return round(us / 1e6 / interval_s * 100.0, 2)
+
+
 # ============================================================
 # Channel Occupancy
 # ============================================================
@@ -674,6 +726,7 @@ def parse_channel_occupancy(output):
     busy = None
     rx_time = None
     tx_time = None
+    bss_rx_time = None  # mt76 "channel BSS receive time" (2026-09-29, Opal엔 없음)
     noise = None
     in_use = False
 
@@ -696,6 +749,9 @@ def parse_channel_occupancy(output):
         elif line.startswith("channel receive time:"):
             rx_time = _parse_survey_ms(line)
 
+        elif line.startswith("channel BSS receive time:"):
+            bss_rx_time = _parse_survey_ms(line)
+
         elif line.startswith("channel transmit time:"):
             tx_time = _parse_survey_ms(line)
 
@@ -704,7 +760,7 @@ def parse_channel_occupancy(output):
             if match:
                 noise = float(match.group(1))
 
-    return active, busy, rx_time, tx_time, noise
+    return active, busy, rx_time, tx_time, noise, bss_rx_time
 
 
 def calculate_channel_occupancy(
@@ -1237,6 +1293,7 @@ def main():
     previous_busy = None
     previous_rx_time = None
     previous_tx_time = None
+    previous_bss_rx_time = None
 
     previous_rssi = None
 
@@ -1304,6 +1361,7 @@ def main():
                 current_rx_time,
                 current_tx_time,
                 current_noise,
+                current_bss_rx_time,
             ) = survey
 
             (
@@ -1317,6 +1375,7 @@ def main():
             ap_tx_bytes_delta, ap_tx_airtime_s, ap_tx_detail = summarize_ap_tx_airtime(
                 station, previous_stations
             )
+            sta_airtime = summarize_sta_airtime(station, previous_stations)
 
             # ------------------------------------------------
             # 2. Channel Occupancy
@@ -1360,6 +1419,12 @@ def main():
                 )
             else:
                 channel_ext_busy_percent = None
+            channel_bss_rx_time_percent = survey_counter_percent(
+                previous_bss_rx_time,
+                current_bss_rx_time,
+                previous_active,
+                current_active,
+            )
 
             # ------------------------------------------------
             # 3. Ping
@@ -1625,6 +1690,15 @@ def main():
                 int(ap_tx_bytes_delta),
                 round(ap_tx_airtime_s, 5),
                 ap_tx_detail,
+                (
+                    channel_bss_rx_time_percent
+                    if channel_bss_rx_time_percent is not None
+                    else ""
+                ),
+                airtime_percent(sta_airtime[0] if sta_airtime else None, poll_interval_s),
+                airtime_percent(sta_airtime[1] if sta_airtime else None, poll_interval_s),
+                airtime_percent(sta_airtime[2] if sta_airtime else None, poll_interval_s),
+                sta_airtime[3] if sta_airtime else "",
             ])
 
             sample += 1
@@ -1670,6 +1744,12 @@ def main():
                 f"Airtime rx/tx/ext  : {_rxp} / {_txp} / {_extp} %"
                 f"   Noise {_noise}"
             )
+            if sta_airtime:
+                print(
+                    f"Sta airtime tx/rx  : {airtime_percent(sta_airtime[0], poll_interval_s)} / "
+                    f"{airtime_percent(sta_airtime[1], poll_interval_s)} %"
+                    f"  (max sta tx {airtime_percent(sta_airtime[2], poll_interval_s)} %)"
+                )
             print(
                 f"Poll Interval      : {poll_interval_s:.2f} s"
             )
@@ -1731,6 +1811,7 @@ def main():
             previous_busy = current_busy
             previous_rx_time = current_rx_time
             previous_tx_time = current_tx_time
+            previous_bss_rx_time = current_bss_rx_time
 
             previous_rssi = current_rssi
 
