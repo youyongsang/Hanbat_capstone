@@ -141,7 +141,7 @@ def main() -> None:
             cur_active, cur_busy, *_ = survey
             now = time.time()
 
-            signal_avg, n_clients, _bmin, sta_bitrate_mean = summarize_stations(station, prev_stations)
+            signal_avg, n_clients, _bmin, sta_bitrate_mean, *_ = summarize_stations(station, prev_stations)  # 6개 반환(09-12 expected thr·MCS 추가) 대응, 09-29 수정
             occ_raw, _ = calculate_channel_occupancy(prev_active, prev_busy, cur_active, cur_busy)
             occ_hist.append(occ_raw)
             occupancy = median(occ_hist)
