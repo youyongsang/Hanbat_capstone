@@ -159,6 +159,25 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 </section>
 
 <section>
+<h2>5-1. 다운링크: 방향은 보이지만 혼잡도는 안 보인다</h2>
+<p>다운링크 세션(h9 · h10 · h11 · h15 · h16)의 라벨은 정상 55% · 경고 27% · 혼잡 15% · 심각 3%(142행, 절반이 h16 고부하)다. 모델은 이 방향에서 <b>심각을 사실상 하나도 못 잡는다</b>: held-out h10 심각 recall 5.7~7.1%, 최종 모델 val 51창 중 Baseline·EE 0%, SDN 3.9%. 경고·혼잡을 주로 놓치는 것처럼 보인 건 심각 자체가 적어서다.</p>
+<h3>업링크 심각 vs 다운링크 심각 (h 세션 원본 값 중앙값)</h3>
+<div class="tw"><table><thead><tr><th></th><th class="n">업링크·심각 (842행)</th><th class="n">다운링크·심각 (142행)</th><th class="n">노트북·심각 (683행)</th></tr></thead><tbody><tr><td>점유율 %</td><td class="n">86</td><td class="n"><b>10</b> (부하 전 20보다 낮음)</td><td class="n">79</td></tr><tr><td>처리량 Mbps</td><td class="n">58</td><td class="n"><b>86</b></td><td class="n">64</td></tr><tr><td>재전송 비율</td><td class="n">0.37</td><td class="n">0.12</td><td class="n">0.50</td></tr><tr><td>RSSI 이동평균 dBm</td><td class="n">−47</td><td class="n">−44</td><td class="n">−48</td></tr><tr><td>bitrate Mbps</td><td class="n">65</td><td class="n">47</td><td class="n">66</td></tr><tr><td>심각 원인 (점유율 / loss / 지연)</td><td class="n">97 / 39 / 1%</td><td class="n">7 / 82 / 15%</td><td class="n">69 / 59 / 54%</td></tr><tr><td>victim 손실 %</td><td class="n">2.4</td><td class="n">5.1</td><td class="n">0.3</td></tr><tr><td>ping 지연 ms</td><td class="n">46</td><td class="n">93</td><td class="n">150</td></tr><tr><td>AP 송신량 Mbps (참고, 9/26 이후)</td><td class="n">0.3</td><td class="n">89</td><td class="n">–</td></tr></tbody></table></div>
+<ul>
+<li><b>점유율이 반대로 움직인다.</b> 업링크 심각은 채널이 꽉 차서 생기고(점유율 원인 97%), 다운링크 심각은 점유율 10%에서 생긴다. AP가 송신하느라 다른 기기의 전파를 덜 듣기 때문이다.</li>
+<li>다운링크 혼잡도 같다: 점유율 13%, 처리량 72Mbps, ping 지연 133ms. 지연으로 혼잡이 되는데 점유율에는 안 보인다.</li>
+</ul>
+<h3>"들어오는 부하는 적은데 처리량은 많다"로 잡을 수 있나</h3>
+<div class="tw"><table><thead><tr><th>확인한 것</th><th>결과</th></tr></thead><tbody><tr><td>다운링크인지 식별 (부하 중 행, AUC)</td><td>점유율 0.98 · 처리량÷점유율 0.88 · 재전송 0.81 · 처리량 단독 0.51 → <b>방향은 거의 확실히 보인다</b></td></tr><tr><td>다운링크 안에서 심각 판별 (AUC)</td><td>처리량 0.83 · 점유율 0.79(낮을수록) · 재전송 0.74 · RSSI 0.56 · bitrate 0.51</td></tr><tr><td>처리량 95Mbps 이상 구간의 다운링크 라벨</td><td>정상 4 · 경고 45 · 혼잡 37 · <b>심각 14%</b> → 가장 극단적인 부하에서도 등급이 섞인다</td></tr><tr><td>처리량÷점유율 feature 추가 (행 단위 GBM, 다운링크 세션 하나씩 빼고 채점)</td><td>정확도 64.1 → 63.9, 심각 recall 13.4 → 9.9% → <b>개선 없음</b></td></tr></tbody></table></div>
+<div class="callout bad"><p><b>정리.</b> 7개 feature의 관계로 다운링크 <b>방향</b>은 거의 확실히 알아낸다. 하지만 다운링크 안에서는 처리량·점유율·재전송이 모두 "AP가 얼마나 많이 보내나"라는 같은 정보의 다른 모양이라, 혼잡도는 사실상 보낸 양 하나로만 판단하게 된다. victim이 깨지는지는 그 양이 채널 <b>시간</b>으로 얼마인지(양 ÷ 실제 전송 속도, 재전송·묶어 보내기 효율 포함)에 달려 있는데, Opal은 실제 전송 속도를 믿을 만하게 주지 않는다(<code>sta_tx_bitrate_mean</code>은 마지막 프레임 속도라 시간 추정이 100%를 넘었다). 이 AP의 텔레메트리로는 풀 수 없는 한계이고, AP가 자기 송신 airtime을 직접 세 주는 하드웨어(MT6000 등, 도착 후 확인)가 필요하다.</p></div>
+<ul>
+<li><b>"다운링크 심각은 드물다"는 이 실험 조건의 결과다.</b> 폰 두 대 합계 약 100M(채널 용량)을 넘어야 심각이 됐다. 받는 기기가 많거나 멀어 링크 속도가 낮은 공장에서는 더 낮은 부하에서 심각이 될 수 있으므로, 빈도가 아니라 탐지 실패 자체를 한계로 적는다.</li>
+<li>현실적 대응: 다운링크 심각을 판정하는 대신 <b>"다운링크 우세 상태"를 따로 표시</b>한다(점유율은 낮은데 처리량이 높음, 판별력 0.98). 모델을 고치는 게 아니라 "지금은 모델 판단을 믿기 어렵다"는 불확실 표시다.</li>
+</ul>
+<p class="note">분석 <code>sev_telemetry_dir.py</code>, <code>downlink_ratio_probe.py</code>. h16 심각 72행은 loss 축으로 붙었지만 victim 손실 중앙값이 0.3%라, 고부하에서 프로브가 멈춰 "실패 = max"로 붙은 경우가 섞였을 수 있다(미확인).</p>
+</section>
+
+<section>
 <h2>6. 채널 전환 규칙</h2>
 <p>라이브 추론(<code>live_congestion.py --confirm 3</code>)은 같은 예측이 3번 연속이어야 표시를 바꾼다. 창 단위로 재면 이 규칙이 정확도를 89.6→82.9%로 낮추지만, 심각이 아닌데 심각이 뜨는 구간은 36→4개로 줄인다. 그래서 창 정확도가 아니라 전환 명령 단위로 따로 평가했다.</p>
 <p class="sub">처음 보는 세션 예측(h7·h13·h12, 8/28·9/1; 2시드, 1.32시간). 30폴링 안에 다시 시작된 심각은 한 사건으로 묶고(19개, 2폴링 이상 14개), 전환 후 30폴링은 재전환 금지, 전환 앞뒤 3폴링 안에 실제 심각이 없으면 헛된 전환.</p>
@@ -185,7 +204,7 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 <h2>8. 보고할 수치</h2>
 <ul>
 <li><b>점유율에 보이는 부하</b>(노트북 방향·업링크·혼합): 처음 보는 세션 정확도 88~92%, 심각 recall 82~86%(h7·h13·h12), precision 89~94%.</li>
-<li><b>다운링크 우세</b>(h9·h10·h11·h15·h16·h17): 55~64%. 점유율 측정이 AP 자신의 송신을 빼는 측정 한계로 명시. 다운링크 심각은 채널 용량(약 100M) 초과에서만, 대부분 loss로 생긴다.</li>
+<li><b>다운링크 우세</b>(h9·h10·h11·h15·h16·h17): 55~64%. 점유율 측정이 AP 자신의 송신을 빼는 측정 한계로 명시. <b>다운링크 심각 recall 0~7%</b>: 방향은 보이지만(판별력 0.98) 혼잡도는 보낸 양으로만 판단하게 돼 풀 수 없다(5-1절). 이 실험에선 채널 용량(약 100M) 초과에서만 심각이 생겨 드물었지만, 이는 환경에 따라 달라진다.</li>
 <li><b>LSTM이 규칙보다 나은 점</b>: 점유율 미달 loss·latency 심각의 일부를 잡는다(h7 심각 recall 규칙 59 → 모델 67~72). 대가로 심각 precision은 규칙 100% 대비 89~93%.</li>
 <li><b>왜 되나</b>: 점유율이 애매한 60~75% 구간에서 tx_retry_ratio(AP 송신 재전송 비율)가 혼잡과 심각을 가른다. 라벨 축에서는 뺐지만 모델 입력으로서는 점유율을 보완하는 핵심 feature다. RSSI 의존은 세션 배치 편향일 수 있어 확인이 필요하다.</li>
 <li>발표 자료의 92~93%는 같은 세션 안에서 떼어 낸 test라 낙관적이었다. 세션 단위 수치와 함께 제시한다.</li>
@@ -193,5 +212,5 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 </ul>
 </section>
 
-<footer>생성 <code>project/.tmp/exp_24g/build_final24_report.py</code> · 원자료 <code>retrain_gh_*</code>, <code>cmp_old_7s_gh*.py</code>, <code>val24_ee.py</code>, <code>val24_err.py</code>, <code>switch_policy_eval.py</code>, <code>band_feature_probe.py</code>, <code>canon365_old_new.py</code>, <code>verify_onnx_24sess.py</code> · 상세 <code>.work-log/current.md</code> 28차 후속(22)</footer>
+<footer>생성 <code>project/.tmp/exp_24g/build_final24_report.py</code> · 원자료 <code>retrain_gh_*</code>, <code>cmp_old_7s_gh*.py</code>, <code>val24_ee.py</code>, <code>val24_err.py</code>, <code>switch_policy_eval.py</code>, <code>band_feature_probe.py</code>, <code>sev_telemetry_dir.py</code>, <code>downlink_ratio_probe.py</code>, <code>canon365_old_new.py</code>, <code>verify_onnx_24sess.py</code> · 상세 <code>.work-log/current.md</code> 28차 후속(22)</footer>
 </main>

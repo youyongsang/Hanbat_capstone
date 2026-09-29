@@ -1,0 +1,109 @@
+<meta charset="utf-8">
+<title>h 세션 목록</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+
+.dir { display:inline-block; font-size:.74rem; font-weight:600; padding:.05rem .5rem; border-radius:999px; white-space:nowrap; border:1px solid currentColor; }
+.d-nb { color:var(--s1); } .d-up { color:var(--good); } .d-dn { color:var(--bad); } .d-mx { color:var(--warn); } .d-p2p { color:var(--ink2); }
+tr.out td { background:color-mix(in srgb, var(--bad) 7%, transparent); }
+td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
+.bar { display:flex; height:10px; border-radius:2px; overflow:hidden; min-width:110px; background:var(--rule); }
+.bar i { display:block; height:100%; } .l0 { background:#9fb8d6; } .l1 { background:#e3c15a; } .l2 { background:#e58a3a; } .l3 { background:#c0392b; }
+.labs { font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--mute); margin-top:.2rem; white-space:nowrap; }
+.legend2 { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.84rem; color:var(--ink2); margin:.3rem 0 .8rem; }
+.legend2 i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.3rem; vertical-align:-1px; }
+</style>
+<main style="max-width:1180px">
+<p class="eyebrow">2.4GHz · 집 · 2026-09-24~27 · Opal GL-SFT1200</p>
+<h1>h 세션 목록</h1>
+<p class="lead">부하 방향을 바꿔 가며 집에서 모은 h 세션 18개를 한 표로 정리했다. 17개가 24세션 최종 배포 모델의 학습에 들어갔고, h5만 AP 크래시로 빠졌다. 세션 안에서 일부 런을 뺀 곳은 h4와 h14 두 군데다.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>17 / 18</b><span>최종 모델 학습에 쓴 h 세션 (h5 제외)</span></div>
+  <div class="kpi"><b>15,164행</b><span>학습에 쓴 h 세션 행 수 (제외 런 뺀 값)</span></div>
+  <div class="kpi"><b>4</b><span>1절 시험에서 빼 둔 held-out 세션 (h7 · h13 · h10 · h12)</span></div>
+  <div class="kpi alert"><b>1 + 8런</b><span>제외: 세션 h5 전체, h4 재수집 전 런 7개, h14 idle 오염 62행</span></div>
+</div>
+
+<section>
+<h2>부하 방향별 요약</h2>
+<p>정답 라벨은 모든 세션에서 같은 방식(victim 프로브 Pi → 노트북 300kbps + ping + AP 채널 점유율, max 앵커 + k2m2 게이트)으로 만들었다. 세션마다 다른 것은 폰 두 대(s21·s26)의 iperf3 부하가 어디서 어디로 흐르는가다.</p>
+<div class="tw"><table><thead><tr><th>방향</th><th>세션</th><th class="n">세션 수</th><th class="n">학습 행</th></tr></thead><tbody><tr><td><span class="dir d-nb">노트북</span></td><td>h1 · h2 · h4 · h6 · h7</td><td class="n">5 (+h5 제외)</td><td class="n">3,907</td></tr><tr><td><span class="dir d-p2p">폰↔폰</span></td><td>h3</td><td class="n">1</td><td class="n">732</td></tr><tr><td><span class="dir d-up">업링크</span></td><td>h8 · h13 · h18</td><td class="n">3</td><td class="n">2,974</td></tr><tr><td><span class="dir d-dn">다운링크</span></td><td>h9 · h10 · h11 · h15 · h16</td><td class="n">5</td><td class="n">4,735</td></tr><tr><td><span class="dir d-mx">혼합</span></td><td>h12 · h14 · h17</td><td class="n">3</td><td class="n">2,816</td></tr></tbody></table></div>
+</section>
+
+<section>
+<h2>세션별 상세</h2>
+<div class="legend2"><span><i class="l0"></i>정상</span><span><i class="l1"></i>경고</span><span><i class="l2"></i>혼잡</span><span><i class="l3"></i>심각</span>
+<span>· 심각 원인 = 심각 라벨 중 점유율이 75%를 넘어 붙은 비율 (나머지는 점유율 미달 loss·지연)</span><span>· RSSI = 붙은 기기 평균 중앙값(dBm)</span><span>· 부하 중 점유율 = 처리량 3Mbps 이상 폴링의 중앙값(%)</span></div>
+<div class="tw"><table><thead><tr><th>세션</th><th class="n">날짜</th><th>방향</th><th>학습</th><th>사용한 런</th><th class="n">행</th><th>라벨 분포</th><th class="n">심각 중 점유율 원인</th><th class="n">RSSI</th><th class="n">부하 중 점유율</th><th>비고 (제외 이유·특이사항)</th></tr></thead>
+<tbody><tr class=""><td><b>h1</b></td><td class="n">9/24 14:53</td><td><span class="dir d-nb">노트북</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">870</td><td><div class="bar" role="img" aria-label="정상 269 경고 343 혼잡 159 심각 99"><i class="l0" style="width:30.9%"></i><i class="l1" style="width:39.4%"></i><i class="l2" style="width:18.3%"></i><i class="l3" style="width:11.4%"></i></div><div class="labs">269 / 343 / 159 / 99</div></td><td class="n">78%</td><td class="n">−44</td><td class="n">52</td><td class="note">7세션 모델의 held-out 시험용으로 수집 (28차 후속 17)</td></tr><tr class=""><td><b>h2</b></td><td class="n">9/24 15:59</td><td><span class="dir d-nb">노트북</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">782</td><td><div class="bar" role="img" aria-label="정상 288 경고 188 혼잡 192 심각 114"><i class="l0" style="width:36.8%"></i><i class="l1" style="width:24.0%"></i><i class="l2" style="width:24.6%"></i><i class="l3" style="width:14.6%"></i></div><div class="labs">288 / 188 / 192 / 114</div></td><td class="n">34%</td><td class="n">−49</td><td class="n">53</td><td class="note">심각의 2/3가 점유율 미달 loss·지연 원인이라 어려운 세션 (val 72~75%)</td></tr><tr class=""><td><b>h3</b></td><td class="n">9/24 16:47</td><td><span class="dir d-p2p">폰↔폰</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">732</td><td><div class="bar" role="img" aria-label="정상 262 경고 124 혼잡 94 심각 252"><i class="l0" style="width:35.8%"></i><i class="l1" style="width:16.9%"></i><i class="l2" style="width:12.8%"></i><i class="l3" style="width:34.4%"></i></div><div class="labs">262 / 124 / 94 / 252</div></td><td class="n">47%</td><td class="n">−52</td><td class="n">53</td><td class="note">폰↔폰 유일 세션. 점유율에 폰 → AP 구간만 잡혀 절반만 보임 (val 45%)</td></tr><tr class=""><td><b>h4</b></td><td class="n">9/24 18:22</td><td><span class="dir d-nb">노트북</span></td><td><span class="pill good">포함</span></td><td>idle · spstep · step_redo5 · gray_redo3</td><td class="n">765</td><td><div class="bar" role="img" aria-label="정상 260 경고 79 혼잡 232 심각 194"><i class="l0" style="width:34.0%"></i><i class="l1" style="width:10.3%"></i><i class="l2" style="width:30.3%"></i><i class="l3" style="width:25.4%"></i></div><div class="labs">260 / 79 / 232 / 194</div></td><td class="n">76%</td><td class="n">−50</td><td class="n">70</td><td class="note"><b>제외 런 7개</b>: step 원본·step_redo~redo4, gray_redo·redo2. 부하 중 폰(s26)이 떨어지거나 단계가 어긋나 재수집. 이 과정에서 부하 도구 수정(재시도, 단계 시각 동기화, 폰 로그 파일화)</td></tr><tr class="out"><td><b>h5</b></td><td class="n">9/25</td><td><span class="dir d-nb">노트북</span></td><td><span class="pill bad">제외</span></td><td>(idle 156 · step 192 · spstep 166 중단)</td><td class="n">–</td><td><span class="note">–</span></td><td class="n">–</td><td class="n">–</td><td class="n">–</td><td class="note"><b>세션 전체 제외</b>: spstep 도중 AP 크래시, gray 미수집. 앞선 시도(<code>h5_aborted_s26use</code>)는 s26 폰이 다른 용도로 쓰이던 중이라 idle만 받고 중단</td></tr><tr class=""><td><b>h6</b></td><td class="n">9/25 20:19</td><td><span class="dir d-nb">노트북</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">724</td><td><div class="bar" role="img" aria-label="정상 254 경고 173 혼잡 171 심각 126"><i class="l0" style="width:35.1%"></i><i class="l1" style="width:23.9%"></i><i class="l2" style="width:23.6%"></i><i class="l3" style="width:17.4%"></i></div><div class="labs">254 / 173 / 171 / 126</div></td><td class="n">92%</td><td class="n">−48</td><td class="n">57</td><td class="note">28차 후속 18</td></tr><tr class=""><td><b>h7</b></td><td class="n">9/25 21:03</td><td><span class="dir d-nb">노트북</span></td><td><span class="pill good">포함</span> <span class="pill warn">held-out</span></td><td>idle · step · spstep · gray</td><td class="n">766</td><td><div class="bar" role="img" aria-label="정상 282 경고 208 혼잡 126 심각 150"><i class="l0" style="width:36.8%"></i><i class="l1" style="width:27.2%"></i><i class="l2" style="width:16.4%"></i><i class="l3" style="width:19.6%"></i></div><div class="labs">282 / 208 / 126 / 150</div></td><td class="n">59%</td><td class="n">−45</td><td class="n">48</td><td class="note">폰 −39/−40dBm, 노트북 −61~−62dBm. 1절 시험에서 빼 둔 노트북 방향 세션</td></tr><tr class=""><td><b>h8</b></td><td class="n">9/26 16:06</td><td><span class="dir d-up">업링크</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">938</td><td><div class="bar" role="img" aria-label="정상 272 경고 14 혼잡 183 심각 469"><i class="l0" style="width:29.0%"></i><i class="l1" style="width:1.5%"></i><i class="l2" style="width:19.5%"></i><i class="l3" style="width:50.0%"></i></div><div class="labs">272 / 14 / 183 / 469</div></td><td class="n">95%</td><td class="n">−48</td><td class="n">80</td><td class="note">첫 업링크(폰 → 유선 Pi). 멀리 배치</td></tr><tr class=""><td><b>h9</b></td><td class="n">9/26 16:37</td><td><span class="dir d-dn">다운링크</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">977</td><td><div class="bar" role="img" aria-label="정상 469 경고 304 혼잡 183 심각 21"><i class="l0" style="width:48.0%"></i><i class="l1" style="width:31.1%"></i><i class="l2" style="width:18.7%"></i><i class="l3" style="width:2.1%"></i></div><div class="labs">469 / 304 / 183 / 21</div></td><td class="n">19%</td><td class="n">−49</td><td class="n">17</td><td class="note">첫 다운링크(유선 Pi → 폰). 부하 중 점유율이 20 → 10%로 내려가 맹점 발견</td></tr><tr class=""><td><b>h10</b></td><td class="n">9/26 21:55</td><td><span class="dir d-dn">다운링크</span></td><td><span class="pill good">포함</span> <span class="pill warn">held-out</span></td><td>idle · step · spstep · gray</td><td class="n">960</td><td><div class="bar" role="img" aria-label="정상 590 경고 213 혼잡 122 심각 35"><i class="l0" style="width:61.5%"></i><i class="l1" style="width:22.2%"></i><i class="l2" style="width:12.7%"></i><i class="l3" style="width:3.6%"></i></div><div class="labs">590 / 213 / 122 / 35</div></td><td class="n">6%</td><td class="n">−46</td><td class="n">20</td><td class="note">h9 재현 세션. 1절 시험에서 빼 둔 다운링크 세션</td></tr><tr class=""><td><b>h11</b></td><td class="n">9/27 01:24</td><td><span class="dir d-dn">다운링크</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">976</td><td><div class="bar" role="img" aria-label="정상 674 경고 217 혼잡 73 심각 12"><i class="l0" style="width:69.1%"></i><i class="l1" style="width:22.2%"></i><i class="l2" style="width:7.5%"></i><i class="l3" style="width:1.2%"></i></div><div class="labs">674 / 217 / 73 / 12</div></td><td class="n">17%</td><td class="n">−38</td><td class="n">20</td><td class="note">가까이 배치</td></tr><tr class=""><td><b>h12</b></td><td class="n">9/27 04:00</td><td><span class="dir d-mx">혼합</span></td><td><span class="pill good">포함</span> <span class="pill warn">held-out</span></td><td>idle · step · spstep · gray</td><td class="n">995</td><td><div class="bar" role="img" aria-label="정상 742 경고 236 혼잡 15 심각 2"><i class="l0" style="width:74.6%"></i><i class="l1" style="width:23.7%"></i><i class="l2" style="width:1.5%"></i><i class="l3" style="width:0.2%"></i></div><div class="labs">742 / 236 / 15 / 2</div></td><td class="n">–</td><td class="n">−48</td><td class="n">37</td><td class="note">s21 업링크 + s26 다운링크. 심각 2행뿐이라 혼합의 심각 성능은 검증 안 됨</td></tr><tr class=""><td><b>h13</b></td><td class="n">9/27 02:42</td><td><span class="dir d-up">업링크</span></td><td><span class="pill good">포함</span> <span class="pill warn">held-out</span></td><td>idle · step · spstep · gray</td><td class="n">1,021</td><td><div class="bar" role="img" aria-label="정상 278 경고 108 혼잡 436 심각 199"><i class="l0" style="width:27.2%"></i><i class="l1" style="width:10.6%"></i><i class="l2" style="width:42.7%"></i><i class="l3" style="width:19.5%"></i></div><div class="labs">278 / 108 / 436 / 199</div></td><td class="n">99%</td><td class="n">−37</td><td class="n">63</td><td class="note">가까이 배치. 1절 시험에서 빼 둔 업링크 세션</td></tr><tr class=""><td><b>h14</b></td><td class="n">9/27 03:21</td><td><span class="dir d-mx">혼합</span></td><td><span class="pill good">포함</span></td><td>idle · idleB · step · spstep · gray</td><td class="n">948</td><td><div class="bar" role="img" aria-label="정상 693 경고 230 혼잡 6 심각 19"><i class="l0" style="width:73.1%"></i><i class="l1" style="width:24.3%"></i><i class="l2" style="width:0.6%"></i><i class="l3" style="width:2.0%"></i></div><div class="labs">693 / 230 / 6 / 19</div></td><td class="n">79%</td><td class="n">−37</td><td class="n">37</td><td class="note"><b>idle 앞부분 62행 제외</b>: 노트북에서 대량 다운로드가 일어나 오염. 나머지를 idleB로 분리해 사용. 가까이 배치</td></tr><tr class=""><td><b>h15</b></td><td class="n">9/27 15:21</td><td><span class="dir d-dn">다운링크</span></td><td><span class="pill good">포함</span></td><td>idle · step · dgray30 · dgray40</td><td class="n">976</td><td><div class="bar" role="img" aria-label="정상 585 경고 240 혼잡 149 심각 2"><i class="l0" style="width:59.9%"></i><i class="l1" style="width:24.6%"></i><i class="l2" style="width:15.3%"></i><i class="l3" style="width:0.2%"></i></div><div class="labs">585 / 240 / 149 / 2</div></td><td class="n">–</td><td class="n">−46</td><td class="n">17</td><td class="note">다운링크 강화 1차. 노트북 −63·s21 −45·s26 −37dBm. 40M×2까지 victim 손실 0%라 심각 거의 없음</td></tr><tr class=""><td><b>h16</b></td><td class="n">9/27 15:57</td><td><span class="dir d-dn">다운링크</span></td><td><span class="pill good">포함</span></td><td>idle · dstep_hi · dgray70 · dgray80 · 시험 런</td><td class="n">846</td><td><div class="bar" role="img" aria-label="정상 306 경고 284 혼잡 184 심각 72"><i class="l0" style="width:36.2%"></i><i class="l1" style="width:33.6%"></i><i class="l2" style="width:21.7%"></i><i class="l3" style="width:8.5%"></i></div><div class="labs">306 / 284 / 184 / 72</div></td><td class="n">0%</td><td class="n">−44</td><td class="n">7</td><td class="note">폰당 50~80M 고부하. 채널 용량(약 100M) 초과로 심각 72행(주로 loss). 앞선 시험 런은 <code>dstephiprobe</code>로 이름을 바꿔 포함</td></tr><tr class=""><td><b>h17</b></td><td class="n">9/27 17:05</td><td><span class="dir d-mx">혼합</span></td><td><span class="pill good">포함</span></td><td>idle · step · dstep_mid · dgray60</td><td class="n">873</td><td><div class="bar" role="img" aria-label="정상 467 경고 289 혼잡 111 심각 6"><i class="l0" style="width:53.5%"></i><i class="l1" style="width:33.1%"></i><i class="l2" style="width:12.7%"></i><i class="l3" style="width:0.7%"></i></div><div class="labs">467 / 289 / 111 / 6</div></td><td class="n">–</td><td class="n">−43</td><td class="n">27</td><td class="note">노트북 멀리(−62dBm). 고부하에서 다운링크가 채널을 독차지해 업링크 폰이 거의 못 보냄 → 사실상 다운링크 (val 54%)</td></tr><tr class=""><td><b>h18</b></td><td class="n">9/27 17:59</td><td><span class="dir d-up">업링크</span></td><td><span class="pill good">포함</span></td><td>idle · step · spstep · gray</td><td class="n">1,015</td><td><div class="bar" role="img" aria-label="정상 284 경고 93 혼잡 464 심각 174"><i class="l0" style="width:28.0%"></i><i class="l1" style="width:9.2%"></i><i class="l2" style="width:45.7%"></i><i class="l3" style="width:17.1%"></i></div><div class="labs">284 / 93 / 464 / 174</div></td><td class="n">98%</td><td class="n">−40</td><td class="n">63</td><td class="note">중간 거리(−46~−47dBm)</td></tr></tbody></table></div>
+<p class="note">심각이 20행 미만인 세션(h12 · h15 · h17)은 심각 원인 비율을 "–"로 뒀다. 배치(거리·dBm)는 work-log에 기록이 있는 세션만 적었다.</p>
+</section>
+
+<section>
+<h2>학습에서 뺀 런</h2>
+<div class="tw"><table><thead><tr><th>세션</th><th>런</th><th class="n">행</th><th>이유</th></tr></thead><tbody><tr><td><b>h4</b></td><td>step (원본)</td><td class="n">210</td><td>부하 중 폰 이탈·단계 어긋남, 재수집</td></tr><tr><td><b>h4</b></td><td>step_redo · redo2 · redo3 · redo4</td><td class="n">207 · 232 · 235 · 228</td><td>같은 이유로 재수집 반복, 부하 도구 수정 후 redo5 채택</td></tr><tr><td><b>h4</b></td><td>gray_redo · gray_redo2</td><td class="n">257 · 248</td><td>같은 이유, gray_redo3 채택</td></tr><tr><td><b>h5</b></td><td>idle · step · spstep(중단)</td><td class="n">156 · 192 · 166</td><td>spstep 중 AP 크래시, gray 미수집 → 세션 전체 제외</td></tr><tr><td><b>h5</b></td><td>idle (<code>h5_aborted_s26use</code>)</td><td class="n">156</td><td>s26 폰 사용 중이라 idle만 받고 중단</td></tr><tr><td><b>h14</b></td><td>idle 앞부분</td><td class="n">62</td><td>노트북 대량 다운로드로 오염, 나머지는 idleB</td></tr></tbody></table></div>
+<p class="sub">빠진 런은 지우지 않고 세션 폴더(<code>project/.tmp/exp_24g/session_*</code>)에 남아 있다. h5의 온전한 런(idle · step)은 필요하면 채점용으로 쓸 수 있다.</p>
+</section>
+
+<section>
+<h2>읽는 법</h2>
+<ul>
+<li><b>심각 중 점유율 원인</b>이 낮은 세션(h2 34%, h3 47%, h7 59%)은 부하와 victim이 AP의 같은 송신 줄에 서는 노트북 방향·폰↔폰이다. 줄이 먼저 밀려 loss·지연으로 심각이 되는데 점유율에는 안 보여 모델이 어려워한다.</li>
+<li><b>업링크</b>(h8 · h13 · h18)는 배치가 달라도 심각의 95~99%가 점유율 원인이다. 점유율만으로 거의 설명된다.</li>
+<li><b>다운링크</b>(h9 · h10 · h11 · h15 · h16)는 부하 중 점유율이 7~20%로 부하 전(약 20%)보다 낮다. 점유율이 AP 자신의 송신을 세지 않는 측정 한계. h17(혼합 고부하)도 같은 모습이다. 라벨은 혼잡 15% · 심각 3%로 심각이 적지만, 모델은 그 심각을 거의 못 잡는다(recall 0~7%). 방향은 보이지만 혼잡도는 보낸 양으로만 판단하게 되기 때문이다(<code>final_model_24sess.html</code> 5-1절).</li>
+<li><b>혼합</b>은 심각이 2~19행뿐이라 심각 성능 검증에 쓰기 어렵다. 다음 수집 후보(h19, 혼합 고부하)는 최종 모델 채점용으로만 쓴다.</li>
+</ul>
+<p class="sub">이 세션들로 한 시험과 최종 모델은 <code>final_model_24sess.html</code>, 부하 방향별 첫 시험은 <code>load_direction_loso.html</code>, 다운링크 맹점은 <code>downlink_blindspot.html</code>.</p>
+</section>
+
+<footer>생성 <code>project/.tmp/exp_24g/build_h_sessions_report.py</code> · 수치 <code>session_catalog.py</code>(풀 <code>pool_final24</code>) · 경위 <code>.work-log/current.md</code> 28차 후속(17)~(22)</footer>
+</main>
