@@ -10,6 +10,9 @@ window 10 → min-max 정규화(scaler_params.json) → ONNX(unified INT8) 추�
   3) tx_retry_ratio = 최근 5폴링 rolling 비율
   4) rssi_moving_avg = 최근 5폴링 평균
   + 라벨 히스테리시스: 원시 예측이 K회 연속 일치해야 '확정 라벨'이 바뀜 (--confirm)
+  + 채널 전환 판단(2026-10-01, switch_advisor.py): 화면 표시와 별개로 원시 예측에서 "최근 3폴링 중 2번 심각"이면
+    전환 필요 알림 1회 + 명령 후보(실행 안 함), 30폴링 동안 심각이 없어야 다음 알림. 점유율은 낮은데 처리량이
+    높으면 "다운링크 우세 — 판정 불확실" 표시. 알림은 --event-log(JSONL)로도 남긴다.
 
 feature 계산은 collect_metrics.py의 헬퍼를 그대로 재사용해 학습 시점과 동일하게 맞춘다.
 victim 프로브(라벨링 전용)는 없음 — 추론엔 불필요.
@@ -48,6 +51,10 @@ except ImportError:
         APPoller, MOVING_AVG_WINDOW, calculate_channel_occupancy,
         calculate_station_deltas, parse_ap_cycle, summarize_stations,
     )
+try:
+    from scripts.switch_advisor import SwitchAdvisor  # noqa: E402
+except ImportError:
+    from switch_advisor import SwitchAdvisor  # noqa: E402
 
 # utils/ap_features.py AP_FEATURE_COLUMNS 와 반드시 일치 (번들 자립을 위해 인라인).
 AP_FEATURE_COLUMNS = (
@@ -81,6 +88,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--confirm", type=int, default=3,
                    help="확정 라벨을 바꾸려면 원시 예측이 몇 회 연속 일치해야 하는가 (히스테리시스).")
     p.add_argument("--raw", action="store_true", help="feature 원시값도 매 줄에 출력")
+    p.add_argument("--no-switch", action="store_true", help="채널 전환 판단·다운링크 우세 표시 끄기")
+    p.add_argument("--release", type=int, default=30, help="전환 알림 뒤 심각 없이 이만큼 폴링이 지나야 다음 알림")
+    p.add_argument("--persist", type=int, default=60, help="알림 뒤 심각이 이만큼 폴링 이어지면 '심각 지속' 알림 1회")
+    p.add_argument("--channel", type=int, default=1, help="현재 2.4GHz 채널 (명령 후보 문구용)")
+    p.add_argument("--event-log", type=Path, default=None, help="전환 알림을 JSONL로 저장할 파일")
     return p.parse_args()
 
 
@@ -126,6 +138,10 @@ def main() -> None:
 
     raw_streak: deque[int] = deque(maxlen=args.confirm)
     confirmed = None
+    advisor = None if args.no_switch else SwitchAdvisor(release=args.release, persist=args.persist,
+                                                        current_channel=args.channel)
+    if advisor:
+        print(f"채널 전환 판단 : 최근 3폴링 중 2번 심각 → 알림 1회, 해제 {args.release}폴링, 지속 {args.persist}폴링\n")
 
     try:
         while True:
@@ -207,12 +223,23 @@ def main() -> None:
             flip = "  <- 확정 변경" if changed else ""
             exit_str = f" exit{exit_pt}" if exit_pt else ""
             p_str = " ".join(f"{p:.2f}" for p in probs)
+            events = advisor.update(raw_label, feats["throughput_mbps"], feats["channel_occupancy_percent"]) if advisor else []
+            dl_str = "  [다운링크 우세 — 판정 불확실]" if advisor and advisor.downlink_dominant() else ""
             print(
                 f"{ts}  혼잡: {LABEL_NAMES[shown]}({shown})"
                 f"  [원시 {LABEL_NAMES[raw_label]}({raw_label}) p={probs[raw_label]:.2f}]"
                 f"  P(정/경/혼/심)=[{p_str}]"
-                f"{exit_str} clients={n_clients}{flip}{raw_str}"
+                f"{exit_str} clients={n_clients}{flip}{dl_str}{raw_str}"
             )
+            for ev in events:
+                print(f"{ts}  ⚠ {ev.message}")
+                for c in ev.candidates:
+                    print(f"           후보: {c}")
+                if args.event_log:
+                    with args.event_log.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps({"time": time.strftime("%Y-%m-%d %H:%M:%S"), "kind": ev.kind, "message": ev.message,
+                                            "candidates": ev.candidates, "raw_label": raw_label, "probs": [round(float(v), 4) for v in probs],
+                                            "features": feats, "downlink_dominant": advisor.downlink_dominant()}, ensure_ascii=False) + "\n")
 
     except KeyboardInterrupt:
         print("\n종료.")
