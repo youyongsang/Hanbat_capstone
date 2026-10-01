@@ -83,6 +83,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--confirm", type=int, default=CONFIRM)
     p.add_argument("--no-iperf-server", action="store_true",
                    help="iperf3 -s 자동 기동 안 함 (대상 호스트에서 이미 돌고 있을 때)")
+    p.add_argument("--replay", type=Path, nargs="+", default=None,
+                   help="AP 대신 수집된 세션 CSV를 순서대로 반복 재생 (2026-10-01, AP 없이 화면 시연·점검용). "
+                        "부하 버튼은 실제 폰에만 작동하므로 재생 중엔 그래프에 영향 없음.")
+    p.add_argument("--replay-interval", type=float, default=1.0, help="재생 시 한 행당 초 (기본 1.0)")
     return p.parse_args()
 
 

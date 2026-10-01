@@ -14,6 +14,10 @@ import numpy as np
 import onnxruntime as ort
 
 import demo_state
+try:  # 2026-10-01: 채널 전환 판단·다운링크 우세 표시 (live_congestion.py와 같은 모듈)
+    from scripts.switch_advisor import SwitchAdvisor
+except ImportError:
+    from switch_advisor import SwitchAdvisor
 from demo_state import (
     ARGS, WINDOW, FEATURES, LABELS, MOVING_AVG_WINDOW,
     APPoller, calculate_channel_occupancy, calculate_station_deltas,
@@ -35,7 +39,62 @@ def norm(feats: dict, scaler: dict) -> np.ndarray:
     return out
 
 
+def replay_loop() -> None:
+    """--replay: 수집된 세션 CSV의 7-feature를 라이브와 같은 경로(정규화 → window → ONNX → 표시 히스테리시스 + 전환 판단)로
+    흘려보낸다. CSV의 label(정답)도 화면에 같이 보낸다. 파일 끝에 닿으면 처음부터 반복."""
+    import csv
+    scaler = json.loads(ARGS.scaler.read_text(encoding="utf-8"))
+    sess = ort.InferenceSession(str(ARGS.model), providers=["CPUExecutionProvider"])
+    in_name = sess.get_inputs()[0].name
+    while True:
+        for path in ARGS.replay:
+            rows = list(csv.DictReader(path.open(encoding="utf-8")))
+            win: deque = deque(maxlen=WINDOW); streak: deque = deque(maxlen=ARGS.confirm)
+            confirmed = None; advisor = SwitchAdvisor(); events: deque = deque(maxlen=6)
+            for r in rows:
+                t0 = time.time()
+                try:
+                    feats = {k: float(r[k]) for k in FEATURES}
+                except (KeyError, ValueError):
+                    continue
+                clients = int(float(r.get("connected_clients") or 0))
+                truth = r.get("label")
+                win.append(norm(feats, scaler))
+                if len(win) < WINDOW:
+                    with demo_state._lock:
+                        demo_state._state = {"ready": False, "msg": f"재생 {path.name} · 창 채우는 중 {len(win)}/{WINDOW}",
+                                             "features": feats, "clients": clients, "replay": path.name}
+                    demo_state._broadcast(demo_state._state)
+                    time.sleep(max(0.0, ARGS.replay_interval - (time.time() - t0)))
+                    continue
+                outs = sess.run(None, {in_name: np.stack(win)[None, :, :].astype(np.float32)})
+                probs = softmax(np.asarray(outs[0]).reshape(-1))
+                exit_pt = int(np.asarray(outs[1]).reshape(-1)[0]) if len(outs) > 1 else None
+                raw = int(probs.argmax()); streak.append(raw)
+                if len(streak) == ARGS.confirm and len(set(streak)) == 1 and streak[0] != confirmed:
+                    confirmed = streak[0]
+                shown = confirmed if confirmed is not None else raw
+                new_events = []
+                for ev in advisor.update(raw, feats["throughput_mbps"], feats["channel_occupancy_percent"]):
+                    e = {"ts": r.get("timestamp", "")[-8:], "kind": ev.kind, "message": ev.message, "candidates": ev.candidates}
+                    events.appendleft(e); new_events.append(e)
+                with demo_state._lock:
+                    demo_state._state = {
+                        "ready": True, "ts": r.get("timestamp", "")[-8:], "replay": path.name,
+                        "truth": int(float(truth)) if truth not in (None, "") else None,
+                        "label": shown, "label_name": LABELS[shown], "raw_label": raw, "raw_name": LABELS[raw],
+                        "probs": [round(float(p), 3) for p in probs], "exit": exit_pt, "clients": clients,
+                        "features": feats, "load": dict(demo_state._load_state),
+                        "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
+                        "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events,
+                    }
+                demo_state._broadcast(demo_state._state)
+                time.sleep(max(0.0, ARGS.replay_interval - (time.time() - t0)))
+
+
 def inference_loop() -> None:
+    if ARGS.replay:
+        return replay_loop()
     scaler = json.loads(ARGS.scaler.read_text(encoding="utf-8"))
     sess = ort.InferenceSession(str(ARGS.model), providers=["CPUExecutionProvider"])
     in_name = sess.get_inputs()[0].name
@@ -52,6 +111,8 @@ def inference_loop() -> None:
     last_id = -1
     confirmed = None
     stale_since = time.time()
+    advisor = SwitchAdvisor()
+    events: deque = deque(maxlen=6)   # 최근 알림 (화면 경보판용)
 
     while True:
         cyc = poller.wait_for_new_cycle(last_id)
@@ -116,6 +177,10 @@ def inference_loop() -> None:
         if len(streak) == ARGS.confirm and len(set(streak)) == 1 and streak[0] != confirmed:
             confirmed = streak[0]
         shown = confirmed if confirmed is not None else raw
+        new_events = []
+        for ev in advisor.update(raw, feats["throughput_mbps"], feats["channel_occupancy_percent"]):
+            e = {"ts": time.strftime("%H:%M:%S"), "kind": ev.kind, "message": ev.message, "candidates": ev.candidates}
+            events.appendleft(e); new_events.append(e)
 
         with demo_state._lock:
             demo_state._state = {
@@ -125,5 +190,7 @@ def inference_loop() -> None:
                 "probs": [round(float(p), 3) for p in probs],
                 "exit": exit_pt, "clients": n_clients,
                 "features": feats, "load": dict(demo_state._load_state),
+                "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
+                "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events,
             }
         demo_state._broadcast(demo_state._state)
