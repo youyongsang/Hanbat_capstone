@@ -1,0 +1,186 @@
+<meta charset="utf-8">
+<title>MT6000 설정 가이드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+
+pre { background:var(--panel); border:1px solid var(--rule); border-radius:6px; padding:.7rem .9rem; overflow-x:auto; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.82rem; line-height:1.5; margin:.5rem 0 1rem; }
+ol.steps { padding-left:1.4rem; display:grid; gap:.55rem; } ol.steps > li { max-width:80ch; }
+.check { list-style:none; padding-left:0; } .check li::before { content:"☐ "; color:var(--accent); font-weight:600; }
+.go { color:var(--good); font-weight:600; } .stop { color:var(--bad); font-weight:600; }
+.phase { display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:.74rem; font-weight:600; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:.05rem .5rem; margin-right:.4rem; }
+</style>
+<main>
+<p class="eyebrow">GL.iNet GL-MT6000 (Flint 2) · 도착 예정 2026-10-13 · 마감 10-23</p>
+<h1>MT6000 설정 가이드</h1>
+<p class="lead">MT6000이 도착한 날 보면서 따라 하는 절차다. 목표는 하나: 2.4GHz에서 AP 자신의 송신 시간(<code>tx duration</code>, <code>channel transmit time</code>)이 나오는지 확인하고, 나오면 Opal과 같은 실험 환경으로 맞춰 수집을 시작하는 것. 기본 펌웨어에서 값이 나오면 OpenWrt 설치는 건너뛴다.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>1단계</b><span>기본 펌웨어 그대로 점검 (약 30분)</span></div>
+  <div class="kpi"><b>2단계</b><span>값이 안 나올 때만, 한 대에 순정 OpenWrt 25.12 설치 (약 1시간)</span></div>
+  <div class="kpi"><b>3단계</b><span>실험 환경 맞추기 → 다운링크 step으로 진행 여부 판단</span></div>
+  <div class="kpi alert"><b>factory 이미지 금지</b><span>반드시 sysupgrade 이미지 (공식 페이지: factory는 벽돌 위험)</span></div>
+</div>
+
+<section>
+<h2>왜 이 기기인가 (근거)</h2>
+<ul>
+<li>Opal(Siflower <code>siwifi</code> 드라이버)의 점유율은 AP 자신의 송신을 빼고 센다. 그래서 다운링크 혼잡과 노트북 방향의 점유율 미달 심각(줄 적체)이 안 보였다(<code>final_model_24sess.html</code> 2-1·5-1절).</li>
+<li>OpenWrt 포럼 스레드 173524, 사용자 질문 #3112에 대한 hnyman(OpenWrt Guru)의 답글 <b>#3114</b>: GL-MT6000 실기기·순정 OpenWrt 스냅샷(r36162)에서 <code>iw station dump</code>의 <code>tx duration</code>·<code>rx duration</code>·<code>airtime weight</code>, <code>iw survey dump</code>의 <code>channel busy/receive/BSS receive/transmit time</code>이 실제 값으로 출력됐다. 사용 채널에서 busy ≈ receive + transmit → <b>MT6000의 busy는 AP 송신을 포함</b>한다.</li>
+<li>OpenWrt 공식 하드웨어 페이지(openwrt.org/toh/gl.inet/gl-mt6000): 공식 지원 기기, MediaTek Filogic 830(4코어 2.0GHz), 무선 드라이버 MT76(mt7915e). 설치는 sysupgrade 이미지, U-Boot 복구 화면은 어떤 펌웨어 상태에서도 동작.</li>
+<li><b>아직 확인 안 된 것</b>: 포럼 출력은 <b>5GHz</b>였다(2.4GHz 미확인). <b>GL.iNet 기본 펌웨어</b>에서도 나오는지 미확인. #3112에서 물은 "AQL/airtime fairness·WED 오프로드와의 관계"는 답이 없었다.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="phase">도착 전</span>준비</h2>
+<ul class="check">
+<li><b>Opal 설정 백업</b> (Opal이 켜져 있을 때): 고정 IP 목록과 무선 설정을 파일로 남긴다.
+<pre>ssh root@192.168.8.1 "uci show dhcp | grep -E 'host|mac|ip|name'; uci show wireless" &gt; opal_config_backup.txt</pre></li>
+<li>현재 Opal 2.4GHz: <b>채널 1, 40MHz</b>(h18 시점 스냅샷). MT6000도 같은 채널로 맞추면 비교가 쉽다.</li>
+<li>OpenWrt 이미지 미리 받기(2단계 대비): Firmware Selector에서 <code>GL-MT6000</code> → <b>25.12 안정판 sysupgrade</b> 이미지와 sha256 값.</li>
+<li>노트북 공개키: <code>~/.ssh/id_rsa_ap.pub</code>(지금 AP 접속용 키). Pi도 AP에 SSH로 붙으므로 <b>Pi의 공개키</b>도 준비: <code>ssh capstone@192.168.8.109 "cat ~/.ssh/id_*.pub"</code></li>
+<li>수집기는 이미 준비됨(<code>collect_metrics.py</code>에 airtime 컬럼 5개, <code>AP_IP</code>·<code>AP_INTERFACE</code> 환경변수). 첫날 점검 스크립트 <code>project/scripts/mt6000_day1_check.sh</code>. Pi 번들에는 아직 안 올림 → 수집 전에 Pi로 복사.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="phase">1단계</span>기본 펌웨어로 점검</h2>
+<ol class="steps">
+<li><b>Opal을 끈다.</b> 둘 다 192.168.8.1이라 동시에 켜면 주소가 충돌한다.</li>
+<li>동봉 이더넷 케이블로 노트북과 MT6000 LAN 포트를 연결하고 전원을 켠다.</li>
+<li>브라우저로 <code>192.168.8.1</code> → 언어 선택 → <b>관리자 비밀번호 설정</b>(직접 입력). 이 비밀번호가 SSH <code>root</code> 비밀번호가 된다.</li>
+<li>관리 화면의 시스템 → 업그레이드에서 <b>GL.iNet 펌웨어를 최신으로</b> 올린다(상품 설명이 권하는 업데이트).</li>
+<li><b>2.4GHz Wi-Fi 켜기</b>. Wi-Fi 이름·비밀번호는 바닥 라벨 참고(없으면 <code>goodlife</code> 시도), 채널 1. 폰 한 대를 붙인다.</li>
+<li>노트북에서 SSH가 바뀐 기기를 거부하지 않게 예전 Opal 키를 지운다: <pre>ssh-keygen -R 192.168.8.1</pre></li>
+<li>점검 스크립트 실행:
+<pre>bash project/scripts/mt6000_day1_check.sh 192.168.8.1</pre>
+확인 항목: ① 펌웨어·드라이버 ② 2.4GHz 인터페이스 이름 ③ <code>tx duration</code>·<code>rx duration</code> ④ survey의 transmit·receive·BSS receive ⑤ busy ≈ receive + transmit.</li>
+</ol>
+<div class="tw"><table><thead><tr><th>결과</th><th>다음</th></tr></thead><tbody><tr><td><span class="go">tx duration·transmit time 나옴</span></td><td>2단계 건너뛰고 3단계로</td></tr><tr><td><span class="stop">안 나옴</span></td><td>2단계(순정 OpenWrt)를 <b>한 대에만</b></td></tr></tbody></table></div>
+</section>
+
+<section>
+<h2><span class="phase">2단계</span>순정 OpenWrt 설치 (필요할 때만, 한 대만)</h2>
+<ol class="steps">
+<li>받아 둔 <b>sysupgrade</b> 이미지의 sha256을 확인한다. <span class="stop">factory 이미지는 쓰지 않는다.</span></li>
+<li>GL.iNet 관리 화면 → 업그레이드 → 로컬 업그레이드 → 파일 선택 → <b>"설정 유지(Keep Settings)" 해제</b> → 업로드.</li>
+<li>3~5분 기다린다. <b>이 동안 전원을 끄지 않는다.</b></li>
+<li>유선 연결 상태로 <code>192.168.1.1</code> 접속 → root 비밀번호 설정(직접 입력). 순정 OpenWrt는 Wi-Fi가 꺼진 채로 시작한다.</li>
+<li>3단계의 설정 명령을 실행한 뒤 1단계 7번 점검을 다시 한다.</li>
+</ol>
+<p class="sub">두 대 중 한 대는 GL.iNet 기본 펌웨어로 남겨 둔다. 설치가 꼬여도 실험을 이어갈 수 있고, 두 펌웨어의 출력을 비교할 수도 있다.</p>
+</section>
+
+<section>
+<h2><span class="phase">3단계</span>실험 환경 맞추기</h2>
+<p>목표: Opal 때와 같은 주소·SSID 구조로 맞춰 러너와 수집기를 거의 그대로 쓴다. 아래는 <b>순정 OpenWrt</b> 기준 명령이다(GL.iNet 펌웨어는 관리 화면에서 같은 항목을 설정). 실행 전에 <code>uci show wireless | grep band</code>로 어느 radio가 2.4GHz인지 확인한다(보통 radio0).</p>
+<pre># 1) LAN 주소를 Opal과 같게 (러너·수집기·고정 IP를 그대로 쓰기 위해). 적용 후 노트북 재접속은 192.168.8.1
+uci set network.lan.ipaddr='192.168.8.1'
+
+# 2) 2.4GHz 켜기·채널·국가 코드 (해외 판매자 제품이라 국가 코드 확인)
+uci set wireless.radio0.disabled='0'
+uci set wireless.radio0.channel='1'
+uci set wireless.radio0.htmode='HE40'
+uci set wireless.radio0.country='KR'
+uci set wireless.default_radio0.ssid='&lt;새 SSID&gt;'
+uci set wireless.default_radio0.encryption='psk2'
+uci set wireless.default_radio0.key='&lt;비밀번호, 직접 입력&gt;'
+
+# 3) 고정 IP (opal_config_backup.txt의 MAC 사용) — 노트북 .226 · s21 .191 · s26 .103 · Pi .109
+uci add dhcp host; uci set dhcp.@host[-1].name='laptop'; uci set dhcp.@host[-1].mac='14:85:7f:9b:2f:80'; uci set dhcp.@host[-1].ip='192.168.8.226'
+#   (s21·s26·Pi도 같은 방식으로 추가)
+
+uci commit; reload_config</pre>
+<pre># 4) SSH 키 등록 (노트북·Pi 공개키) — 이후 수집기가 비밀번호 없이 접속
+cat ~/.ssh/id_rsa_ap.pub | ssh root@192.168.8.1 "cat &gt;&gt; /etc/dropbear/authorized_keys"
+ssh capstone@192.168.8.109 "cat ~/.ssh/id_*.pub" | ssh root@192.168.8.1 "cat &gt;&gt; /etc/dropbear/authorized_keys"
+ssh capstone@192.168.8.109 "ssh-keygen -R 192.168.8.1"   # Pi도 예전 Opal 호스트 키 삭제</pre>
+<ul>
+<li><b>SSID가 바뀌면</b> 러너의 <code>EXPECT_SSID</code>(지금 <code>GL-SFT1200-a08</code>)와 폰·노트북 Wi-Fi 연결을 바꿔야 한다. 폰 MAC은 랜덤이라 Wi-Fi를 "잊고" 다시 붙으면 MAC이 바뀌어 고정 IP가 깨질 수 있다.</li>
+<li>수집기 실행: <code>AP_IP=192.168.8.1 AP_INTERFACE=&lt;2.4GHz 인터페이스&gt; python3 collect_metrics.py &lt;시나리오&gt;</code>. 순정 OpenWrt의 인터페이스 이름은 보통 <code>phy0-ap0</code>(점검 스크립트가 알려 줌). 러너는 <code>IFACE</code> 값을 바꾼다.</li>
+<li>Pi 번들 갱신: <code>scp project/deploy/raspberry_pi_ap_v2/collect_metrics.py capstone@192.168.8.109:ap_pi_v2/</code></li>
+</ul>
+</section>
+
+<section>
+<h2><span class="phase">판단</span>진행할지 정하는 시험 (다운링크 step 한 번)</h2>
+<p>폰당 10→40M 다운링크(<code>WIRED_MODE=down</code>, h9와 같은 부하)를 한 번 돌리며 <code>channel_tx_time_percent</code>, <code>channel_occupancy_percent</code>, <code>sta_tx_airtime_pct</code>를 본다.</p>
+<div class="tw"><table><thead><tr><th>관찰</th><th>판단</th></tr></thead><tbody><tr><td>transmit %·busy %가 부하를 따라 <b>오른다</b></td><td><span class="go">본 수집 시작</span> — 다운링크 혼잡이 MT6000에서는 보인다</td></tr><tr><td>Opal처럼 그대로이거나 내려간다</td><td><span class="stop">MT6000 계측 중단</span> — Opal 결과로 마무리, MT6000은 멀티 AP 실험·향후 과제로</td></tr></tbody></table></div>
+<p class="sub">참고: Opal에서 h9 다운링크 step은 점유율이 20 → 10%로 오히려 내려갔다.</p>
+</section>
+
+<section>
+<h2>수집 전에 정할 것</h2>
+<ul>
+<li><b>라벨의 점유율 축</b>: MT6000의 busy는 AP 송신을 포함해 Opal과 의미가 다르다. 같은 75% 앵커를 쓰면 다운링크도 점유율로 심각이 붙는다. 라벨 기준을 먼저 정하고, MT6000 데이터는 Opal과 섞지 않고 따로 학습한다.</li>
+<li><b>세션 구성</b>(10/14~17): 노트북 방향·업링크·다운링크·혼합 각 2~3세션 + <b>폰 1대·근접·소패킷 고처리량 세션</b>(g6 오탐 대비, 거리 바꿔 2~3개). 폰 대수·거리를 섞는다.</li>
+<li>멀리 두는 세션은 Opal 크래시 경험(폰 신호 비대칭)을 참고하되, MT6000은 4코어라 고부하를 더 견딜 것으로 기대.</li>
+</ul>
+</section>
+
+<section>
+<h2>문제가 생기면: U-Boot 복구</h2>
+<ol class="steps">
+<li>전원을 끄고 <b>리셋 버튼을 누른 채 전원을 켠다</b>. LED가 바뀔 때까지 몇 초 누른다.</li>
+<li>노트북 유선 포트 IP를 <b>192.168.1.2 / 255.255.255.0</b>으로 고정한다.</li>
+<li>브라우저로 <code>192.168.1.1</code> → 복구 화면에서 sysupgrade 이미지(OpenWrt 또는 GL.iNet)를 올린다.</li>
+<li>GL.iNet 기본 펌웨어로 돌아가려면 GL.iNet의 sysupgrade 이미지를 "설정 유지 없이" 올린다.</li>
+</ol>
+</section>
+
+<section>
+<h2>초기값 요약</h2>
+<div class="tw"><table><thead><tr><th></th><th>GL.iNet 기본 펌웨어</th><th>순정 OpenWrt</th></tr></thead><tbody><tr><td>관리 주소</td><td>192.168.8.1</td><td>192.168.1.1</td></tr><tr><td>관리자/root 비밀번호</td><td>없음, 첫 접속 때 설정</td><td>없음, 첫 로그인 때 설정</td></tr><tr><td>Wi-Fi</td><td>켜짐, 이름·비밀번호는 바닥 라벨(예전 모델은 goodlife)</td><td>꺼짐, 직접 켜고 설정</td></tr><tr><td>무선 드라이버</td><td>확인 필요(점검 스크립트 ①)</td><td>MT76 (mt7915e)</td></tr></tbody></table></div>
+<p class="sub">메뉴 이름과 일부 값은 펌웨어 버전에 따라 다를 수 있다. 동봉 매뉴얼과 화면을 우선한다.</p>
+</section>
+
+<footer>생성 <code>project/.tmp/exp_24g/build_mt6000_guide.py</code> · 근거 OpenWrt 포럼 173524 #3112·#3114, openwrt.org/toh/gl.inet/gl-mt6000 · 관련 <code>project/scripts/mt6000_day1_check.sh</code>, <code>collect_metrics.py</code> · 경위 <code>.work-log/current.md</code> 28차 후속(22)</footer>
+</main>
