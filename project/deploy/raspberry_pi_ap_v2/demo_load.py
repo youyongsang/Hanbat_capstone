@@ -42,7 +42,9 @@ def _stop_phone(name: str) -> None:
     _broadcast_load()
 
 
-def set_phone_load(name: str, rate: str, packet_size: int = DEFAULT_PACKET_SIZE) -> dict:
+def set_phone_load(name: str, rate: str, packet_size: int = DEFAULT_PACKET_SIZE, duration_s: int | None = None) -> dict:
+    # 2026-10-02: 화면에서 보낼 시간을 고를 수 있게 duration_s(10~60초) 추가. 없으면 기존 LOAD_DURATION_S.
+    dur = LOAD_DURATION_S if duration_s is None else max(10, min(60, int(duration_s)))
     if name not in PHONES:
         return {"ok": False, "error": f"알 수 없는 폰: {name} (허용: {sorted(PHONES)})"}
     if rate not in ALLOWED_RATES:
@@ -65,18 +67,18 @@ def set_phone_load(name: str, rate: str, packet_size: int = DEFAULT_PACKET_SIZE)
     # -t 는 LOAD_DURATION_S + 여유분 — 서버 타이머가 실패해도 iperf3 자체가 끝남 (이중 안전장치).
     # -l packet_size: 1400=일반, 200=소패킷 (같은 bitrate라도 초당 패킷 수↑ → occupancy·retry↑).
     cmd = (f"nohup iperf3 -u -c {ARGS.iperf_target} -p {ph['port']} -b {rate} -l {packet_size} "
-           f"-t {LOAD_DURATION_S + 5} >/dev/null 2>&1 & echo started")
+           f"-t {dur + 5} >/dev/null 2>&1 & echo started")
     rc, out = _ssh(ph["ssh"], cmd)
     if rc != 0:
         return {"ok": False, "error": f"{name} 부하 시작 실패: {out}"}
 
     demo_state._load_state[name] = {"rate": rate, "packet_size": packet_size}
-    timer = threading.Timer(LOAD_DURATION_S, _stop_phone, args=(name,))
+    timer = threading.Timer(dur, _stop_phone, args=(name,))
     timer.daemon = True
     timer.start()
     demo_state._load_timers[name] = timer
     _broadcast_load()
-    return {"ok": True, "phone": name, "rate": rate, "packet_size": packet_size, "duration_s": LOAD_DURATION_S}
+    return {"ok": True, "phone": name, "rate": rate, "packet_size": packet_size, "duration_s": dur}
 
 
 def phone_signals() -> dict:

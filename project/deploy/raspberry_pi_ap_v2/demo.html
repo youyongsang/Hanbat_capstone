@@ -1,471 +1,579 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AP 혼잡 감지 콘솔</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
-<!-- 2026-10-01 재설계: 공장 설비 조작반(금속 판넬 · 경광등 · 경보 표시판 · 누름 버튼). 이전 화면은 demo_archived_20261001.html -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>와이파이 혼잡 체험</title>
+<!--
+  데모 v2 화면 (taste-skill로 디자인, 2026-10-01 채택). impeccable 시안과 비교해 이 안으로 확정했고,
+  impeccable 시안의 장점(한 화면 배치, 글꼴·아이콘 내장(오프라인), "모델 추정" 표기, 팀 이름,
+  단계 표시 3연속 확정)은 이 파일에 옮겨 왔다. impeccable 쪽 파일은 같은 날 삭제.
+  "날씨 앱" 같은 소비자 앱 언어: 큰 문장 한 줄, 평평한 카드, 단계 색은 상태에만.
+
+  Design read: 공개 시연용 체험 페이지, 대상은 완전한 일반인, 차분한 소비자 앱 언어,
+               native CSS + Pretendard + Phosphor 아이콘 (assets_taste/ 에 내장).
+  Dials: DESIGN_VARIANCE 4 / MOTION_INTENSITY 4 / VISUAL_DENSITY 4
+  모양 규칙: 카드 20px, 조작 버튼은 전부 pill. 그 외 모서리 없음.
+  색 규칙: 조작 요소는 잉크색 하나(무채색), 단계 4색은 "지금 상태"를 나타낼 때만.
+
+  2026-10-02 실제 데이터 연결 (demo.html로 채택, 이전 공장 조작반 화면은 demo_archived_industrial_20261002.html):
+  - SSE /events 의 모델 출력(raw_label·probs)으로 단계와 "모델 추정" 점수를 그린다. 점수는 모델이 고른 단계의
+    구간 안에서, 위·아래 단계 확률로 위치를 정한다(단계 문장과 점수 구간이 어긋나지 않게).
+  - 기기 버튼은 POST /load {phone, rate:"20M", packet_size, duration_s}. 서버 타이머가 끝나면 SSE load가 off로 와서 맞춘다.
+  - "다른 채널로 옮겨야 해요"는 서버 전환 판단(switch_active, 3폴링 중 2번 심각·사건 단위)을 따른다.
+  - 다운링크 우세(downlink)면 "판단이 정확하지 않을 수 있어요" 안내.
+  - 주소 끝에 #sim 을 붙이면 예전 연습 모드(가짜 시뮬레이션)로 돈다. 서버가 --replay 면 상단에 재생 모드 표시.
+-->
 <style>
+@font-face{font-family:"Pretendard Variable";src:url(assets_taste/PretendardVariable.woff2) format("woff2-variations");
+  font-weight:45 920;font-display:swap}
+@font-face{font-family:"Phosphor";src:url(assets_taste/Phosphor.woff2) format("woff2");font-display:block}
+@font-face{font-family:"Phosphor-Bold";src:url(assets_taste/Phosphor-Bold.woff2) format("woff2");font-display:block}
+.ic,.ic-b{font-style:normal;font-weight:normal;line-height:1;speak:never;-webkit-font-smoothing:antialiased}
+.ic{font-family:"Phosphor"}.ic-b{font-family:"Phosphor-Bold"}
+.i-wifi::before{content:"\e4ea"}.i-half::before{content:"\e18c"}.i-phone::before{content:"\e1e0"}
+.i-phone2::before{content:"\e1e2"}.i-swap::before{content:"\e0a0"}.i-minus::before{content:"\e32a"}.i-plus::before{content:"\e3d4"}.i-info::before{content:"\e2ce"}
+
 :root{
-  --steel-hi:#e9edf0; --steel:#cfd5da; --steel-lo:#aeb6bd; --steel-edge:#8b949c; --steel-deep:#5d666e;
-  --ink:#1b2126; --ink-2:#47515a; --engrave:#5b646c;
-  --glass:#0f1519; --glass-2:#172027; --grid:#24313a; --trace:#cfe9f2; --trace-2:#6f97a8; --lcd:#9fd3c9;
-  --s0:#2f8f5b; --s1:#d4a20c; --s2:#d8691d; --s3:#c42b2b;
-  --sans:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
-  --mono:"Share Tech Mono","IBM Plex Sans KR","Malgun Gothic",Consolas,ui-monospace,monospace;
+  --bg:#f2f3f5; --surface:#ffffff; --line:#e1e3e8;
+  --ink:#16181d; --ink-2:#4a4f5c; --ink-3:#6b7180;
+  --on-ink:#f7f8fa;
+  --l0:#23935f; --l1:#c08a00; --l2:#dd6418; --l3:#d23338;     /* 채움용 */
+  --l0-t:#17724a; --l1-t:#8a6300; --l2-t:#b04c0e; --l3-t:#b0242a; /* 글자용(AA 대비) */
+  --lv:var(--l0); --lv-t:var(--l0-t);
+  --font:"Pretendard Variable","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --gap:14px;
+  color-scheme:light;
 }
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111317; --surface:#1a1d23; --line:#2a2e36;
+    --ink:#eef0f3; --ink-2:#b4b9c4; --ink-3:#8c92a0; --on-ink:#15171b;
+    --l0:#3fbf85; --l1:#e2b33a; --l2:#f08a47; --l3:#f2625f;
+    --l0-t:#5fd49c; --l1-t:#f0c65a; --l2-t:#f6a06a; --l3-t:#ff8a85;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111317; --surface:#1a1d23; --line:#2a2e36;
+  --ink:#eef0f3; --ink-2:#b4b9c4; --ink-3:#8c92a0; --on-ink:#15171b;
+  --l0:#3fbf85; --l1:#e2b33a; --l2:#f08a47; --l3:#f2625f;
+  --l0-t:#5fd49c; --l1-t:#f0c65a; --l2-t:#f6a06a; --l3-t:#ff8a85;
+  color-scheme:dark;
+}
+body[data-lv="1"]{--lv:var(--l1);--lv-t:var(--l1-t)}
+body[data-lv="2"]{--lv:var(--l2);--lv-t:var(--l2-t)}
+body[data-lv="3"]{--lv:var(--l3);--lv-t:var(--l3-t)}
+
 *{box-sizing:border-box}
-html,body{margin:0}
-body{
-  font-family:var(--sans); color:var(--ink); font-size:14px; line-height:1.45;
-  background:
-    repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),
-    linear-gradient(180deg,#b9c0c6 0%,#a8b0b7 100%);
-  min-height:100vh;
-}
-.console{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:18px 40px;display:grid;gap:14px}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+  font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;word-break:keep-all}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 
-/* 강판 판넬 */
-.plate{
-  position:relative; border-radius:6px; padding:16px 18px;
-  background:
-    repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,rgba(0,0,0,.025) 1px 2px,transparent 2px 4px),
-    linear-gradient(180deg,var(--steel-hi),var(--steel) 55%,#c3cacf);
-  border:1px solid var(--steel-edge);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 -1px 0 rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.18),0 6px 14px rgba(40,50,58,.18);
+/* 한 화면 배치: 상단 바 / (상태 | 기기 2대) / 그래프 */
+.app{max-width:1400px;margin:0 auto;padding:0 20px 20px;display:grid;gap:var(--gap);
+  grid-template-rows:auto auto auto}
+@media (min-width:901px) and (min-height:640px){
+  .app{height:100dvh;grid-template-rows:auto auto minmax(0,1fr)}
 }
-.plate.bolted::before,.plate.bolted::after{
-  content:""; position:absolute; top:7px; width:8px; height:8px; border-radius:50%;
-  background:radial-gradient(circle at 35% 35%,#f4f6f7,#8d969d 60%,#5c656c);
-  box-shadow:0 1px 0 rgba(255,255,255,.6);
-}
-.plate.bolted::before{left:7px}.plate.bolted::after{right:7px}
-.tag{ /* 각인 이름판 */
-  font-size:11.5px; font-weight:700; letter-spacing:.14em; color:var(--engrave);
-  text-shadow:0 1px 0 rgba(255,255,255,.75); margin:0 0 10px;
-}
-.tag b{color:var(--ink-2);letter-spacing:.06em}
+.panel{background:var(--surface);border-radius:20px;padding:20px 24px;min-width:0;min-height:0}
 
-/* 상단 이름판 */
-.head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
-.head h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.02em;text-shadow:0 1px 0 rgba(255,255,255,.8)}
-.head .spec{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin-top:2px}
-.lamps{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
-.lamp{display:grid;justify-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--engrave)}
-.lamp i{
-  width:16px;height:16px;border-radius:50%;display:block;border:2px solid #6c757c;
-  background:radial-gradient(circle at 40% 35%,#9aa3aa,#59626a 70%);
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
-}
-.lamp.ok i{background:radial-gradient(circle at 40% 35%,#c9f2d9,var(--s0) 55%,#1d5c3a);box-shadow:0 0 6px rgba(47,143,91,.7)}
-.lamp.bad i{background:radial-gradient(circle at 40% 35%,#ffd0cc,var(--s3) 55%,#7d1818);box-shadow:0 0 6px rgba(196,43,43,.7)}
-.lamp.mid i{background:radial-gradient(circle at 40% 35%,#ffefb8,var(--s1) 55%,#7a5e06)}
-.key{ /* 공용 누름 버튼 */
-  font:inherit;font-weight:700;font-size:13px;color:var(--ink);cursor:pointer;
-  padding:9px 14px;border-radius:5px;border:1px solid #7d868d;
-  background:linear-gradient(180deg,#f3f5f6,#c9cfd4);
-  box-shadow:inset 0 1px 0 #fff,0 2px 0 #7d868d,0 3px 4px rgba(0,0,0,.18);
-  transition:transform .05s,box-shadow .05s;
-}
-.key:active,.key.on{transform:translateY(2px);box-shadow:inset 0 1px 3px rgba(0,0,0,.25),0 0 0 #7d868d}
-.key:focus-visible,.rocker button:focus-visible,.stop:focus-visible{outline:3px solid #2d6f8e;outline-offset:2px}
-.key:disabled{opacity:.55;cursor:wait}
+/* 상단 바 */
+.top{display:flex;align-items:center;gap:14px;height:56px}
+.brand{font-weight:800;font-size:18px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.brand .ic{font-size:26px}
+.brand-t{display:flex;flex-direction:column;line-height:1.2}
+.brand-t small{font-size:13px;font-weight:500;color:var(--ink-2);letter-spacing:0}
+.team{margin-left:auto;font-size:14px;color:var(--ink-2);text-align:right}
+.team b{color:var(--ink)}
+.chip{font-size:13px;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--surface);white-space:nowrap}
+.icon-btn{width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;cursor:pointer;font-size:18px;flex:none}
 
-/* 주 화면: 경광등 + 모니터 */
-.main{display:grid;grid-template-columns:230px 1fr;gap:14px}
-@media(max-width:820px){.main{grid-template-columns:1fr}}
-.tower-wrap{display:grid;justify-items:center;gap:12px}
-.tower{display:grid;justify-items:center;width:84px}
-.tower .cap{width:62px;height:14px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#4a5359,#2c3338)}
-.lens{
-  width:70px;height:44px;margin-top:3px;border-radius:6px;display:grid;place-items:center;
-  font-size:12px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.55);
-  border:1px solid rgba(0,0,0,.35);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.35);
-  transition:background .25s,box-shadow .25s,color .25s;
-}
-.lens[data-l="3"]{background:#5a2626}.lens[data-l="2"]{background:#5c3a22}.lens[data-l="1"]{background:#5a4c1e}.lens[data-l="0"]{background:#244534}
-.lens.lit{color:#fff;text-shadow:0 0 6px rgba(255,255,255,.8)}
-.lens.lit[data-l="3"]{background:radial-gradient(circle at 50% 40%,#ff9d96,var(--s3) 60%);box-shadow:0 0 22px rgba(196,43,43,.85),inset 0 0 8px rgba(255,255,255,.4)}
-.lens.lit[data-l="2"]{background:radial-gradient(circle at 50% 40%,#ffc391,var(--s2) 60%);box-shadow:0 0 22px rgba(216,105,29,.85),inset 0 0 8px rgba(255,255,255,.4)}
-.lens.lit[data-l="1"]{background:radial-gradient(circle at 50% 40%,#ffe58a,var(--s1) 60%);box-shadow:0 0 22px rgba(212,162,12,.85),inset 0 0 8px rgba(255,255,255,.4)}
-.lens.lit[data-l="0"]{background:radial-gradient(circle at 50% 40%,#a7efc4,var(--s0) 60%);box-shadow:0 0 22px rgba(47,143,91,.85),inset 0 0 8px rgba(255,255,255,.4)}
-.tower .pole{width:16px;height:26px;background:linear-gradient(90deg,#6b747b,#c4cbd0,#6b747b)}
-.tower .base{width:58px;height:10px;border-radius:3px;background:linear-gradient(180deg,#4a5359,#2c3338)}
-.lcd{
-  width:100%;background:linear-gradient(180deg,#0e1417,#141c20);border:1px solid #3a444b;border-radius:4px;
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.6);padding:10px 12px;color:var(--lcd);font-family:var(--mono);
-}
-.lcd .big{font-family:var(--sans);font-size:30px;font-weight:700;line-height:1.1;letter-spacing:.06em}
-.lcd .row{display:flex;justify-content:space-between;font-size:13px;margin-top:4px;color:#7fb1a8}
-.st0{color:#5fd193}.st1{color:#f1c84a}.st2{color:#f39a52}.st3{color:#ff6b62}
+main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:var(--gap);min-height:0}
 
-.screen{
-  background:linear-gradient(180deg,var(--glass),var(--glass-2));border-radius:6px;border:1px solid #2b363e;
-  box-shadow:inset 0 0 0 4px #3c464d,inset 0 0 0 5px #20282e,inset 0 3px 18px rgba(0,0,0,.7);
-  padding:12px 14px 10px;color:#a8c2cc;display:grid;gap:6px;min-width:0;
+/* 지금 상태 */
+.status{display:flex;flex-direction:column;gap:14px;
+  background:color-mix(in oklab,var(--lv) 13%,var(--surface));transition:background-color .6s var(--ease)}
+.status .lead{font-size:18px;color:var(--ink-2);margin:0}
+.status h1{font-size:clamp(40px,min(6vw,9vh),80px);line-height:1.08;letter-spacing:-.035em;font-weight:800;
+  margin:2px 0 0;color:var(--lv-t);transition:color .6s var(--ease)}
+.status .desc{font-size:clamp(17px,2.4vh,21px);margin:0;max-width:30ch}
+.switch{display:none;align-items:center;gap:8px;font-weight:700;width:fit-content;
+  color:var(--on-ink);background:var(--l3);border-radius:999px;padding:8px 16px}
+.switch .ic-b{font-size:17px}
+body[data-switch="1"] .switch{display:inline-flex}
+.unsure{display:none;align-items:center;gap:8px;font-size:15px;color:var(--ink-2);width:fit-content;
+  border:1px dashed var(--ink-3);border-radius:999px;padding:6px 14px}
+body[data-unsure="1"] .unsure{display:inline-flex}
+.dev.err .dev-state{color:var(--l3-t);font-weight:700}
+.meter{margin-top:auto;padding-top:14px;border-top:1px solid color-mix(in oklab,var(--lv) 25%,transparent)}
+.meter-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.meter .k{font-size:15px;color:var(--ink-2)}
+.meter .k small{font-size:13px;color:var(--ink-3);margin-left:4px}
+.meter .num{font-size:clamp(40px,6vh,60px);font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.meter .num small{font-size:18px;font-weight:600;color:var(--ink-3);letter-spacing:0;margin-left:4px}
+.scale{position:relative;padding-top:24px;margin-top:6px}
+.scale .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.scale .seg span{height:10px;border-radius:999px;opacity:.25;transition:opacity .4s}
+.scale .seg span:nth-child(1){background:var(--l0)}.scale .seg span:nth-child(2){background:var(--l1)}
+.scale .seg span:nth-child(3){background:var(--l2)}.scale .seg span:nth-child(4){background:var(--l3)}
+.scale .seg span.on{opacity:1}
+.scale .names{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;font-size:14px;color:var(--ink-3)}
+.scale .names span.on{color:var(--ink);font-weight:700}
+.scale .pin{position:absolute;top:0;left:0;transform:translateX(-50%);font-size:12px;font-weight:700;transition:left .5s var(--ease)}
+.scale .pin::after{content:"";display:block;width:2px;height:16px;margin:2px auto 0;background:var(--ink);border-radius:2px}
+
+/* 기기 2대 */
+.devices{display:grid;grid-template-rows:auto 1fr 1fr;gap:var(--gap);min-height:0}
+.devices-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 12px;padding:0 4px}
+.devices-h h2{font-size:20px;letter-spacing:-.02em;margin:0}
+.devices-h p{margin:0;font-size:14px;color:var(--ink-2)}
+.dev{position:relative;display:flex;flex-direction:column;justify-content:center;gap:9px;padding:12px 20px 14px}
+.dev-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.dev-name{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:700}
+.dev-name .ic{font-size:22px}
+.dev-state{font-size:15px;color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
+.dev.run .dev-state{color:var(--ink);font-weight:700}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+.row > span{min-width:2.4em;white-space:nowrap}
+.opts{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px 18px;align-items:center}
+.row > span{font-size:14px;color:var(--ink-2);font-weight:600}
+.dur{display:flex;align-items:center;gap:10px;min-width:0}
+.dur .val{min-width:3.3em;font-size:22px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.dur .val small{font-size:14px;font-weight:600;color:var(--ink-3);margin-left:2px}
+.step{width:40px;height:40px;border-radius:999px;border:1px solid var(--line);background:var(--bg);
+  cursor:pointer;font-size:17px;display:grid;place-items:center;flex:none;transition:transform .15s}
+.step:active{transform:scale(.94)}
+.dur input{flex:1;accent-color:var(--ink);height:28px;min-width:0;margin:0}
+.rates{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rate{height:clamp(46px,6.4vh,60px);border-radius:999px;border:1.5px solid var(--line);background:var(--bg);cursor:pointer;
+  font-size:21px;font-weight:800;letter-spacing:-.02em;touch-action:manipulation;
+  transition:transform .15s,background-color .2s,color .2s,border-color .2s}
+.rate small{font-size:13px;font-weight:600;margin-left:1px;opacity:.7}
+.rate:hover{border-color:var(--ink-3)}
+.rate:active{transform:scale(.97)}
+.rate[aria-pressed="true"]{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+/* 일반인용 설명 말풍선: 마우스를 올리거나(hover) 터치·탭(focus)하면 보인다 */
+.tip{position:relative;display:inline-flex;align-items:center;gap:4px;cursor:help;
+  text-decoration:underline dotted;text-underline-offset:3px;border-radius:6px}
+.tip .ic{font-size:15px;color:var(--ink-3)}
+.bubble{position:absolute;z-index:10;bottom:calc(100% + 10px);left:-8px;width:min(290px,80vw);
+  padding:12px 14px;border-radius:14px;background:var(--ink);color:var(--on-ink);
+  font-size:14px;font-weight:500;line-height:1.55;white-space:normal;text-decoration:none;
+  box-shadow:0 8px 24px color-mix(in oklab,var(--ink) 25%,transparent);
+  opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .18s,transform .18s var(--ease)}
+.bubble::after{content:"";position:absolute;top:100%;left:18px;border:7px solid transparent;border-top-color:var(--ink)}
+.bubble b{font-weight:800}
+.tip:hover .bubble,.tip:focus .bubble,.tip:focus-within .bubble{opacity:1;transform:none}
+.pkts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pkt{height:40px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;
+  font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;touch-action:manipulation;transition:transform .15s,background-color .2s,color .2s,border-color .2s}
+.pkt small{font-size:11px;font-weight:600;opacity:.75}
+.pkt:hover{border-color:var(--ink-3)}
+.pkt:active{transform:scale(.97)}
+.pkt[aria-pressed="true"]{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.left{position:absolute;left:20px;right:20px;bottom:6px;height:4px;border-radius:999px;overflow:hidden}
+.left > div{height:100%;background:var(--ink);transform-origin:left;transform:scaleX(0);transition:transform .5s linear}
+
+/* 그래프 */
+.chart-panel{display:flex;flex-direction:column;padding:12px 20px 10px}
+.chart-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.chart-top h2{font-size:18px;margin:0;letter-spacing:-.02em;display:inline}
+.chart-top p{display:inline;margin:0 0 0 10px;color:var(--ink-2);font-size:14px}
+.sum{font-size:14px;color:var(--ink-2);white-space:nowrap}
+.sum b{font-size:24px;color:var(--ink);font-variant-numeric:tabular-nums;margin-left:6px;letter-spacing:-.02em}
+.chart-wrap{flex:1;min-height:90px;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-top:4px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend .ln{width:20px;height:3px;border-radius:2px;background:var(--ink)}
+.legend .bx{width:13px;height:13px;border-radius:4px;background:color-mix(in oklab,var(--ink) 12%,transparent)}
+
+@media (max-width:900px){
+  .app{padding:0 16px 24px}
+  main{grid-template-columns:1fr}
+  .top{height:auto;min-height:56px;flex-wrap:wrap;padding:10px 0;gap:8px 12px}
+  .team{order:3;width:100%;margin-left:0;text-align:left;font-size:13px}
+  .brand{white-space:normal}
+  .panel{padding:18px}
+  .chart-wrap{height:240px;flex:none}
+  .opts{grid-template-columns:1fr}
 }
-.screen .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:13px}
-.screen .top .t{color:#7d9aa6;letter-spacing:.08em}
-.screen .now{display:flex;gap:16px;flex-wrap:wrap}
-.screen .now b{color:var(--trace);font-weight:400;font-size:16px}
-#chart{width:100%;height:270px;display:block}
-.legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:#7d9aa6}
-.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
-
-/* 경보 표시판 */
-.annun{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-@media(max-width:820px){.annun{grid-template-columns:repeat(2,1fr)}}
-.tile{
-  min-height:64px;border-radius:4px;display:grid;place-items:center;text-align:center;padding:8px;
-  font-weight:700;font-size:13.5px;line-height:1.3;color:#6c757c;letter-spacing:.03em;
-  background:linear-gradient(180deg,#d7dce0,#c2c9ce);border:1px solid #868f96;
-  box-shadow:inset 0 1px 3px rgba(0,0,0,.25);
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
 }
-.tile small{display:block;font-weight:500;font-size:11.5px;letter-spacing:0}
-.tile.red{color:#fff;background:radial-gradient(circle at 50% 35%,#f07a72,var(--s3) 70%);border-color:#7d1818;box-shadow:0 0 14px rgba(196,43,43,.55),inset 0 1px 0 rgba(255,255,255,.35)}
-.tile.amber{color:#2a2100;background:radial-gradient(circle at 50% 35%,#ffe58a,var(--s1) 70%);border-color:#7a5e06;box-shadow:0 0 14px rgba(212,162,12,.5),inset 0 1px 0 rgba(255,255,255,.45)}
-.tile.blink{animation:blink .5s steps(2) 6}
-@keyframes blink{50%{filter:brightness(.55)}}
-@media (prefers-reduced-motion:reduce){.tile.blink{animation:none}}
-.order{margin-top:10px;font-family:var(--mono);font-size:13px;color:var(--ink-2);display:grid;gap:3px}
-.order .ev{display:flex;gap:10px}
-.order .ev span:first-child{color:var(--engrave);flex:none}
-.order .cand{padding-left:72px;color:var(--engrave)}
-
-/* 계기 */
-.meters{display:grid;grid-template-columns:2fr repeat(5,1fr);gap:10px}
-@media(max-width:980px){.meters{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:560px){.meters{grid-template-columns:repeat(2,1fr)}}
-.meter{display:grid;gap:6px;min-width:0}
-.meter .k{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:var(--engrave)}
-.meter .lcd{padding:7px 10px}
-.meter .lcd .v{font-size:22px;color:var(--trace)}
-.meter .lcd .v small{font-size:12px;color:#7d9aa6}
-.gauge{position:relative;height:18px;border-radius:3px;overflow:hidden;border:1px solid #3a444b;
-  background:linear-gradient(90deg,#244534 0 40%,#5a4c1e 40% 55%,#5c3a22 55% 75%,#5a2626 75% 100%)}
-.gauge .fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(207,233,242,.85);mix-blend-mode:screen;transition:width .3s}
-.ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--engrave)}
-.ticks span{position:relative}
-.exitlamps{display:flex;gap:6px}
-.exitlamps .lamp i{width:14px;height:14px}
-
-/* 부하 스테이션 */
-.stations{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:820px){.stations{grid-template-columns:1fr}}
-.station .body{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
-.station .ctrl{display:grid;gap:10px}
-.rocker{display:inline-flex;border:1px solid #6f787f;border-radius:5px;overflow:hidden;box-shadow:0 2px 0 #7d868d}
-.rocker button{font:inherit;font-size:12.5px;font-weight:700;padding:7px 12px;border:0;cursor:pointer;color:var(--ink-2);
-  background:linear-gradient(180deg,#e6eaed,#c4cbd0)}
-.rocker button.on{color:#e9f3f6;background:linear-gradient(180deg,#3a464e,#56636c);box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
-.keys{display:flex;gap:8px;flex-wrap:wrap}
-.keys .key{min-width:62px;display:grid;justify-items:center;gap:3px;padding:7px 10px 8px}
-.keys .key i{width:18px;height:4px;border-radius:2px;background:#6f787f}
-.keys .key.on i{background:#7fe0a8;box-shadow:0 0 6px #7fe0a8}
-.stop{
-  width:78px;height:78px;border-radius:50%;cursor:pointer;border:6px solid #e0b400;
-  background:radial-gradient(circle at 40% 35%,#f07a72,var(--s3) 55%,#7d1818);
-  box-shadow:0 4px 0 #7d1818,0 6px 10px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.35);
-  color:#fff;font:inherit;font-weight:700;font-size:13px;letter-spacing:.06em;
-}
-.stop:active{transform:translateY(3px);box-shadow:0 1px 0 #7d1818,inset 0 2px 4px rgba(0,0,0,.4)}
-.station .lcd{font-size:14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.station .lcd .sig.bad{color:#ff6b62}
-
-.foot{font-size:12px;color:#3f474e;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;text-shadow:0 1px 0 rgba(255,255,255,.4)}
-.replay{display:none;font-family:var(--mono);font-size:12.5px;color:#2a2100;background:var(--s1);border-radius:3px;padding:2px 8px;margin-left:8px}
 </style>
 </head>
-<body>
-<div class="console">
+<body data-lv="0">
+<div class="app">
 
-  <!-- 이름판 + 상태 램프 -->
-  <section class="plate bolted head">
-    <div>
-      <h1>AP 혼잡 감지 콘솔 <span class="replay" id="replay"></span></h1>
-      <div class="spec">AP-01 · GL.iNet Opal · 2.4GHz CH1 · 모델 Early Exit LSTM (INT8)</div>
+  <header class="top">
+    <div class="brand"><i class="ic i-wifi" aria-hidden="true"></i>
+      <div class="brand-t">와이파이 혼잡 체험<small>공유기(AP)가 보는 정보만으로 AI가 혼잡을 판단해요</small></div>
     </div>
-    <div class="lamps">
-      <div class="lamp" id="lp-stream"><i></i>스트림</div>
-      <div class="lamp" id="lp-pi"><i></i>Pi</div>
-      <div class="lamp" id="lp-ap"><i></i>AP</div>
-      <div class="lamp" id="lp-s21"><i></i>S21</div>
-      <div class="lamp" id="lp-s26"><i></i>S26</div>
-      <button class="key" id="btncheck">연결 점검</button>
-    </div>
-  </section>
+    <span class="chip" id="modeChip">연결 중…</span>
+    <div class="team">한밭대학교 캡스톤디자인 · 팀 <b>자원할당해조</b></div>
+    <button class="icon-btn" id="themeBtn" aria-label="밝게/어둡게 바꾸기"><i class="ic i-half" aria-hidden="true"></i></button>
+  </header>
 
-  <!-- 경광등 + 모니터 -->
-  <section class="main">
-    <div class="plate bolted tower-wrap">
-      <p class="tag">혼잡 단계</p>
-      <div class="tower" aria-live="polite">
-        <div class="cap"></div>
-        <div class="lens" data-l="3">심각</div>
-        <div class="lens" data-l="2">혼잡</div>
-        <div class="lens" data-l="1">경고</div>
-        <div class="lens" data-l="0">정상</div>
-        <div class="pole"></div><div class="base"></div>
-      </div>
-      <div class="lcd">
-        <div class="big" id="lvname">—</div>
-        <div class="row"><span>모델 출력</span><span id="lvraw">—</span></div>
-        <div class="row"><span>확신도</span><span id="lvp">—</span></div>
-        <div class="row" id="truthrow" style="display:none"><span>정답(라벨)</span><span id="lvtruth">—</span></div>
-      </div>
-    </div>
-
-    <div class="screen">
-      <div class="top">
-        <span class="t">부하 측정 · 최근 90초</span>
-        <span class="now">점유율 <b id="n-occ">—</b> 처리량 <b id="n-thr">—</b> <span id="n-ts">대기 중</span></span>
-      </div>
-      <canvas id="chart"></canvas>
-      <div class="legend">
-        <span><i style="background:var(--trace)"></i>채널 점유율 %</span>
-        <span><i style="background:var(--trace-2)"></i>처리량 Mbps (오른쪽 눈금)</span>
-        <span><i style="background:linear-gradient(90deg,var(--s0),var(--s1),var(--s2),var(--s3))"></i>혼잡 단계 띠</span>
-        <span><i style="background:var(--s3)"></i>전환 지시</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- 경보 표시판 -->
-  <section class="plate bolted">
-    <p class="tag">경보 표시판 <b>· 채널 전환 판단</b></p>
-    <div class="annun">
-      <div class="tile" id="t-switch">채널 전환 필요<small>3폴링 중 2번 심각</small></div>
-      <div class="tile" id="t-persist">심각 지속<small>전환 뒤에도 계속</small></div>
-      <div class="tile" id="t-down">다운링크 우세<small>판정 불확실</small></div>
-      <div class="tile" id="t-asym">신호 비대칭<small>AP 크래시 주의</small></div>
-    </div>
-    <div class="order" id="order"><div class="ev"><span>--:--:--</span><span>지시 없음</span></div></div>
-  </section>
-
-  <!-- 계기 -->
-  <section class="plate meters">
-    <div class="meter">
-      <div class="k">채널 점유율</div>
-      <div class="gauge"><div class="fill" id="g-occ"></div></div>
-      <div class="ticks"><span>0</span><span>40</span><span>55</span><span>75</span><span>100%</span></div>
-    </div>
-    <div class="meter"><div class="k">처리량</div><div class="lcd"><div class="v" id="m-thr">—<small> Mbps</small></div></div></div>
-    <div class="meter"><div class="k">재전송</div><div class="lcd"><div class="v" id="m-retry">—<small> %</small></div></div></div>
-    <div class="meter"><div class="k">신호 RSSI</div><div class="lcd"><div class="v" id="m-rssi">—<small> dBm</small></div></div></div>
-    <div class="meter"><div class="k">전송 속도</div><div class="lcd"><div class="v" id="m-bit">—<small> Mbps</small></div></div></div>
-    <div class="meter"><div class="k">조기 종료 단계</div>
-      <div class="exitlamps"><div class="lamp" id="ex1"><i></i>1</div><div class="lamp" id="ex2"><i></i>2</div><div class="lamp" id="ex3"><i></i>3</div></div>
-    </div>
-  </section>
-
-  <!-- 부하 스테이션 -->
-  <section class="stations">
-    <div class="plate bolted station" data-phone="s26">
-      <p class="tag">부하 스테이션 <b>S26</b></p>
-      <div class="body">
-        <div class="ctrl">
-          <div class="rocker" role="group" aria-label="S26 패킷 크기">
-            <button class="on" data-pkt="1400">일반 1400B</button><button data-pkt="200">소패킷 200B</button>
-          </div>
-          <div class="keys">
-            <button class="key" data-rate="10M"><i></i>10M</button><button class="key" data-rate="20M"><i></i>20M</button>
-            <button class="key" data-rate="30M"><i></i>30M</button><button class="key" data-rate="40M"><i></i>40M</button>
-          </div>
-          <div class="lcd"><span class="state">정지</span><span class="sig">신호 —</span></div>
+  <main>
+    <!-- 지금 상태 -->
+    <section class="panel status" aria-live="polite">
+      <p class="lead">지금 이 와이파이는</p>
+      <h1 id="word">여유로워요</h1>
+      <p class="desc" id="desc">영상도 통화도 문제없이 잘 돼요.</p>
+      <div class="switch"><i class="ic-b i-swap" aria-hidden="true"></i>다른 채널로 옮겨야 해요</div>
+      <div class="unsure"><i class="ic i-info" aria-hidden="true"></i>공유기가 직접 많이 보내는 중이라 판단이 정확하지 않을 수 있어요</div>
+      <div class="meter">
+        <div class="meter-top">
+          <span class="k">혼잡 점수<small>모델이 추정한 값</small></span>
+          <div class="num"><span id="num">8</span><small>/ 100</small></div>
         </div>
-        <button class="stop" data-rate="off" aria-label="S26 부하 정지">정지</button>
-      </div>
-    </div>
-    <div class="plate bolted station" data-phone="s21">
-      <p class="tag">부하 스테이션 <b>S21</b></p>
-      <div class="body">
-        <div class="ctrl">
-          <div class="rocker" role="group" aria-label="S21 패킷 크기">
-            <button class="on" data-pkt="1400">일반 1400B</button><button data-pkt="200">소패킷 200B</button>
-          </div>
-          <div class="keys">
-            <button class="key" data-rate="10M"><i></i>10M</button><button class="key" data-rate="20M"><i></i>20M</button>
-            <button class="key" data-rate="30M"><i></i>30M</button><button class="key" data-rate="40M"><i></i>40M</button>
-          </div>
-          <div class="lcd"><span class="state">정지</span><span class="sig">신호 —</span></div>
+        <div class="scale" aria-hidden="true">
+          <div class="pin" id="pin">지금</div>
+          <div class="seg" id="seg"><span></span><span></span><span></span><span></span></div>
+          <div class="names" id="names"><span>정상</span><span>경고</span><span>혼잡</span><span>심각</span></div>
         </div>
-        <button class="stop" data-rate="off" aria-label="S21 부하 정지">정지</button>
       </div>
+    </section>
+
+    <!-- 부하 걸기 -->
+    <section class="devices" id="devices" aria-label="기기로 데이터 보내기">
+      <div class="devices-h">
+        <h2>기기로 데이터 보내기</h2>
+        <p>숫자를 누르면 시작, 한 번 더 누르면 멈춰요. 시간이 끝나도 저절로 멈춰요.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 그래프 -->
+  <section class="panel chart-panel" aria-label="혼잡 점수 그래프">
+    <div class="chart-top">
+      <div><h2>혼잡 점수 흐름</h2><p>모델이 추정한 값. 최근 60초, 오른쪽 끝이 지금이에요.</p></div>
+      <div class="sum">지금 보내는 양 합계<b id="sum">0M</b></div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart" role="img" aria-label="최근 60초 혼잡 점수 그래프"></canvas></div>
+    <div class="legend">
+      <span><i class="ln"></i>혼잡 점수</span>
+      <span><i class="bx"></i>기기가 데이터를 보낸 구간</span>
+      <span>10M은 1초에 10메가비트를 보낸다는 뜻이에요</span>
+      <span>200B(소패킷): 같은 양을 잘게 쪼개 보내서 와이파이가 더 바빠져요</span>
     </div>
   </section>
 
-  <div class="foot">
-    <span id="opmsg">버튼을 누르면 해당 폰이 10초 동안 노트북으로 부하를 보낸다. 같은 속도라도 소패킷은 채널을 더 많이 차지한다.</span>
-    <span>표시 단계 = 모델 출력이 5번 연속 같을 때 바뀜 · 전환 판단은 모델 출력 기준</span>
-  </div>
 </div>
 
 <script>
-const $ = s => document.querySelector(s);
-const NAMES = ["정상","경고","혼잡","심각"];
-const SC = ["st0","st1","st2","st3"];
-const COLORS = ["#2f8f5b","#d4a20c","#d8691d","#c42b2b"];
-const LOAD_S = 10;           // 서버 LOAD_DURATION_S와 같게
-const MAXPTS = 180;          // 약 90초 (2Hz 기준)
-const hist = [];             // {conf, raw, occ, thr, mark}
-let lastEventKey = "";
+const RATES = [10, 20, 30, 40];
+const DUR_MIN = 10, DUR_MAX = 60, DUR_STEP = 5;
+const CONFIRM = 3;   // 같은 단계가 이만큼 연속으로 나와야 화면 단계를 바꾼다 (경계 깜빡임 방지)
+const LV = [
+  { word:'여유로워요',          desc:'영상도 통화도 문제없이 잘 돼요.' },
+  { word:'조금 붐비기 시작했어요', desc:'아직 괜찮지만 조금 느려질 수 있어요.' },
+  { word:'많이 붐벼요',          desc:'영상이 멈추거나 통화 소리가 늦게 들릴 수 있어요.' },
+  { word:'거의 막혔어요',        desc:'영상과 통화가 끊기는 상태예요.' },
+];
+const levelOf = s => s < .25 ? 0 : s < .5 ? 1 : s < .75 ? 2 : 3;
 
-function msg(t){ $("#opmsg").textContent = t; }
-function lamp(id, state){ const e = $(id); e.className = "lamp" + (state===true?" ok":state===false?" bad":state==="mid"?" mid":""); }
+/* ---------- 기기 카드 ---------- */
+const devs = [
+  { id:'s21', name:'기기 1', icon:'i-phone' },
+  { id:'s26', name:'기기 2', icon:'i-phone2' },
+].map(d => ({ ...d, dur:10, rate:0, pkt:1400, remain:0, total:0 }));
 
-function setLevel(st){
-  document.querySelectorAll(".lens").forEach(l => l.classList.toggle("lit", Number(l.dataset.l) === st.label));
-  const n = $("#lvname"); n.textContent = st.label_name; n.className = "big " + SC[st.label];
-  $("#lvraw").innerHTML = `<span class="${SC[st.raw_label]}">${st.raw_name}</span>`;
-  $("#lvp").textContent = (st.probs[st.raw_label]*100).toFixed(0) + "%";
-  if(st.truth !== undefined && st.truth !== null){ $("#truthrow").style.display = ""; $("#lvtruth").innerHTML = `<span class="${SC[st.truth]}">${NAMES[st.truth]}</span>`; }
-  [1,2,3].forEach(k => lamp("#ex"+k, st.exit === k ? true : null));
-}
-function setMeters(f){
-  const occ = f.channel_occupancy_percent;
-  $("#g-occ").style.width = Math.min(100, occ) + "%";
-  $("#n-occ").textContent = occ.toFixed(0) + "%";
-  $("#n-thr").textContent = f.throughput_mbps.toFixed(0) + "M";
-  $("#m-thr").innerHTML = f.throughput_mbps.toFixed(1) + "<small> Mbps</small>";
-  $("#m-retry").innerHTML = (f.tx_retry_ratio*100).toFixed(0) + "<small> %</small>";
-  $("#m-rssi").innerHTML = f.rssi_dbm.toFixed(0) + "<small> dBm</small>";
-  $("#m-bit").innerHTML = f.sta_tx_bitrate_mean.toFixed(0) + "<small> Mbps</small>";
-}
-function setAnnun(st){
-  const set = (id, on, color) => { const t = $(id); t.classList.toggle("red", on && color==="red"); t.classList.toggle("amber", on && color==="amber"); };
-  set("#t-switch", !!st.switch_active, "red");
-  set("#t-persist", !!(st.switch_active && st.persist_sent), "red");
-  set("#t-down", !!st.downlink, "amber");
-  (st.new_events || []).forEach(e => { const t = $(e.kind === "persist" ? "#t-persist" : "#t-switch"); t.classList.remove("blink"); void t.offsetWidth; t.classList.add("blink"); });
-  const evs = st.events || [];
-  const key = evs.map(e => e.ts + e.kind).join("|");
-  if(key !== lastEventKey){
-    lastEventKey = key;
-    const box = $("#order"); box.innerHTML = "";
-    if(!evs.length){ box.innerHTML = '<div class="ev"><span>--:--:--</span><span>지시 없음</span></div>'; }
-    evs.slice(0,3).forEach((e,i) => {
-      box.insertAdjacentHTML("beforeend", `<div class="ev"><span>${e.ts}</span><span>${e.message}</span></div>`);
-      if(i === 0) (e.candidates || []).forEach(c => box.insertAdjacentHTML("beforeend", `<div class="cand">후보 ${c}</div>`));
-    });
-  }
-}
-
-// ---- 스트림 ----
-const es = new EventSource("/events");
-es.onopen = () => lamp("#lp-stream", true);
-es.onerror = () => { lamp("#lp-stream", false); $("#n-ts").textContent = "연결 끊김 · 재시도"; };
-es.onmessage = ev => {
-  const st = JSON.parse(ev.data);
-  if(st.load !== undefined) markLoad(st.load);
-  if(st.replay){ const r = $("#replay"); r.style.display = "inline-block"; r.textContent = "재생 모드 · " + st.replay; }
-  if(!st.ready){
-    $("#n-ts").textContent = st.msg || "대기 중";
-    lamp("#lp-ap", st.msg && st.msg.includes("AP 응답 없음") ? false : null);
-    if(st.features) setMeters(st.features);
-    return;
-  }
-  lamp("#lp-stream", true);
-  if(!st.replay) lamp("#lp-ap", true);
-  $("#n-ts").textContent = st.ts || "";
-  setLevel(st); setMeters(st.features); setAnnun(st);
-  hist.push({conf: st.label, raw: st.raw_label, occ: st.features.channel_occupancy_percent,
-             thr: st.features.throughput_mbps, mark: (st.new_events || []).some(e => e.kind === "switch")});
-  if(hist.length > MAXPTS) hist.shift();
-  draw();
-};
-
-// ---- 부하 스테이션 ----
-const pkt = {s21: 1400, s26: 1400}, timers = {s21: null, s26: null}, busy = {s21: false, s26: false};
-function station(phone){ return document.querySelector(`.station[data-phone="${phone}"]`); }
-function markLoad(load){
-  ["s21","s26"].forEach(p => {
-    const e = load[p] || {rate: "off"}, rate = e.rate || "off", s = station(p);
-    s.querySelectorAll(".keys .key").forEach(k => k.classList.toggle("on", k.dataset.rate === rate));
-    if(rate === "off"){ clearInterval(timers[p]); timers[p] = null; s.querySelector(".state").textContent = "정지"; }
-    else if(!timers[p]) s.querySelector(".state").textContent = rate + (e.packet_size === 200 ? " · 소패킷" : "");
+const host = document.getElementById('devices');
+devs.forEach((d, i) => {
+  const el = document.createElement('article');
+  el.className = 'panel dev';
+  el.innerHTML = `
+    <div class="dev-head">
+      <div class="dev-name"><i class="ic ${d.icon}" aria-hidden="true"></i>${d.name}</div>
+      <div class="dev-state">쉬는 중</div>
+    </div>
+    <div class="opts">
+    <div class="row">
+      <span id="durl${i}">시간</span>
+      <div class="dur">
+        <button class="step" data-d="-1" aria-label="${d.name} 시간 줄이기"><i class="ic-b i-minus" aria-hidden="true"></i></button>
+        <input type="range" min="${DUR_MIN}" max="${DUR_MAX}" step="${DUR_STEP}" value="10" aria-labelledby="durl${i}">
+        <button class="step" data-d="1" aria-label="${d.name} 시간 늘리기"><i class="ic-b i-plus" aria-hidden="true"></i></button>
+        <div class="val"><span class="dv">10</span><small>초</small></div>
+      </div>
+    </div>
+    <div class="row">
+      <span class="tip" tabindex="0" aria-describedby="pktTip${i}">패킷 크기<i class="ic i-info" aria-hidden="true"></i>
+        <span class="bubble" role="tooltip" id="pktTip${i}">와이파이는 데이터를 작은 조각(패킷)으로 나눠 보내요.
+          같은 양이라도 <b>200B</b>처럼 잘게 쪼개면 조각 수가 <b>7배</b> 많아져서, 기기들이 전파를 쓰려고 차례를 더 자주 기다리게 돼요.
+          그래서 와이파이가 더 붐벼요.</span>
+      </span>
+      <div class="pkts">
+        <button class="pkt" data-p="1400" aria-pressed="true" aria-label="${d.name} 패킷 크기 1400바이트, 일반">1400B<small>일반</small></button>
+        <button class="pkt" data-p="200" aria-pressed="false" aria-label="${d.name} 패킷 크기 200바이트, 소패킷">200B<small>소패킷</small></button>
+      </div>
+    </div>
+    </div>
+    <div class="row">
+      <span>세기</span>
+      <div class="rates">${RATES.map(r => `<button class="rate" data-r="${r}" aria-pressed="false" aria-label="${d.name}에 ${r}M 보내기">${r}<small>M</small></button>`).join('')}</div>
+    </div>
+    <div class="left" aria-hidden="true"><div></div></div>`;
+  host.appendChild(el);
+  Object.assign(d, {
+    el, state: el.querySelector('.dev-state'), dv: el.querySelector('.dv'),
+    slider: el.querySelector('input'), rateBtns: [...el.querySelectorAll('.rate')], pktBtns: [...el.querySelectorAll('.pkt')],
+    bar: el.querySelector('.left > div'),
   });
-}
-function countdown(p, rate){
-  clearInterval(timers[p]); let left = LOAD_S; const el = station(p).querySelector(".state");
-  const tag = rate + (pkt[p] === 200 ? " · 소패킷" : "");
-  el.textContent = `${tag} · ${left}s`;
-  timers[p] = setInterval(() => { left -= 1; if(left <= 0){ clearInterval(timers[p]); timers[p] = null; el.textContent = "정지"; return; } el.textContent = `${tag} · ${left}s`; }, 1000);
-}
-async function sendLoad(p, rate){
-  if(busy[p]) return; busy[p] = true;
-  const s = station(p); s.querySelectorAll("button").forEach(b => b.disabled = true);
-  try{
-    const r = await fetch("/load", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({phone: p, rate, packet_size: pkt[p]})});
-    const j = await r.json();
-    if(!j.ok) msg(`${p.toUpperCase()} 부하 설정 실패: ${j.error || "알 수 없음"} — 연결 점검을 눌러 폰 상태를 확인하세요.`);
-    else if(rate !== "off"){ countdown(p, rate); msg(`${p.toUpperCase()} ${rate} 부하 시작. ${LOAD_S}초 뒤 자동 정지.`); }
-    else { clearInterval(timers[p]); timers[p] = null; s.querySelector(".state").textContent = "정지"; msg(`${p.toUpperCase()} 부하 정지.`); }
-  }catch(e){ msg("요청 실패: 서버에 연결할 수 없습니다."); }
-  finally{ busy[p] = false; s.querySelectorAll("button").forEach(b => b.disabled = false); }
-}
-document.querySelectorAll(".station").forEach(s => {
-  const p = s.dataset.phone;
-  s.querySelectorAll(".rocker button").forEach(b => b.onclick = () => {
-    pkt[p] = Number(b.dataset.pkt); s.querySelectorAll(".rocker button").forEach(x => x.classList.toggle("on", x === b));
-  });
-  s.querySelectorAll(".keys .key, .stop").forEach(b => b.onclick = () => sendLoad(p, b.dataset.rate));
+  const setDur = v => {
+    d.dur = Math.max(DUR_MIN, Math.min(DUR_MAX, v));
+    d.slider.value = d.dur; d.dv.textContent = d.dur;
+  };
+  d.slider.addEventListener('input', () => setDur(+d.slider.value));
+  el.querySelectorAll('.step').forEach(b => b.addEventListener('click', () => setDur(d.dur + DUR_STEP * +b.dataset.d)));
+  // 이미 보내는 중인 세기를 한 번 더 누르면 멈춤, 다른 세기를 누르면 그 세기로 새로 시작
+  d.rateBtns.forEach(b => b.addEventListener('click', () => {
+    const r = +b.dataset.r;
+    if (d.remain > 0 && d.rate === r) stopLoad(d); else startLoad(d, r);
+  }));
+  // 크기를 바꾸면 다음부터 적용. 보내는 중이면 남은 시간 그대로 새 크기로 이어서 보냄
+  d.pktBtns.forEach(b => b.addEventListener('click', () => {
+    const p = +b.dataset.p;
+    if (p === d.pkt) return;
+    d.pkt = p;
+    if (d.remain > 0) startLoad(d, d.rate, d.remain); else paintDevice(d);
+  }));
 });
 
-// ---- 연결 점검 ----
-$("#btncheck").onclick = async () => {
-  const b = $("#btncheck"); b.disabled = true; b.textContent = "점검 중…";
-  ["#lp-pi","#lp-ap","#lp-s21","#lp-s26"].forEach(id => lamp(id, "mid"));
-  try{
-    const r = await (await fetch("/check")).json();
-    lamp("#lp-pi", r.pi); lamp("#lp-ap", r.ap); lamp("#lp-s21", r.s21); lamp("#lp-s26", r.s26);
-    msg(r.all_ok ? "연결 점검 완료: 모두 정상." : "연결 점검: 빨간 램프 장치에 접속하지 못했습니다.");
-  }catch(e){ msg("연결 점검 요청 실패."); ["#lp-pi","#lp-ap","#lp-s21","#lp-s26"].forEach(id => lamp(id, null)); }
-  finally{ b.disabled = false; b.textContent = "연결 점검"; }
-};
-
-// ---- 신호 ----
-async function pollSignal(){
-  try{
-    const s = await (await fetch("/signal")).json();
-    ["s21","s26"].forEach(p => { const e = station(p).querySelector(".sig"); e.textContent = typeof s[p] === "number" ? `신호 ${s[p]} dBm` : "신호 —"; e.classList.toggle("bad", s.symmetric === false); });
-    const t = $("#t-asym"); t.classList.toggle("amber", s.symmetric === false);
-  }catch(e){}
+const SIM = location.hash === '#sim';   // 연습 모드(가짜 데이터)
+async function postLoad(d, body){
+  if (SIM) return { ok: true };
+  try {
+    const r = await fetch('/load', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: d.id, ...body }) });
+    return await r.json();
+  } catch (e) { return { ok: false, error: '서버에 연결할 수 없어요' }; }
 }
-pollSignal(); setInterval(pollSignal, 5000);
+async function startLoad(d, rate, secs = d.dur){
+  d.rate = rate; d.remain = secs; d.total = secs; d.startedAt = now(); d.err = '';
+  marks.push({ t: now(), dev: d.name, rate, pkt: d.pkt });
+  paintDevice(d);
+  const res = await postLoad(d, { rate: `${rate}M`, packet_size: d.pkt, duration_s: Math.round(secs) });
+  if (!res.ok){ d.rate = 0; d.remain = 0; d.err = '기기에 연결하지 못했어요'; paintDevice(d); }
+}
+async function stopLoad(d){
+  d.rate = 0; d.remain = 0; d.err = '';
+  paintDevice(d);
+  await postLoad(d, { rate: 'off' });
+}
+const pktWord = p => ` ${p}B`;
 
-// ---- 모니터 그래프 ----
-const cv = $("#chart"), cx = cv.getContext("2d");
-function draw(){
+function paintDevice(d){
+  const run = d.remain > 0;
+  d.el.classList.toggle('run', run);
+  d.rateBtns.forEach(b => b.setAttribute('aria-pressed', String(run && +b.dataset.r === d.rate)));
+  d.pktBtns.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.p === d.pkt)));
+  d.el.classList.toggle('err', !!d.err);
+  d.state.textContent = run ? `${d.rate}M${pktWord(d.pkt)} 보내는 중, ${Math.ceil(d.remain)}초 남음` : (d.err || '쉬는 중');
+  d.bar.style.transform = `scaleX(${run ? d.remain / d.total : 0})`;
+}
+
+/* ---------- 점수 기록 ---------- */
+const TICK = 0.5, WINDOW_S = 60;
+const hist = [];      // {t, s, load:[r1,r2]}
+const marks = [];     // {t, dev, rate, pkt}
+let clock = 0;
+const now = () => SIM ? clock : performance.now() / 1000;
+
+/* s = 모델 추정 점수 0~1, lv = 모델이 고른 단계(없으면 점수로 정함) */
+function pushScore(s, lv){
+  if (!SIM) clock = now();
+  hist.push({ t: clock, s, load: devs.map(d => d.remain > 0 ? d.rate : 0) });
+  while (hist.length && hist[0].t < clock - WINDOW_S) hist.shift();
+  while (marks.length && marks[0].t < clock - WINDOW_S) marks.shift();
+  paintStatus(s, lv);
+  drawChart();
+}
+/* 모델 확률 → 점수: 고른 단계 구간(0.25 폭) 안에서 위·아래 단계 확률로 위치를 정한다 */
+function scoreOf(probs, lv){
+  const up = probs.slice(lv + 1).reduce((a, b) => a + b, 0), down = probs.slice(0, lv).reduce((a, b) => a + b, 0);
+  return Math.max(0, Math.min(1, (lv + 0.5 + 0.5 * (up - down)) / 4));
+}
+
+/* ---------- 가짜 시뮬레이션 ---------- */
+let simScore = 0.08;
+const SMALL_PKT = [[0, 0], [10, .50], [20, .61], [40, .76], [80, .90]];   // 소패킷 합계(M) → 점수 증가분
+function smallPktBoost(m){
+  for (let i = 1; i < SMALL_PKT.length; i++){
+    const [x0, y0] = SMALL_PKT[i - 1], [x1, y1] = SMALL_PKT[i];
+    if (m <= x1) return y0 + (y1 - y0) * (m - x0) / (x1 - x0);
+  }
+  return SMALL_PKT[SMALL_PKT.length - 1][1];
+}
+function simulate(){
+  clock += TICK;
+  devs.forEach(d => {
+    if (d.remain > 0){ d.remain = Math.max(0, d.remain - TICK); if (!d.remain) d.rate = 0; }
+    paintDevice(d);
+  });
+  // 일반(1400B)은 합계에 비례. 소패킷(200B)은 적은 양에서 확 뛰고 갈수록 완만해진다.
+  // 2.4GHz 실측 두 점에 맞춘 대략값 (.work-log/current.md): 10M/200B 한 대 → 혼잡,
+  // 22M/200B 두 대(합계 44M) → 심각 다수. 그래서 소패킷 합계 10M≈57점, 20M≈68점(혼잡), 40M≈83점(심각).
+  // 실측은 세션마다 크게 갈리므로(같은 부하도 밤/낮에 결과가 다름) 연습 모드용 그림일 뿐이다.
+  const sum = pkt => devs.reduce((a, d) => a + (d.remain > 0 && d.pkt === pkt ? d.rate : 0), 0);
+  const target = Math.min(1, 0.07 + sum(1400) / 82 + smallPktBoost(sum(200)));
+  simScore += (target - simScore) * 0.16 + (Math.random() - 0.5) * 0.035;
+  pushScore(Math.max(0, Math.min(1, simScore)));
+}
+
+/* ---------- 상태 표시 ---------- */
+const $ = id => document.getElementById(id);
+let shown = -1, pendingLv = -1, pendingN = 0;
+function paintStatus(s, lvIn){
+  const pct = Math.round(s * 100);
+  $('num').textContent = pct;
+  $('pin').style.left = Math.min(97, Math.max(3, pct)) + '%';
+  $('sum').textContent = devs.reduce((a, d) => a + (d.remain > 0 ? d.rate : 0), 0) + 'M';
+
+  // 단계 문장·색은 같은 단계가 CONFIRM번 연속일 때만 바꾼다. 숫자와 "지금" 표시는 매번 갱신.
+  const lv = lvIn ?? levelOf(s);
+  if (shown < 0) { setLevel(lv); return; }
+  if (lv === shown) { pendingN = 0; return; }
+  if (lv === pendingLv) pendingN++; else { pendingLv = lv; pendingN = 1; }
+  if (pendingN >= CONFIRM) { pendingN = 0; setLevel(lv); }
+}
+function setLevel(lv){
+  shown = lv;
+  document.body.dataset.lv = lv;
+  $('word').textContent = LV[lv].word;
+  $('desc').textContent = LV[lv].desc;
+  [...$('seg').children].forEach((c, i) => c.classList.toggle('on', i === lv));
+  [...$('names').children].forEach((c, i) => c.classList.toggle('on', i === lv));
+}
+
+/* ---------- 그래프 (canvas, 라이브러리 없음) ---------- */
+const cv = $('chart'), ctx = cv.getContext('2d'), chartTopEl = document.querySelector('.chart-top');
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const NAMES = ['정상','경고','혼잡','심각'];
+
+function drawChart(){
   const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-  cv.width = W*dpr; cv.height = H*dpr; cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
-  const P = {l: 34, r: 40, t: 8, b: 30}, iw = W - P.l - P.r, ih = H - P.t - P.b;
-  const xs = i => P.l + i * iw / (MAXPTS - 1), yOcc = v => P.t + ih - Math.min(100, v)/100*ih, yThr = v => P.t + ih - Math.min(150, v)/150*ih;
-  cx.font = "11px " + getComputedStyle(document.body).getPropertyValue("--mono");
-  // 눈금
-  [0,25,50,75,100].forEach(v => { const y = yOcc(v); cx.strokeStyle = "#22303a"; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(P.l, y); cx.lineTo(W-P.r, y); cx.stroke();
-    cx.fillStyle = "#6f8a96"; cx.textAlign = "right"; cx.fillText(v, P.l-6, y+4); cx.textAlign = "left"; cx.fillText(Math.round(v*1.5), W-P.r+6, y+4); });
-  // 라벨 앵커(경고 40 · 혼잡 55 · 심각 75)
-  [[40,"경고",1],[55,"혼잡",2],[75,"심각",3]].forEach(([v,t,k]) => { const y = yOcc(v); cx.setLineDash([3,4]); cx.strokeStyle = COLORS[k]+"99"; cx.beginPath(); cx.moveTo(P.l, y); cx.lineTo(W-P.r, y); cx.stroke(); cx.setLineDash([]);
-    cx.fillStyle = COLORS[k]; cx.textAlign = "right"; cx.fillText(t, W-P.r-4, y-4); cx.textAlign = "left"; });
-  if(hist.length < 2) return;
-  // 단계 띠 (아래: 표시 단계, 그 위 얇게: 모델 출력)
-  const bw = iw/(MAXPTS-1)+0.6, yb = P.t+ih+8;
-  hist.forEach((h,i) => { cx.fillStyle = COLORS[h.raw]; cx.fillRect(xs(i), yb, bw, 4); cx.fillStyle = COLORS[h.conf]; cx.fillRect(xs(i), yb+6, bw, 12); });
-  // 전환 지시 표시
-  hist.forEach((h,i) => { if(!h.mark) return; const x = xs(i); cx.strokeStyle = "#c42b2b"; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(x, P.t); cx.lineTo(x, P.t+ih); cx.stroke();
-    cx.fillStyle = "#ff6b62"; cx.fillText("전환", x+4, P.t+12); });
-  // 처리량
-  cx.strokeStyle = "#6f97a8"; cx.lineWidth = 1.2; cx.beginPath(); hist.forEach((h,i) => i ? cx.lineTo(xs(i), yThr(h.thr)) : cx.moveTo(xs(i), yThr(h.thr))); cx.stroke();
-  // 점유율
-  cx.strokeStyle = "#cfe9f2"; cx.lineWidth = 2; cx.shadowColor = "rgba(207,233,242,.6)"; cx.shadowBlur = 6;
-  cx.beginPath(); hist.forEach((h,i) => i ? cx.lineTo(xs(i), yOcc(h.occ)) : cx.moveTo(xs(i), yOcc(h.occ))); cx.stroke(); cx.shadowBlur = 0;
-  const last = hist[hist.length-1], xl = xs(hist.length-1);
-  cx.fillStyle = "#cfe9f2"; cx.beginPath(); cx.arc(xl, yOcc(last.occ), 3.5, 0, Math.PI*2); cx.fill();
+  if (!W || !H) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const narrow = W < 520;
+  // 단계 이름 칸: 카드 왼쪽 여백(padding)과 같은 간격을 이름 오른쪽에도 둬서 양옆 간격을 맞춘다
+  const labFont = w8 => `${w8} ${narrow ? 12 : 13}px ${css('--font')}`;
+  ctx.font = labFont(800);
+  const labW = Math.ceil(Math.max(...NAMES.map(n => ctx.measureText(n).width)));
+  const padL = parseFloat(getComputedStyle(cv.closest('.panel')).paddingLeft) || 20;
+  const L = labW + padL, R = 10, T = 6, B = 22, w = W - L - R, h = H - T - B;
+  chartTopEl.style.paddingRight = R + 'px'; // 합계 숫자는 그래프 끝선에 맞춘다
+  const y = v => T + h * (1 - v);
+  const x = t => L + w * (1 - (clock - t) / WINDOW_S);
+  const ink = css('--ink'), ink3 = css('--ink-3'), font = css('--font');
+  const lvCol = [css('--l0'), css('--l1'), css('--l2'), css('--l3')];
+
+  // 단계 띠
+  [0, .25, .5, .75].forEach((v, i) => {
+    ctx.fillStyle = lvCol[i]; ctx.globalAlpha = 0.09;
+    ctx.fillRect(L, y(v + .25), w, h * .25);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = i === shown ? ink : ink3;
+    ctx.font = labFont(i === shown ? 800 : 600); ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillText(NAMES[i], labW / 2, y(v + .125));
+    ctx.textAlign = 'left';
+  });
+
+  // 연속 구간을 한 덩어리로 묶어서 칠한다 (조각마다 칠하면 이음매 줄무늬가 생김)
+  ctx.fillStyle = ink; ctx.globalAlpha = 0.07;
+  let spanStart = null;
+  for (let i = 1; i <= hist.length; i++){
+    const on = i < hist.length && hist[i].load.some(r => r > 0);
+    if (on && spanStart === null) spanStart = hist[i - 1].t;
+    if (!on && spanStart !== null){
+      ctx.fillRect(x(spanStart), T, x(hist[i - 1].t) - x(spanStart), h);
+      spanStart = null;
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // 시작 표시 (가까이 붙은 표시는 글자를 아래로 한 줄씩 내림)
+  ctx.font = `600 12px ${font}`; ctx.textBaseline = 'top';
+  let prevX = -Infinity, row = 0;
+  marks.forEach(m => {
+    const xx = x(m.t);
+    row = xx - prevX < 70 ? row + 1 : 0; prevX = xx;
+    ctx.strokeStyle = ink3; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(xx, T); ctx.lineTo(xx, T + h); ctx.stroke(); ctx.setLineDash([]);
+    const label = `${m.dev} ${m.rate}M${pktWord(m.pkt)}`, tw = ctx.measureText(label).width;
+    const lx = Math.min(xx + 5, L + w - tw - 2);
+    ctx.fillStyle = ink3; ctx.fillText(label, lx, T + 4 + row * 16);
+  });
+
+  // 점수 선
+  if (hist.length > 1){
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.beginPath();
+    hist.forEach((p, i) => i ? ctx.lineTo(x(p.t), y(p.s)) : ctx.moveTo(x(p.t), y(p.s)));
+    ctx.stroke();
+    const last = hist[hist.length - 1];
+    ctx.fillStyle = lvCol[levelOf(last.s)];
+    ctx.beginPath(); ctx.arc(x(last.t), y(last.s), 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = css('--surface'); ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // 시간 축
+  ctx.fillStyle = ink3; ctx.font = `500 12px ${font}`; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('60초 전', L, H - 5);
+  const nowTxt = '지금'; ctx.fillText(nowTxt, L + w - ctx.measureText(nowTxt).width, H - 5);
 }
-window.addEventListener("resize", draw); draw();
+
+/* ---------- 테마 ---------- */
+$('themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('demo-theme', root.dataset.theme); } catch (e) {}
+  drawChart();
+});
+try { const t = localStorage.getItem('demo-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawChart);
+addEventListener('resize', drawChart);
+
+const chip = $('modeChip');
+if (SIM){
+  chip.textContent = '연습 모드 (가짜 데이터)';
+  paintStatus(simScore);
+  setInterval(simulate, TICK * 1000);
+} else {
+  setLevel(0);
+  // 남은 시간은 화면에서 세고, 서버가 off를 보내면 맞춘다
+  setInterval(() => devs.forEach(d => {
+    if (d.remain > 0){ d.remain = Math.max(0, d.remain - TICK); if (!d.remain) d.rate = 0; }
+    paintDevice(d);
+  }), TICK * 1000);
+  const es = new EventSource('/events');
+  es.onerror = () => { chip.textContent = '서버 연결이 끊겼어요 · 다시 연결 중'; };
+  es.onmessage = ev => {
+    const st = JSON.parse(ev.data);
+    if (st.load) devs.forEach(d => {
+      const off = !st.load[d.id] || st.load[d.id].rate === 'off';
+      if (off && d.remain > 0 && now() - (d.startedAt || 0) > 3){ d.rate = 0; d.remain = 0; paintDevice(d); }
+    });
+    chip.textContent = st.replay ? `재생 모드 · ${st.replay}` : (st.ready ? '실시간' : (st.msg || '준비 중'));
+    if (!st.ready){ $('desc').textContent = st.msg && st.msg.includes('AP') ? '공유기 응답을 기다리고 있어요.' : '측정을 준비하고 있어요.'; return; }
+    document.body.dataset.switch = st.switch_active ? '1' : '0';
+    document.body.dataset.unsure = st.downlink ? '1' : '0';
+    pushScore(scoreOf(st.probs, st.raw_label), st.raw_label);
+  };
+}
+document.fonts.ready.then(drawChart);
 </script>
 </body>
 </html>

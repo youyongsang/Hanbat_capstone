@@ -31,6 +31,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         if self.path == "/" or self.path.startswith("/?"):
             self._send(200, (HERE / "demo.html").read_bytes(), "text/html; charset=utf-8")
+        elif self.path.startswith("/assets_taste/"):
+            # 2026-10-02: 화면이 쓰는 내장 글꼴·아이콘(오프라인 랩실에서도 동작). 파일 이름만 허용.
+            name = self.path.split("?", 1)[0].rsplit("/", 1)[-1]
+            f = HERE / "assets_taste" / name
+            ctype = {"woff2": "font/woff2", "txt": "text/plain; charset=utf-8"}.get(name.rsplit(".", 1)[-1])
+            if ctype and "/" not in name and ".." not in name and f.is_file():
+                self._send(200, f.read_bytes(), ctype)
+            else:
+                self._send(404, b"not found", "text/plain")
         elif self.path == "/health":
             with demo_state._lock:
                 self._send(200, json.dumps({"ready": demo_state._state.get("ready")}).encode(), "application/json")
@@ -80,6 +89,10 @@ class Handler(BaseHTTPRequestHandler):
             packet_size = int(body.get("packet_size", DEFAULT_PACKET_SIZE))
         except (TypeError, ValueError):
             packet_size = -1  # set_phone_load 가 ALLOWED_PACKET_SIZES 로 걸러서 400 반환
-        res = set_phone_load(str(body.get("phone", "")), str(body.get("rate", "off")), packet_size)
+        try:
+            duration_s = int(body["duration_s"]) if body.get("duration_s") is not None else None
+        except (TypeError, ValueError):
+            duration_s = None
+        res = set_phone_load(str(body.get("phone", "")), str(body.get("rate", "off")), packet_size, duration_s)
         self._send(200 if res.get("ok") else 400,
                    json.dumps(res, ensure_ascii=False).encode("utf-8"), "application/json")
