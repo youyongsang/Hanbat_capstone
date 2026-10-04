@@ -6,6 +6,7 @@ live_congestion.py 와 동일 로직 (victim 프로브 없음). `inference_loop(
 from __future__ import annotations
 
 import json
+import os
 import time
 from collections import deque
 from statistics import median
@@ -50,7 +51,7 @@ def replay_loop() -> None:
         for path in ARGS.replay:
             rows = list(csv.DictReader(path.open(encoding="utf-8")))
             win: deque = deque(maxlen=WINDOW); streak: deque = deque(maxlen=ARGS.confirm)
-            confirmed = None; advisor = SwitchAdvisor(); events: deque = deque(maxlen=6)
+            confirmed = None; advisor = SwitchAdvisor(band=ARGS.band, iface=os.environ.get("AP_INTERFACE", "wlan0")); events: deque = deque(maxlen=6)
             for r in rows:
                 t0 = time.time()
                 try:
@@ -86,7 +87,7 @@ def replay_loop() -> None:
                         "probs": [round(float(p), 3) for p in probs], "exit": exit_pt, "clients": clients,
                         "features": feats, "load": dict(demo_state._load_state),
                         "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
-                        "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events,
+                        "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events, "band": ARGS.band,
                     }
                 demo_state._broadcast(demo_state._state)
                 time.sleep(max(0.0, ARGS.replay_interval - (time.time() - t0)))
@@ -111,7 +112,7 @@ def inference_loop() -> None:
     last_id = -1
     confirmed = None
     stale_since = time.time()
-    advisor = SwitchAdvisor()
+    advisor = SwitchAdvisor(band=ARGS.band, iface=os.environ.get("AP_INTERFACE", "wlan0"))
     events: deque = deque(maxlen=6)   # 최근 알림 (화면 경보판용)
 
     while True:
@@ -191,6 +192,6 @@ def inference_loop() -> None:
                 "exit": exit_pt, "clients": n_clients,
                 "features": feats, "load": dict(demo_state._load_state),
                 "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
-                "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events,
+                "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events, "band": ARGS.band,
             }
         demo_state._broadcast(demo_state._state)

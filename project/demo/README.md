@@ -13,6 +13,15 @@ python project/demo/demo_server.py
 
 브라우저에서 <http://localhost:8000/> 열기.
 
+**대역 선택 (2026-10-05)**: `--band 5g`(또는 환경변수 `DEMO_BAND=5g`)면 AP 인터페이스 `wlan1`, 5GHz 시연 모델
+(`checkpoints/ap_v2_5g_mixed_20261005/selected/`, 80+40MHz 혼합 학습)과 5GHz 전용 스케일러를 쓴다. 기본 `24g`는 기존 그대로
+(`wlan0`, 24세션 모델, 캐노니컬 스케일러). Pi 번들은 `5g/` 폴더에서 모델·스케일러를 찾는다. 상단 칩에 `· 5GHz`가 붙고,
+전환 후보는 다른 5GHz 채널(36/44/149/157)로 바뀐다. 시연 시 AP 5GHz 폭은 80MHz로 되돌려 둘 것(학습용 심각 데이터만 40MHz).
+
+```bash
+python project/demo/demo_server.py --band 5g
+```
+
 ## 실행 (라즈베리 파이 — 엣지 추론)
 
 추론·AP폴링·부하대상을 전부 Pi 로. 번들에 필요한 파일이 이미 다 있다

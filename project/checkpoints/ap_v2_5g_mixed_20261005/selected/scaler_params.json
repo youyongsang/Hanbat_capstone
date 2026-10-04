@@ -1,0 +1,30 @@
+{
+ "throughput_mbps": {
+  "min": 0.0,
+  "max": 651.61
+ },
+ "channel_occupancy_percent": {
+  "min": 0.0,
+  "max": 100.0
+ },
+ "tx_retry_ratio": {
+  "min": 0.0,
+  "max": 0.82
+ },
+ "rssi_dbm": {
+  "min": -70.33,
+  "max": -42.67
+ },
+ "rssi_delta_db": {
+  "min": -7.67,
+  "max": 7.67
+ },
+ "rssi_moving_avg_dbm": {
+  "min": -69.33,
+  "max": -43.8
+ },
+ "sta_tx_bitrate_mean": {
+  "min": 0.0,
+  "max": 866.7
+ }
+}

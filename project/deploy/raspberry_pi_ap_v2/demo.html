@@ -566,7 +566,7 @@ if (SIM){
       const off = !st.load[d.id] || st.load[d.id].rate === 'off';
       if (off && d.remain > 0 && now() - (d.startedAt || 0) > 3){ d.rate = 0; d.remain = 0; paintDevice(d); }
     });
-    chip.textContent = st.replay ? `재생 모드 · ${st.replay}` : (st.ready ? '실시간' : (st.msg || '준비 중'));
+    chip.textContent = (st.replay ? `재생 모드 · ${st.replay}` : (st.ready ? '실시간' : (st.msg || '준비 중'))) + (st.band ? ` · ${st.band === '5g' ? '5GHz' : '2.4GHz'}` : '');
     if (!st.ready){ $('desc').textContent = st.msg && st.msg.includes('AP') ? '공유기 응답을 기다리고 있어요.' : '측정을 준비하고 있어요.'; return; }
     document.body.dataset.switch = st.switch_active ? '1' : '0';
     document.body.dataset.unsure = st.downlink ? '1' : '0';

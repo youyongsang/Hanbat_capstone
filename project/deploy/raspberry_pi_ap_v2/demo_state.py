@@ -24,6 +24,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 sys.path.insert(0, str(HERE))  # Pi 번들: collect_metrics.py 가 옆에 있음
 
+# 대역 선택(2026-10-05): collect_metrics가 import 시점에 AP_INTERFACE를 읽으므로 import 전에 --band를 먼저 본다.
+#   24g(기본) = wlan0 + 2.4GHz 24세션 모델·캐노니컬 스케일러 / 5g = wlan1 + 5GHz 혼합(80+40MHz) 모델·5GHz 전용 스케일러.
+_pre = argparse.ArgumentParser(add_help=False); _pre.add_argument("--band", choices=("24g", "5g"), default=os.environ.get("DEMO_BAND", "24g"))
+BAND = _pre.parse_known_args()[0].band
+os.environ.setdefault("AP_INTERFACE", "wlan1" if BAND == "5g" else "wlan0")
+
 # 저장소에서 실행하면 scripts.collect_metrics, Pi 번들에서 실행하면 collect_metrics.
 try:
     from scripts.collect_metrics import (  # noqa: E402
@@ -74,12 +80,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--s26", default=os.environ.get("DEMO_S26", "s26"))
     p.add_argument("--s21-port", type=int, default=5201, help="S21 부하용 iperf3 -s 포트")
     p.add_argument("--s26-port", type=int, default=5202, help="S26 부하용 iperf3 -s 포트")
-    p.add_argument("--model", type=Path,
-                   default=_resolve(PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2_24sess_20260928" / "selected" / MODEL_NAME,  # 2026-09-28 24세션
-                                    MODEL_NAME))
-    p.add_argument("--scaler", type=Path,
-                   default=_resolve(PROJECT_ROOT / "data" / "ap_metrics_v2_redesign2" / "scaler_params.json",
-                                    "scaler_params.json"))
+    p.add_argument("--band", choices=("24g", "5g"), default=BAND,
+                   help="24g=2.4GHz(wlan0, 24세션 모델) | 5g=5GHz(wlan1, 80+40MHz 혼합 모델·5GHz 스케일러). 환경변수 DEMO_BAND도 가능")
+    if BAND == "5g":   # 2026-10-05 5GHz 시연 모델. Pi 번들에선 옆의 5g/ 폴더
+        dm = _resolve(PROJECT_ROOT / "checkpoints" / "ap_v2_5g_mixed_20261005" / "selected" / MODEL_NAME, "5g/" + MODEL_NAME)
+        ds = _resolve(PROJECT_ROOT / "checkpoints" / "ap_v2_5g_mixed_20261005" / "selected" / "scaler_params.json", "5g/scaler_params.json")
+    else:
+        dm = _resolve(PROJECT_ROOT / "checkpoints" / "ap_v2_redesign2_24sess_20260928" / "selected" / MODEL_NAME,  # 2026-09-28 24세션
+                      MODEL_NAME)
+        ds = _resolve(PROJECT_ROOT / "data" / "ap_metrics_v2_redesign2" / "scaler_params.json", "scaler_params.json")
+    p.add_argument("--model", type=Path, default=dm)
+    p.add_argument("--scaler", type=Path, default=ds)
     p.add_argument("--confirm", type=int, default=CONFIRM)
     p.add_argument("--no-iperf-server", action="store_true",
                    help="iperf3 -s 자동 기동 안 함 (대상 호스트에서 이미 돌고 있을 때)")

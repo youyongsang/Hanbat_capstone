@@ -1,0 +1,5 @@
+{"rule": "val balanced accuracy 최고 시드 (val = 학습 세션마다 마지막 런)",
+ "data": "5GHz 80MHz(s0919 대량 + f1~f4) + 40MHz(w40test, f5~f9), 11세션 13,692창, 7-feature, 창 12, k2m2 라벨, 5GHz 전용 스케일러(scaler_params.json)",
+ "baseline": {"seed": 0, "val_bal": 81.0}, "ee": {"seed": 0, "val_bal": 81.6, "theta": [0.3, 0.6]}, "sdn": {"seed": 0, "val_bal": 81.9},
+ "candidates": {"baseline": [81.0, 80.8], "ee": [81.6, 80.2], "sdn": [81.9, 80.9]},
+ "trained": "2026-10-05 02:07~02:34, retrain_5g.py --cond final --seeds 0,1 --save --tag _20261005"}

@@ -28,6 +28,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 CH24 = {1: 2412, 6: 2437, 11: 2462}  # 2.4GHz 겹치지 않는 채널
+CH5 = {36: 5180, 44: 5220, 149: 5745, 157: 5785}  # 5GHz 후보(2026-10-05, 학교 스캔에서 한산했던 쪽 + 집 사용 채널)
 
 
 @dataclass
@@ -41,12 +42,14 @@ class SwitchEvent:
 class SwitchAdvisor:
     def __init__(self, enter_need: int = 2, enter_window: int = 3, release: int = 30, persist: int = 60,
                  dl_thr_mbps: float = 20.0, dl_occ_pct: float = 25.0, dl_need: int = 3, dl_window: int = 5,
-                 current_channel: int = 1, iface: str = "wlan0"):
+                 current_channel: int | None = None, iface: str = "wlan0", band: str = "24g"):
         self.enter_need, self.release, self.persist = enter_need, release, persist
         self.recent = deque(maxlen=enter_window)
         self.dl_thr, self.dl_occ, self.dl_need = dl_thr_mbps, dl_occ_pct, dl_need
         self.dl_recent = deque(maxlen=dl_window)
-        self.current_channel, self.iface = current_channel, iface
+        self.band = band
+        self.current_channel = current_channel if current_channel is not None else (44 if band == "5g" else 1)
+        self.iface = iface
         self.poll = 0
         self.active = False          # 전환 알림을 낸 사건이 진행 중인가
         self.quiet = 0               # 알림 뒤 심각 없이 지난 폴링 수
@@ -56,6 +59,11 @@ class SwitchAdvisor:
     # ------------------------------------------------------------
     def candidates(self) -> list[str]:
         out = []
+        if self.band == "5g":   # 5GHz: 다른 5GHz 채널로 이동 (2.4GHz로 내려가는 건 후보에서 뺌)
+            for ch, freq in CH5.items():
+                if ch != self.current_channel:
+                    out.append(f"5GHz ch{self.current_channel} → ch{ch}  (예: hostapd_cli -i {self.iface} chan_switch 5 {freq}, 미실행)")
+            return out
         for ch, freq in CH24.items():
             if ch != self.current_channel:
                 out.append(f"2.4GHz ch{self.current_channel} → ch{ch}  (예: hostapd_cli -i {self.iface} chan_switch 5 {freq}, 미실행)")
