@@ -127,6 +127,12 @@ def inference_loop() -> None:
         last_id, text = cyc
         station, survey = parse_ap_cycle(text)
         if station is None:
+            # 2026-10-06: 이 대역에 붙은 기기가 하나도 없으면 station 파싱이 None — 예전엔 조용히 건너뛰어 화면이
+            # "시작 중"에 멈췄다(서버 두 개 리허설에서 5GHz 쪽). 대기 상태를 알리고, 기기가 다시 붙으면 창을 새로 채운다.
+            win.clear(); prev_st = prev_active = prev_busy = prev_rssi = prev_time = None
+            with demo_state._lock:
+                demo_state._state = {"ready": False, "msg": "이 대역에 접속한 기기 없음 · 대기", "clients": 0, "band": ARGS.band}
+            demo_state._broadcast(demo_state._state)
             continue
         cur_active, cur_busy, *_ = survey
         now = time.time()
