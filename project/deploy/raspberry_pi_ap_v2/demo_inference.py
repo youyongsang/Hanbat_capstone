@@ -118,7 +118,7 @@ def inference_loop() -> None:
     while True:
         cyc = poller.wait_for_new_cycle(last_id)
         if cyc is None:
-            if time.time() - stale_since > 6:
+            if time.time() - stale_since > 15:   # 2026-10-06: 6→15초 — 부하 중 폴링이 몇 초 늦는 것만으로 "AP 응답 없음"이 깜빡이던 것 완화
                 with demo_state._lock:
                     demo_state._state = {"ready": False, "msg": f"AP 응답 없음 (재연결 {poller.reconnects}회)"}
                 demo_state._broadcast(demo_state._state)

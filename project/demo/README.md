@@ -22,6 +22,23 @@ python project/demo/demo_server.py
 python project/demo/demo_server.py --band 5g
 ```
 
+## 2.4GHz·5GHz 비교 화면 (2026-10-06, 시연용)
+
+서버 두 개(2.4GHz :8000, 5GHz :8001)를 같이 띄우고 한 화면(`/dual`)에 좌우로 보여 준다. 폰을 손으로 5GHz SSID로 옮기면
+화면이 폰 위치를 자동으로 찾고(4초마다 두 서버 `/check`), 부하 버튼은 폰이 붙은 대역 서버로 간다(60초 뒤 자동 정지).
+
+```bash
+bash project/demo/run_dual_demo.sh        # Pi iperf3(5211/5212) 기동 + 서버 두 개 + 브라우저 http://localhost:8000/dual
+bash project/demo/run_dual_demo.sh stop   # 서버 두 개 + Pi iperf3 종료
+```
+
+- **부하 받는 쪽은 유선 Pi**(기본 `TARGET=192.168.8.109`). 노트북으로 받으면 폰을 5GHz로 옮겨도 AP→노트북 구간이 노트북 대역에
+  남는데, Opal 점유율엔 AP 자신의 송신이 안 잡혀(다운링크 맹점) 비교가 섞인다.
+- 폰 SSH 이름: 2.4GHz `s21g`/`s26g`, 5GHz `s21`/`s26`(`~/.ssh/config`). 노트북은 어느 대역이든 상관없다(화면만).
+- AP 5GHz는 40MHz(2.4GHz HT40과 같은 폭). 80MHz면 폰 2대로 화면이 안 올라간다.
+- 화면을 파일로 열거나 주소 끝에 `#sim`(가짜 데이터)·`#auto`(시연 흐름 자동 재생)를 붙이면 서버 없이 연습 모드.
+- 10-06 리허설(폰당 30M, 폰 AP 가까이): 2.4GHz 표시 심각 92%·전환 경보 15초 / 5GHz 경고 92%·경보 없음.
+
 ## 실행 (라즈베리 파이 — 엣지 추론)
 
 추론·AP폴링·부하대상을 전부 Pi 로. 번들에 필요한 파일이 이미 다 있다

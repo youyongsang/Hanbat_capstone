@@ -25,12 +25,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Access-Control-Allow-Origin", "*")   # 2026-10-06: 비교 화면(/dual)이 다른 포트 서버(:8001)도 부른다
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self):  # noqa: N802  — POST /load(JSON)의 CORS 사전 요청
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self):  # noqa: N802
         if self.path == "/" or self.path.startswith("/?"):
             self._send(200, (HERE / "demo.html").read_bytes(), "text/html; charset=utf-8")
+        elif self.path == "/dual" or self.path.startswith("/dual?"):
+            # 2026-10-06: 2.4GHz·5GHz 비교 화면 — 이 서버(보통 :8000, 2.4GHz)와 옆 서버(:8001, 5GHz)를 한 화면에.
+            self._send(200, (HERE / "demo_dual.html").read_bytes(), "text/html; charset=utf-8")
         elif self.path.startswith("/assets_taste/"):
             # 2026-10-02: 화면이 쓰는 내장 글꼴·아이콘(오프라인 랩실에서도 동작). 파일 이름만 허용.
             name = self.path.split("?", 1)[0].rsplit("/", 1)[-1]
@@ -52,6 +64,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-store")
             self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             q: queue.Queue = queue.Queue(maxsize=50)
             with demo_state._lock:
