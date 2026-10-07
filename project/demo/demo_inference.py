@@ -31,6 +31,11 @@ def softmax(x: np.ndarray) -> np.ndarray:
     return e / e.sum()
 
 
+def occ_label(occ_pct: float) -> int:
+    """라벨 공식(congestion_label_redesign)의 점유율 축 단계 — 앵커 40%=경고 0.25, 55%=혼잡 0.5, 75%=심각 0.75."""
+    return 0 if occ_pct < 40 else 1 if occ_pct < 55 else 2 if occ_pct < 75 else 3
+
+
 def norm(feats: dict, scaler: dict) -> np.ndarray:
     out = np.empty(len(FEATURES), dtype=np.float32)
     for i, k in enumerate(FEATURES):
@@ -82,7 +87,7 @@ def replay_loop() -> None:
                 with demo_state._lock:
                     demo_state._state = {
                         "ready": True, "ts": r.get("timestamp", "")[-8:], "replay": path.name,
-                        "truth": int(float(truth)) if truth not in (None, "") else None,
+                        "truth": int(float(truth)) if truth not in (None, "") else None, "truth_src": "csv",
                         "label": shown, "label_name": LABELS[shown], "raw_label": raw, "raw_name": LABELS[raw],
                         "probs": [round(float(p), 3) for p in probs], "exit": exit_pt, "clients": clients,
                         "features": feats, "load": dict(demo_state._load_state),
@@ -192,6 +197,9 @@ def inference_loop() -> None:
         with demo_state._lock:
             demo_state._state = {
                 "ready": True, "ts": time.strftime("%H:%M:%S"),
+                # 2026-10-08 정답 비교 패널(A안): 라벨 공식의 점유율 축만으로 낸 단계(앵커 40/55/75%). 업링크 시연에선 심각이
+                # 거의 점유율 원인이라 실측 정답에 가깝다. B안(victim 프로브 실측)을 붙이면 truth_src가 "probe"로 바뀐다.
+                "truth": occ_label(feats["channel_occupancy_percent"]), "truth_src": "occupancy",
                 "label": shown, "label_name": LABELS[shown],
                 "raw_label": raw, "raw_name": LABELS[raw],
                 "probs": [round(float(p), 3) for p in probs],

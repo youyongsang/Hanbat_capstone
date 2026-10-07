@@ -150,6 +150,36 @@ body[data-live="1"] .mv{display:none}
 .rate:disabled{opacity:.35;cursor:not-allowed}
 .where[data-b="none"]{border-style:dashed;color:var(--ink-3)}
 
+/* 정답 비교 서랍 (2026-10-08, A안: 정답 = 라벨 공식의 점유율 축) */
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:40;width:min(440px,88vw);background:var(--surface);
+  box-shadow:-12px 0 32px color-mix(in oklab,var(--ink) 0%,transparent);transform:translateX(100%);
+  transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+body[data-drawer="1"] .drawer{transform:none;box-shadow:-12px 0 32px color-mix(in oklab,var(--ink) 18%,transparent)}
+.dr-body{height:100%;overflow:auto;display:flex;flex-direction:column;padding:18px 20px 16px;gap:14px}
+/* 날개(손잡이): 서랍 왼쪽 가장자리에 붙어 같이 움직인다. 닫혀 있으면 화면 오른쪽 끝에 날개만 보인다 */
+.wing{position:absolute;top:50%;right:100%;transform:translateY(-50%);width:40px;height:150px;border:0;cursor:pointer;
+  border-radius:16px 0 0 16px;background:var(--ink);color:var(--on-ink);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;padding:0;box-shadow:-6px 4px 16px color-mix(in oklab,var(--ink) 22%,transparent);
+  transition:width .25s var(--ease),background-color .2s}
+.wing:hover{width:46px}
+.wing .w-t{writing-mode:vertical-rl;font-weight:700;font-size:14px;letter-spacing:.08em}
+.wing .w-a{font-size:16px;line-height:1;transition:transform .5s var(--ease)}
+body[data-drawer="1"] .wing .w-a{transform:rotate(180deg)}
+.dr-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dr-head h3{margin:0;font-size:20px;letter-spacing:-.02em}
+.dr-note{font-size:13px;color:var(--ink-2);margin:0;line-height:1.5}
+.dr-band{border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.dr-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.dr-top b{font-size:18px}
+.dr-acc{font-size:30px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.dr-acc small{font-size:13px;color:var(--ink-3);font-weight:600;margin-left:3px}
+.dr-sub{font-size:13px;color:var(--ink-2);display:flex;gap:4px 14px;flex-wrap:wrap}
+.strip{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:8px;font-size:12px;color:var(--ink-3)}
+.strip canvas{position:static;width:100%;height:16px;border-radius:4px}
+.dr-err{font-size:13px;color:var(--ink-2);min-height:1.4em}
+.dr-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.dr-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
 @media (max-width:1400px){
   .dev{gap:10px;padding:12px 14px}
   .rates{gap:6px}
@@ -198,6 +228,18 @@ body[data-live="1"] .mv{display:none}
     </div>
   </section>
 </div>
+
+<aside class="drawer" id="drawer" aria-label="정답과 예측 비교">
+  <button class="wing" id="drTab" aria-controls="drawer" aria-expanded="false" aria-label="정답 비교 열기/닫기">
+    <span class="w-a" aria-hidden="true">‹</span><span class="w-t">정답 비교</span></button>
+  <div class="dr-body">
+  <div class="dr-head"><h3>정답 비교</h3></div>
+  <p class="dr-note" id="drNote">정답: 라벨 공식의 점유율 축(40/55/75%). 예측: 모델이 그 순간 낸 판정(화면의 3연속 확정 전 값).</p>
+  <div id="drBands"></div>
+  <div class="dr-legend"><span><i style="background:var(--l0)"></i>정상</span><span><i style="background:var(--l1)"></i>경고</span>
+    <span><i style="background:var(--l2)"></i>혼잡</span><span><i style="background:var(--l3)"></i>심각</span><span>· 위 띠=정답, 아래 띠=예측, 최근 90초</span></div>
+  </div>
+</aside>
 
 <script>
 const LV = [
@@ -271,6 +313,7 @@ function step(){
     b.score += (target - b.score) * 0.14 + (Math.random() - .5) * 0.03;
     b.score = Math.max(0, Math.min(1, b.score));
     const raw = levelOf(b.score);
+    if (on.length) pushCmp(b, levelOf(Math.max(0, Math.min(1, target + (Math.random() - .5) * 0.12))), raw);
     b.streak.push(raw); if (b.streak.length > 3) b.streak.shift();
     if (b.streak.length === 3 && b.streak.every(v => v === raw)) b.shown = raw;
     // 전환 판단: 최근 3번 중 2번 심각이면 켜고, 심각 없이 30번(15초) 지나면 끈다
@@ -347,8 +390,71 @@ document.getElementById('themeBtn').onclick = () => {
   const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   r.dataset.theme = dark ? 'light' : 'dark'; paint();
 };
+/* ---------------- 정답 비교 서랍 ---------------- */
+const CMP_WIN = 60;   // "최근" 일치율 구간(초)
+function drawerHTML(){
+  return ['24', '5'].map(k => `
+    <div class="dr-band" id="dr${k}">
+      <div class="dr-top"><b>${BANDS[k].title}</b><span class="dr-acc"><span class="acc">—</span><small>최근 ${CMP_WIN}초 일치</small></span></div>
+      <div class="dr-sub"><span>누적 <b class="cum">—</b></span><span>비교한 순간 <b class="cnt2">0</b></span><span>한 단계 차이까지 <b class="near">—</b></span></div>
+      <div class="strip"><span>정답</span><canvas class="st-t"></canvas></div>
+      <div class="strip"><span>예측</span><canvas class="st-p"></canvas></div>
+      <div class="dr-err"></div>
+    </div>`).join('');
+}
+document.getElementById('drBands').innerHTML = drawerHTML();
+for (const k in BANDS){ BANDS[k].cmp = []; BANDS[k].cum = { n: 0, ok: 0, near: 0 }; BANDS[k].truthSrc = 'occupancy'; }
+function pushCmp(b, truth, pred){
+  if (truth == null || pred == null) return;
+  b.cmp.push({ t: now2(), truth, pred });
+  b.cum.n++; if (truth === pred) b.cum.ok++; if (Math.abs(truth - pred) <= 1) b.cum.near++;
+}
+const now2 = () => performance.now() / 1000;
+function paintDrawer(){
+  if (document.body.dataset.drawer !== '1') return;
+  const lv = [css('--l0'), css('--l1'), css('--l2'), css('--l3')], t = now2();
+  for (const k in BANDS){
+    const b = BANDS[k], el = document.getElementById('dr' + k);
+    while (b.cmp.length && b.cmp[0].t < t - 90) b.cmp.shift();
+    const rec = b.cmp.filter(c => c.t >= t - CMP_WIN);
+    const pct = (a, n) => n ? `${Math.round(a / n * 100)}%` : '—';
+    el.querySelector('.acc').textContent = pct(rec.filter(c => c.truth === c.pred).length, rec.length);
+    el.querySelector('.cum').textContent = pct(b.cum.ok, b.cum.n);
+    el.querySelector('.near').textContent = pct(b.cum.near, b.cum.n);
+    el.querySelector('.cnt2').textContent = b.cum.n;
+    const errs = {}; rec.forEach(c => { if (c.truth !== c.pred){ const key = `${NAMES[c.truth]}→${NAMES[c.pred]}`; errs[key] = (errs[key] || 0) + 1; } });
+    const top = Object.entries(errs).sort((a, b2) => b2[1] - a[1]).slice(0, 2);
+    el.querySelector('.dr-err').textContent = !rec.length ? (b.n ? '측정 준비 중이에요.' : '이 대역에 기기가 없어요.')
+      : top.length ? `틀린 순간: ${top.map(([e, n]) => `정답 ${e.replace('→', ' → 예측 ')} ${n}번`).join(', ')}` : '최근 구간은 모두 맞았어요.';
+    for (const [sel, key] of [['.st-t', 'truth'], ['.st-p', 'pred']]){
+      const cv = el.querySelector(sel), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+      if (!W || !H) continue;
+      if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = css('--line'); ctx.fillRect(0, 0, W, H);
+      const x = tt => W * (1 - (t - tt) / 90);
+      b.cmp.forEach((c, i) => {
+        const nx = i + 1 < b.cmp.length ? x(b.cmp[i + 1].t) : W;
+        ctx.fillStyle = lv[c[key]]; ctx.fillRect(x(c.t), 0, Math.max(1, nx - x(c.t)) + .5, H);
+      });
+    }
+  }
+  const srcs = Object.values(BANDS).map(b => b.truthSrc), src = srcs.includes('probe') ? 'probe' : srcs.includes('csv') ? 'csv' : 'occupancy';
+  document.getElementById('drNote').textContent = src === 'csv'
+    ? '재생 모드 — 정답: 수집할 때 victim 프로브로 잰 실측 라벨. 예측: 모델이 그 순간 낸 판정(화면의 3연속 확정 전 값).'
+    : src === 'probe'
+    ? '정답: victim 프로브 실측(학습 라벨과 같은 정의). 예측: 모델이 그 순간 낸 판정(화면의 3연속 확정 전 값).'
+    : '정답: 라벨 공식의 점유율 축(40/55/75%) — 업링크 시연에선 심각이 거의 점유율 때문이라 실측에 가까워요. 예측: 모델이 그 순간 낸 판정(화면의 3연속 확정 전 값).';
+}
+const drTab = document.getElementById('drTab');
+const setDrawer = on => { document.body.dataset.drawer = on ? '1' : '0'; drTab.setAttribute('aria-expanded', String(on)); paintDrawer(); };
+drTab.onclick = () => setDrawer(document.body.dataset.drawer !== '1');
+addEventListener('keydown', e => { if (e.key === 'Escape') setDrawer(false); });
+setInterval(paintDrawer, 500);
+if (location.hash.includes('drawer')) setDrawer(true);
+
 /* ---------------- 실시간 모드 ---------------- */
-const SIM = location.protocol === 'file:' || location.hash === '#sim' || location.hash === '#auto';
+const SIM = location.protocol === 'file:' || location.hash.startsWith('#sim') || location.hash.startsWith('#auto');
 const chip = document.getElementById('modeChip');
 const qs = new URLSearchParams(location.search);
 const SRV = SIM ? {} : {
@@ -380,6 +486,8 @@ function connectBand(k){
     b.msg = ''; b.n = st.clients || 0; b.sw = !!st.switch_active;
     b.occ = (st.features || {}).channel_occupancy_percent || 0;
     const raw = st.raw_label; b.score = scoreOf(st.probs, raw);
+    if (st.truth_src) b.truthSrc = st.truth_src;
+    pushCmp(b, st.truth, raw);
     b.streak.push(raw); if (b.streak.length > 3) b.streak.shift();
     if (b.streak.length === 3 && b.streak.every(v => v === raw)) b.shown = raw;
     b.hist.push({ t: now(), s: b.score, load: b.load > 0 });
@@ -421,7 +529,7 @@ function paintChip(){
 if (SIM){
   chip.textContent = '연습 모드 · 가짜 데이터';
   paintDevs(); setInterval(step, TICK * 1000); step();
-  if (location.hash === '#auto') document.getElementById('scenBtn').click();
+  if (location.hash.startsWith('#auto')) document.getElementById('scenBtn').click();
 } else {
   document.body.dataset.live = '1';
   document.getElementById('scenPanel').innerHTML = '<span class="hint">폰이 붙은 대역은 자동으로 찾아요.<br>옮길 땐 폰 와이파이 목록에서<br>5G 이름을 눌러 주세요.</span>';
