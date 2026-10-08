@@ -59,16 +59,16 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 ## 3. sub-score 표준 문턱
 
-각 축을 4개 앵커(경고→0.25 / 혼잡→0.5 / 심각→0.75 / 완전→1.0)로 piecewise-linear 매핑, [0,1] clamp. **구현됨**: `collect_metrics.py`의 `ANCHORS` 딕셔너리 + `anchor_score()`.
+각 축을 4개 앵커(경고→0.25 / 혼잡→0.5 / 심각→0.75 / 상한→1.0)로 piecewise-linear 매핑, [0,1] clamp. **라벨은 4단계뿐**(≥0.75면 심각) — "상한"은 라벨이 아니라 점수가 1.0에서 멈추는 지점(연속 점수 기울기에만 영향, 2026-10-09 용어 정정: 옛 표기 "완전"). **구현됨**: `collect_metrics.py`의 `ANCHORS` 딕셔너리 + `anchor_score()`.
 
 **라벨 축 (4개)** — `congestion_score = max(이 4개)`:
 
-| 축 | 경고 (0.25) | 혼잡 (0.5) | 심각 (0.75) | 완전 (1.0) | 출처 (표준 원문 대조 2026-08-31) |
+| 축 | 경고 (0.25) | 혼잡 (0.5) | 심각 (0.75) | 상한 (1.0) | 출처 (표준 원문 대조 2026-08-31) |
 |---|---:|---:|---:|---:|---|
 | `occupancy_score` (채널 airtime %) | 40% | 55% | 75% | 90% | **심각=75, 경고≈50**: Aruba WLAN 설계 가이드(~50% good threshold, >75% 문제). 40/55/90은 그 근처 보간 — 4-티어 정식 표준은 아님 |
 | `jitter_score` (프로브 IPDV) | 20ms | 30ms | 50ms | 100ms | **심각=50ms**: ITU-T Y.1541 Class 0/1 (IPDV ≤ 50ms). **경고/혼잡 20/30ms**: Cisco Enterprise QoS (voice jitter ≤ 30ms). (RFC 4594는 텔레포니를 "jitter Very Low" 정성 등급으로만 규정 §2.3, 수치는 Y.1541로 위임 — 30ms는 Cisco 값) |
 | `loss_score` (프로브 패킷 손실) | 0.5% | 1% | 5% | 10% | Cisco Enterprise QoS (voice loss ≤ 1%, > 5% 사용 불가). ITU-T Y.1541 Class 0/1 IPLR ≤ 0.1%는 이보다 **엄격** — 이 스케일은 Cisco 실무 기준. (G.113 App.I는 E-model용 코덕별 Ie/Bpl 표라 손실 문턱을 규정하지 않음 — 인용에서 제외) |
-| `latency_score` (ping **편도 추정** = RTT/2) | 30ms | 60ms | 150ms | 400ms | **심각=150ms, 완전=400ms**: ITU-T G.114 (편도 전송시간 <150 transparent / 150–400 acceptable-with-awareness / >400 unacceptable). 30/60ms는 그 아래 보간. **앵커는 편도 규격이고 ping은 RTT를 재므로 `calculate_scores`가 `latency_ms/2`를 넣는다** (2026-08-27 밤: RTT 생값 → 편도 앵커라 RTT 150ms(≈편도 75ms)가 "심각"으로 채점, label 3 79% 과다 → 수정. 부하행 label 3 111→85, label 2 28→54). idle RTT med ~2ms |
+| `latency_score` (ping **편도 추정** = RTT/2) | 30ms | 60ms | 150ms | 400ms | **심각=150ms, 상한=400ms**: ITU-T G.114 (편도 전송시간 <150 transparent / 150–400 acceptable-with-awareness / >400 unacceptable). 30/60ms는 그 아래 보간. **앵커는 편도 규격이고 ping은 RTT를 재므로 `calculate_scores`가 `latency_ms/2`를 넣는다** (2026-08-27 밤: RTT 생값 → 편도 앵커라 RTT 150ms(≈편도 75ms)가 "심각"으로 채점, label 3 79% 과다 → 수정. 부하행 label 3 111→85, label 2 28→54). idle RTT med ~2ms |
 
 **라벨 축 아님 (정보용 컬럼 + 모델 입력)**:
 
@@ -81,7 +81,7 @@ QoS에 민감한 **작고 일정한 스트림 하나**를 배경 부하와 별�
 
 `정상 < 0.25 · 경고 < 0.50 · 혼잡 < 0.75 · 심각 ≥ 0.75`. 60/60 = 대표 부하.
 
-| 축 | 경고 | 혼잡 | **심각** | 완전 | idle | 60/60 부하 (med → peak) | 소패킷 부하 (med → peak) |
+| 축 | 경고 | 혼잡 | **심각** | 상한 | idle | 60/60 부하 (med → peak) | 소패킷 부하 (med → peak) |
 |---|--:|--:|--:|--:|---|---|---|
 | **occupancy** (%) | 40 | 55 | **75** | 90 | med 17 · `정상` | med 63 `혼잡` → max 87 `심각` | med 77 `심각` → max 90 `완전` |
 | **probe jitter** (ms) | 20 | 30 | **50** | 100 | med 1 / max 3.5 · `정상` | med 6 → max 19 · `정상` (앵커 안 건드림) | med 10 → max 11 · `정상` |
@@ -400,7 +400,7 @@ sta_tx_bitrate_mean        ← 2026-08-29 추가 (6→7)
 
 ## 참고
 
-- `docs/yongsang/congestion_label_criteria.{md,html}` — 옛(가중합) 정의, archived
+- `docs/yongsang/archive/congestion_label_criteria.{md,html}` — 옛(가중합) 정의, archived
 - `project/results/yongsang/ap_v2_redesign2_threshold_comparison_k3m2_archived_20260902.txt` — "occupancy 문턱 vs 학습 모델" 실측 대조 ("핵심 검증 질문"의 결과, k3m2 시절 마지막 실행, k2m2로 재실행 안 함)
 - `.work-log/current.md` — 2026-08-27 저녁 세션 (문제 발견 경위)
 - **앵커 근거** (원문 대조 2026-08-31): ITU-T Y.1541 (jitter IPDV ≤ 50ms, loss IPLR ≤ 0.1% — Class 0/1) · ITU-T G.114 (편도 지연 150 / 400ms) · Cisco Enterprise QoS SRND (voice: 편도 ≤ 150ms, jitter ≤ 30ms, loss ≤ 1%) · Aruba WLAN 설계 가이드 (channel utilization ~50% / 75%) · ITU-T G.107 E-model (§4 대안 조합 방식). RFC 4594·G.113 App.I는 앵커 수치 근거로 부적합(위 §3 참조).
@@ -425,3 +425,15 @@ load labels 2×7 / 3×48, 주도 occ 42 / lat 9 / loss 4.
 occupancy-only 문턱(≥75%)이면 60/60의 occ 60~73% label 3을 놓친다 → **재설계가 "occupancy 외 혼잡" 라벨 데이터를 실제로 생성함**(핵심 검증 질문의 실증 기반).
 
 **남은 이슈**: (1) jitter 축이 이 셋업에선 거의 안 뜸(표준 유지하되 기여 낮음), (2) 부하 중 ping이 가끔 2~3연속 실패해 `latency_ms=0` 행이 생김(median으로 대부분 커버). (3) 표본이 아직 얇음 — 여러 시나리오로 본격 수집 필요.
+
+
+---
+
+## 2026-10-09 최신화 (요약)
+
+- 라벨 정의는 9/2(k2m2 게이트) 이후 그대로다. 2.4GHz 24세션 배포 모델(9/28)·5GHz 시연 모델(10/5, 80+40MHz 혼합)도 이 정의로 재라벨해 학습했다.
+- **점유율 축이 세는 것 (9/26)**: Opal(siwifi) 채널 busy는 AP가 아닌 기기가 보낸 시간만 센다. AP가 보내는 구간(다운링크, 노트북 방향의 AP→노트북)의 혼잡은 점유율 축에 안 잡히고 지연·손실 축으로만 라벨에 들어간다 → 모델이 놓치는 주원인. 상세 `downlink_blindspot.html`, 흐름도 `final_model_24sess.html` §0. MT6000(mt76)은 busy에 AP 송신이 포함되므로 점유율 축 정의(포함/제외)를 다시 정해야 한다.
+- **victim = 노트북**이라 노트북 위치가 라벨에 들어간다(f4·f8 노트북 멀면 지연·손실 원인 심각 증가). 수집 때 배치(RSSI) 기록.
+- §5 하이브리드 능동 프로브: **9/23 보류**(프로브 순간 ~2초가 목표2 실시간성과 맞지 않음, 사용자 결정).
+- 새 AP: **GL-MT6000(MT7986A) 구매**(RISE 승인 대기, 10/14 전후). 포럼 #3114로 tx/rx duration·transmit time·BSS receive 확인(5GHz·순정 OpenWrt), busy ≈ receive + transmit. 수집기 airtime 파서 준비 완료, 절차 `mt6000_setup_guide.html`.
+- 데모 정답 비교 패널(10/8) 실시간 정답 = 이 공식의 점유율 축 단계(40/55/75%). 업링크 시연에선 실측 라벨과 97~100% 일치.

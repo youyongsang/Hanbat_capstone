@@ -206,7 +206,7 @@
   .topo { min-width: 600px; display: flex; flex-direction: column; gap: 0.35rem; }
   .lane { display: flex; align-items: center; gap: 0.4rem; }
   .lane-label {
-    flex: 0 0 76px; font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+    flex: 0 0 92px; font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; line-height: 1.25;
     font-weight: 700; text-align: right; padding-right: 0.3rem;
   }
   .lane.load  .lane-label { color: var(--load); }
@@ -419,22 +419,34 @@
   <!-- ============ 3 ============ -->
   <section id="topology">
     <h2><span class="step">03</span> 수집 토폴로지</h2>
-    <p class="lede">부하(혼잡 유발) · 프로브(QoS 피해 측정) · 관리(AP 텔레메트리 폴링)의 <b>세 경로가 분리</b>돼 있다. 핵심은 프로브·ping이 <b>AP→싱크 무선 홉</b>을 타서 폰들의 혼잡을 실제로 겪는다는 것.</p>
+    <p class="lede">부하(혼잡 유발) · 프로브(QoS 피해 측정) · 관리(AP 텔레메트리 폴링)의 <b>세 경로가 분리</b>돼 있다. 핵심은 프로브·ping이 <b>AP→노트북 무선 홉</b>을 타서 폰들의 혼잡을 실제로 겪는다는 것. 부하는 <b>방향이 여러 가지</b>다 — 아래 그림은 기본인 노트북 방향과 시연에 쓰는 업링크, 나머지는 아래 표.</p>
 
     <div class="diagram">
       <div class="cap">부하 = 빨강 · 프로브 = 파랑 점선 · 관리(유선 SSH) = 회색</div>
       <div class="topo">
 
         <div class="lane load">
-          <span class="lane-label">부하</span>
+          <span class="lane-label">부하<br>(노트북<br>방향)</span>
           <div class="tbox stack">
             <div><span class="h">폰 S21</span><span class="s">약신호</span></div>
             <div><span class="h">폰 S26</span><span class="s">강신호</span></div>
           </div>
           <div class="conn load"><span class="t"><code>iperf3 -u -b</code></span><div class="line"></div><span class="cap2">▶ 채널 포화</span></div>
-          <div class="tbox ap"><span class="h">AP — Opal</span><span class="s">GL-SFT1200 · 2.4GHz</span></div>
-          <div class="conn load"><span class="t">무선 uplink</span><div class="line"></div><span class="cap2">▶</span></div>
-          <div class="tbox"><span class="h">싱크 (노트북)</span><span class="s"><code>iperf3 -s</code></span></div>
+          <div class="tbox ap"><span class="h">AP — Opal</span><span class="s">GL-SFT1200 · 2.4GHz / 5GHz</span></div>
+          <div class="conn load"><span class="t">무선 downlink (AP가 배달)</span><div class="line"></div><span class="cap2">▶ 점유율엔 안 잡힘</span></div>
+          <div class="tbox"><span class="h">싱크 (노트북)</span><span class="s"><code>iperf3 -s</code> · 노트북 방향</span></div>
+        </div>
+
+        <div class="lane load">
+          <span class="lane-label">부하<br>(업링크)</span>
+          <div class="tbox stack">
+            <div><span class="h">폰 S21</span><span class="s">무선</span></div>
+            <div><span class="h">폰 S26</span><span class="s">무선</span></div>
+          </div>
+          <div class="conn load"><span class="t">무선 uplink (폰이 보냄)</span><div class="line"></div><span class="cap2">▶ 점유율에 잡힘</span></div>
+          <div class="tbox ap"><span class="h">AP — Opal</span><span class="s">같은 채널</span></div>
+          <div class="conn load"><span class="t">유선 LAN</span><div class="line"></div><span class="cap2">▶ 무선 채널 밖</span></div>
+          <div class="tbox"><span class="h">싱크 (Pi, 유선)</span><span class="s"><code>iperf3 -s</code> 5211/5212 · 시연</span></div>
         </div>
 
         <div class="lane probe">
@@ -456,7 +468,7 @@
       </div>
 
       <div class="legend">
-        <span><i class="load"></i> 부하 — 두 폰이 배경 트래픽으로 채널 포화 → occupancy 상승</span>
+        <span><i class="load"></i> 부하 — 두 폰이 배경 트래픽으로 채널 포화 → occupancy 상승. 폰이 보내는 구간(uplink)만 점유율에 잡히고 AP가 보내는 구간(downlink)은 안 잡힌다(Opal 드라이버)</span>
         <span><i class="probe"></i> victim 프로브 — 300kbps UDP가 <b>AP→싱크 무선 홉</b>에서 겪는 IPDV·손실 = <code>jitter_score</code>·<code>loss_score</code></span>
         <span><i class="wire"></i> 관리 — Pi가 AP에 유선 SSH로 <code>iw</code> 폴링 + ping RTT (무선 채널 밖)</span>
       </div>
@@ -470,12 +482,28 @@
         <tr><td>AP (Opal)</td><td>측정 대상. 유선 SSH로 살아있는지 확인 + 무선으로 혼잡 발생</td><td><code>iw</code> 카운터</td></tr>
         <tr><td>Pi — <code>ProbeRunner</code></td><td>300kbps UDP 스트림을 부하와 별개로 흘림 ("VoIP 통화 한 통")</td><td><code>probe_jitter_ms</code> · <code>probe_loss_pct</code></td></tr>
         <tr><td>Pi — <code>APPoller</code></td><td>AP에 지속 SSH, <code>iw survey/station dump</code>를 ~1s 주기 폴링 + ping</td><td>7 feature 원천 + <code>latency_ms</code></td></tr>
-        <tr><td>싱크 (노트북)</td><td>부하·프로브 트래픽의 반대쪽 끝 (<code>iperf3 -s</code>)</td><td>—</td></tr>
+        <tr><td>노트북</td><td><b>항상</b> victim 프로브·ping의 싱크. 노트북 방향일 땐 부하의 끝(<code>iperf3 -s</code>)도 겸함</td><td>—</td></tr>
+        <tr><td>Pi (유선) — 싱크</td><td>업링크·혼합의 부하 끝, 다운링크의 부하 출발점(<code>iperf3 -R</code>)</td><td>—</td></tr>
       </tbody>
     </table>
     </div>
 
-    <div class="callout"><span>▸</span><span><b>배포·라이브 추론에는 프로브가 없다.</b> <code>live_congestion.py</code>·데모는 <code>APPoller</code>만 재사용해서 7-feature → window 12 → scaler → ONNX INT8 → 라벨. victim 프로브(협조 싱크 필요)는 <b>라벨링 전용</b>. collector를 Pi로 옮긴 것도 관리 트래픽을 무선 채널에서 빼기 위함.</span></div>
+    <h3 style="margin-top:1.4rem">부하 방향 (2026-09-24~, h·f 세션)</h3>
+    <div class="tw">
+    <table class="grid">
+      <thead><tr><th>방향</th><th>부하 흐름</th><th>점유율에 보이나</th><th>세션</th></tr></thead>
+      <tbody>
+        <tr><td>노트북 방향 (기본)</td><td>폰 → AP → 노트북 (업링크 절반 + 다운링크 절반)</td><td>절반 — 같은 데이터라 보이는 절반이 대신 알려 줌, 노트북이 멀면 놓침</td><td>8/28·9/1·g1~g5·h1·h2·h4·h6·h7, 5GHz 대부분</td></tr>
+        <tr><td><b>업링크</b> (시연)</td><td>폰 → AP → 유선 Pi</td><td>전부</td><td>h8·h13·h18, f1·f7·f9</td></tr>
+        <tr><td>다운링크</td><td>유선 Pi → AP → 폰</td><td>안 보임</td><td>h9·h10·h11·h15·h16, f2</td></tr>
+        <tr><td>혼합</td><td>한 폰 업링크 + 한 폰 다운링크</td><td>업링크 몫만 (서로 다른 데이터)</td><td>h12·h14·h17</td></tr>
+        <tr><td>폰↔폰</td><td>폰 → AP → 폰</td><td>절반</td><td>h3</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:0.86rem">방향별 흐름도(점유율에 잡히는/안 잡히는 구간, 노트북 victim 경로): <a href="final_model_24sess.html">final_model_24sess.html</a> §0 "흐름도". 시연 구성(두 대역·업링크): <a href="demo_architecture.html">demo_architecture.html</a>.</p>
+
+    <div class="callout"><span>▸</span><span><b>배포·라이브 추론에는 프로브가 없다.</b> <code>live_congestion.py</code>·데모(2.4GHz·5GHz 서버 두 개, 업링크 부하)는 <code>APPoller</code>만 재사용해서 7-feature → window 12 → scaler → ONNX INT8 → 라벨. victim 프로브(협조 싱크 필요)는 <b>라벨링 전용</b>. collector를 Pi로 옮긴 것도 관리 트래픽을 무선 채널에서 빼기 위함.</span></div>
 
     <div class="callout warn"><span>⚑</span><span><b>AP 크래시</b> — "몇 대 붙었나"보다 "각 폰이 대칭적으로 붙었나"가 핵심. 신호 강한 S26이 채널 독점, 약한 S21이 굶는 Wi-Fi capture effect. 안전 구간 대략 60M/60M · 300~420초. 상세: <code>docs/yongsang/ap_crash_analysis.html</code>.</span></div>
 

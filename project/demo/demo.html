@@ -16,7 +16,7 @@
   모양 규칙: 카드 20px, 조작 버튼은 전부 pill. 그 외 모서리 없음.
   색 규칙: 조작 요소는 잉크색 하나(무채색), 단계 4색은 "지금 상태"를 나타낼 때만.
 
-  2026-10-02 실제 데이터 연결 (demo.html로 채택, 이전 공장 조작반 화면은 demo_archived_industrial_20261002.html):
+  2026-10-02 실제 데이터 연결 (demo.html로 채택, 이전 공장 조작반 화면은 archive/demo_archived_industrial_20261002.html):
   - SSE /events 의 모델 출력(raw_label·probs)으로 단계와 "모델 추정" 점수를 그린다. 점수는 모델이 고른 단계의
     구간 안에서, 위·아래 단계 확률로 위치를 정한다(단계 문장과 점수 구간이 어긋나지 않게).
   - 기기 버튼은 POST /load {phone, rate:"20M", packet_size, duration_s}. 서버 타이머가 끝나면 SSE load가 off로 와서 맞춘다.

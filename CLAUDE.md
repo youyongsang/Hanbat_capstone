@@ -5,7 +5,7 @@
 - **제외**: 1학기 4-feature 학습/평가/ONNX 파이프라인 코드와 1차 실측(`ap_cleaned_strict`, 588행 — 실제로는 인터넷 공개 데이터 기반이었음) 전체 파이프라인. 그 코드가 필요하면 `yongsang` 브랜치를 참고한다.
 - **포함**: 2차 실측 데이터 라인(`ap_metrics_v2` → `redesign` → `redesign2`, 이 문서의 핵심 대상), docs 문서 전체(팀원별 가이드라인·work log 포함, 코드는 없어도 기록은 다 남겨둠), 그리고 1학기 Raspberry Pi 실측 결과(`project/results/hojung/`, `project/results/final_figures/`, `project/deploy/raspberry_pi/`)는 `origin/hojung`에서 가져와 유지한다 — staged ONNX 기준 Baseline/Fixed/Dynamic Early Exit의 Pi 실측 지연 비교 자료다. 이건 1학기 4-feature(시뮬레이션) 모델 기준이며 2차 실측 라인과는 무관하니 섞어서 비교하지 않는다.
 
-> **이 문서보다 최신인 것**: `.work-log/current.md`(세션마다 갱신, 최신 수치·다음 할 일). CLAUDE.md의 수치가 work-log와 어긋나면 work-log가 맞다. 형제 문서 `project/README_AP_V2.md`와 `docs/yongsang/congestion_label_criteria.{md,html}`는 **가중합 시절 기준이라 stale하다** — 라벨 정의는 `docs/yongsang/congestion_label_redesign.{md,html}`, feature 목록은 `project/utils/ap_features.py`(상세는 `docs/yongsang/model_features.{md,html}`)가 authoritative.
+> **이 문서보다 최신인 것**: `.work-log/current.md`(세션마다 갱신, 최신 수치·다음 할 일). CLAUDE.md의 수치가 work-log와 어긋나면 work-log가 맞다. 형제 문서 `project/README_AP_V2.md`와 `docs/yongsang/archive/congestion_label_criteria.{md,html}`는 **가중합 시절 기준이라 stale하다** — 라벨 정의는 `docs/yongsang/congestion_label_redesign.{md,html}`, feature 목록은 `project/utils/ap_features.py`(상세는 `docs/yongsang/model_features.{md,html}`)가 authoritative.
 
 ## 프로젝트 개요
 
@@ -177,7 +177,7 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 - **power=1.0 → 0.0 효과** (2026-08-30): 5시드 평균 정확도 +2~4pt. label2 정상화.
 - **서사**: 세 모델 정확도 여전히 동급 → Proposed(Early Exit)의 가치 주장은 정확도가 아니라 **속도·효율**(목표2 <1ms, Baseline 대비 −28%) + "간섭 감지에 EE 최초 적용" + L3(심각) 탐지력이 게이트 튜닝으로 전 모델 개선됐다는 점.
 - **세션 단위 독립 test (28차 후속, 2026-09-20 새 세션 `g1`, 972창·심각 독립 구간 6개)**: 위 수치는 같은 수집 내 분할이라 낙관적 — 기존 배포 모델을 새 세션에 적용하면 세션마다 크게 다름 — `g1`(9/20 저녁, 구간 6): **정확도 75~80%, L3 recall 55~72%**(Baseline 60.5 / SDN 55.0 / EE Fixed 71.6 / EE Dynamic 64.3), `g2`(9/21 새벽, 구간 7): **정확도 81~84%, L3 recall 88~91%**(기존 in-distribution 수준), 합산(2,150창·구간 13개) L3 recall 75~83%·95% CI 약 [57~72, 88~92]. g1이 낮은 이유는 미확정(g1의 `spknee_a` bitrate 오염만으로는 설명 안 됨), g1·g2는 같은 밤의 연속 세션이라 날짜 독립성은 없음. 오탐의 96%가 혼잡→심각, 심각 유형별로는 occupancy 주도 73.6% vs occ 미달 loss 주도 21~34%. 2.4GHz 캐노니컬은 실제로 2일치(8/28·9/1)·4시나리오 계열뿐이고 step 런 4~6(34%)은 `sta_tx_bitrate_mean`이 6.5Mbps로 고착된 채 수집됨(7-feature vs 6-feature 어블레이션: L3 F1 86.7 vs 80.4). 발표·보고서에서 2.4GHz L3 수치를 인용할 땐 세션 내 분할 수치와 이 독립 세션 수치를 함께 제시할 것. 상세: `.work-log/current.md` 28차 후속.
-  - **28차 후속(11), 2026-09-21 — 평가 기준을 leave-one-session-out(LOSO)로 전환**: 창 단위 분할은 이웃 창 유출로 낙관적이라, 세션(8/28·9/1·g1~g5)을 통째로 빼고 학습해 빠진 세션으로 테스트한다. **7세션 LOSO 평균(Baseline 5시드, 품질 통과 런만): 정확도 87.8% / L3 recall 76.0% / L3 precision 88.1%** (세션별 recall 42.9~92.8%, 8/28만 43% — 심각의 46%가 occupancy 미달 loss·latency 주도라서). 위 92%대 수치는 세션 내 분할이라 낙관적이므로 이 수치와 함께 제시할 것. **학습 데이터 오염**: `sta_tx_bitrate_mean`이 6.5Mbps로 고착된 런(step_run4~6)이 캐노니컬 행의 53%이고 혼잡(2) 라벨의 70%가 거기서 나와, 모델이 bitrate를 "런 정체성" 대리 변수로 배운 정황이 있다(g3에서 혼잡을 심각으로 오판해 precision 저하). 오염 런을 빼기만 하면 혼잡 예시가 사라져 오히려 나빠지므로(재학습 실험) **깨끗한 bitrate 조건에서 재수집**이 필요하다. bitrate는 feature로 유지하기로 결정. 세션 링크 상태를 바꿔 수집한 g4(링크 좋음)·g5(링크 약함, 지연 주도 심각이 대부분)를 확보했다. 상세: `.work-log/current.md` 28차 후속(11), `docs/yongsang/g3_bitrate_loso_analysis.html`.
+  - **28차 후속(11), 2026-09-21 — 평가 기준을 leave-one-session-out(LOSO)로 전환**: 창 단위 분할은 이웃 창 유출로 낙관적이라, 세션(8/28·9/1·g1~g5)을 통째로 빼고 학습해 빠진 세션으로 테스트한다. **7세션 LOSO 평균(Baseline 5시드, 품질 통과 런만): 정확도 87.8% / L3 recall 76.0% / L3 precision 88.1%** (세션별 recall 42.9~92.8%, 8/28만 43% — 심각의 46%가 occupancy 미달 loss·latency 주도라서). 위 92%대 수치는 세션 내 분할이라 낙관적이므로 이 수치와 함께 제시할 것. **학습 데이터 오염**: `sta_tx_bitrate_mean`이 6.5Mbps로 고착된 런(step_run4~6)이 캐노니컬 행의 53%이고 혼잡(2) 라벨의 70%가 거기서 나와, 모델이 bitrate를 "런 정체성" 대리 변수로 배운 정황이 있다(g3에서 혼잡을 심각으로 오판해 precision 저하). 오염 런을 빼기만 하면 혼잡 예시가 사라져 오히려 나빠지므로(재학습 실험) **깨끗한 bitrate 조건에서 재수집**이 필요하다. bitrate는 feature로 유지하기로 결정. 세션 링크 상태를 바꿔 수집한 g4(링크 좋음)·g5(링크 약함, 지연 주도 심각이 대부분)를 확보했다. 상세: `.work-log/current.md` 28차 후속(11), `docs/yongsang/archive/g3_bitrate_loso_analysis.html`.
 - **ONNX 재수출 완료 (2026-09-02, k2m2)**: EE unified fp32 = PyTorch 365/365, INT8 v2 fixed 364/365(92.1%)·dynamic 365/365(92.9%). Baseline INT8 365/365(89.9%). SDN INT8 364/365(92.1%, T=0.72). Pi 번들 sync + scp 완료.
 - **Pi 지연 재측정 (2026-09-02, window 12, k2m2, test 365)**: Baseline 0.864 / SDN 0.575 / EE Fixed **0.625** / Dynamic 0.632ms — 전부 avg <1ms(목표2). EE Fixed가 Baseline −28%. 상세: `ap_v2_redesign2_pi_latency_comparison.txt` 9차.
 - **속도 원리**: SDN pooling IC(ReduceMax+Mean per exit)가 Proposed의 last-timestep linear head보다 무거움 — **per-exit 지연은 EE가 SDN보다 전 stage 가벼움**(0.327/0.644/0.953 vs 0.332/0.646/0.962ms). SDN 평균(0.575)이 EE(0.625)보다 낮은 건 T=0.72가 exit1 비중을 37.5%로 front-load한 threshold 정책 artifact이지 구조 우위 아님.
@@ -253,13 +253,13 @@ python project\scripts\evaluate_ap_early_exit.py --data-dir project\data\ap_metr
 
 0. `docs/README.{md,html}` — **문서 안내 (질문 → 문서 매핑).** "왜 이런 라벨을 정했나" 같은 질문에 어느 문서를 볼지. 팀원 온보딩용.
 1. `.work-log/current.md` — 세션별 최신 진행 상황. **이 문서보다 항상 최신.** 최신 수치·다음 할 일은 여기.
-2. `docs/yongsang/congestion_label_redesign.{md,html}` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거(ITU-T Y.1541/G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, §3에 표준 원문 대조 결과). 라벨 관련 질문은 여기가 authoritative. html=정의·근거 요약, md=세션 로그까지 전체 (`congestion_label_criteria.{md,html}`는 구 정의, archived).
+2. `docs/yongsang/congestion_label_redesign.{md,html}` — 현행 라벨 정의(max 앵커 + victim 프로브)와 그 근거(ITU-T Y.1541/G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, §3에 표준 원문 대조 결과). 라벨 관련 질문은 여기가 authoritative. html=정의·근거 요약, md=세션 로그까지 전체 (`archive/congestion_label_criteria.{md,html}`는 구 정의, archived).
 3. `project/utils/ap_features.py` — 현행 7개 feature 정의 + 변천 주석 (정본). 각 feature 상세(계산·스무딩·스케일러·왜 라벨 축 아닌지)는 `docs/yongsang/model_features.{md,html}`.
 4. `docs/yongsang/ap_crash_analysis.{md,html}` — AP 반복 크래시 원인 분석.
 5. `docs/yongsang/onnx_early_exit_redesign.{md,html}` — ONNX Early Exit 배포 재설계(staged → unified If 노드 → INT8 재조립). Pi latency 주장은 이 문서 결론을 따른다.
 6. `docs/capstone1_summary.html` — 1학기(4-feature 시뮬레이션) 활동·지표 정리. `docs/yongsang/capstone2_vacation_summary.html` — 2학기 방학(2026-08-21~30) 개발 흐름 정리(데이터 실측·라벨 재설계 2회·power=0.0 재검증·SDN 논문 재구현·라이브 데모·되돌린 결정 4건).
 7. `project/models/ap_early_exit_lstm.py`, `project/utils/ap_dataloader.py` — 실제 코드 흐름.
-8. `project/README_AP_V2.md`(redirect 스텁으로 축약됨), `docs/yongsang/congestion_label_criteria.{md,html}` — **stale (가중합 4 sub-score 시절).** 역사적 맥락용으로만.
+8. `project/README_AP_V2.md`(redirect 스텁으로 축약됨), `docs/yongsang/archive/congestion_label_criteria.{md,html}` — **stale (가중합 4 sub-score 시절).** 역사적 맥락용으로만.
 
 ## Claude에게 중요한 해석 기준
 

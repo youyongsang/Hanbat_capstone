@@ -72,7 +72,7 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
 </head>
 <body>
 <main>
-<p class="eyebrow">Demo architecture · 2026-10-08</p>
+<p class="eyebrow">Demo architecture · 2026-10-08 (10-09 갱신)</p>
 <h1>데모 사이트 구조</h1>
 <p class="lead">공유기(AP)가 보는 정보만으로 AI가 와이파이 혼잡을 실시간 판단하고, 2.4GHz가 막히면 5GHz로 옮겼을 때 어떻게 달라지는지 한 화면에서 보여 주는 시연 사이트다. 이 문서는 무엇이 어디서 돌고, 데이터가 어떻게 흐르고, 왜 이렇게 설계했는지를 정리한다.</p>
 
@@ -265,7 +265,7 @@ footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); 
   <thead><tr><th>화면</th><th>구성</th><th>모드</th></tr></thead>
   <tbody>
     <tr><td><code>demo.html</code> (<code>/</code>)</td><td>한 대역. 상태 문장·혼잡 점수·4단계 띠·기기 2대 부하(패킷 크기·시간 조절)·60초 그래프</td><td>실시간 / 재생(<code>--replay</code>) / 연습(<code>#sim</code>)</td></tr>
-    <tr><td><code>demo_dual.html</code> (<code>/dual</code>)</td><td>좌 2.4GHz · 우 5GHz 칸(상태·점수·90초 그래프·점유율·보내는 양·폰 수), 가운데 전환 화살표, 아래 공용 부하 줄(폰 대역 자동 표시). 오른쪽 <b>날개</b>를 누르면 정답 비교 패널(최근 60초·누적·±1단계 일치율, 정답/예측 색 띠, 틀린 유형)</td><td>실시간 / 재생 / 연습(<code>#sim</code>, <code>#auto</code> 자동 재생, <code>#drawer</code> 패널 열린 채)</td></tr>
+    <tr><td><code>demo_dual.html</code> (<code>/dual</code>)</td><td>좌 2.4GHz · 우 5GHz 칸(상태·점수·90초 그래프·점유율·보내는 양·폰 수), 가운데 전환 화살표, 아래 공용 부하 줄(폰 대역 자동 표시 · 패킷 1400B/200B · 시간 10~60초 · 보내는 양 10~40M · 남은 시간과 진행 막대 · ⓘ 말풍선 설명). 오른쪽 <b>날개</b>를 누르면 정답 비교 패널(최근 60초·누적·±1단계 일치율, 정답/예측 색 띠, 틀린 유형)</td><td>실시간 / 재생 / 연습(<code>#sim</code>, <code>#auto</code> 자동 재생, <code>#drawer</code> 패널 열린 채)</td></tr>
   </tbody>
 </table></div>
 <p>점수는 모델이 고른 단계 구간(0.25 폭) 안에서 위·아래 단계 확률로 위치를 정한다 — 단계 문장과 점수가 어긋나지 않게. 1536×864(노트북)·1280×720(작은 프로젝터)에서 스크롤 없이 한 화면에 들어간다. 글꼴·아이콘은 <code>assets_taste/</code>에 내장(오프라인 랩실에서도 동작).</p>
@@ -309,9 +309,16 @@ python project/demo/demo_server.py --band 5g  --port 8001 --replay &lt;세션.cs
   <thead><tr><th>구성</th><th>2.4GHz 표시</th><th>5GHz 표시</th><th>비고</th></tr></thead>
   <tbody>
     <tr><td>부하 대상 노트북, 폰 5GHz −52/−54 dBm</td><td>혼잡 65% · 점유율 66%</td><td>혼잡 65% · 경고 34% · 점유율 57%</td><td>대비 약함, AP 응답 없음 10회 — 착시 발견</td></tr>
-    <tr><td><b>부하 대상 Pi, 폰 AP 가까이</b></td><td><b>심각 92%</b> · 점유율 80% · 전환 경보 15초 만에</td><td><b>경고 92%</b> · 점유율 48% · 경보 0</td><td>깜빡임 0, 모델 = 점유율 기준 90%/97%</td></tr>
+    <tr><td><b>부하 대상 Pi, 폰 AP 가까이</b> (10-06, 5GHz ch36)</td><td><b>심각 92%</b> · 점유율 80% · 전환 경보 15초 만에</td><td><b>경고 92%</b> · 점유율 48% · 경보 0</td><td>깜빡임 0, 모델 = 점유율 기준 90%/97%</td></tr>
   </tbody>
 </table></div>
+<div class="tw"><table>
+  <thead><tr><th>10-08 밤 (화면 버튼 조작, 5GHz auto ch48)</th><th>2.4GHz</th><th>5GHz</th><th>정답 비교 패널</th></tr></thead>
+  <tbody>
+    <tr><td>폰당 30M 60초, 폰 AP 가까이</td><td>심각 89% · 점유율 87% · 경보 ~10초</td><td>경고 65% · 혼잡 26% · 점유율 50%</td><td>일치율 2.4GHz 94% · 5GHz 92%</td></tr>
+  </tbody>
+</table></div>
+<p>같은 날 자유 시험에서 <b>5GHz 30M에도 전환 경보가 2번</b> 떴다 — 원시 심각 4/138(3%), 전부 점유율 69~70%(점유율 기준 정답은 혼잡)로 혼잡↔심각 경계에서 한 단계 높게 본 것. 그리고 <b>부하 없이 2.4GHz 점유율이 40~80%로 튀어</b>(이웃 공유기·간섭원 추정, AP ch1 사용률 76.6%) 모델이 심각·경보를 냈다 — 라벨 기준상 맞는 판정이다.</p>
 <p>학교는 2.4GHz 배경 점유율이 높아(랩실 idle 45~50%) 같은 30M에도 심각이 더 쉽게 날 것으로 본다. 반대로 5GHz는 거리에 민감해서 폰을 멀리 두면 점유율이 올라간다.</p>
 </section>
 
@@ -322,7 +329,8 @@ python project/demo/demo_server.py --band 5g  --port 8001 --replay &lt;세션.cs
   <li><b>정답 B안</b> — 2.4GHz victim(노트북) + 5GHz victim(3번째 기기) + Pi 프로브 에이전트 + 서버 정답 계산(앵커·max·실패=max·k2m2). 폰을 victim으로 쓰면 와이파이 절전 때문에 노트북 victim과 수치가 다를 수 있어 먼저 나란히 비교 시험(라벨 일치 90% 이상이면 사용).</li>
   <li><b>노트북은 부하 경로 밖이어도 정답·입력에 들어간다</b> — 수집 때 정답의 손실·지연·지터 축은 Pi가 <b>노트북</b>에 보낸 victim 프로브·ping으로 쟀다(모든 부하 방향 공통, 노트북 위치가 라벨에 반영). 모델 입력도 AP에 붙은 기기 전체 기준이라 RSSI 3종은 노트북 포함 평균이고, 전송 속도·재전송 비율엔 AP가 노트북에 보낸 victim 스트림 몫이 섞인다 — 학습 땐 노트북이 늘 그 대역에서 victim 스트림을 받고 있었다. 시연엔 victim 스트림이 없고 노트북은 한 대역에만 붙으므로, 다른 대역은 "노트북 없이 폰만"인 학습과 조금 다른 조건이 된다(10-06 리허설에선 점유율 기준 일치 90%/97%로 문제는 안 보임). B안(대역마다 victim 기기)을 하면 정답이 실측이 될 뿐 아니라 이 입력 조건도 학습과 같아진다. 흐름도는 <a href="final_model_24sess.html">final_model_24sess.html</a> §0.</li>
   <li><b>AP 크래시</b> — 폰당 80M 이상, 또는 신호가 크게 비대칭이면 위험(<a href="ap_crash_analysis.html">ap_crash_analysis</a>). 시연 부하는 40M 이하.</li>
-  <li><b>날마다·장소마다 다르다</b> — 같은 40M에 5GHz가 경고(1차)·혼잡 29%(2차)로 갈렸다. 시연은 폰당 30M을 권장하고 재생 모드를 예비로 둔다.</li>
+  <li><b>날마다·장소마다·채널마다 다르다</b> — 같은 30M에 5GHz가 ch36(10-06) 경고 92%, ch48(10-08) 경고·혼잡 섞임에 경계 경보 2회. 시연 전 채널 고정(발표장 ch44)과 당일 확인이 필요하고, 5GHz 경보가 신경 쓰이면 폰당 20M(5GHz 정상~경고)을 쓴다. 전환 규칙은 평가와 맞추려고 바꾸지 않는다.</li>
+  <li><b>외부 혼잡은 조절할 수 없다</b> — 2.4GHz는 우리 부하 없이도 이웃 때문에 심각이 뜰 수 있다(10-08 관측). "현장 2.4GHz는 원래 붐빈다"는 근거가 되지만 시연 순서를 흔들 수 있어 재생 모드를 예비로 둔다.</li>
   <li>다음: 학교 현장 사전 점검, Opal에서 패널 실시간 확인, 실제 Pi 반영, (선택) Pi에서 서버 두 개 구동.</li>
 </ul>
 </section>

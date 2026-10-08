@@ -68,18 +68,22 @@
   .stat{background:var(--surface);padding:17px 18px}
   .stat .k{font-size:12px;color:var(--muted);margin:0 0 5px}
   .stat .v{font-family:var(--f-mono);font-size:21px;font-weight:500;color:var(--ink);line-height:1.2}
-  .stat .v small{font-size:12px;color:var(--ink-2)}
+  .stat .v small{display:block;margin-top:8px;font-family:var(--f-body,inherit);font-size:12.5px;font-weight:400;line-height:1.6;color:var(--ink-2)}   /* 10-09: 큰 숫자 아래 줄로, 본문 글꼴 */
   @media (max-width:560px){.stats{grid-template-columns:1fr}}
 
   /* goals */
   .goals{display:grid;gap:10px;margin:26px 0}
   .goal{
-    display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:baseline;
+    display:grid;grid-template-columns:auto 1fr auto;gap:6px 14px;align-items:baseline;
     background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:13px 16px;
   }
   .goal .tag{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
   .goal .txt{font-size:14.5px}
-  .goal .mark{font-family:var(--f-mono);font-size:12.5px;font-weight:500;white-space:nowrap}
+  .goal .mark{font-family:var(--f-mono);font-size:12.5px;font-weight:600;white-space:nowrap}
+  /* 2026-10-09: 세부 수치를 한 줄(nowrap)로 우겨 넣어 읽기 힘들던 것 → 아래 줄에 항목별로 */
+  .goal .detail{grid-column:2 / 4;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:2px 0 0;font-size:13px;color:var(--muted)}
+  .goal .detail dt{font-family:var(--f-mono);font-size:12px;white-space:nowrap}
+  .goal .detail dd{margin:0;color:var(--ink,inherit)}
   .goal.ok{border-left:3px solid var(--l0)} .goal.ok .mark{color:var(--l0)}
   .goal.no{border-left:3px solid var(--l1)} .goal.no .mark{color:var(--l1)}
 
@@ -176,11 +180,11 @@
   <div class="stats">
     <div class="stat">
       <p class="k">분류 정확도 (5시드 평균, test 365, window 12 · 2551행 + 라벨 게이트 k=2/m=2)</p>
-      <p class="v">92~93% <small>Base 92.7 · EE Fixed 91.7 · EE Dyn 92.3 · SDN 91.9 · 단일 배포 최고 92.3</small></p>
+      <p class="v">92~93% <small>Baseline 92.7 · EE Fixed 91.7<br>EE Dynamic 92.3 · SDN 91.9<br>단일 배포 최고 92.3</small></p>
     </div>
     <div class="stat">
       <p class="k">추론 지연 (Raspberry Pi INT8)</p>
-      <p class="v">0.63 ms <small>EE Fixed θ · Baseline −28% · 전부 &lt;1ms</small></p>
+      <p class="v">0.63 ms <small>EE Fixed θ 기준<br>Baseline보다 −28% · 전부 &lt;1ms</small></p>
     </div>
     <div class="stat">
       <p class="k">라이브 감지</p>
@@ -192,12 +196,21 @@
     <div class="goal no">
       <span class="tag">목표 1</span>
       <span class="txt">Raspberry Pi 환경에서 혼잡 분류 정확도 <b>95% 이상</b></span>
-      <span class="mark">미달 ~3pt · EE 5시드 91.7~92.3 / 배포 92.3~92.9 / 단일 배포 최고 92.3 (k2m2 게이트로 L3 recall·F1은 전 모델 개선)</span>
+      <span class="mark">미달 ~3pt</span>
+      <dl class="detail">
+        <dt>EE 5시드 평균</dt><dd>91.7 ~ 92.3%</dd>
+        <dt>EE 배포 체크포인트</dt><dd>Fixed 92.3% · Dynamic 92.9%</dd>
+        <dt>단일 배포 최고</dt><dd>92.3% (SDN)</dd>
+        <dt>대신 좋아진 것</dt><dd>라벨 지속성 게이트(k2m2)로 심각(L3) recall·F1이 전 모델 개선</dd>
+      </dl>
     </div>
     <div class="goal ok">
       <span class="tag">목표 2</span>
       <span class="txt">추론 지연 <b>&lt; 1 ms</b></span>
-      <span class="mark">달성 · 0.58~0.86ms</span>
+      <span class="mark">달성</span>
+      <dl class="detail">
+        <dt>Pi INT8 평균</dt><dd>0.58 ~ 0.86 ms (EE가 Baseline보다 빠름)</dd>
+      </dl>
     </div>
   </div>
 

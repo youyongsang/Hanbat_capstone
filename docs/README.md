@@ -69,7 +69,7 @@
 
 | 문서 | 상태 |
 |---|---|
-| `congestion_label_criteria.{md,html}` | 옛 라벨 정의(가중합 4 sub-score 시절). `congestion_label_redesign.{md,html}`가 대체. 문서 전체 stale — 상단 배너 참고. |
+| `docs/yongsang/archive/congestion_label_criteria.{md,html}` | 옛 라벨 정의(가중합 4 sub-score 시절). `congestion_label_redesign.{md,html}`가 대체. 문서 전체 stale — 상단 배너 참고. |
 | `README_AP_V2.md` | 9-feature·가중합 시절. stale (내용은 redirect 스텁으로 축약됨). |
 | `dummy_data_spec.md` | 1학기, 시뮬레이터 데이터 전 임시 스펙. |
 | `docs/yongsang/result_text_analysis.md` | `yongsang` 브랜치 결과 분석. 이 브랜치와 무관. |
@@ -82,6 +82,6 @@
 ## HTML로 읽기 좋은 것
 
 브라우저로 열면 표·차트가 렌더된다:
-`system_overview.html` · `capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `sdn_comparison.html` · `model_results.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
+`system_overview.html` · `capstone2_vacation_summary.html` · `congestion_label_redesign.html` · `model_features.html` · `sdn_comparison.html` · `model_results.html` · `onnx_early_exit_redesign.html` · `ap_crash_analysis.html` · `archive/congestion_label_criteria.html`(archived) · `docs/capstone1_summary.html`(1학기)
 
 발행 아티팩트 (링크는 `.work-log/current.md`): "Class-Weight-Power Zero", "AP 혼잡 분류 모델 비교", "방학 개발 흐름".

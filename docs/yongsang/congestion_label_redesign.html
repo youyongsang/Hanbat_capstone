@@ -151,6 +151,12 @@
     <h1>혼잡 라벨 재설계 — 표준 앵커 + victim 프로브</h1>
     <p>2차 데이터(<code>ap_metrics_v2_redesign2</code>)의 <code>congestion_score</code> / <code>label</code> 정의와 그 근거. 옛 weighted-sum 정의(<code>congestion_label_criteria</code>)를 대체하는 <b>현행 정본</b>이다.</p>
     <div class="callout key"><span>▸</span><span><b>한 줄 요약</b> — 라벨 = <b>victim 프로브(경량 UDP 스트림)의 실측 QoS + AP 채널 상태</b>를 각각 국제 표준 문턱에 매핑한 뒤 <b><code>max</code>로 합친 값</b>. 모델 입력에서는 프로브 파생값과 <code>jitter_ms</code>/<code>latency_ms</code>를 빼서, 모델이 "재지 못하는 victim QoS를 채널 상태만으로 예측"하게 만든다.</span></div>
+    <div class="callout key"><span>★</span><span><b>2026-10-09 최신 상태</b>
+      <br>· <b>라벨 정의는 9/2 이후 그대로</b>(표준 앵커 · <code>max</code> · 실패=max · 지속성 게이트 k=2/m=2). 2.4GHz 24세션 배포 모델(9/28)과 5GHz 시연 모델(10/5, 80+40MHz)도 전부 이 정의로 재라벨해 학습했다.
+      <br>· <b>점유율 축이 세는 것</b>: Opal(siwifi 드라이버)의 채널 busy는 <b>AP가 아닌 기기가 보낸 시간</b>만 센다. 그래서 AP가 보내는 구간(다운링크 전체, 노트북 방향의 AP→노트북)의 혼잡은 점유율 축에 안 잡히고 지연·손실 축으로만 라벨에 들어간다(<code>downlink_blindspot.html</code>, 흐름도는 <code>final_model_24sess.html</code> §0). MT6000(mt76)은 busy에 AP 송신이 <b>포함</b>되므로, 넘어가면 점유율 축 정의(포함/제외)를 먼저 다시 정해야 한다.
+      <br>· <b>victim = 노트북</b>이라 노트북 위치가 라벨에 들어간다 — 노트북이 멀면(f4·f8) 지연·손실 원인 심각이 늘어 모델이 놓친다. 수집 때 배치(RSSI)를 기록한다.
+      <br>· §5 하이브리드 능동 프로브는 <b>9/23 보류</b>(실시간성), 새 AP는 <b>GL-MT6000 구매</b>(RISE 승인 대기, 10/14 전후) — 각 절 안내 참고.
+      <br>· 데모 정답 비교 패널(10/8)의 실시간 정답은 이 공식의 <b>점유율 축 단계</b>(40/55/75%)만 쓴다(업링크 시연에선 실측 라벨과 97~100% 같음).</span></div>
     <div class="callout"><span>ℹ</span><span>이 페이지는 정의·근거 중심. 세션별 캘리브레이션 로그·구현 순서·열린 항목 전체는 markdown 원본 <code>docs/yongsang/congestion_label_redesign.md</code>에 있다. 최신 수치는 <code>.work-log/current.md</code>.</span></div>
   </header>
 
@@ -191,13 +197,14 @@
   <section>
     <h2><span class="step">03</span> sub-score 표준 문턱 (앵커)</h2>
     <p class="lede">각 축을 4개 앵커에 piecewise-linear 매핑, <code>[0,1]</code> clamp. 구현: <code>collect_metrics.py</code>의 <code>ANCHORS</code> + <code>anchor_score()</code>.</p>
-    <div class="anchors"><span class="a0">경고 0.25</span><span class="a1">혼잡 0.50</span><span class="a2">심각 0.75</span><span class="a3">완전 1.0</span></div>
+    <div class="anchors"><span class="a0">경고 0.25</span><span class="a1">혼잡 0.50</span><span class="a2">심각 0.75</span><span class="a3">상한 1.0</span></div>
+    <p class="lede" style="font-size:.9rem">라벨은 <b>4단계뿐</b>이다 — 점수 &lt;0.25 정상 · &lt;0.50 경고 · &lt;0.75 혼잡 · <b>≥0.75 심각</b>. 표의 마지막 앵커("상한", 점수 1.0)는 라벨이 아니라 <b>점수가 1.0에서 멈추는 지점</b>이다(심각 앵커와 상한 사이를 직선으로 이어 0.75→1.0, 그 위는 1.0으로 자름). 그래서 예컨대 점유율 75% 이상이면 80%든 95%든 라벨은 모두 <b>심각</b>이고, 상한 값은 연속 점수(그래프·데모 점수)의 기울기에만 영향을 준다.</p>
 
     <h3>라벨 축 (4개) — <code>congestion_score = max(이 4개)</code></h3>
     <p class="lede">표준 원문 대조 완료 (2026-08-31). <b>심각(0.75) 앵커는 표준이 직접 지지</b>, 경고·혼잡 앵커는 Cisco Enterprise QoS voice 값 또는 그 아래 보간(정식 표준 아님).</p>
     <div class="tw">
     <table class="grid">
-      <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">완전</th><th>출처</th></tr></thead>
+      <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">상한(1.0)</th><th>출처</th></tr></thead>
       <tbody>
         <tr>
           <td><code>occupancy_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">채널 airtime %</span></td>
@@ -217,7 +224,7 @@
         <tr>
           <td><code>latency_score</code><br><span style="color:var(--ink-mute);font-size:0.9em">ping 편도 추정 = RTT/2</span></td>
           <td class="n">30ms</td><td class="n">60ms</td><td class="n">150ms</td><td class="n">400ms</td>
-          <td><b>심각 150ms · 완전 400ms</b>: ITU-T G.114 (편도 &lt;150 transparent / 150–400 acceptable-with-awareness / &gt;400 unacceptable). 30 / 60ms는 그 아래 보간. 앵커가 편도 규격이라 <code>calculate_scores</code>가 <code>latency_ms/2</code>를 넣는다</td>
+          <td><b>심각 150ms · 상한 400ms</b>: ITU-T G.114 (편도 &lt;150 transparent / 150–400 acceptable-with-awareness / &gt;400 unacceptable). 30 / 60ms는 그 아래 보간. 앵커가 편도 규격이라 <code>calculate_scores</code>가 <code>latency_ms/2</code>를 넣는다</td>
         </tr>
       </tbody>
     </table>
@@ -246,9 +253,9 @@
     <p class="lede"><code>정상 &lt; 0.25 · 경고 &lt; 0.50 · 혼잡 &lt; 0.75 · 심각 ≥ 0.75</code>. 60/60 = 대표 부하.</p>
     <div class="tw">
     <table class="grid">
-      <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">완전</th><th>idle</th><th>60/60 부하 (med → peak)</th><th>소패킷 부하 (med → peak)</th></tr></thead>
+      <thead><tr><th>축</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각</th><th class="n">상한(1.0)</th><th>idle</th><th>60/60 부하 (med → peak)</th><th>소패킷 부하 (med → peak)</th></tr></thead>
       <tbody>
-        <tr><td><b>occupancy</b> (%)</td><td class="n">40</td><td class="n">55</td><td class="n">75</td><td class="n">90</td><td>med 17 · <span class="lbl l0">정상</span></td><td>med 63 <span class="lbl l2">혼잡</span> → max 87 <span class="lbl l3">심각</span></td><td>med 77 <span class="lbl l3">심각</span> → max 90 <span class="lbl l3">완전</span></td></tr>
+        <tr><td><b>occupancy</b> (%)</td><td class="n">40</td><td class="n">55</td><td class="n">75</td><td class="n">90</td><td>med 17 · <span class="lbl l0">정상</span></td><td>med 63 <span class="lbl l2">혼잡</span> → max 87 <span class="lbl l3">심각</span></td><td>med 77 <span class="lbl l3">심각</span> → max 90 <span class="lbl l3">심각</span>(점수 1.0)</td></tr>
         <tr><td><b>probe jitter</b> (ms)</td><td class="n">20</td><td class="n">30</td><td class="n">50</td><td class="n">100</td><td>med 1 / max 3.5 · <span class="lbl l0">정상</span></td><td>med 6 → max 19 · <span class="lbl l0">정상</span> (앵커 안 건드림)</td><td>med 10 → max 11 · <span class="lbl l0">정상</span></td></tr>
         <tr><td><b>probe loss</b> (%)</td><td class="n">0.5</td><td class="n">1</td><td class="n">5</td><td class="n">10</td><td>0 · <span class="lbl l0">정상</span></td><td>med 0.27 <span class="lbl l0">정상</span> → max 7.4 <span class="lbl l3">심각</span></td><td>p90 4.3 <span class="lbl l2">혼잡</span> → max 8.2 <span class="lbl l3">심각</span></td></tr>
         <tr><td><b>latency</b> 편도=RTT/2 (ms)</td><td class="n">30</td><td class="n">60</td><td class="n">150</td><td class="n">400</td><td>RTT 3 → OW ~1.5 · <span class="lbl l0">정상</span></td><td>RTT med 53→OW 27 <span class="lbl l0">정상</span> · p90 186→OW 93 <span class="lbl l2">혼잡</span> · max 291→OW 146 <span class="lbl l2">혼잡</span>(심각 직전)</td><td>RTT med 146→OW 73 <span class="lbl l2">혼잡</span> → max 247→OW 124 <span class="lbl l2">혼잡</span></td></tr>
@@ -287,6 +294,8 @@ label = 0  if score &lt; 0.25       <span class="c"># 정상</span>
 
     <h3><code>max</code>가 놓치는 것 (알려진 단순화)</h3>
     <p class="lede">여러 축이 "어중간하게 나쁜"(다 0.6대) 경우 각각은 <span class="lbl l2">혼잡</span>에 머문다. 실제론 한 축만 0.8인 것보다 나쁠 수 있음. 대안(나중에): 비정규화 p-norm(p≈6, magic number 부담) 또는 app 축만 ITU-T <b>G.107 E-model(R-factor)</b>로 조합(정석, 무거움). 지금은 <code>max</code>로 시작.</p>
+
+    <p class="lede"><b>점유율 축이 못 보는 혼잡 (2026-09-26 확인)</b>: 점유율은 Opal이 들은 <b>다른 기기의 송신 시간</b>이라, AP 자신이 보내느라 채널이 차는 경우(다운링크, 노트북 방향의 AP→노트북)는 점유율 축이 낮게 나온다. 이때 혼잡은 victim의 지연·손실 축으로만 라벨에 잡힌다 — <code>max</code> 덕분에 라벨에선 놓치지 않지만, 모델 입력(점유율)으로는 안 보여 모델이 놓치는 주원인이다.</p>
 
     <h3>실패 = max</h3>
     <p class="lede">프로브·ping 타겟이 같은 무선 다운링크를 타므로, 채널이 심하게 포화되면 프로브 완료 불가 / ping 무응답이 된다. 원래는 이 축을 <code>0.0</code>으로 처리 → 라벨이 조용히 occupancy 단독으로 되돌아감(재설계 목적 훼손). 수정:</p>
@@ -423,9 +432,11 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
       <li><b>LSTM은 무의미해지지 않는다</b> — "전부 판단"에서 "92~97%는 직접 판단 + 확신도로 언제 프로브가 필요한지 결정하는 게이트키퍼"로 역할이 바뀔 뿐. 센서 1곳(좁은 시야)과 LSTM(AP 전체 station 종합, 넓은 시야)은 상호보완적 — capture effect처럼 센서 위치만 멀쩡하고 다른 station은 굶는 경우를 LSTM이 잡아냄.</li>
     </ul>
     <div class="callout key"><span>▸</span><span><b>"실시간" 주장과의 관계 — 목표2와 혼동 금지.</b> 목표2(추론 &lt;1ms)는 <b>LSTM 모델 자체의 추론 시간</b>에 대한 목표이지 최종 판단까지의 전체 시간이 아니다. 하이브리드를 얹어도 모델 계산 시간은 그대로 &lt;1ms. 프로브 트리거는 목표1(정확도)을 위해 극히 일부 순간(3.4%)에만 의도적으로 실시간성을 내려놓는 별개의 메커니즘이다 — "시스템은 실시간으로 동작한다"(❌ 오해 소지) 대신 <b>"모델 추론은 실시간을 유지하되, 애매한 3.4%는 의도적으로 실시간성을 희생하고 확인한다"</b>(✅)로 서술.</span></div>
+    <div class="callout"><span>⏸</span><span><b>2026-09-23 보류</b>: 프로브를 켜는 순간(~2초)이 목표2(&lt;1ms 실시간)와 맞지 않아 사용자 결정으로 낮은 우선순위로 내렸다. 아래 시뮬레이션 결과는 근거로 남기되 구현 계획은 없다.</span></div>
     <div class="callout"><span>ℹ</span><span><b>채택 범위</b>: 이 구조는 오프라인 시뮬레이션(실제 probe 정답값 + 5시드 재현)으로 검증된 <b>제안·향후 연구로 채택</b>한다. 실제 라이브 구현(프로브 컨트롤러 모듈, 협조기기 배치, 데모 연동)은 이번 학기 스코프 밖으로 보류 — 시뮬레이션만으로 충분히 방어 가능한 근거이고, 라이브 네트워크 작업은 예상 못 한 변수가 많으며(이번 세션의 "AP 크래시" 오판 사례 등), 남은 시간은 보고서 작성에 우선 배정. 상세·산출물: <code>.work-log/current.md</code> 25차 후속, <code>project/.tmp/exp_l3_threshold/probe_trigger_simulation.py</code>.</span></div>
 
     <h3>대안 경로: 새 AP 구매(per-station airtime) 재검토 <span style="font-weight:400;color:var(--ink-mute);font-size:0.85em;">(2026-09-14)</span></h3>
+    <div class="callout key"><span>★</span><span><b>2026-10-09 진행</b>: <b>GL-MT6000(Flint 2, MT7986A)</b>를 구매했다(1대, RISE 승인 대기·10/14 전후 도착 예상, 2호기는 구매 불가). OpenWrt 포럼 스레드 173524 <b>#3114</b>(순정 OpenWrt SNAPSHOT, 5GHz) 출력으로 station별 <code>tx/rx duration</code>·<code>airtime weight</code>·<code>expected throughput</code>, survey <code>busy/receive/BSS receive/transmit time</code>이 실제로 나오고 <b>busy ≈ receive + transmit(AP 송신 포함)</b>임을 확인 — 아래 "MT7981 지원 미확인"은 이걸로 갱신된다(2.4GHz 출력·GL 기본 펌웨어 지원은 미확인). 수집기에 airtime 컬럼 파서를 미리 넣어 두었다. 설정 절차: <code>mt6000_setup_guide.html</code>.</span></div>
     <p class="lede">하이브리드는 대가(센서 의존성+지연)를 치르고 얻은 개선이라 "공짜"가 아니다. 대가 없이 순수 패시브 정확도 자체를 올릴 수 있는 새 AP 카드는 여전히 유효한 대안 — 단 불확실성이 커서 우선순위는 하이브리드보다 낮다.</p>
     <ul>
       <li><b>per-station airtime이란</b>: 채널 전체 점유율·station 평균 재전송률은 "채널이 얼마나 바쁜가"만 알려주고 "어느 station이 밀리는가"는 모른다. per-station airtime은 <b>기기(MAC)별로 실제 전송 기회를 얼마나 받았는지 직접 재는 값</b> — capture effect(신호 강한 기기가 채널 독점, 약한 기기가 굶는 현상)를 추론이 아니라 직접 관측 가능하게 함. 굶는 정도가 심해지면 패킷이 드롭(=loss)되므로 기존 <code>sta_tx_bitrate_min</code>보다 loss와 더 직접 연결될 가능성. <b>feature 아이디어</b>: 같은 패턴으로 <code>sta_airtime_min</code>(연결된 station 중 최솟값) 추가 — 미검증, 향후 연구.</li>
@@ -518,7 +529,7 @@ sta_tx_bitrate_mean        <span class="c">← 2026-08-29 추가 (6→7)</span><
     <span>정본(코드): <code>project/scripts/collect_metrics.py</code> <code>calculate_scores()</code> / <code>ANCHORS</code> · feature: <code>project/utils/ap_features.py</code></span>
     <span>feature 상세: <code>docs/yongsang/model_features.{md,html}</code> · 최신 수치: <code>.work-log/current.md</code></span>
     <span>앵커 근거: ITU-T Y.1541 (jitter/loss 클래스) · ITU-T G.114 (편도 지연) · Cisco Enterprise QoS SRND (voice) · Aruba WLAN 설계 가이드 (channel utilization) · ITU-T G.107 E-model (§4 대안). 원문 대조 2026-08-31</span>
-    <span>markdown 원본(전체 로그): <code>docs/yongsang/congestion_label_redesign.md</code> · 옛 정의: <code>congestion_label_criteria.{md,html}</code> (archived)</span>
+    <span>markdown 원본(전체 로그): <code>docs/yongsang/congestion_label_redesign.md</code> · 옛 정의: <code>archive/congestion_label_criteria.{md,html}</code> (archived)</span>
   </footer>
 
 </main>
