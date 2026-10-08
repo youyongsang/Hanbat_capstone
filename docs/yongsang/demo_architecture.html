@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데모 사이트 구조</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b;
+  --b24:#c56a1c; --b5:#2a78d6; --wire:#5b6577; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767;
+  --b24:#e08a42; --b5:#5a9cf0; --wire:#9aa3b2; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767;
+  --b24:#e08a42; --b5:#5a9cf0; --wire:#9aa3b2; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:980px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:70ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:74ch; } p { margin:.4rem 0 .9rem; } ul, ol { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+pre { background:var(--panel); border:1px solid var(--rule); border-radius:6px; padding:.7rem .9rem; overflow-x:auto; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.82rem; line-height:1.5; margin:.5rem 0 1rem; }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.35rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.warn { border-left-color:var(--warn); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.b24 { color:var(--b24); } .pill.b5 { color:var(--b5); } .pill.good { color:var(--good); } .pill.warn { color:var(--warn); }
+figure.dia { margin:1rem 0 1.2rem; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.8rem .8rem .5rem; }
+figure.dia figcaption { font-size:.86rem; font-weight:600; margin:0 0 .4rem .2rem; }
+figure.dia svg { width:100%; height:auto; display:block; }
+.dia .box { fill:var(--panel); stroke:var(--rule2); stroke-width:1.2; }
+.dia .box.ap { stroke:var(--ink2); stroke-width:1.6; }
+.dia .t { fill:var(--ink); font-size:13px; font-weight:600; font-family:"IBM Plex Sans KR",sans-serif; }
+.dia .s { fill:var(--ink2); font-size:11px; font-family:"IBM Plex Sans KR",sans-serif; }
+.dia .m { fill:var(--mute); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.dia .w24 { stroke:var(--b24); stroke-width:2.2; fill:none; stroke-dasharray:6 4; }
+.dia .w5 { stroke:var(--b5); stroke-width:2.2; fill:none; stroke-dasharray:6 4; }
+.dia .wire { stroke:var(--wire); stroke-width:2.6; fill:none; }
+.dia .ctl { stroke:var(--mute); stroke-width:1.3; fill:none; stroke-dasharray:2 3; }
+.dia .l24 { fill:var(--b24); font-size:11px; font-weight:600; font-family:"IBM Plex Sans KR",sans-serif; }
+.dia .l5 { fill:var(--b5); font-size:11px; font-weight:600; font-family:"IBM Plex Sans KR",sans-serif; }
+.dia .lw { fill:var(--wire); font-size:11px; font-weight:600; font-family:"IBM Plex Sans KR",sans-serif; }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.2rem; font-size:.84rem; color:var(--ink2); margin:.3rem .2rem 0; }
+.legend i { display:inline-block; width:22px; height:0; border-top:2.5px dashed; margin-right:.35rem; vertical-align:middle; }
+.steps { display:grid; gap:.5rem; margin:.8rem 0 1rem; counter-reset:st; }
+.step { display:grid; grid-template-columns:2rem minmax(0,1fr); gap:.6rem; align-items:start; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.6rem .8rem; }
+.step::before { counter-increment:st; content:counter(st); font-family:"IBM Plex Mono",monospace; font-weight:600; color:var(--accent); font-size:.95rem; }
+.step b { font-weight:600; } .step .d { color:var(--ink2); font-size:.9rem; }
+.toc { display:flex; flex-wrap:wrap; gap:.35rem .9rem; font-size:.88rem; margin:0 0 1rem; }
+.toc a { color:var(--ink2); }
+a { color:var(--accent); }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+</style>
+</head>
+<body>
+<main>
+<p class="eyebrow">Demo architecture · 2026-10-08</p>
+<h1>데모 사이트 구조</h1>
+<p class="lead">공유기(AP)가 보는 정보만으로 AI가 와이파이 혼잡을 실시간 판단하고, 2.4GHz가 막히면 5GHz로 옮겼을 때 어떻게 달라지는지 한 화면에서 보여 주는 시연 사이트다. 이 문서는 무엇이 어디서 돌고, 데이터가 어떻게 흐르고, 왜 이렇게 설계했는지를 정리한다.</p>
+
+<nav class="toc">
+  <a href="#overview">1. 한눈에</a><a href="#topo">2. 구성 요소</a><a href="#flow">3. 데이터 흐름</a><a href="#server">4. 서버 모듈</a>
+  <a href="#api">5. API·SSE</a><a href="#models">6. 대역별 모델</a><a href="#ui">7. 화면</a><a href="#run">8. 실행</a>
+  <a href="#why">9. 설계 결정</a><a href="#rehearsal">10. 리허설 결과</a><a href="#limits">11. 한계·다음</a><a href="#files">12. 파일</a>
+</nav>
+
+<section id="overview">
+<h2>1. 한눈에</h2>
+<div class="kpis">
+  <div class="kpi"><b>2개 화면</b><span><code>demo.html</code> 한 대역 화면 · <code>demo_dual.html</code> 2.4GHz·5GHz 비교 화면</span></div>
+  <div class="kpi"><b>서버 2개</b><span>대역마다 하나: 2.4GHz <code>:8000</code> · 5GHz <code>:8001</code> (같은 코드, <code>--band</code>만 다름)</span></div>
+  <div class="kpi"><b>&lt; 1 ms</b><span>추론 1회 (ONNX INT8 Early Exit, Pi 실측 0.58~0.69 ms)</span></div>
+  <div class="kpi"><b>폰당 30M</b><span>시연 부하: 2.4GHz 심각 92% vs 5GHz 경고 92% (10-06 리허설)</span></div>
+</div>
+<p>시연 흐름은 세 단계다.</p>
+<ol>
+  <li><b>2.4GHz에서 혼잡 만들기</b> — 관객이 버튼을 누르면 폰 두 대가 실제로 데이터를 보낸다. 왼쪽 칸이 혼잡·심각으로 오르고 "다른 대역으로 옮겨야 해요" 경보가 뜬다.</li>
+  <li><b>5GHz로 옮기기</b> — 시연자가 폰의 와이파이를 5GHz 이름으로 바꾼다(실제 현장에선 AP의 밴드 스티어링이 자동으로). 화면이 폰 위치를 스스로 찾는다.</li>
+  <li><b>같은 부하 다시 걸기</b> — 오른쪽 5GHz 칸은 같은 양에도 정상~경고에 머문다.</li>
+</ol>
+<div class="callout"><p><b>모델이 보는 것은 AP 텔레메트리 7개뿐이다</b>(처리량·점유율·재전송·RSSI 3종·전송 속도). 정답 라벨을 만들 때 쓴 victim 프로브·ping은 시연 중엔 없다 — 그래서 "공유기 정보만으로 판단"이라는 서사가 성립한다.</p></div>
+</section>
+
+<section id="topo">
+<h2>2. 구성 요소</h2>
+<figure class="dia">
+<figcaption>기기 배치와 연결 (비교 화면 시연 기준)</figcaption>
+<svg viewBox="0 0 900 430" role="img" aria-label="노트북, AP, 폰 두 대, 유선 Pi의 연결 구조">
+  <!-- AP -->
+  <rect class="box ap" x="350" y="150" width="200" height="120" rx="8"/>
+  <text class="t" x="450" y="178" text-anchor="middle">AP · GL.iNet Opal</text>
+  <text class="s" x="450" y="198" text-anchor="middle">192.168.8.1 (OpenWrt)</text>
+  <text class="l24" x="450" y="222" text-anchor="middle">wlan0 · 2.4GHz ch1 · 40MHz</text>
+  <text class="l5" x="450" y="242" text-anchor="middle">wlan1 · 5GHz ch36 · 40MHz</text>
+  <text class="m" x="450" y="260" text-anchor="middle">iw station/survey dump</text>
+  <!-- phones -->
+  <rect class="box" x="20" y="40" width="230" height="90" rx="8"/>
+  <text class="t" x="135" y="66" text-anchor="middle">폰 S21 · S26 (부하)</text>
+  <text class="s" x="135" y="86" text-anchor="middle">Termux sshd + iperf3 클라이언트</text>
+  <text class="m" x="135" y="104" text-anchor="middle">2.4G s21g/s26g · 5G s21/s26</text>
+  <text class="s" x="135" y="121" text-anchor="middle">대역은 손으로 바꿈</text>
+  <!-- Pi -->
+  <rect class="box" x="680" y="40" width="200" height="90" rx="8"/>
+  <text class="t" x="780" y="66" text-anchor="middle">라즈베리 파이 (유선)</text>
+  <text class="s" x="780" y="86" text-anchor="middle">192.168.8.109</text>
+  <text class="m" x="780" y="104" text-anchor="middle">iperf3 -s 5211 / 5212</text>
+  <text class="s" x="780" y="121" text-anchor="middle">부하를 받는 쪽 (업링크 싱크)</text>
+  <!-- laptop -->
+  <rect class="box" x="20" y="300" width="330" height="115" rx="8"/>
+  <text class="t" x="185" y="326" text-anchor="middle">노트북 (어느 대역이든 무방)</text>
+  <text class="m" x="185" y="346" text-anchor="middle">demo_server --band 24g  :8000</text>
+  <text class="m" x="185" y="363" text-anchor="middle">demo_server --band 5g   :8001</text>
+  <text class="s" x="185" y="383" text-anchor="middle">브라우저 localhost:8000/dual</text>
+  <text class="s" x="185" y="401" text-anchor="middle">모델·스케일러·전환 판단·SSE</text>
+  <!-- browser audience -->
+  <rect class="box" x="560" y="320" width="320" height="80" rx="8"/>
+  <text class="t" x="720" y="346" text-anchor="middle">관객 화면 (프로젝터)</text>
+  <text class="s" x="720" y="366" text-anchor="middle">좌: 2.4GHz · 우: 5GHz · 아래: 부하 버튼</text>
+  <text class="s" x="720" y="384" text-anchor="middle">오른쪽 날개 → 정답 비교 패널</text>
+  <!-- wireless phone-AP -->
+  <path class="w24" d="M230 130 C 270 170, 305 190, 352 200"/>
+  <path class="w5" d="M195 130 C 240 200, 295 230, 352 240"/>
+  <text class="l24" x="272" y="146">2.4GHz (처음)</text>
+  <text class="l5" x="222" y="218" text-anchor="end">5GHz (옮긴 뒤)</text>
+  <!-- wired AP-Pi -->
+  <path class="wire" d="M550 200 C 620 180, 680 150, 740 130"/>
+  <text class="lw" x="640" y="206">유선 LAN</text>
+  <!-- load arrow label -->
+  <text class="m" x="450" y="128" text-anchor="middle">부하: 폰 → AP → Pi (업링크, iperf3 UDP 1400B)</text>
+  <!-- control: laptop to AP and phones via SSH -->
+  <path class="ctl" d="M250 300 C 300 280, 330 270, 360 266"/>
+  <path class="ctl" d="M90 300 C 80 240, 85 180, 100 130"/>
+  <text class="m" x="372" y="292">SSH 폴링 ~0.5~1초</text>
+  <text class="m" x="98" y="262">SSH: iperf3 시작/정지</text>
+  <!-- laptop to screen -->
+  <path class="ctl" d="M350 360 L 560 360"/>
+  <text class="m" x="455" y="352" text-anchor="middle">HDMI / 같은 브라우저</text>
+</svg>
+<div class="legend"><span><i style="border-color:var(--b24)"></i>2.4GHz 무선</span><span><i style="border-color:var(--b5)"></i>5GHz 무선</span>
+  <span><i style="border-top-style:solid;border-color:var(--wire)"></i>유선</span><span><i style="border-top-style:dotted;border-color:var(--mute)"></i>관리용 SSH·화면</span></div>
+</figure>
+<div class="tw"><table>
+  <thead><tr><th>기기</th><th>역할</th><th>주소·이름</th></tr></thead>
+  <tbody>
+    <tr><td>AP · GL.iNet Opal (GL-SFT1200)</td><td>측정 대상. 두 대역을 동시에 켜 둔다. 서버가 SSH로 <code>iw station dump</code>·<code>survey dump</code>를 폴링</td><td><code>192.168.8.1</code> · 2.4GHz <code>GL-SFT1200-a08</code> / 5GHz <code>GL-SFT1200-a08-5G</code></td></tr>
+    <tr><td>폰 S21 · S26</td><td>부하 생성기. 서버가 SSH로 <code>iperf3 -u -c Pi</code>를 시작/정지</td><td>2.4GHz <code>s21g</code>(.191)·<code>s26g</code>(.103) / 5GHz <code>s21</code>(.221)·<code>s26</code>(.177) — <code>~/.ssh/config</code></td></tr>
+    <tr><td>라즈베리 파이 (유선)</td><td>부하를 받는 쪽(업링크 싱크). 엣지 추론 지연 측정 장비이기도 함</td><td><code>192.168.8.109</code> · iperf3 서버 5211/5212</td></tr>
+    <tr><td>노트북</td><td>데모 서버 2개 실행 + 브라우저. 어느 대역에 붙어 있어도 결과에 영향 없음</td><td><code>192.168.8.226</code></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="flow">
+<h2>3. 데이터 흐름</h2>
+<h3>3-1. 추론 루프 (서버마다, 매 폴링)</h3>
+<div class="steps">
+  <div class="step"><div><b>AP 폴링</b> <span class="d">— 지속 SSH(<code>APPoller</code>, <code>collect_metrics.py</code> 재사용)로 자기 대역 인터페이스(<code>wlan0</code> 또는 <code>wlan1</code>)를 약 0.5~1초마다 읽는다. 15초 넘게 응답이 없을 때만 "AP 응답 없음"을 띄운다.</span></div></div>
+  <div class="step"><div><b>7-feature 계산</b> <span class="d">— 처리량(rx+tx 바이트 증가분), 점유율(survey busy/active, 3폴링 중앙값), 재전송 비율(최근 5폴링), RSSI·RSSI 변화·RSSI 5폴링 평균, 송신 중인 기기의 tx bitrate 평균. 수집기와 같은 식.</span></div></div>
+  <div class="step"><div><b>정규화 → 창 12</b> <span class="d">— 대역별 스케일러(min-max)로 0~1, 최근 12폴링을 한 창으로 묶는다. 창이 차기 전엔 "측정 준비 중".</span></div></div>
+  <div class="step"><div><b>ONNX INT8 Early Exit 추론</b> <span class="d">— unified 그래프(<code>If</code> 노드) 한 번 호출. 확신이 충분하면 1·2번째 출구에서 일찍 끝난다. 출력: 4단계 확률 + 출구 번호.</span></div></div>
+  <div class="step"><div><b>후처리</b> <span class="d">— 원시 판정(<code>raw_label</code>)은 그대로 두고, 화면 표시용으로만 같은 단계가 연속될 때 바꾼다(서버 5폴링, 비교 화면 3폴링). 전환 판단기(<code>SwitchAdvisor</code>)는 최근 3폴링 중 2번 심각이면 "전환 필요"를 켜고 30폴링 동안 심각이 없으면 끈다. 다운링크 우세(처리량 많은데 점유율 낮음)면 "판단 불확실" 표시.</span></div></div>
+  <div class="step"><div><b>SSE 방송</b> <span class="d">— 상태 JSON을 <code>/events</code>로 모든 브라우저에 보낸다. 정답 비교용 <code>truth</code>도 같이 싣는다.</span></div></div>
+</div>
+<h3>3-2. 부하 (버튼 → 폰)</h3>
+<pre>브라우저 버튼(폰당 10/20/30/40M)
+  → POST /load {phone, rate, packet_size:1400, duration_s:60}   ※ 폰이 붙은 대역의 서버로
+  → 서버: ssh &lt;폰&gt; "pkill iperf3; nohup iperf3 -u -c 192.168.8.109 -p 5211|5212 -b 30M -l 1400 -t 65 &amp;"
+  → 60초 뒤 서버 타이머가 정지 (iperf3 -t 65 는 이중 안전장치)
+  → SSE load 필드로 화면 버튼 상태 동기화</pre>
+<h3>3-3. 폰 위치 찾기 (비교 화면)</h3>
+<p>비교 화면이 4초마다 두 서버의 <code>/check</code>를 부른다. 각 서버는 자기 대역 SSH 이름(<code>s21g</code> 또는 <code>s21</code>)으로 폰에 접속을 시도하므로, 응답이 오는 쪽이 그 폰의 현재 대역이다. 어느 쪽도 응답이 없으면 "연결 안 됨"으로 버튼을 끈다.</p>
+<h3>3-4. 정답 비교 (패널)</h3>
+<p>서버가 SSE에 <code>truth</code>와 <code>truth_src</code>를 싣는다. 패널은 <code>truth</code>와 모델 원시 판정 <code>raw_label</code>을 같은 순간끼리 비교해 일치율과 색 띠를 그린다.</p>
+<div class="tw"><table>
+  <thead><tr><th><code>truth_src</code></th><th>정답의 출처</th><th>언제</th></tr></thead>
+  <tbody>
+    <tr><td><code>occupancy</code> (A안, 현재)</td><td>라벨 공식의 점유율 축(40/55/75%)으로 낸 단계</td><td>실시간. 업링크에선 정답 라벨의 95~100%가 점유율 원인이라 실측에 가깝다</td></tr>
+    <tr><td><code>csv</code></td><td>수집 때 victim 프로브로 잰 실측 라벨</td><td>재생 모드(<code>--replay</code>)</td></tr>
+    <tr><td><code>probe</code> (B안, 예정)</td><td>시연 중 victim 프로브 실측 (학습 라벨과 같은 정의)</td><td>대역마다 victim 기기 1대 필요 (§11)</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="server">
+<h2>4. 서버 모듈</h2>
+<div class="tw"><table>
+  <thead><tr><th>파일</th><th>하는 일</th></tr></thead>
+  <tbody>
+    <tr><td><code>project/demo/demo_server.py</code></td><td>진입점. 인자 파싱은 <code>demo_state</code>에 맡기고 추론 스레드 시작 + HTTP 서버 구동</td></tr>
+    <tr><td><code>demo_state.py</code></td><td>설정·공유 상태. <code>--band</code>를 <code>collect_metrics</code> import 전에 읽어 <code>AP_INTERFACE</code>(wlan0/wlan1)를 정하고 대역별 모델·스케일러 기본 경로를 고른다</td></tr>
+    <tr><td><code>demo_inference.py</code></td><td>추론 루프(§3-1), 재생 모드 루프, <code>occ_label()</code>(정답 A안), 빈 대역 "대기" 처리</td></tr>
+    <tr><td><code>demo_load.py</code></td><td>폰 부하 시작/정지(SSH + iperf3), 60초 타이머, <code>/check</code> 연결 확인, 폰 신호 세기</td></tr>
+    <tr><td><code>demo_api.py</code></td><td>HTTP 라우팅: <code>/</code>, <code>/dual</code>, <code>/events</code>, <code>/load</code>, <code>/check</code>, <code>/health</code>, <code>/signal</code>, 글꼴 파일. 모든 응답에 CORS 허용(비교 화면이 다른 포트 서버를 부르기 때문)</td></tr>
+    <tr><td><code>project/scripts/switch_advisor.py</code></td><td>채널 전환 판단(사건 단위) + 전환 후보 문자열(실행은 안 함). <code>band="5g"</code>면 5GHz 채널 후보</td></tr>
+    <tr><td><code>project/scripts/collect_metrics.py</code></td><td><code>APPoller</code>·파서·feature 계산을 데모가 재사용 (수집과 같은 식이어야 학습과 맞는다)</td></tr>
+    <tr><td><code>project/demo/run_dual_demo.sh</code></td><td>Pi iperf3 서버 기동 + 서버 두 개 + 브라우저 열기 / <code>stop</code></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="api">
+<h2>5. API · SSE</h2>
+<div class="tw"><table>
+  <thead><tr><th>엔드포인트</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr><td><code>GET /</code></td><td>한 대역 화면 <code>demo.html</code></td></tr>
+    <tr><td><code>GET /dual</code></td><td>비교 화면 <code>demo_dual.html</code> (2.4GHz 서버에서 연다. 5GHz 서버 포트는 <code>?p5=8001</code>로 바꿀 수 있음)</td></tr>
+    <tr><td><code>GET /events</code></td><td>SSE 실시간 상태 (폴링마다 1건, 15초마다 keep-alive)</td></tr>
+    <tr><td><code>POST /load</code></td><td><code>{phone:"s21"|"s26", rate:"10M"~"40M"|"off", packet_size:1400|200, duration_s:10~60}</code></td></tr>
+    <tr><td><code>GET /check</code></td><td><code>{pi, ap, s21, s26, all_ok}</code> — 이 서버의 대역 기준 연결 확인</td></tr>
+    <tr><td><code>GET /health</code> · <code>/signal</code></td><td>추론 준비 여부 · 폰 신호 세기</td></tr>
+    <tr><td><code>OPTIONS *</code></td><td>CORS 사전 요청(204). 모든 응답에 <code>Access-Control-Allow-Origin: *</code></td></tr>
+  </tbody>
+</table></div>
+<h3>SSE 상태 JSON (준비됨)</h3>
+<div class="tw"><table>
+  <thead><tr><th>필드</th><th>뜻</th></tr></thead>
+  <tbody>
+    <tr><td><code>raw_label</code> · <code>probs</code> · <code>exit</code></td><td>모델 원시 판정(0~3), 4단계 확률, Early Exit 출구(1~3). <b>정확도는 이 값 기준</b></td></tr>
+    <tr><td><code>label</code></td><td>표시용 안정화 단계(연속 확정). 모델·평가에는 없음</td></tr>
+    <tr><td><code>features</code> · <code>clients</code></td><td>7-feature 원시값, 이 대역 접속 기기 수(노트북 포함)</td></tr>
+    <tr><td><code>load</code></td><td>이 서버가 건 폰별 부하 <code>{rate, packet_size}</code></td></tr>
+    <tr><td><code>switch_active</code> · <code>downlink</code> · <code>persist_sent</code> · <code>events</code> · <code>new_events</code></td><td>전환 경보 진행 여부, 다운링크 우세(판단 불확실), 심각 지속 알림, 최근 알림 목록</td></tr>
+    <tr><td><code>band</code></td><td><code>"24g"</code> / <code>"5g"</code></td></tr>
+    <tr><td><code>truth</code> · <code>truth_src</code></td><td>정답 비교용 정답 단계와 출처(§3-4)</td></tr>
+    <tr><td><code>replay</code></td><td>재생 모드면 재생 중인 파일 이름</td></tr>
+  </tbody>
+</table></div>
+<p>준비 안 됨(<code>ready:false</code>)일 때는 <code>msg</code>로 이유를 준다: "창 채우는 중 n/12", "AP 응답 없음", "이 대역에 접속한 기기 없음 · 대기".</p>
+</section>
+
+<section id="models">
+<h2>6. 대역별 모델</h2>
+<div class="tw"><table>
+  <thead><tr><th>대역</th><th>모델 (ONNX unified INT8 v2)</th><th>학습 데이터</th><th>스케일러</th><th>처음 보는 세션 성능 (업링크)</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill b24">2.4GHz</span> <code>--band 24g</code></td><td><code>checkpoints/ap_v2_redesign2_24sess_20260928/selected/</code></td><td>24세션(8/28·9/1·g1~g5·h1~h18, 방향 5종)</td><td>캐노니컬 <code>data/ap_metrics_v2_redesign2/scaler_params.json</code></td><td>h13 EE 정확도 96%</td></tr>
+    <tr><td><span class="pill b5">5GHz</span> <code>--band 5g</code></td><td><code>checkpoints/ap_v2_5g_mixed_20261005/selected/</code></td><td>11세션: 80MHz(9/19 대량·f1~f4) + 40MHz(w40test·f5~f9)</td><td>5GHz 전용 (같은 폴더)</td><td>f1 96~99% · f7 89% · f9 92~97% (7세션 LOSO 평균 92%)</td></tr>
+  </tbody>
+</table></div>
+<p>구조는 두 대역 모두 같다: 3층 LSTM(hidden 128), 7-feature, 창 12, 출구 3개, 고정 임계 θ=0.3/0.6. Pi INT8 추론 0.58~0.69 ms(2.4GHz 24세션 기준, 목표 &lt;1 ms).</p>
+</section>
+
+<section id="ui">
+<h2>7. 화면</h2>
+<div class="tw"><table>
+  <thead><tr><th>화면</th><th>구성</th><th>모드</th></tr></thead>
+  <tbody>
+    <tr><td><code>demo.html</code> (<code>/</code>)</td><td>한 대역. 상태 문장·혼잡 점수·4단계 띠·기기 2대 부하(패킷 크기·시간 조절)·60초 그래프</td><td>실시간 / 재생(<code>--replay</code>) / 연습(<code>#sim</code>)</td></tr>
+    <tr><td><code>demo_dual.html</code> (<code>/dual</code>)</td><td>좌 2.4GHz · 우 5GHz 칸(상태·점수·90초 그래프·점유율·보내는 양·폰 수), 가운데 전환 화살표, 아래 공용 부하 줄(폰 대역 자동 표시). 오른쪽 <b>날개</b>를 누르면 정답 비교 패널(최근 60초·누적·±1단계 일치율, 정답/예측 색 띠, 틀린 유형)</td><td>실시간 / 재생 / 연습(<code>#sim</code>, <code>#auto</code> 자동 재생, <code>#drawer</code> 패널 열린 채)</td></tr>
+  </tbody>
+</table></div>
+<p>점수는 모델이 고른 단계 구간(0.25 폭) 안에서 위·아래 단계 확률로 위치를 정한다 — 단계 문장과 점수가 어긋나지 않게. 1536×864(노트북)·1280×720(작은 프로젝터)에서 스크롤 없이 한 화면에 들어간다. 글꼴·아이콘은 <code>assets_taste/</code>에 내장(오프라인 랩실에서도 동작).</p>
+</section>
+
+<section id="run">
+<h2>8. 실행</h2>
+<pre># 비교 화면 (시연) — Pi iperf3 기동 + 서버 2개 + 브라우저 http://localhost:8000/dual
+bash project/demo/run_dual_demo.sh
+bash project/demo/run_dual_demo.sh stop
+
+# 한 대역 화면
+python project/demo/demo_server.py                 # 2.4GHz, 부하 대상 노트북(기본)
+python project/demo/demo_server.py --band 5g       # 5GHz
+
+# AP 없이 재생 (화면 점검·예비 시연)
+python project/demo/demo_server.py --band 24g --port 8000 --replay &lt;세션.csv&gt; --no-iperf-server
+python project/demo/demo_server.py --band 5g  --port 8001 --replay &lt;세션.csv&gt; --no-iperf-server</pre>
+<p>전제: AP 두 대역 켜짐(5GHz <b>40MHz</b>), Pi 유선 연결, 폰 Termux sshd. 폰은 시연 때 AP 가까이(5GHz 신호 −45 dBm 이내). 수동 확인용 연습 모드는 서버 없이 <code>project/demo/demo_dual.html</code>을 파일로 열면 된다.</p>
+</section>
+
+<section id="why">
+<h2>9. 설계 결정과 이유</h2>
+<div class="tw"><table>
+  <thead><tr><th>결정</th><th>이유</th></tr></thead>
+  <tbody>
+    <tr><td><b>부하 = 업링크</b> (폰 → AP → 유선 Pi)</td><td>노트북이 받으면 폰을 5GHz로 옮겨도 AP→노트북 구간이 노트북 대역(2.4GHz)에 남는데, Opal 점유율엔 AP 자신의 송신이 빠져 2.4GHz가 "여유"로 보이는 착시가 생긴다. Pi는 유선이라 부하가 폰이 붙은 대역에만 실린다. 또 업링크는 모델이 가장 잘 보는 부하(정답의 95~100%가 점유율 원인)다. 노트북 방향 데이터는 학습에 그대로 있다.</td></tr>
+    <tr><td><b>5GHz 40MHz</b></td><td>80MHz면 폰 두 대(폰당 70M, 80M이면 AP CPU 크래시)로 점유율이 41%를 못 넘어 화면이 안 오른다. 2.4GHz도 HT40이라 같은 폭 비교가 공정하고, 5GHz 모델이 40MHz 데이터로 학습돼 조건이 맞는다.</td></tr>
+    <tr><td><b>서버 두 개</b></td><td>AP는 두 대역을 동시에 켜 둔다. 대역마다 서버를 두면 코드는 그대로(<code>--band</code>만) 쓰고 서버 재시작 없이 두 대역을 동시에 보여 준다.</td></tr>
+    <tr><td><b>폰은 손으로 옮김</b></td><td>Android는 앱이 와이파이 네트워크를 바꾸기 어렵고, Opal은 두 대역 SSID가 달라 AP 쪽 자동 이동(802.11v 밴드 스티어링)도 잘 안 된다. 시스템은 원래 "전환 후보를 제시하고 실행은 하지 않는다"로 설계됐다(Opal 불안정). 현장 자동화는 AP 표준 기능(같은 대역 채널 이동 = 802.11h CSA, 다른 대역 = 밴드 스티어링)이 맡는다.</td></tr>
+    <tr><td><b>정답 A안(점유율 축)</b></td><td>실측 정답(victim 프로브)은 victim이 그 대역에 붙어 있어야 해서 두 대역 동시 표시엔 victim 2대가 필요하다. 업링크에선 점유율 축이 실측과 97~100% 같다. 패널은 <code>truth_src</code>로 B안을 그대로 받게 만들어 두었다.</td></tr>
+    <tr><td>"AP 응답 없음" 15초</td><td>부하 중 폴링이 몇 초 늦어지는 것만으로 6초 기준에 걸려 10번 깜빡였다 → 15초로 늘리고 0번.</td></tr>
+  </tbody>
+</table></div>
+<p>부하 방향 다섯 가지(노트북·폰↔폰·업링크·다운링크·혼합)를 흐름도로 비교한 그림은 <a href="final_model_24sess.html">final_model_24sess.html</a> §0 "흐름도" — 어느 구간이 점유율에 잡히고 어느 구간이 안 잡히는지 색으로 구분했다.</p>
+</section>
+
+<section id="rehearsal">
+<h2>10. 리허설 결과 (2026-10-06, 집, 폰당 30M 60초)</h2>
+<div class="tw"><table>
+  <thead><tr><th>구성</th><th>2.4GHz 표시</th><th>5GHz 표시</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr><td>부하 대상 노트북, 폰 5GHz −52/−54 dBm</td><td>혼잡 65% · 점유율 66%</td><td>혼잡 65% · 경고 34% · 점유율 57%</td><td>대비 약함, AP 응답 없음 10회 — 착시 발견</td></tr>
+    <tr><td><b>부하 대상 Pi, 폰 AP 가까이</b></td><td><b>심각 92%</b> · 점유율 80% · 전환 경보 15초 만에</td><td><b>경고 92%</b> · 점유율 48% · 경보 0</td><td>깜빡임 0, 모델 = 점유율 기준 90%/97%</td></tr>
+  </tbody>
+</table></div>
+<p>학교는 2.4GHz 배경 점유율이 높아(랩실 idle 45~50%) 같은 30M에도 심각이 더 쉽게 날 것으로 본다. 반대로 5GHz는 거리에 민감해서 폰을 멀리 두면 점유율이 올라간다.</p>
+</section>
+
+<section id="limits">
+<h2>11. 한계와 다음</h2>
+<ul>
+  <li><b>다운링크는 약하다</b> — Opal 점유율이 AP 자신의 송신을 빼서 다운링크 혼잡이 안 보인다(다운링크 심각 recall 0~7%). 화면은 "판단 불확실"을 띄운다. 데모 부하엔 다운링크 방향(<code>iperf3 -R</code>)을 아직 안 넣었다.</li>
+  <li><b>정답 B안</b> — 2.4GHz victim(노트북) + 5GHz victim(3번째 기기) + Pi 프로브 에이전트 + 서버 정답 계산(앵커·max·실패=max·k2m2). 폰을 victim으로 쓰면 와이파이 절전 때문에 노트북 victim과 수치가 다를 수 있어 먼저 나란히 비교 시험(라벨 일치 90% 이상이면 사용).</li>
+  <li><b>노트북은 부하 경로 밖이어도 정답·입력에 들어간다</b> — 수집 때 정답의 손실·지연·지터 축은 Pi가 <b>노트북</b>에 보낸 victim 프로브·ping으로 쟀다(모든 부하 방향 공통, 노트북 위치가 라벨에 반영). 모델 입력도 AP에 붙은 기기 전체 기준이라 RSSI 3종은 노트북 포함 평균이고, 전송 속도·재전송 비율엔 AP가 노트북에 보낸 victim 스트림 몫이 섞인다 — 학습 땐 노트북이 늘 그 대역에서 victim 스트림을 받고 있었다. 시연엔 victim 스트림이 없고 노트북은 한 대역에만 붙으므로, 다른 대역은 "노트북 없이 폰만"인 학습과 조금 다른 조건이 된다(10-06 리허설에선 점유율 기준 일치 90%/97%로 문제는 안 보임). B안(대역마다 victim 기기)을 하면 정답이 실측이 될 뿐 아니라 이 입력 조건도 학습과 같아진다. 흐름도는 <a href="final_model_24sess.html">final_model_24sess.html</a> §0.</li>
+  <li><b>AP 크래시</b> — 폰당 80M 이상, 또는 신호가 크게 비대칭이면 위험(<a href="ap_crash_analysis.html">ap_crash_analysis</a>). 시연 부하는 40M 이하.</li>
+  <li><b>날마다·장소마다 다르다</b> — 같은 40M에 5GHz가 경고(1차)·혼잡 29%(2차)로 갈렸다. 시연은 폰당 30M을 권장하고 재생 모드를 예비로 둔다.</li>
+  <li>다음: 학교 현장 사전 점검, Opal에서 패널 실시간 확인, 실제 Pi 반영, (선택) Pi에서 서버 두 개 구동.</li>
+</ul>
+</section>
+
+<section id="files">
+<h2>12. 파일</h2>
+<div class="tw"><table>
+  <thead><tr><th>파일</th><th>내용</th></tr></thead>
+  <tbody>
+    <tr><td><code>project/demo/</code></td><td>서버 모듈(§4), <code>demo.html</code>, <code>demo_dual.html</code>, <code>run_dual_demo.sh</code>, <code>README.md</code>(실행), <code>API.md</code>(계약), <code>assets_taste/</code></td></tr>
+    <tr><td><code>project/deploy/raspberry_pi_ap_v2/</code></td><td>Pi 번들(같은 데모 파일 + <code>5g/</code> 5GHz 모델·스케일러)</td></tr>
+    <tr><td><code>project/checkpoints/ap_v2_redesign2_24sess_20260928/selected/</code></td><td>2.4GHz 배포 모델</td></tr>
+    <tr><td><code>project/checkpoints/ap_v2_5g_mixed_20261005/selected/</code></td><td>5GHz 시연 모델 + 스케일러</td></tr>
+    <tr><td><a href="final_model_24sess.html"><code>final_model_24sess.html</code></a></td><td>2.4GHz 모델 선택 근거·성능·전환 규칙</td></tr>
+    <tr><td><a href="downlink_blindspot.html"><code>downlink_blindspot.html</code></a></td><td>다운링크 측정 맹점</td></tr>
+    <tr><td><code>.work-log/current.md</code> 28차 후속(22)</td><td>5GHz 수집·재학습·리허설·결정 경위 전체</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<footer>2026-10-08 · capstoneDesign2 · 수치 정본은 <code>.work-log/current.md</code>와 각 결과 파일.</footer>
+</main>
+</body>
+</html>

@@ -140,8 +140,14 @@
         <td><a href="yongsang/model_results.html"><code>docs/yongsang/model_results.html</code></a> (인터랙티브) — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. <b>발표 슬라이드용 이미지는 <code>docs/yongsang/figures/</code></b> (SVG·PNG). 수치 정본은 <code>ap_model_comparison_redesign2.{txt,csv}</code> + <code>ap_v2_redesign2_pi_latency_comparison.txt</code></td></tr>
       <tr><td class="q">Fixed θ vs Dynamic θ 차이</td>
         <td><a href="../CLAUDE.md"><code>CLAUDE.md</code></a> "해석 기준" 6번</td></tr>
+      <tr class="star"><td class="q"><span class="star">★</span> 부하 방향(노트북·업링크·다운링크·혼합·폰↔폰)이 뭔가</td>
+        <td><a href="yongsang/final_model_24sess.html"><code>final_model_24sess.html</code></a> §0 "부하 방향: 어떤 데이터인가" — 방향별 데이터 흐름·해당 세션·공장 예시·점유율에 보이는 정도. 세션별 방향은 <a href="yongsang/h_sessions.html"><code>h_sessions.html</code></a>, 방향별 시험 결과는 <a href="yongsang/load_direction_loso.html"><code>load_direction_loso.html</code></a>, 다운링크가 안 보이는 이유는 <a href="yongsang/downlink_blindspot.html"><code>downlink_blindspot.html</code></a>, 시연을 업링크로 한 이유는 <a href="yongsang/demo_architecture.html"><code>demo_architecture.html</code></a> §9</td></tr>
+      <tr class="star"><td class="q"><span class="star">★</span> 데모 사이트는 어떻게 생겼나 (구조·데이터 흐름·설계 이유)</td>
+        <td><a href="yongsang/demo_architecture.html"><code>docs/yongsang/demo_architecture.html</code></a> (2026-10-08) — 기기 배치, 추론·부하·폰 위치·정답 비교 흐름, 서버 모듈, API·SSE 필드, 대역별 모델, 업링크·40MHz·서버 두 개·수동 이동 결정 이유, 리허설 결과</td></tr>
+      <tr><td class="q">5GHz 시연 모델은 뭔가</td>
+        <td><a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 28차 후속(22) "10-04 저녁~10-05 새벽" 절 — 80+40MHz 혼합 재학습, 7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, 체크포인트 <code>project/checkpoints/ap_v2_5g_mixed_20261005/selected/</code></td></tr>
       <tr><td class="q">데모를 어떻게 돌리나</td>
-        <td><a href="../project/demo/README.md"><code>project/demo/README.md</code></a></td></tr>
+        <td><a href="../project/demo/README.md"><code>project/demo/README.md</code></a> (2.4GHz·5GHz 비교 화면은 <code>bash project/demo/run_dual_demo.sh</code>)</td></tr>
       <tr><td class="q">데모를 (팀이) 어떻게 만드나</td>
         <td><a href="../project/demo/API.md"><code>project/demo/API.md</code></a> — API·SSE 스키마·모델 계약·확장 항목</td></tr>
       <tr><td class="q">발표 정량 목표·지표</td>

@@ -38,7 +38,10 @@
 | **현행 배포 모델(24세션)·처음 보는 세션 성능·채널 전환 규칙** | **`docs/yongsang/final_model_24sess.html`** (2026-09-28) — 선택 근거(기존·7세션·g+h 비교, 8/28·9/1 LOSO), 방향별 성능, 남은 오답 원인, 전환 규칙, Pi 지연. 부하 방향별 시험 경위는 `load_direction_loso.html`·`downlink_blindspot.html` |
 | **정확도·지연 결과 그래프로 (9/2 캐노니컬 배포 기준)** | **`docs/yongsang/model_results.html`** (인터랙티브) — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. **발표 슬라이드용 이미지는 `docs/yongsang/figures/`** (SVG·PNG). 수치 정본은 `ap_model_comparison_redesign2.{txt,csv}` + `ap_v2_redesign2_pi_latency_comparison.txt` |
 | **Fixed θ vs Dynamic θ 차이** | `CLAUDE.md` "해석 기준" 6번 |
-| **데모를 어떻게 돌리나** | `project/demo/README.md` |
+| **부하 방향(노트북·업링크·다운링크·혼합·폰↔폰)이 뭔가** | **`docs/yongsang/final_model_24sess.html` §0 "부하 방향: 어떤 데이터인가"** — 방향별 데이터 흐름·해당 세션·공장 예시·점유율에 보이는 정도. 세션별 방향은 `h_sessions.html`, 방향별 시험 결과는 `load_direction_loso.html`, 다운링크가 안 보이는 이유는 `downlink_blindspot.html`, 시연을 업링크로 한 이유는 `demo_architecture.html` §9 |
+| **데모 사이트는 어떻게 생겼나 (구조·데이터 흐름·설계 이유)** | **`docs/yongsang/demo_architecture.html`** (2026-10-08) — 기기 배치, 추론·부하·폰 위치·정답 비교 흐름, 서버 모듈, API·SSE 필드, 대역별 모델, 업링크·40MHz·서버 두 개·수동 이동 결정 이유, 리허설 결과 |
+| **5GHz 시연 모델은 뭔가** | `.work-log/current.md` 28차 후속(22) "10-04 저녁~10-05 새벽" 절 — 80+40MHz 혼합 재학습, 7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, 체크포인트 `project/checkpoints/ap_v2_5g_mixed_20261005/selected/` |
+| **데모를 어떻게 돌리나** | `project/demo/README.md` (2.4GHz·5GHz 비교 화면은 `bash project/demo/run_dual_demo.sh`) |
 | **데모를 (팀이) 어떻게 만드나** | `project/demo/API.md` — API·SSE 스키마·모델 계약·확장 항목 |
 | **발표 정량 목표·지표** | `CLAUDE.md` 상단 "정량적 목표" + `docs/캡스톤디자인I_최종발표.pptx` |
 | **처음부터 재현하는 명령어** | `docs/terminal_command_guide.md` + `CLAUDE.md` "재현 명령어" |
