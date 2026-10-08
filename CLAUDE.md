@@ -70,6 +70,10 @@ project/checkpoints/ap_v2_redesign2/                   9/2 캐노니컬 체크�
 project/data/ap_metrics_v2_redesign2_24sess_20260928/  ★ 현행 배포 데이터셋: 24세션(8/28·9/1·g1~g5·h1~h4·h6~h18) 런 단위 분할, train 13,858 / val 5,575창 (test.csv=val 사본, 성능 지표 아님)
 project/checkpoints/ap_v2_redesign2_24sess_20260928/selected/  ★ 현행 배포 체크포인트+ONNX (EE s0, Baseline s1, SDN s1 T=0.62; selected_seeds.json)
 project/deploy/raspberry_pi_ap_v2/                     Pi 배포 번들 (2026-09-28 24세션 ONNX로 교체, 기존은 archived_canonical_k2m2_20260902/, test.csv=새 val 1,500창) — live_congestion.py·demo_state.py 기본 모델도 24세션
+project/checkpoints/ap_v2_5g_mixed_20261005/selected/ ★ 5GHz 시연 모델 (80+40MHz 혼합, 5GHz 스케일러; Pi 번들 5g/)
+project/demo/demo_dual.html + run_dual_demo.sh         2.4GHz·5GHz 비교 화면(/dual) — 서버 두 개(:8000 24g / :8001 5g), 부하 대상 유선 Pi, 정답 비교 패널
+docs/yongsang/sessions_5g.html                         5GHz 수집 현황 (세션별 폭·방향·배치·라벨·LOSO)
+docs/yongsang/demo_architecture.html                   데모 사이트 구조·데이터 흐름·설계 이유
 docs/yongsang/final_model_24sess.html                  ★ 24세션 최종 모델 보고서 (선택 근거·처음 보는 세션 성능·오답 원인·채널 전환 규칙·Pi 지연)
 project/results/yongsang/ap_v2_redesign2_eval_report.txt          현행 평가 리포트
 project/results/yongsang/ap_v2_redesign2_pi_latency_comparison.txt Pi 실측 지연 비교 (Baseline/SDN/Proposed)
@@ -194,9 +198,12 @@ label = 0 if score < 0.25 | 1 if < 0.50 | 2 if < 0.75 | 3 if ≥ 0.75   (경계�
 - **ONNX/Pi 배포**: staged(세션 3개) → `torch.jit.script`+ONNX `If` 노드 단일 그래프(`export_onnx_ap_unified.py`) → INT8은 staged(flat)로 먼저 양자화 후 손수 재조립(`export_onnx_ap_unified_int8_v2.py`, `If` 서브그래프 안 LSTM을 양자화 도구가 건너뛰는 한계 우회). baseline 대비 대략 -60% 내외 (1학기 4-feature 자료로 두 현상 교차검증). Pi latency 주장 시 `docs/yongsang/onnx_early_exit_redesign.{md,html}`의 결론을 따르고 staged/fp32-only 수치를 최종 결과로 인용하지 않는다.
 - hidden_size·dropout 스윕 완료(2026-08-30, 128/0.2 최적). class-weight-power 재스윕 완료(2026-08-30 → 0.0). **window·lr·batch·모델입력 EMA 스윕 완료(2026-09-01 — window 10→12만 승격)**. **라벨 지속성 게이트 k·m 스윕 완료(2026-09-02, 18차) → k=2/m=2 채택** (17차 임시값 k=3/m=2에서 교체). epochs 스윕은 미실시.
 
-### 5GHz 실험 라인 (미채택, 2026-09-19~, 26차)
+### 5GHz 라인 — 시연 모델로 채택 (2026-10-05~, 처음 9/19~ 실험 라인, 26차~28차 후속 22)
 
-**이 문서의 나머지 전체(2차 데이터 라인, 정량적 목표, 최신 평가 결과 등)는 전부 2.4GHz 기준이며 여전히 유효하다.** 5GHz는 "혼잡 심각 시 5GHz로 채널 전환"이라는 최종 목표 문장(§7)의 실현 가능성을 검증하기 위해 시작한 **별도 실험 라인**으로, 아직 발표·보고서·정량적 목표 어디에도 반영되지 않았다.
+**이 문서의 나머지 전체(2차 데이터 라인, 정량적 목표, 최신 평가 결과 등)는 전부 2.4GHz 기준이며 연구 결과는 2.4GHz로 보고한다.** 5GHz는 10/2 학교 2.4GHz 포화 확인(채널 사용률 78~90%) 뒤 **시연용**으로 채택했다: 데모가 2.4GHz(24세션 모델)와 5GHz(아래 혼합 모델)를 서버 두 개로 나란히 보여 준다(`project/demo/run_dual_demo.sh` → `/dual`, 부하는 업링크 = 폰 → AP → 유선 Pi). 수집 현황 한 장: **`docs/yongsang/sessions_5g.html`**, 데모 구조: `docs/yongsang/demo_architecture.html`.
+
+- **★ 현행 5GHz 시연 모델 (2026-10-05)** `project/checkpoints/ap_v2_5g_mixed_20261005/selected/`(Baseline·EE·SDN seed 0, SDN T=0.85, 5GHz 전용 `scaler_params.json`, ONNX 검증 fp32 완전 일치·INT8 99.6~99.7%; Pi 번들 `5g/`). 학습 = **80MHz**(9/19 대량 6,993행 + 10/3 방향별 f1 업·f2 다운·f3 노트북 가까이·f4 노트북 멀리) + **40MHz**(w40test·f5~f9, 학습용 심각 확보 — 80MHz는 폰 2대로 점유율 41%까지만, 폰당 80M이면 AP CPU 크래시) 11세션 13,692창. **7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, EE 심각 precision 84%(recall 46%, 노트북 링크 병목 f8 제외 77%), 80MHz f1·f3 96~99%, 업링크 f7 89%·f9 92~97%**(기존 80MHz 대량분 모델은 업링크 혼잡을 심각으로 오판해 52~72%). bitrate 제외 6-feature는 업링크 헛 심각이 다시 늘어 7-feature 유지. 시연 AP 5GHz는 **40MHz**(2.4GHz HT40과 같은 폭, 발표장은 ch44 고정 권장).
+- 아래는 9/19~9/21 초기 실험 기록(옛 80MHz 대량분 모델 기준)이다.
 
 - **타당성 확인**: idle occupancy 5GHz 0% vs 2.4GHz 22% — 5GHz가 훨씬 조용함 확인. `sta_tx_bitrate_mean` 등 핵심 feature도 5GHz에서 신뢰 가능(재현 검증 완료).
 - **크래시 임계값**: 2.4GHz(60/60 안전·80/80 크래시)와 거의 동일하게 **60~75M 안전, 80M에서 크래시** — RF 혼잡이 아니라 AP 공유 자원(CPU) 한계일 가능성.

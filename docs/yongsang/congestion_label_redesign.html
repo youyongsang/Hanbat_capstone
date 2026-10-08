@@ -123,7 +123,10 @@
   .lane-tag { display:block; font-family:"IBM Plex Mono",monospace; font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:0.7rem; }
   .lane-b .lane-tag { color:var(--ink-mute); }
   .lchain { display:flex; flex-wrap:wrap; align-items:stretch; gap:0.35rem; }
-  .lnode { flex:1 1 118px; min-width:96px; background:var(--panel-raise); border:1px solid var(--rule-strong); border-radius:5px; padding:0.5rem 0.55rem; font-size:0.76rem; line-height:1.35; color:var(--ink-2); text-align:center; display:flex; align-items:center; justify-content:center; }
+  .lnode { flex:1 1 0; min-width:0; background:var(--panel-raise); border:1px solid var(--rule-strong); border-radius:5px; padding:0.55rem 0.5rem; font-size:0.78rem; line-height:1.4; color:var(--ink-2); text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.15rem; word-break:keep-all; overflow-wrap:anywhere; }   /* 10-09: 긴 문자열이 칸 밖으로 넘쳐 겹치던 것 → 칸 안에서 줄바꿈 */
+  .lnode b { color:var(--ink); font-weight:600; }
+  .lnode small { font-size:0.7rem; color:var(--ink-mute); line-height:1.35; }
+  @media (max-width:760px){ .lchain { flex-direction:column; } .larrow { transform:rotate(90deg); } .lnode { flex:none; } }
   .lnode.strong { border-color:var(--accent); color:var(--ink); font-weight:600; }
   .lnode.result { background:color-mix(in oklab, var(--accent) 12%, var(--panel-raise)); border-color:var(--accent); color:var(--ink); font-weight:600; }
   .lane-b .lnode.result { background:color-mix(in oklab, var(--l3) 14%, var(--panel-raise)); border-color:var(--l3); }
@@ -354,38 +357,38 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
   <section>
     <h2><span class="step">05</span> 모델 입력 feature 재정의</h2>
     <p class="lede"><b>문제</b>: <code>max(표준 문턱)</code>은 그 자체로 규칙 기반 분류기다. 배포 시점에 규칙으로 계산하면 되는데 왜 LSTM인가?</p>
-    <div class="callout key"><span>▸</span><span><b>답: 프로브가 배포 시점엔 없다.</b> 배포 시스템엔 victim 프로브(협조 싱크 + 지속 스트림)가 없다. 모델은 <b>AP-side 텔레메트리만 보고 "지금 victim QoS가 깨지고 있는가"를 예측</b>해야 한다. 규칙으로 못 한다 — victim 측정값이 없으니까. + 시계열 추세(window 10) + Early Exit 효율.</span></div>
+    <div class="callout key"><span>▸</span><span><b>답: 프로브가 배포 시점엔 없다.</b> 배포 시스템엔 victim 프로브(협조 싱크 + 지속 스트림)가 없다. 모델은 <b>AP-side 텔레메트리만 보고 "지금 victim QoS가 깨지고 있는가"를 예측</b>해야 한다. 규칙으로 못 한다 — victim 측정값이 없으니까. + 시계열 추세(window 12, 9/1에 10→12) + Early Exit 효율.</span></div>
 
     <div class="lanes">
       <div class="lane lane-a">
         <span class="lane-tag">Lane A · 배포 시 라이브 추론</span>
         <div class="lchain">
-          <div class="lnode">AP(Opal)<br>유선 SSH 폴링 1Hz</div>
+          <div class="lnode"><b>AP (Opal)</b><small>유선 SSH 폴링<br>약 1초마다</small></div>
           <div class="larrow">▶</div>
-          <div class="lnode">7-feature 계산<br>throughput·occupancy·retry·RSSI×3·bitrate</div>
+          <div class="lnode"><b>7-feature 계산</b><small>처리량 · 점유율 · 재전송<br>RSSI 3종 · 전송 속도</small></div>
           <div class="larrow">▶</div>
-          <div class="lnode">min-max<br>스케일러</div>
+          <div class="lnode"><b>정규화</b><small>min-max 스케일러</small></div>
           <div class="larrow">▶</div>
-          <div class="lnode">윈도우 버퍼<br>(최근 12폴링)</div>
+          <div class="lnode"><b>창 만들기</b><small>최근 12폴링</small></div>
           <div class="larrow">▶</div>
           <div class="lnode strong">Early Exit<br>LSTM</div>
           <div class="larrow">▶</div>
-          <div class="lnode result">모델 예측<br>label 0~3 + 확률</div>
+          <div class="lnode result">모델 예측<small>단계 0~3 + 확률</small></div>
         </div>
       </div>
 
       <div class="lane lane-b">
         <span class="lane-tag">Lane B · 라벨 계산 — 학습 전용, 배포엔 없음</span>
         <div class="lchain">
-          <div class="lnode">victim 프로브(300kbps UDP) + ping</div>
+          <div class="lnode"><b>victim 측정</b><small>프로브 300kbps UDP<br>+ ping</small></div>
           <div class="larrow">▶</div>
-          <div class="lnode">표준 앵커 매핑<br>ITU-T Y.1541·G.114 / Cisco QoS / Aruba</div>
+          <div class="lnode"><b>표준 앵커 매핑</b><small>ITU-T Y.1541 · G.114<br>Cisco QoS · Aruba</small></div>
           <div class="larrow">▶</div>
-          <div class="lnode"><code>max(...)</code></div>
+          <div class="lnode"><b>4축 중 최댓값</b><small><code>max(...)</code></small></div>
           <div class="larrow">▶</div>
-          <div class="lnode">지속성 게이트<br>k=2, m=2</div>
+          <div class="lnode"><b>지속성 게이트</b><small>k=2, m=2</small></div>
           <div class="larrow">▶</div>
-          <div class="lnode result">정답 label</div>
+          <div class="lnode result">정답 라벨<small>단계 0~3</small></div>
         </div>
       </div>
 

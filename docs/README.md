@@ -21,6 +21,9 @@
 
 ## "왜 이렇게 정했나" — 질문 → 문서
 
+> **이번(10월)에 예나·호중이 꼭 읽을 것** (HTML판에선 초록 줄): 라벨 문서의 10-09 최신 상태(예나·호중) · 현행 배포 모델 24세션(예나·호중) · 부하 방향 흐름도(예나·호중) · 데모 사이트 구조(호중·예나) · 5GHz 시연 모델(예나·호중) · 데모 실행법(호중).
+
+
 | 알고 싶은 것 | 어디를 보면 되나 |
 |---|---|
 | **왜 이런 라벨(정상/경고/혼잡/심각)을 정했나** | `congestion_label_redesign.{md,html}` — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max" + "지속성 게이트"(2026-09-02) |
@@ -40,7 +43,7 @@
 | **Fixed θ vs Dynamic θ 차이** | `CLAUDE.md` "해석 기준" 6번 |
 | **부하 방향(노트북·업링크·다운링크·혼합·폰↔폰)이 뭔가** | **`docs/yongsang/final_model_24sess.html` §0 "부하 방향: 어떤 데이터인가"** — 방향별 데이터 흐름·해당 세션·공장 예시·점유율에 보이는 정도. 세션별 방향은 `h_sessions.html`, 방향별 시험 결과는 `load_direction_loso.html`, 다운링크가 안 보이는 이유는 `downlink_blindspot.html`, 시연을 업링크로 한 이유는 `demo_architecture.html` §9 |
 | **데모 사이트는 어떻게 생겼나 (구조·데이터 흐름·설계 이유)** | **`docs/yongsang/demo_architecture.html`** (2026-10-08) — 기기 배치, 추론·부하·폰 위치·정답 비교 흐름, 서버 모듈, API·SSE 필드, 대역별 모델, 업링크·40MHz·서버 두 개·수동 이동 결정 이유, 리허설 결과 |
-| **5GHz 시연 모델은 뭔가** | `.work-log/current.md` 28차 후속(22) "10-04 저녁~10-05 새벽" 절 — 80+40MHz 혼합 재학습, 7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, 체크포인트 `project/checkpoints/ap_v2_5g_mixed_20261005/selected/` |
+| **5GHz 시연 모델은 뭔가** | `docs/yongsang/sessions_5g.html`(5GHz 수집 현황) · `.work-log/current.md` 28차 후속(22) "10-04 저녁~10-05 새벽" 절 — 80+40MHz 혼합 재학습, 7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, 체크포인트 `project/checkpoints/ap_v2_5g_mixed_20261005/selected/` |
 | **데모를 어떻게 돌리나** | `project/demo/README.md` (2.4GHz·5GHz 비교 화면은 `bash project/demo/run_dual_demo.sh`) |
 | **데모를 (팀이) 어떻게 만드나** | `project/demo/API.md` — API·SSE 스키마·모델 계약·확장 항목 |
 | **발표 정량 목표·지표** | `CLAUDE.md` 상단 "정량적 목표" + `docs/캡스톤디자인I_최종발표.pptx` |

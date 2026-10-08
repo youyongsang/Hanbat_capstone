@@ -34,20 +34,20 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f);
     font-size:15.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:820px;margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,4vw,30px) 90px}
+  .wrap{max-width:min(1360px,94vw);margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,4vw,30px) 90px}
   a{color:var(--accent);text-decoration:none}
   a:hover{text-decoration:underline}
   code{font-family:var(--m);font-size:.87em;background:var(--surface-2);
     border:1px solid var(--rule);border-radius:4px;padding:.06em .38em}
   h1{font-size:clamp(23px,4vw,30px);font-weight:700;letter-spacing:-.01em;margin:0 0 10px}
-  .sub{color:var(--ink-2);font-size:15px;margin:0 0 4px;max-width:60ch}
+  .sub{color:var(--ink-2);font-size:15px;margin:0 0 4px;max-width:90ch}
   .sub code{font-size:.85em}
   h2{font-size:16px;font-weight:600;margin:44px 0 14px;padding-top:16px;border-top:1px solid var(--rule);
     letter-spacing:.01em}
   h2 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);
     margin-right:9px;transform:translateY(-2px)}
 
-  .cards{display:grid;gap:10px}
+  .cards{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr))}   /* 10-09: 넓은 화면에선 카드를 여러 열로 */
   .card{display:grid;grid-template-columns:26px 1fr;gap:12px;background:var(--surface);
     border:1px solid var(--rule);border-radius:10px;padding:13px 15px}
   .card .n{font-family:var(--m);font-size:13px;color:var(--muted)}
@@ -65,6 +65,8 @@
   td.q .star{color:var(--star)}
   tr.star td{background:var(--star-soft)}
   tr.star td:first-child{border-left:2px solid var(--star)}
+  .who{display:inline-block;font-size:11px;font-weight:700;padding:0 7px;margin-left:6px;border-radius:999px;border:1px solid var(--star);color:var(--star);vertical-align:1px;white-space:nowrap}
+  .readnote{font-size:13.5px;color:var(--ink-2);margin:-4px 0 10px}
   td.stale-s{font-family:var(--m);font-size:11.5px;color:var(--stale);white-space:nowrap}
 
   .foot{margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);
@@ -107,16 +109,17 @@
   </div>
 
   <h2><span class="dot"></span>"왜 이렇게 정했나" — 질문 → 문서</h2>
+  <p class="readnote"><b style="color:var(--star)">초록 줄 = 이번(10월)에 예나·호중이 꼭 읽을 것</b> — 이름표는 특히 볼 사람. 라벨 문서의 10-09 최신 상태(점유율 축이 AP 송신을 안 셈), 24세션 배포 모델·5GHz 시연 모델 수치, 부하 방향 흐름도, 두 대역 비교 데모 구조·실행법.</p>
   <div class="tw"><table>
     <thead><tr><th>알고 싶은 것</th><th>어디를 보면 되나</th></tr></thead>
     <tbody>
-      <tr class="star"><td class="q"><span class="star">★</span> 왜 이런 라벨(정상/경고/혼잡/심각)을 정했나</td>
+      <tr class="star"><td class="q"><span class="star">★</span> 왜 이런 라벨(정상/경고/혼잡/심각)을 정했나<span class="who">예나</span><span class="who">호중</span></td>
         <td><a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> — §1 "왜 재설계하나"(순환논리), §3 "표준 문턱 앵커"(ITU-T Y.1541·G.114 · Cisco Enterprise QoS · Aruba WLAN 가이드, 원문 대조 결과 포함), §4 "조합 = max" + "지속성 게이트"(2026-09-02)</td></tr>
       <tr><td class="q">왜 지속성 게이트인가 (단발 프로브 스파이크 label 3 → 혼잡)</td>
         <td><a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> §4 "지속성 게이트" + <a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 17차 — 배포 EE 오답의 최대군이 1폴링짜리 스파이크, 게이트로 전 모델 +1.5~2.4pt</td></tr>
       <tr><td class="q">congestion_score는 어떻게 계산하나</td>
         <td><a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> §3~4 + <code>collect_metrics.py</code>의 <code>calculate_scores()</code>/<code>ANCHORS</code> (코드 정본)</td></tr>
-      <tr class="star"><td class="q"><span class="star">★</span> 7개 feature 각각이 뭔가 / 계산·스무딩·스케일러</td>
+      <tr><td class="q">7개 feature 각각이 뭔가 / 계산·스무딩·스케일러</td>
         <td><a href="yongsang/model_features.html"><code>docs/yongsang/model_features.{md,html}</code></a> — feature 레퍼런스 (정본은 <a href="../project/utils/ap_features.py"><code>project/utils/ap_features.py</code></a>)</td></tr>
       <tr><td class="q">왜 latency·jitter를 모델 입력에서 뺐나</td>
         <td><a href="yongsang/model_features.html"><code>model_features.{md,html}</code></a> §3 + <a href="yongsang/congestion_label_redesign.html"><code>congestion_label_redesign.{md,html}</code></a> §5 — 정답 leakage + 배포 시점엔 없는 측정</td></tr>
@@ -134,19 +137,19 @@
         <td><a href="yongsang/onnx_early_exit_redesign.html"><code>docs/yongsang/onnx_early_exit_redesign.{md,html}</code></a></td></tr>
       <tr><td class="q">SDN 비교 모델은 뭔가 / 우리 모델과 뭐가 다른가</td>
         <td><a href="yongsang/sdn_comparison.html"><code>docs/yongsang/sdn_comparison.html</code></a> — 한 장 요약(SDN이 뭔지·통제 변수·3축 차이·결과). 정본은 <a href="../project/models/sdn_lstm.py"><code>project/models/sdn_lstm.py</code></a> docstring (Kaya et al. 2019 재구현) + <a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 8~9차 + <code>project/results/yongsang/ap_model_comparison_redesign2.{txt,csv}</code></td></tr>
-      <tr><td class="q">현행 배포 모델(24세션)·처음 보는 세션 성능·채널 전환 규칙</td>
+      <tr class="star"><td class="q"><span class="star">★</span> 현행 배포 모델(24세션)·처음 보는 세션 성능·채널 전환 규칙<span class="who">예나</span><span class="who">호중</span></td>
         <td><a href="yongsang/final_model_24sess.html"><code>docs/yongsang/final_model_24sess.html</code></a> (2026-09-28) — 선택 근거(기존·7세션·g+h 비교, 8/28·9/1 LOSO), 방향별 성능, 남은 오답 원인, 전환 규칙, Pi 지연. 부하 방향별 시험 경위는 <a href="yongsang/load_direction_loso.html"><code>load_direction_loso.html</code></a>·<a href="yongsang/downlink_blindspot.html"><code>downlink_blindspot.html</code></a></td></tr>
       <tr><td class="q">정확도·지연 결과 그래프로 (9/2 캐노니컬 배포 기준)</td>
         <td><a href="yongsang/model_results.html"><code>docs/yongsang/model_results.html</code></a> (인터랙티브) — 정확도 vs 지연 산점도 / 정확도·F1 막대 / Pi 지연 막대 / exit 분포. <b>발표 슬라이드용 이미지는 <code>docs/yongsang/figures/</code></b> (SVG·PNG). 수치 정본은 <code>ap_model_comparison_redesign2.{txt,csv}</code> + <code>ap_v2_redesign2_pi_latency_comparison.txt</code></td></tr>
       <tr><td class="q">Fixed θ vs Dynamic θ 차이</td>
         <td><a href="../CLAUDE.md"><code>CLAUDE.md</code></a> "해석 기준" 6번</td></tr>
-      <tr class="star"><td class="q"><span class="star">★</span> 부하 방향(노트북·업링크·다운링크·혼합·폰↔폰)이 뭔가</td>
+      <tr class="star"><td class="q"><span class="star">★</span> 부하 방향(노트북·업링크·다운링크·혼합·폰↔폰)이 뭔가<span class="who">예나</span><span class="who">호중</span></td>
         <td><a href="yongsang/final_model_24sess.html"><code>final_model_24sess.html</code></a> §0 "부하 방향: 어떤 데이터인가" — 방향별 데이터 흐름·해당 세션·공장 예시·점유율에 보이는 정도. 세션별 방향은 <a href="yongsang/h_sessions.html"><code>h_sessions.html</code></a>, 방향별 시험 결과는 <a href="yongsang/load_direction_loso.html"><code>load_direction_loso.html</code></a>, 다운링크가 안 보이는 이유는 <a href="yongsang/downlink_blindspot.html"><code>downlink_blindspot.html</code></a>, 시연을 업링크로 한 이유는 <a href="yongsang/demo_architecture.html"><code>demo_architecture.html</code></a> §9</td></tr>
-      <tr class="star"><td class="q"><span class="star">★</span> 데모 사이트는 어떻게 생겼나 (구조·데이터 흐름·설계 이유)</td>
+      <tr class="star"><td class="q"><span class="star">★</span> 데모 사이트는 어떻게 생겼나 (구조·데이터 흐름·설계 이유)<span class="who">호중</span><span class="who">예나</span></td>
         <td><a href="yongsang/demo_architecture.html"><code>docs/yongsang/demo_architecture.html</code></a> (2026-10-08) — 기기 배치, 추론·부하·폰 위치·정답 비교 흐름, 서버 모듈, API·SSE 필드, 대역별 모델, 업링크·40MHz·서버 두 개·수동 이동 결정 이유, 리허설 결과</td></tr>
-      <tr><td class="q">5GHz 시연 모델은 뭔가</td>
-        <td><a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 28차 후속(22) "10-04 저녁~10-05 새벽" 절 — 80+40MHz 혼합 재학습, 7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, 체크포인트 <code>project/checkpoints/ap_v2_5g_mixed_20261005/selected/</code></td></tr>
-      <tr><td class="q">데모를 어떻게 돌리나</td>
+      <tr class="star"><td class="q"><span class="star">★</span> 5GHz 시연 모델은 뭔가<span class="who">예나</span><span class="who">호중</span></td>
+        <td><a href="yongsang/sessions_5g.html"><code>docs/yongsang/sessions_5g.html</code></a> (5GHz 수집 현황: 세션별 폭·방향·배치·라벨·LOSO) · <a href="../.work-log/current.md"><code>.work-log/current.md</code></a> 28차 후속(22) "10-04 저녁~10-05 새벽" 절 — 80+40MHz 혼합 재학습, 7세션 LOSO 평균 정확도 Baseline 92.1·EE 91.7, 체크포인트 <code>project/checkpoints/ap_v2_5g_mixed_20261005/selected/</code></td></tr>
+      <tr class="star"><td class="q"><span class="star">★</span> 데모를 어떻게 돌리나<span class="who">호중</span></td>
         <td><a href="../project/demo/README.md"><code>project/demo/README.md</code></a> (2.4GHz·5GHz 비교 화면은 <code>bash project/demo/run_dual_demo.sh</code>)</td></tr>
       <tr><td class="q">데모를 (팀이) 어떻게 만드나</td>
         <td><a href="../project/demo/API.md"><code>project/demo/API.md</code></a> — API·SSE 스키마·모델 계약·확장 항목</td></tr>

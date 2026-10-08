@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5GHz 수집 현황</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+
+.dir { display:inline-block; font-size:.74rem; font-weight:600; padding:.05rem .5rem; border-radius:999px; white-space:nowrap; border:1px solid currentColor; }
+.d-nb { color:var(--s1); } .d-up { color:var(--good); } .d-dn { color:var(--bad); } .d-mx { color:var(--warn); } .d-p2p { color:var(--ink2); }
+tr.out td { background:color-mix(in srgb, var(--bad) 7%, transparent); }
+td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
+.bar { display:flex; height:10px; border-radius:2px; overflow:hidden; min-width:110px; background:var(--rule); }
+.bar i { display:block; height:100%; } .l0 { background:#9fb8d6; } .l1 { background:#e3c15a; } .l2 { background:#e58a3a; } .l3 { background:#c0392b; }
+.labs { font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--mute); margin-top:.2rem; white-space:nowrap; }
+.legend2 { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.84rem; color:var(--ink2); margin:.3rem 0 .8rem; }
+.legend2 i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.3rem; vertical-align:-1px; }
+
+.w80 { color:var(--s1); } .w40 { color:var(--warn); }
+main { max-width:min(1440px,96vw) !important; }   /* 표 열이 많아 넓게 */
+th { white-space:normal !important; word-break:keep-all; } th.n { min-width:5.2rem; } td.note { min-width:16rem !important; } td.place { min-width:9rem; }
+.wd { display:inline-block; font-size:.72rem; font-weight:700; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+</style></head><body><main>
+<p class="eyebrow">5GHz · 시연 모델용 수집 · 2026-09-19 ~ 10-04</p>
+<h1>5GHz 수집 현황</h1>
+<p class="lead">학교 2.4GHz가 이미 포화(채널 사용률 78~90%)라 <b>연구는 2.4GHz, 시연은 5GHz</b>로 정하고(10/2) 모은 5GHz 데이터다. 80MHz(기존 + 방향별)와 40MHz(학습용 심각 확보)를 섞어 5GHz 전용 시연 모델(<code>checkpoints/ap_v2_5g_mixed_20261005/selected/</code>)을 학습했다. 2.4GHz 세션은 <a href="h_sessions.html">h_sessions.html</a>.</p>
+<div class="kpis">
+  <div class="kpi"><b>10,278행</b><span>80MHz — 9/19 대량 + f1~f4 (5세션 단위)</span></div>
+  <div class="kpi"><b>4,218행</b><span>40MHz — w40test·f5~f9 (6세션), 심각 320행</span></div>
+  <div class="kpi"><b>92.1 / 91.7%</b><span>혼합 모델 7세션 LOSO 평균 정확도 (Baseline / EE Fixed)</span></div>
+  <div class="kpi"><b>84%</b><span>EE 심각 precision (헛 심각 적음). 심각 recall 46%, f8 제외 77%</span></div>
+</div>
+
+<section>
+<h2>1. 왜 80MHz와 40MHz를 같이 모았나</h2>
+<ul>
+<li><b>80MHz는 폰 두 대로 혼잡을 못 만든다</b> — 폰당 70M(합계 165Mbps)에도 점유율 41%, 경고까지만(f3). 폰당 80M이면 AP가 CPU 한계로 크래시(26차). 노트북을 멀리 두면 심각이 나오지만 지연 원인이라 모델이 못 본다(f4).</li>
+<li><b>그래서 학습용 심각은 40MHz에서 모았다</b>(10/3 사용자 결정) — 2.4GHz도 HT40이라 같은 폭이고, 20MHz보다 80MHz와 bitrate 차이가 작아 "bitrate = 폭" 지름길 위험이 덜하다. 시연은 처음엔 80MHz 유지안이었다가 10/6 <b>40MHz 유지</b>로 바뀌었다(80MHz면 시연 화면이 안 올라감).</li>
+<li><b>혼합 학습</b> — 80MHz(s0919·f1~f4) + 40MHz(w40test·f5~f9) 11세션, 5GHz 전용 스케일러. bitrate를 빼면(6-feature) 업링크 헛 심각이 다시 28창 안팎으로 늘어 bitrate는 지름길이 아니라 실제 단서로 판단, 7-feature 유지.</li>
+<li>9/20 수집분(세션 1·1b·1c, 독립 시험 풀 2·2b·3 — 약 7천 행)은 노트북 bitrate 고착·환경 오염 이력이 있어 이번 혼합 학습엔 넣지 않았다(<code>project/.tmp/exp_5g/</code>, 28차).</li>
+</ul>
+</section>
+
+<section>
+<h2>2. 세션 목록</h2>
+<div class="legend2"><span><i class="l0"></i>정상</span><span><i class="l1"></i>경고</span><span><i class="l2"></i>혼잡</span><span><i class="l3"></i>심각</span>
+<span>라벨 = k2m2 재라벨 · "심각 중 점유율 원인" = 심각 행 중 점유율 점수 ≥ 0.75 비율 · "부하 중 점유율" = 처리량 5Mbps 초과 행의 중앙값(%) · "기존 모델" = 80MHz 대량분만 학습한 옛 5GHz 모델(3종)의 정확도</span></div>
+<div class="tw"><table>
+<thead><tr><th>세션</th><th>시작</th><th>폭</th><th>방향</th><th>배치 (RSSI dBm)</th><th>런</th><th class="n">행</th><th>라벨</th><th class="n">심각 중<br>점유율 원인</th><th class="n">부하 중<br>점유율 %</th><th class="n">기존<br>모델</th><th>비고</th></tr></thead>
+<tbody><tr><td><b>s0919</b></td><td class="n">9/19 하루</td><td><span class="wd w80">80MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">집, 배치 다양(기록 없음)</td><td>30개 런 (idle·step·heavy60~80·소패킷·knee)</td><td class="n">6,993</td><td><div class="bar" role="img" aria-label="정상 3374 경고 2286 혼잡 804 심각 529"><i class="l0" style="width:48.2%"></i><i class="l1" style="width:32.7%"></i><i class="l2" style="width:11.5%"></i><i class="l3" style="width:7.6%"></i></div><div class="labs">3374 / 2286 / 804 / 529</div></td><td class="n">32%</td><td class="n">45</td><td class="n">(학습분)</td><td class="note">26~27차 대량 수집. 기존 5GHz 모델(<code>ap_v2_5g_home_6993rows</code>)의 학습 데이터. 노트북 방향만 있음</td></tr><tr><td><b>f1</b></td><td class="n">10/3 15:03</td><td><span class="wd w80">80MHz</span></td><td><span class="dir d-up">업링크</span></td><td class="place">노트북 −53 · S26 −52 · S21 −58</td><td>idle · step · spstep · gray (표준)</td><td class="n">1,038</td><td><div class="bar" role="img" aria-label="정상 821 경고 188 혼잡 26 심각 3"><i class="l0" style="width:79.1%"></i><i class="l1" style="width:18.1%"></i><i class="l2" style="width:2.5%"></i><i class="l3" style="width:0.3%"></i></div><div class="labs">821 / 188 / 26 / 3</div></td><td class="n">100%</td><td class="n">30</td><td class="n">85~87%</td><td class="note">2.4GHz 표준 프로파일(폰당 최대 40M)이라 5GHz엔 너무 가벼움 — gray 전부 정상. 이후 5GHz 전용 프로파일로</td></tr><tr><td><b>f2</b></td><td class="n">10/3 15:38</td><td><span class="wd w80">80MHz</span></td><td><span class="dir d-dn">다운링크</span></td><td class="place">폰 −62/−63 · 노트북 −48~−57</td><td>idle · step5g · spkt50 · heavy70</td><td class="n">810</td><td><div class="bar" role="img" aria-label="정상 504 경고 156 혼잡 132 심각 18"><i class="l0" style="width:62.2%"></i><i class="l1" style="width:19.3%"></i><i class="l2" style="width:16.3%"></i><i class="l3" style="width:2.2%"></i></div><div class="labs">504 / 156 / 132 / 18</div></td><td class="n">6%</td><td class="n">17</td><td class="n">59.8%</td><td class="note">AP가 140Mbps를 보내는데 점유율 17% — 2.4GHz와 같은 측정 맹점 확인. 기존 모델은 전부 정상으로 예측</td></tr><tr><td><b>f3</b></td><td class="n">10/3 16:15</td><td><span class="wd w80">80MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">노트북 가까이 −55 · 폰 −55/−58</td><td>idle · step5g · spkt50 · heavy70</td><td class="n">853</td><td><div class="bar" role="img" aria-label="정상 500 경고 341 혼잡 8 심각 4"><i class="l0" style="width:58.6%"></i><i class="l1" style="width:40.0%"></i><i class="l2" style="width:0.9%"></i><i class="l3" style="width:0.5%"></i></div><div class="labs">500 / 341 / 8 / 4</div></td><td class="n">75%</td><td class="n">40</td><td class="n">92~96%</td><td class="note">합계 165Mbps에서 점유율 41% — <b>80MHz는 폰 두 대로 경고까지만</b>(폰당 80M이면 AP CPU 크래시)</td></tr><tr><td><b>f4</b></td><td class="n">10/3 16:49</td><td><span class="wd w80">80MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">노트북 멀리 −67 · 폰 −55/−57</td><td>idle · step5g · spkt50 · heavy70</td><td class="n">584</td><td><div class="bar" role="img" aria-label="정상 268 경고 21 혼잡 182 심각 113"><i class="l0" style="width:45.9%"></i><i class="l1" style="width:3.6%"></i><i class="l2" style="width:31.2%"></i><i class="l3" style="width:19.3%"></i></div><div class="labs">268 / 21 / 182 / 113</div></td><td class="n">3%</td><td class="n">41</td><td class="n">47~52%</td><td class="note">심각 113행 중 대부분이 점유율 미달 지연(편도 200~285ms) 원인 — 노트북이 멀어 AP→노트북 배달이 막힘, 모델은 못 봄</td></tr><tr><td><b>w40test</b></td><td class="n">10/3 20:58</td><td><span class="wd w40">40MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">노트북 −48~−54 · 폰 −50</td><td>step5g (30→70M) 1런</td><td class="n">230</td><td><div class="bar" role="img" aria-label="정상 40 경고 48 혼잡 39 심각 103"><i class="l0" style="width:17.4%"></i><i class="l1" style="width:20.9%"></i><i class="l2" style="width:17.0%"></i><i class="l3" style="width:44.8%"></i></div><div class="labs">40 / 48 / 39 / 103</div></td><td class="n">92%</td><td class="n">73</td><td class="n">74~76%</td><td class="note">40MHz 첫 시험. <b>원인 미상 링크 악화 구간</b>(같은 30M에 점유율 83%, 노트북 수신 손실 40~80%) — 측정·라벨은 정직해 별도 세션으로 보관</td></tr><tr><td><b>f5</b></td><td class="n">10/3 21:31</td><td><span class="wd w40">40MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">노트북 가까이 −43 · 폰 −50/−51</td><td>idle · step40(5→40M) · spkt40 · fixed30</td><td class="n">838</td><td><div class="bar" role="img" aria-label="정상 473 경고 277 혼잡 38 심각 50"><i class="l0" style="width:56.4%"></i><i class="l1" style="width:33.1%"></i><i class="l2" style="width:4.5%"></i><i class="l3" style="width:6.0%"></i></div><div class="labs">473 / 277 / 38 / 50</div></td><td class="n">98%</td><td class="n">40</td><td class="n">89~90%</td><td class="note">정상 링크면 폰당 30M(합계 131Mbps)에 점유율 40%. 심각은 주로 소패킷 20M의 링크 악화 구간에서</td></tr><tr><td><b>f6</b></td><td class="n">10/3 22:28</td><td><span class="wd w40">40MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">노트북 −53 · 폰 멀리 −57/−62</td><td>idle · step60(10→60M) · spkt25 · fixed50</td><td class="n">752</td><td><div class="bar" role="img" aria-label="정상 420 경고 178 혼잡 119 심각 35"><i class="l0" style="width:55.9%"></i><i class="l1" style="width:23.7%"></i><i class="l2" style="width:15.8%"></i><i class="l3" style="width:4.7%"></i></div><div class="labs">420 / 178 / 119 / 35</div></td><td class="n">51%</td><td class="n">45</td><td class="n">79~84%</td><td class="note">계단 점유율 10→31→42→48→55→62%로 정상~심각 고르게. 폰이 멀면 같은 양에 점유율↑</td></tr><tr><td><b>f7</b></td><td class="n">10/3 23:04</td><td><span class="wd w40">40MHz</span></td><td><span class="dir d-up">업링크</span></td><td class="place">f6과 같은 배치 (폰 −54~−64)</td><td>idle · step60 · spkt25 · fixed50</td><td class="n">830</td><td><div class="bar" role="img" aria-label="정상 385 경고 170 혼잡 254 심각 21"><i class="l0" style="width:46.4%"></i><i class="l1" style="width:20.5%"></i><i class="l2" style="width:30.6%"></i><i class="l3" style="width:2.5%"></i></div><div class="labs">385 / 170 / 254 / 21</div></td><td class="n">100%</td><td class="n">53</td><td class="n">52~60%</td><td class="note"><b>심각 21행 모두 점유율 원인</b>, 혼잡 254행. 기존 모델은 혼잡을 심각으로 오판(심각 precision 8~9%) — 업링크를 학습에 넣어 해결</td></tr><tr><td><b>f8</b></td><td class="n">10/4 00:11</td><td><span class="wd w40">40MHz</span></td><td><span class="dir d-nb">노트북</span></td><td class="place">폰 가까이 −40~−50 · 노트북 중간 −60~−63</td><td>idle · step60 · spkt25 · fixed50</td><td class="n">737</td><td><div class="bar" role="img" aria-label="정상 501 경고 107 혼잡 20 심각 109"><i class="l0" style="width:68.0%"></i><i class="l1" style="width:14.5%"></i><i class="l2" style="width:2.7%"></i><i class="l3" style="width:14.8%"></i></div><div class="labs">501 / 107 / 20 / 109</div></td><td class="n">10%</td><td class="n">38</td><td class="n">78~80%</td><td class="note">심각 109행 중 106행이 손실 원인 — 노트북 링크 병목(수신 손실 28~64%). 텔레메트리로 안 보이는 유형</td></tr><tr><td><b>f9</b></td><td class="n">10/4 19:05</td><td><span class="wd w40">40MHz</span></td><td><span class="dir d-up">업링크</span></td><td class="place">폰 가까운 편 −50/−51 (ch48)</td><td>idle · step60 · spkt25 · fixed50</td><td class="n">831</td><td><div class="bar" role="img" aria-label="정상 489 경고 271 혼잡 69 심각 2"><i class="l0" style="width:58.8%"></i><i class="l1" style="width:32.6%"></i><i class="l2" style="width:8.3%"></i><i class="l3" style="width:0.2%"></i></div><div class="labs">489 / 271 / 69 / 2</div></td><td class="n">100%</td><td class="n">43</td><td class="n">61~72%</td><td class="note">폰이 가까우면 60M에도 점유율 53% — 혼잡까지만. 1차 시도는 노트북 bitrate 6.5 고착으로 점검 단계에서 중단 후 재연결</td></tr></tbody></table></div>
+<p class="sub">전 세션 학습 포함. 집, 2026-09-19~10-04, AP Opal 5GHz(80MHz는 ch36, 40MHz는 ch44·w40test·f5~f8 / ch48·f9 — 채널 auto). 부하 방향 뜻과 흐름도는 <a href="final_model_24sess.html">final_model_24sess.html</a> §0.</p>
+</section>
+
+<section>
+<h2>3. 혼합 모델이 처음 보는 세션 (LOSO, 시드 0)</h2>
+<p>세션 하나를 통째로 빼고 나머지로 학습해 그 세션으로 시험했다. "기존 모델"은 같은 세션을 80MHz 대량분만 학습한 옛 모델로 채점한 값.</p>
+<div class="tw"><table>
+<thead><tr><th>시험 세션</th><th class="n">기존 모델 정확도</th><th class="n">혼합 Baseline</th><th class="n">혼합 EE Fixed</th><th class="n">EE 심각 (맞힘/전체, precision)</th></tr></thead>
+<tbody><tr><td><b>f1</b> <span class="wd w80">80MHz</span></td><td class="n">85~87%</td><td class="n">98.8</td><td class="n">96.4</td><td class="n">3/3, P 100%</td></tr><tr><td><b>f3</b> <span class="wd w80">80MHz</span></td><td class="n">92~96%</td><td class="n">95.7</td><td class="n">96.4</td><td class="n">3/4, P 100%</td></tr><tr><td><b>f5</b> <span class="wd w40">40MHz</span></td><td class="n">89~90%</td><td class="n">96.3</td><td class="n">94.4</td><td class="n">49/50, P 98%</td></tr><tr><td><b>f6</b> <span class="wd w40">40MHz</span></td><td class="n">79~84%</td><td class="n">89.1</td><td class="n">93.2</td><td class="n">17/35, P 55%</td></tr><tr><td><b>f7</b> <span class="wd w40">40MHz</span></td><td class="n">52~60%</td><td class="n">89.5</td><td class="n">89.3</td><td class="n">14/21, P 88%</td></tr><tr><td><b>f8</b> <span class="wd w40">40MHz</span></td><td class="n">78~80%</td><td class="n">78.5</td><td class="n">80.4</td><td class="n">16/109, P 94%</td></tr><tr><td><b>f9</b> <span class="wd w40">40MHz</span></td><td class="n">61~72%</td><td class="n">97.1</td><td class="n">91.6</td><td class="n">2/2, P 50%</td></tr></tbody></table></div>
+<ul>
+<li><b>업링크(f7·f9)에서 크게 나아졌다</b> — 기존 모델은 노트북 방향만 배워서 점유율 60~70%를 "심각 가능"으로 읽어 업링크 혼잡을 심각으로 오판했다(헛 심각 수십~수백 창). 업링크를 넣자 헛 심각 0~2창. 2.4GHz에서 업링크 h13이 47~78 → 96%로 회복된 것과 같은 이야기.</li>
+<li><b>f8은 측정 한계</b> — 노트북 링크 병목으로 생긴 손실 원인 심각이라 점유율·재전송으로 거의 안 보인다(심각 recall 15%). 2.4GHz 8/28과 같은 유형.</li>
+<li>시연 조건(80MHz 정상 구간 f1·f3) 96~99%. 다운링크 f2·노트북 멀리 f4·w40test는 LOSO 미실시, 시드 1개라 세션별 ±2~4pt 흔들릴 수 있음.</li>
+</ul>
+</section>
+
+<section>
+<h2>4. 수집하며 알게 된 것</h2>
+<ul>
+<li><b>원인 미상 링크 악화 구간</b> — 같은 배치·부하인데 점유율이 두 배로 튀고 전달량이 무너짐(w40test, f5 소패킷 20M). 배치·노트북 재연결 직후는 아님을 확인(재연결 직후 30M 시험 점유율 41%). 남은 후보: AP 부팅 직후·외부 간섭.</li>
+<li><b>5GHz는 거리에 민감</b> — 폰이 멀면 같은 양에도 점유율이 크게 오른다(f6·f7 vs f9). 시연 땐 폰을 AP 가까이(5GHz −45 dBm 이내).</li>
+<li><b>victim = 노트북</b>이라 노트북 위치가 라벨에 들어간다 — 멀면 지연·손실 원인 심각(f4·f8).</li>
+<li><b>채널마다 다르다</b> — 같은 30M에 ch36(10/6)은 경고, ch48(10/8)은 경고·혼잡에 경계 경보까지. 발표장은 ch44 고정 권장(학교 스캔에서 44·48 비어 있음).</li>
+<li>점검 단계에서 걸러진 문제: 노트북 tx bitrate 6.5Mbps 고착(재연결로 해결), 배치 전 시작한 런(<code>session_1003_f1_aborted_preplace</code>), 학습 중 메모리 부족 강제 종료(병렬 → 순차, 데스크톱 앱 종료).</li>
+</ul>
+</section>
+
+<section>
+<h2>5. 파일</h2>
+<ul>
+<li>세션 원본: <code>project/.tmp/exp_24g/session_1003_{f1..f7,w40test}</code>, <code>session_1004_{f8,f9}</code> (각 폴더 <code>placement.txt</code>) · 9/19~20분 <code>project/.tmp/exp_5g/</code></li>
+<li>재라벨 풀: <code>project/.tmp/exp_24g/pool_{f1..f9,w40test}/pool_{raw,relabeled}.csv</code></li>
+<li>재학습: <code>retrain_5g.py</code> (LOSO 원자료 <code>retrain_5g_loso_all7_rows.csv</code>) · 최종 모델 <code>project/checkpoints/ap_v2_5g_mixed_20261005/selected/</code> · 수집 드라이버 <code>run_session_5g_dir.sh</code> (<code>PROFILE_SET=5g|w40|w40b|std</code>)</li>
+<li>이 페이지 생성: <code>project/.tmp/exp_24g/build_5g_sessions_report.py</code> · 기록: <code>.work-log/current.md</code> 28차 후속(22) 10-03~10-05</li>
+</ul>
+</section>
+<footer>2026-10-09 · capstoneDesign2 · 수치는 k2m2 재라벨 풀 기준</footer>
+</main></body></html>
