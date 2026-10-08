@@ -26,7 +26,7 @@
 .ic,.ic-b{font-style:normal;font-weight:normal;line-height:1;speak:never;-webkit-font-smoothing:antialiased}
 .ic{font-family:"Phosphor"}.ic-b{font-family:"Phosphor-Bold"}
 .i-wifi::before{content:"\e4ea"}.i-half::before{content:"\e18c"}.i-phone::before{content:"\e1e0"}
-.i-swap::before{content:"\e0a0"}.i-info::before{content:"\e2ce"}
+.i-swap::before{content:"\e0a0"}.i-info::before{content:"\e2ce"}.i-minus::before{content:"\e32a"}.i-plus::before{content:"\e3d4"}
 
 :root{
   --bg:#f2f3f5; --surface:#ffffff; --line:#e1e3e8;
@@ -127,7 +127,36 @@ body[data-move="1"] .mid small{opacity:1;color:var(--l3-t);font-weight:700}
 
 /* 기기 줄 */
 .devs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:var(--gap)}
-.dev{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px 18px}
+.dev{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"name state mv" "opts opts opts" "lab rates rates";
+  align-items:center;gap:6px 14px;padding:10px 18px 12px}
+.dev .mv{height:32px}
+.dev .dev-name{grid-area:name}.dev .opts{grid-area:opts}.dev .dev-state{grid-area:state}
+.dev .lab{grid-area:lab}.dev .rates{grid-area:rates}.dev .mv{grid-area:mv}
+.opts{display:flex;align-items:center;gap:8px 18px;flex-wrap:nowrap;min-width:0}   /* 패킷·시간을 한 줄에 */
+.ctl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+.pkt{height:30px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);cursor:pointer;padding:0 10px;
+  font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;transition:background-color .2s,color .2s,border-color .2s}
+.pkt small{font-size:11px;font-weight:600;opacity:.75;margin-left:3px}
+.pkt[aria-pressed="true"]{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.step{width:28px;height:28px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:13px;
+  display:grid;place-items:center;padding:0}
+.dv{min-width:3.2em;text-align:center;font-size:16px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.dv small{font-size:11px;font-weight:600;color:var(--ink-3);margin-left:1px}
+.dev-state{font-size:13px;color:var(--ink-3);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dev.run .dev-state{color:var(--ink);font-weight:700}
+.lab{font-size:13px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+.left{position:absolute;left:18px;right:18px;bottom:5px;height:3px;border-radius:999px;overflow:hidden}
+.left > div{height:100%;background:var(--ink);transform-origin:left;transform:scaleX(0);transition:transform .5s linear}
+/* 설명 말풍선: 마우스를 올리거나 탭하면 보인다 (demo.html과 같은 모양) */
+.tip{position:relative;display:inline-flex;align-items:center;gap:4px;cursor:help;text-decoration:underline dotted;text-underline-offset:3px;border-radius:6px}
+.tip .ic{font-size:14px;color:var(--ink-3)}
+.bubble{position:absolute;z-index:20;bottom:calc(100% + 10px);left:-8px;width:min(300px,80vw);padding:12px 14px;border-radius:14px;
+  background:var(--ink);color:var(--on-ink);font-size:13.5px;font-weight:500;line-height:1.55;white-space:normal;text-decoration:none;
+  box-shadow:0 8px 24px color-mix(in oklab,var(--ink) 25%,transparent);opacity:0;transform:translateY(4px);pointer-events:none;
+  transition:opacity .18s,transform .18s var(--ease)}
+.bubble::after{content:"";position:absolute;top:100%;left:18px;border:7px solid transparent;border-top-color:var(--ink)}
+.bubble b{font-weight:800}
+.tip:hover .bubble,.tip:focus .bubble,.tip:focus-within .bubble{opacity:1;transform:none}
 .dev-name{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;white-space:nowrap}
 .dev-name .ic{font-size:22px}
 .where{font-size:13px;font-weight:700;border-radius:999px;padding:3px 10px;border:1.5px solid var(--line);color:var(--ink-2);white-space:nowrap}
@@ -181,7 +210,8 @@ body[data-drawer="1"] .wing .w-a{transform:rotate(180deg)}
 .dr-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
 @media (max-width:1400px){
-  .dev{gap:10px;padding:12px 14px}
+  .dev{gap:6px 10px;padding:10px 14px 12px}
+  .opts{gap:6px 10px} .pkt{padding:0 8px}
   .rates{gap:6px}
   .rate{font-size:17px}
   .where{font-size:12px;padding:2px 8px}
@@ -195,7 +225,7 @@ body[data-drawer="1"] .wing .w-a{transform:rotate(180deg)}
   .mid{flex-direction:row;padding:4px 0}.mid .ic-b{transform:rotate(90deg)}.mid small{writing-mode:horizontal-tb}
   .chart{height:200px;flex:none}
   .devs{grid-template-columns:1fr}
-  .dev{grid-template-columns:1fr;gap:10px}
+  .dev{grid-template-columns:1fr;grid-template-areas:"name" "opts" "state" "lab" "rates" "mv";gap:10px}
   .top{height:auto;min-height:56px;flex-wrap:wrap;padding:10px 0;gap:8px 12px}
   .team{order:3;width:100%;margin-left:0;text-align:left;font-size:13px}
 }
@@ -258,7 +288,7 @@ const BANDS = {
   '24': { title:'2.4GHz', sub:'ch 1 · 40MHz · 기존 공유기 대역', base:.10, k:.0096, el:null, score:.08, hist:[], shown:0, streak:[], sw:false, quiet:0 },
   '5':  { title:'5GHz',   sub:'ch 36 · 40MHz · 옮겨 갈 대역',   base:.03, k:.0034, el:null, score:.04, hist:[], shown:0, streak:[], sw:false, quiet:0 },
 };
-const PHONES = { s21:{ name:'S21', band:'24', rate:0 }, s26:{ name:'S26', band:'24', rate:0 } };
+const PHONES = { s21:{ name:'S21', band:'24', rate:0, pkt:1400, dur:60, remain:0, total:0, err:'' }, s26:{ name:'S26', band:'24', rate:0, pkt:1400, dur:60, remain:0, total:0, err:'' } };
 let clock = 0, scen = null;
 
 function bandHTML(key){
@@ -283,23 +313,80 @@ function bandHTML(key){
       <div class="stat"><span class="k">보내는 양</span><span class="v thr">0<small>M</small></span></div>
     </div>`;
 }
+const DUR_MIN = 10, DUR_MAX = 60, DUR_STEP = 10;
 function devHTML(id){
   const p = PHONES[id];
   return `<div class="dev-name"><i class="ic i-phone" aria-hidden="true"></i>${p.name}<span class="where"></span></div>
-    <div class="rates">${[10,20,30,40].map(r => `<button class="rate" data-r="${r}" aria-pressed="false">${r}<small>M</small></button>`).join('')}</div>
-    <button class="mv" title="시안: 실제로는 폰 와이파이 목록에서 직접 옮겨요"><i class="ic-b i-swap" aria-hidden="true"></i><span>5GHz로</span></button>`;
+    <div class="opts">
+      <span class="ctl"><span class="tip" tabindex="0">패킷<i class="ic i-info" aria-hidden="true"></i>
+        <span class="bubble" role="tooltip">와이파이는 데이터를 작은 조각(패킷)으로 나눠 보내요.
+          같은 양이라도 <b>200B</b>처럼 잘게 쪼개면 조각 수가 <b>7배</b> 많아져서, 기기들이 전파를 쓰려고 차례를 더 자주 기다리게 돼요.
+          그래서 와이파이가 더 붐벼요.</span></span>
+        <button class="pkt" data-p="1400" aria-pressed="true" aria-label="${p.name} 패킷 1400바이트, 일반">1400B<small>일반</small></button>
+        <button class="pkt" data-p="200" aria-pressed="false" aria-label="${p.name} 패킷 200바이트, 소패킷">200B<small>소패킷</small></button></span>
+      <span class="ctl"><span class="tip" tabindex="0">시간<i class="ic i-info" aria-hidden="true"></i>
+        <span class="bubble" role="tooltip">버튼을 누르면 이 시간 동안 보내고 <b>저절로 멈춰요</b>. 같은 버튼을 한 번 더 누르면 바로 멈춰요. (10~60초)</span></span>
+        <button class="step" data-d="-1" aria-label="${p.name} 시간 줄이기"><i class="ic-b i-minus" aria-hidden="true"></i></button>
+        <span class="dv"><span class="dvn">60</span><small>초</small></span>
+        <button class="step" data-d="1" aria-label="${p.name} 시간 늘리기"><i class="ic-b i-plus" aria-hidden="true"></i></button></span>
+    </div>
+    <div class="dev-state">쉬는 중</div>
+    <span class="lab"><span class="tip" tabindex="0">보내는 양<i class="ic i-info" aria-hidden="true"></i>
+      <span class="bubble" role="tooltip"><b>10M</b>은 1초에 <b>10메가비트</b>(10Mbps)를 보낸다는 뜻이에요.
+        숫자가 클수록 와이파이 전파를 더 오래 차지해요. 폰 두 대가 각자 보내니, 둘 다 30M이면 합쳐서 60M이에요.</span></span></span>
+    <div class="rates">${[10,20,30,40].map(r => `<button class="rate" data-r="${r}" aria-pressed="false" aria-label="${p.name}에 ${r}M 보내기">${r}<small>M</small></button>`).join('')}</div>
+    <button class="mv" title="연습 모드: 실제로는 폰 와이파이 목록에서 직접 옮겨요"><i class="ic-b i-swap" aria-hidden="true"></i><span>5GHz로</span></button>
+    <div class="left" aria-hidden="true"><div></div></div>`;
 }
 for (const k in BANDS){ BANDS[k].el = document.getElementById('b' + k); BANDS[k].el.innerHTML = bandHTML(k); }
 for (const id in PHONES){
   const el = document.getElementById('d-' + id); el.innerHTML = devHTML(id); PHONES[id].el = el;
-  el.querySelectorAll('.rate').forEach(btn => btn.onclick = () => { const r = +btn.dataset.r; PHONES[id].rate = PHONES[id].rate === r ? 0 : r; paintDevs(); });
-  el.querySelector('.mv').onclick = () => { PHONES[id].band = PHONES[id].band === '24' ? '5' : '24'; PHONES[id].rate = 0; paintDevs(); };
+  const ph = PHONES[id];
+  el.querySelectorAll('.rate').forEach(btn => btn.onclick = () => { const r = +btn.dataset.r; (ph.remain > 0 && ph.rate === r) ? stopLoad(id) : startLoad(id, r); });
+  el.querySelectorAll('.pkt').forEach(btn => btn.onclick = () => {
+    const pk = +btn.dataset.p; if (pk === ph.pkt) return; ph.pkt = pk;
+    if (ph.remain > 0) startLoad(id, ph.rate, ph.remain); else paintDevs();   // 보내는 중이면 남은 시간만큼 새 패킷 크기로 다시 시작
+  });
+  el.querySelectorAll('.step').forEach(btn => btn.onclick = () => { ph.dur = Math.max(DUR_MIN, Math.min(DUR_MAX, ph.dur + DUR_STEP * +btn.dataset.d)); paintDevs(); });
+  el.querySelector('.mv').onclick = () => { ph.band = ph.band === '24' ? '5' : '24'; ph.rate = 0; ph.remain = 0; paintDevs(); };
 }
+/* 부하 시작/정지 — 연습 모드는 화면 안에서만, 실시간은 폰이 붙은 대역 서버로 POST /load */
+async function startLoad(id, r, secs){
+  const p = PHONES[id]; if (!SIM && p.band === 'none') return;
+  secs = Math.round(secs || p.dur);
+  p.rate = r; p.remain = secs; p.total = secs; p.startedAt = performance.now() / 1000; p.err = ''; p.extern = false; paintDevs();
+  if (SIM) return;
+  try {
+    const j = await (await fetch(SRV[p.band] + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: id, rate: `${r}M`, packet_size: p.pkt, duration_s: secs }) })).json();
+    if (!j.ok) throw new Error(j.error || 'fail');
+  } catch (e) { p.rate = 0; p.remain = 0; p.err = '기기에 연결하지 못했어요'; paintDevs(); }
+}
+async function stopLoad(id){
+  const p = PHONES[id]; p.rate = 0; p.remain = 0; p.err = ''; p.extern = false; p.endedAt = performance.now() / 1000; paintDevs();
+  if (SIM || p.band === 'none') return;
+  try { await fetch(SRV[p.band] + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: id, rate: 'off' }) }); } catch (e) {}
+}
+setInterval(() => {   // 남은 시간은 화면에서 센다 (서버가 off를 보내면 그쪽에 맞춤)
+  for (const id in PHONES){
+    const p = PHONES[id];
+    if (p.remain > 0 && !p.extern){ p.remain = Math.max(0, p.remain - 0.5); if (!p.remain){ p.rate = 0; p.endedAt = performance.now() / 1000; } }
+  }
+  paintDevs();
+}, 500);
+
 function paintDevs(){
   for (const id in PHONES){
     const p = PHONES[id], el = p.el, w = el.querySelector('.where');
     w.textContent = p.band === '24' ? '2.4GHz 접속' : p.band === '5' ? '5GHz 접속' : '연결 안 됨'; w.dataset.b = p.band;
-    el.querySelectorAll('.rate').forEach(b => { b.setAttribute('aria-pressed', String(+b.dataset.r === p.rate)); b.disabled = p.band === 'none'; });
+    const run = p.remain > 0 && p.rate > 0;
+    el.classList.toggle('run', run);
+    el.querySelectorAll('.rate').forEach(b => { b.setAttribute('aria-pressed', String(run && +b.dataset.r === p.rate)); b.disabled = !SIM && p.band === 'none'; });
+    el.querySelectorAll('.pkt').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.p === p.pkt)));
+    el.querySelector('.dvn').textContent = p.dur;
+    el.querySelector('.dev-state').textContent = run ? (p.extern ? `${p.rate}M 보내는 중 (다른 화면에서 시작)` : `${p.rate}M · ${p.pkt}B 보내는 중, ${Math.ceil(p.remain)}초 남음`)
+      : (p.err || (!SIM && p.band === 'none' ? '연결 안 됨' : '쉬는 중'));
+    el.querySelector('.left > div').style.transform = `scaleX(${run && p.total ? p.remain / p.total : 0})`;
     el.querySelector('.mv span').textContent = p.band === '24' ? '5GHz로' : '2.4GHz로';
   }
 }
@@ -308,8 +395,9 @@ function step(){
   clock += TICK;
   for (const k in BANDS){
     const b = BANDS[k], on = Object.values(PHONES).filter(p => p.band === k);
-    const load = on.reduce((a, p) => a + p.rate, 0);               // 이 대역 폰들이 보내는 양 합계 (2.4GHz 40→경고·혼잡, 60→혼잡·심각, 80→심각 / 5GHz 60→정상, 80→경고)
-    const target = Math.min(1, b.base + b.k * load);
+    const load = on.reduce((a, p) => a + (p.remain > 0 ? p.rate : 0), 0);
+    const eff = on.reduce((a, p) => a + (p.remain > 0 ? p.rate * (p.pkt === 200 ? (k === '24' ? 2.2 : 1.6) : 1) : 0), 0);   // 소패킷은 같은 양이라도 더 붐빔(연습용 대략값)               // 이 대역 폰들이 보내는 양 합계 (2.4GHz 40→경고·혼잡, 60→혼잡·심각, 80→심각 / 5GHz 60→정상, 80→경고)
+    const target = Math.min(1, b.base + b.k * eff);
     b.score += (target - b.score) * 0.14 + (Math.random() - .5) * 0.03;
     b.score = Math.max(0, Math.min(1, b.score));
     const raw = levelOf(b.score);
@@ -333,7 +421,8 @@ function paint(){
     el.dataset.switch = k === '24' && b.sw ? '1' : '0';
     el.dataset.after = k === '5' && b.n > 0 && b.load > 0 && b.shown <= 1 ? '1' : '0';
     el.querySelector('.cnt').textContent = SIM ? b.n : Object.values(PHONES).filter(p => p.band === k).length;   // 화면엔 폰만 센다
-    const wait = !SIM && b.msg && b.n > 0;   // 기기는 있는데 창(12폴링)을 채우는 중이거나 서버가 끊긴 상태
+    if (!SIM && b.ok === false && performance.now() / 1000 - (b.errAt || 0) > 10){ b.n = 0; b.msg = `${b.title} 서버에 연결하지 못했어요 · 다시 연결 중`; }
+    const wait = !SIM && b.msg && b.n > 0;   // 기기는 있는데 창(12폴링)을 채우는 중
     el.querySelector('.word').textContent = !b.n ? '접속한 기기가 없어요' : wait ? '측정 준비 중' : LV[b.shown].word;
     el.querySelector('.desc').textContent = !b.n ? (b.msg && b.ok === false ? b.msg : '이 대역으로 기기를 옮기면 바로 보여요.') : wait ? b.msg : LV[b.shown].desc;
     if (wait) el.dataset.idle = '1';
@@ -375,14 +464,13 @@ function drawChart(b){
 // 시연 흐름 자동 재생: 2.4GHz에서 폰당 30M → 심각·경보 → 폰 둘 다 5GHz로 → 같은 30M → 여유
 document.getElementById('scenBtn').onclick = () => {
   if (scen) { scen.forEach(clearTimeout); scen = null; }
-  for (const id in PHONES){ PHONES[id].band = '24'; PHONES[id].rate = 0; } paintDevs();
+  for (const id in PHONES){ PHONES[id].band = '24'; PHONES[id].rate = 0; PHONES[id].remain = 0; PHONES[id].pkt = 1400; } paintDevs();
   const at = (s, f) => setTimeout(() => { f(); paintDevs(); }, s * 1000);
   scen = [
-    at(3,  () => { PHONES.s21.rate = 30; PHONES.s26.rate = 30; }),
-    at(25, () => { PHONES.s21.band = '5'; PHONES.s21.rate = 0; }),
-    at(28, () => { PHONES.s26.band = '5'; PHONES.s26.rate = 0; }),
-    at(32, () => { PHONES.s21.rate = 30; PHONES.s26.rate = 30; }),
-    at(60, () => { PHONES.s21.rate = 0; PHONES.s26.rate = 0; }),
+    at(3,  () => { startLoad('s21', 30, 22); startLoad('s26', 30, 22); }),
+    at(25, () => { PHONES.s21.band = '5'; stopLoad('s21'); }),
+    at(28, () => { PHONES.s26.band = '5'; stopLoad('s26'); }),
+    at(32, () => { startLoad('s21', 30, 28); startLoad('s26', 30, 28); }),
   ];
 };
 
@@ -472,12 +560,19 @@ const rateNum = r => (r && r !== 'off') ? parseInt(r, 10) : 0;
 function connectBand(k){
   const b = BANDS[k]; b.n = 0; b.load = 0; b.occ = 0; b.msg = '서버에 연결하는 중';
   const es = new EventSource(SRV[k] + '/events');
-  es.onerror = () => { b.ok = false; b.n = 0; b.msg = `${b.title} 서버 연결이 끊겼어요 · 다시 연결 중`; paintChip(); };
+  // 2026-10-08: 연결이 잠깐 끊겨도(브라우저 연결 수 한도·새로고침·느린 /check 등) 바로 "접속한 기기가 없어요"로 바꾸지 않는다.
+  // 마지막 상태를 그대로 두고 상단 칩에만 알린 뒤, 10초 넘게 못 붙을 때만 빈 칸으로 바꾼다.
+  es.onerror = () => { if (b.ok !== false) b.errAt = performance.now() / 1000; b.ok = false; paintChip(); };
   es.onmessage = ev => {
     const st = JSON.parse(ev.data); b.ok = true;
     if (st.load) b.srvLoad = st.load;
-    for (const id in PHONES) if (PHONES[id].band === k && b.srvLoad) PHONES[id].rate = rateNum((b.srvLoad[id] || {}).rate);
-    b.load = Object.values(PHONES).filter(p => p.band === k).reduce((a, p) => a + p.rate, 0);
+    for (const id in PHONES){
+      const p = PHONES[id]; if (p.band !== k || !b.srvLoad) continue;
+      const sr = rateNum((b.srvLoad[id] || {}).rate), t = performance.now() / 1000;
+      if (!sr && p.remain > 0 && t - (p.startedAt || 0) > 3){ p.rate = 0; p.remain = 0; p.extern = false; p.endedAt = t; }   // 서버 타이머가 끝남
+      else if (sr && !(p.remain > 0) && t - (p.endedAt || 0) > 6){ p.rate = sr; p.remain = 1; p.total = 0; p.extern = true; }   // 다른 화면이 건 부하 (방금 끝낸 것의 늦은 신호는 무시)
+    }
+    b.load = Object.values(PHONES).filter(p => p.band === k && p.remain > 0).reduce((a, p) => a + p.rate, 0);
     if (!st.ready){
       b.n = st.clients || 0; b.msg = st.msg || '준비 중'; b.sw = false;   // b.n = 대역 전체 접속 수(노트북 포함, 상태 표시 여부용)
       b.hist.push({ t: now(), s: null, load: false });
@@ -523,7 +618,7 @@ async function sendLoad(id, r){
 function paintChip(){
   if (SIM) return;
   const bad = Object.values(BANDS).filter(b => b.ok === false);
-  chip.textContent = bad.length ? bad.map(b => b.msg).join(' · ') : `실시간 · 2.4GHz :${SRV['24'].split(':').pop()} / 5GHz :${SRV['5'].split(':').pop()}`;
+  chip.textContent = bad.length ? bad.map(b => `${b.title} 연결 다시 잡는 중`).join(' · ') : `실시간 · 2.4GHz :${SRV['24'].split(':').pop()} / 5GHz :${SRV['5'].split(':').pop()}`;
 }
 
 if (SIM){
@@ -535,7 +630,6 @@ if (SIM){
   document.getElementById('scenPanel').innerHTML = '<span class="hint">폰이 붙은 대역은 자동으로 찾아요.<br>옮길 땐 폰 와이파이 목록에서<br>5G 이름을 눌러 주세요.</span>';
   for (const id in PHONES){
     PHONES[id].band = 'none';
-    PHONES[id].el.querySelectorAll('.rate').forEach(btn => btn.onclick = () => sendLoad(id, +btn.dataset.r));
   }
   for (const k in BANDS) connectBand(k);
   locatePhones(); setInterval(locatePhones, 4000);
