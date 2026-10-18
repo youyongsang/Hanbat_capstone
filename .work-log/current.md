@@ -104,8 +104,8 @@
   - Opal 송신 속도 고정 불가: `iw set bitrates` → Not supported, siwifi debugfs `rc/` 비어 있음(드라이버 미변경). Opal 자체 점유율엔 자기 송신이 빠져 측정 불가 → MT6000 비BSS 수신으로 잼(`pkt_test_1018{,b}.log`).
   - **Opal 채널 점유는 폰(S21) 링크 세기가 좌우**: S21이 Opal 옆(−47dBm)이면 25M·1400B 비BSS +27pt(44%), 5M·200B 같음, 64B(약 2.5M, Opal pps 상한) +38pt. S21을 멀리(−55dBm, 25M 다 못 나감)면 25M·60M 모두 **비BSS 85~88%·busy 92%**. m18 실패 원인은 폰 링크가 너무 세서 Opal 점유가 약 44%뿐이었던 것으로 추정.
   - **기준 정정**: −82dBm은 표준 최소 감지 하한일 뿐 실제 칩은 더 약한 신호도 감지. 창고(MT6000에서 −82~−85dBm)에 Opal + 25M 고정 → MT6000 비BSS 12 → 44~58%(+37pt, `session_m19_hid_watch.log`)로 들림. m18 집 밖(−97)은 +4~6pt. **실제 숨은 노드 조건 ≈ −95dBm 안팎 = m18 집 밖 자리.**
-  - m19 러너는 MT6000 2.4GHz에 외부 기기(`7e:a9:bb:2d:98:80`) 접속으로 15:32 자동 중단(rc=18) → victim 데이터 없음, 풀 제외.
-  - 10-18 저녁 재개하려다 비로 연기 → **10-19 재시도**. 자리 잡기용 1회 측정 `bash project/.tmp/exp_24g/opal_place.sh`(노트북 MT6000 2.4GHz 연결 상태, MT6000 스캔으로 Opal 세기·노트북↔MT6000·노트북→Opal %, 목표 ≤−95 / ≥−72 / ≈−60, 아직 미시험). 시작 전 MT6000 2.4GHz 외부 기기(`7e:a9:bb…`) Wi-Fi 끄기.
+  - m19 러너는 MT6000 2.4GHz에 외부 기기로 보였던 `7e:a9:bb:2d:98:80` 접속으로 15:32 자동 중단(rc=18) — **정정(10-19): 이 MAC은 외부 기기가 아니라 S26(.103, 랜덤 MAC)**. 숨은 노드 재시도 땐 S26을 Opal에 붙여야 하는데 MT6000에 붙어 있었던 것 → victim 데이터 없음, 풀 제외.
+  - 10-18 저녁 재개하려다 비로 연기 → **10-19 재시도**. 자리 잡기용 1회 측정 `bash project/.tmp/exp_24g/opal_place.sh`(노트북 MT6000 2.4GHz 연결 상태, MT6000 스캔으로 Opal 세기·노트북↔MT6000·노트북→Opal %, 목표 ≤−95 / ≥−72 / ≈−60, 아직 미시험). 시작 전 S26(`7e:a9:bb…`)이 MT6000이 아니라 Opal에 붙었는지 확인.
   - 다음(비 그친 뒤): Opal m18 집 밖 자리 + S21은 집 안 노트북 근처(Opal 기준 약 −55dBm, 25M 미만) + MT6000 2.4GHz엔 노트북만 → `CONST=25 bash project/.tmp/exp_24g/opal_hid_arm.sh 300`(이제 Opal 기준 노트북·폰 세기와 25M 5초 시험도 출력; 노트북이 Opal에 붙은 동안 인터넷 없음 → 출력은 MT6000 복귀 후 붙여넣기) → `SESSNAME=m19 DIR=laptop PHONES= EXPECT_STA=1 PROFILE_SET=hidden HIDTAG=hidF25 bash project/.tmp/exp_24g/run_session_mt6k.sh`. 스크립트 변경: `RATES="25:1400 ..."` 단계별 패킷 크기, 세기·25M 시험 출력(백업 scratchpad `opal_hid_arm_before_{pkt,sig}.sh`).
 - **현재 장비 상태**: Opal 2.4GHz = ch1 · HT20 · 1dBm(원래 HT40 · 20dBm, 되돌리려면 `uci set wireless.radio0.htmode=HT40; uci set wireless.radio0.txpower=20; uci commit wireless; wifi reload`). 노트북의 Opal 프로필 2개는 수동 연결, MT6000 프로필은 자동으로 복원. 학습용 데이터는 이번에 추가 안 함(m16은 풀에 넣을지 미정).
 
@@ -115,6 +115,22 @@
 
 - **원인 구분 코드 반영 (10-18 밤)**: `collect_metrics.py`에 `sta_max_us_per_byte`·`sta_worst_link` 2열 추가(44열, `summarize_link_efficiency`, Δtx_bytes>2000만, 모델 입력 아님 — 기존 CSV와 헤더가 달라 새 파일로만 기록). `live_congestion.py`에 최근 5폴링 중앙 µs/B ≥ `--link-thr`(기본 1.6, 잠정) & 점유율<75면 "약한 링크 의심: <기기> — 채널 전환보다 위치·로밍 확인" 표시, event-log에 `link` 필드. 기존 데이터로 문턱 1.6 확인: m10 22.7%·다른 세션 0~1.6%, 규칙 미스 151행 중 99행. deploy 번들에 복사 완료, **Pi 반영은 미실시**(노트북이 집 Wi-Fi) → MT6000 연결 후 `ssh capstone@192.168.8.109 'cd ~/ap_pi_v2 && cp collect_metrics.py collect_metrics.py.bak_1018 && cp live_congestion.py live_congestion.py.bak_1018'` → `scp project/deploy/raspberry_pi_ap_v2/{collect_metrics,live_congestion}.py capstone@192.168.8.109:ap_pi_v2/` → md5 확인.
 - **검증 세션 준비 (10-19 수집)**: 러너 `PROFILE_SET=link`(idle 420 · 노트북 방향 경고 계단 warn_mt6k_lap_up 360 · idle 180, LOADTHR 2, 세션당 약 20분; 백업 scratchpad `run_session_mt6k_before_link.sh`), 자리 잡기 `link_place.sh`(MT6000 기준 노트북 신호·bitrate·MCS + 20초 1400B ping 중 µs/B·재전송·손실). 계획: 노트북 자리 4곳 — m20 가까이(대조, 약 −40) / m21 중간(약 −50) / m22 m10 자리(−58~−61) / m23 더 멀리(−65~−70, 러너 bitrate 사전 점검에서 막히면 생략). 폰 2대는 AP 가까이, MT6000에 외부 기기(`7e:a9:bb…`) 없게. 사용: `SESSNAME=m20 DIR=laptop PROFILE_SET=link bash project/.tmp/exp_24g/run_session_mt6k.sh`. 판정: 거리에 따라 idle µs/B와 프로브 손실이 같이 오르는지, 문턱 1.6이 손실 폴링을 가르는지(세션 넘어 일반화).
+  - 추가 계획: m24 차폐(가까운 거리지만 금속 뒤로 −55~−60 — 거리 아닌 원인도 같은 지표로 잡히는지), m25 동시 발생(m22 자리 + 폰 업링크 std 부하 — 혼잡과 약한 링크가 겹칠 때 표시). **문턱 1.6은 지금 값으로 고정하고 새 세션을 보고 다시 맞추지 않음**(채점만).
+- **검증 세션 수집 (10-19 00:00~03:15, 노트북 거리만 바꿈, 폰 2대는 AP 옆 −40)** — 채점 `python project/.tmp/exp_24g/score_link.py session_1018_m20 session_1019_m2{1,2,3}`:
+
+  | 세션 | 노트북 신호 | idle µs/B 중앙(p90) | 부하 중 프로브 손실 폴링 | 품질 깨진 행(부하) | 노트북 bitrate(부하 중앙) | 약한 링크 표시 |
+  |---|---|---|---|---|---|---|
+  | m20 | −37 | 0.95 (1.10) | 2% | 8 | 573.5 | 0% |
+  | m21 | −51 | 1.02 (1.15) | 1% | 5 | 573.5 | 0% |
+  | m22 | −58 | 1.04 (1.16) | 2% | 8 | 574 | 0% |
+  | m23 | −65 | 1.27 (1.45) | 6~7% (2~13%) | 28 | 413 | 0% |
+
+  - idle µs/B는 거리에 단조 증가하지만 −65에서도 1.27로 m10(2.18)에 못 미치고 **idle 손실은 재현 안 됨** — m10은 자리보다 그날 링크 상태(MCS 흔들림)가 나빴던 것으로 봄. −58까지는 m21과 사실상 같은 멀쩡한 링크, 나빠지는 지점은 −58~−65 사이.
+  - **약한 링크 손실은 부하 중에 나타남**(m23 점유율 46~63%에서 프로브 손실 2~13%, 01:29 노트북 연결 끊김 → 러너 rc=6 중단, AP는 정상 가동, 부하 구간 333행 Pi에서 회수 `metrics_home24g_1019_m23_warnup_partial.csv`). 그런데 **µs/B는 부하 중 묶음 전송으로 0.2~0.3까지 떨어져 표시 0%** — 현 지표는 idle·저트래픽 전용이라는 한계 확인.
+  - **러너 버그 수정**: `run_session_mt6k.sh` 10행 export 중간 주석이 `FAILMAX=8 LOADTHR EXPECT_SSID`를 삼켜 10-17부터 m15~m23이 기본 FAILMAX=2로 돌았음 → `FAILMAX=${FAILMAX:-8} LOADTHR=${LOADTHR:-30} EXPECT_SSID=...`로 수정. m23이 무응답 2회만에 끊긴 이유.
+  - **부하 중 후보 지표 추가 (10-19 02:40)**: `collect_metrics.py`에 `sta_max_retry_ratio`·`sta_worst_retry`·`sta_retry_detail` 3열(47열, `summarize_link_retry`, 기기별 (Δretries+Δfailed)/(…+Δtx_packets), Δtx_packets ≥ 20만, detail = `mac끝4:Δpkts:Δretries:Δfailed:tx_bitrate`). `live_congestion.py`는 `--raw`·event-log에 표시만(문턱 미정, 경고 없음). deploy 번들 + Pi 반영(백업 `.bak_1019`, md5 collect 27b8dc5e… / live de419d29…). **옛 세션(m1~m23 중 m22 전)엔 기기별 재전송이 없어 재계산 불가.**
+  - m22 첫 측정: 노트북 재전송 비율 idle 중앙 21%(p90 30%)·부하 23%(29%), 손실 없음 — 가까운 기준값이 없어 높은지 판단 불가. 폰은 폴링당 20패킷 미만이 대부분이라 값이 거의 안 나옴.
+  - **다음**: ① 노트북 가까이(−37) 짧게(idle 3분 + 부하 3분) 재전송 기준값 → ② m23(−65) 재수집(이제 FAILMAX=8) — 재전송이 기준보다 뚜렷이 오르면 부하 중 약한 링크 지표로 → ③ m24 차폐 · m25 동시 발생. µs/B 문턱 1.6은 계속 고정.
 
 **다음 할 일**
 1. 보고서 서사 정리: MT6000에선 지금 단계 분류는 점유율 규칙(98.8%)이 충분하고(점유율 1개 LSTM도 7개보다 같거나 나음), 조기경보는 같은 헛경보에서 규칙보다 +8~11pt(5시드)(문턱 깜빡임이 진입의 60~68%라 "68% vs 0%"는 쓰지 말 것). 기여 중심 = AP 가시성에 따라 모델 필요 여부가 갈림(Opal은 점유율만이면 심각 recall −16pt, MT6000은 +2pt) + 엣지 구현 + 평가 과정. 98.8%는 라벨이 점유율 축이라 생긴 순환도 있음(심각 1,897행 중 1,519행은 victim 품질 무손상) — 한계로 명시. 남은 오답의 절반은 75% 문턱 ±2pt 깜빡임이고 전환 규칙을 씌우면 헛된 전환 시간당 0.3~3회, 4폴링 이상 심각 전부 탐지. 이웃 간섭은 비BSS 수신으로 보임(m16).

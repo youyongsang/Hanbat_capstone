@@ -166,6 +166,12 @@ CSV_COLUMNS = [
     # m10(idle 프로브 손실 51%) 2.2. 피해 기기를 몰라도 되게 "기기 중 최댓값"(idle 손실 행 AUC 0.93, link_feature_probe_b.py).
     "sta_max_us_per_byte",          # Δtx_bytes > 2000인 station 중 µs/B 최댓값 (해당 없으면 빈칸)
     "sta_worst_link",               # 그 station의 mac 끝 4자리
+    # 2026-10-19: 부하 중에도 쓰는 약한 링크 후보. µs/B는 부하 땐 묶음 전송(aggregation)으로 0.2~0.3까지 떨어져 못 씀.
+    # 기기별 (Δretries+Δfailed)/(Δretries+Δfailed+Δtx_packets) — Δtx_packets ≥ 20인 station만. AP 전체 합계(tx_retry_ratio)와 달리
+    # 멀리 있는 한 기기만 나빠져도 드러남. 문턱 미정(m22~ 수집 후 결정), 모델 입력 아님.
+    "sta_max_retry_ratio",          # 기기별 재전송 비율 최댓값 (해당 없으면 빈칸)
+    "sta_worst_retry",              # 그 station의 mac 끝 4자리
+    "sta_retry_detail",             # "mac끝4:Δpkts:Δretries:Δfailed:tx_bitrate|..." 원자료(기기별 재계산용)
 ]
 
 # ============================================================
@@ -717,6 +723,32 @@ def summarize_link_efficiency(stations, previous_stations=None):
         if best is None or v > best:
             best, worst = v, mac[-5:].replace(":", "")
     return best, worst
+
+
+RETRY_MIN_PKTS = 20   # 이보다 적게 보낸 폴링은 비율이 몇 프레임에 흔들려 제외
+
+
+def summarize_link_retry(stations, previous_stations=None):
+    """기기별 재전송 비율 최댓값과 그 기기 + 원자료 문자열 (2026-10-19, 모델 입력 아님).
+    µs/B와 달리 트래픽 양(묶음 전송)에 덜 흔들려 부하 중 약한 링크 후보. 조건 만족 station이 없으면 (None, "", detail)."""
+    best, worst, parts = None, "", []
+    for mac, s in stations.items():
+        prev = (previous_stations or {}).get(mac)
+        if prev is None:
+            continue
+        dp = s.get("tx_packets", 0) - prev.get("tx_packets", 0)
+        dr = s.get("tx_retries", 0) - prev.get("tx_retries", 0)
+        df = s.get("tx_failed", 0) - prev.get("tx_failed", 0)
+        if dp < 0 or dr < 0 or df < 0:
+            continue
+        tag = mac[-5:].replace(":", "")
+        parts.append(f"{tag}:{dp}:{dr}:{df}:{s.get('tx_bitrate', 0.0):g}")
+        if dp < RETRY_MIN_PKTS:
+            continue
+        v = (dr + df) / (dr + df + dp)
+        if best is None or v > best:
+            best, worst = v, tag
+    return best, worst, "|".join(parts)
 
 
 def airtime_percent(us, interval_s):
@@ -1404,6 +1436,7 @@ def main():
             )
             sta_airtime = summarize_sta_airtime(station, previous_stations)
             link_us_per_byte, link_worst = summarize_link_efficiency(station, previous_stations)
+            link_retry, retry_worst, retry_detail = summarize_link_retry(station, previous_stations)
 
             # ------------------------------------------------
             # 2. Channel Occupancy
@@ -1729,6 +1762,9 @@ def main():
                 sta_airtime[3] if sta_airtime else "",
                 round(link_us_per_byte, 4) if link_us_per_byte is not None else "",
                 link_worst,
+                round(link_retry, 4) if link_retry is not None else "",
+                retry_worst,
+                retry_detail,
             ])
 
             sample += 1

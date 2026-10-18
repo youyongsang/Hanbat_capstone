@@ -44,12 +44,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # bundle dir (collect_
 try:
     from scripts.collect_metrics import (  # noqa: E402
         APPoller, MOVING_AVG_WINDOW, calculate_channel_occupancy,
-        calculate_station_deltas, parse_ap_cycle, summarize_stations, summarize_link_efficiency,
+        calculate_station_deltas, parse_ap_cycle, summarize_stations, summarize_link_efficiency, summarize_link_retry,
     )
 except ImportError:
     from collect_metrics import (  # noqa: E402
         APPoller, MOVING_AVG_WINDOW, calculate_channel_occupancy,
-        calculate_station_deltas, parse_ap_cycle, summarize_stations, summarize_link_efficiency,
+        calculate_station_deltas, parse_ap_cycle, summarize_stations, summarize_link_efficiency, summarize_link_retry,
     )
 try:
     from scripts.switch_advisor import SwitchAdvisor  # noqa: E402
@@ -201,6 +201,10 @@ def main() -> None:
             feats_extra = {"sta_max_us_per_byte": round(link_v, 3) if link_v is not None else None,
                            "link_us_per_byte_med5": round(link_med, 3) if link_med is not None else None,
                            "sta_worst_link": link_mac, "link_weak_suspect": link_weak}
+            # 10-19: 부하 중 후보 — 기기별 재전송 비율 최댓값(문턱 미정, 표시·기록만)
+            retry_v, retry_mac, _ = summarize_link_retry(station, prev_stations)
+            feats_extra.update({"sta_max_retry_ratio": round(retry_v, 3) if retry_v is not None else None,
+                                "sta_worst_retry": retry_mac})
 
             prev_stations, prev_active, prev_busy = station, cur_active, cur_busy
             prev_rssi, prev_time = cur_rssi, now
@@ -215,7 +219,8 @@ def main() -> None:
                            f"retry {feats['tx_retry_ratio']*100:.0f}% "
                            f"rssi {feats['rssi_dbm']:.0f} "
                            f"bitrate {feats['sta_tx_bitrate_mean']:.0f} "
-                           f"µs/B {feats_extra['link_us_per_byte_med5'] if feats_extra['link_us_per_byte_med5'] is not None else '-'}]")
+                           f"µs/B {feats_extra['link_us_per_byte_med5'] if feats_extra['link_us_per_byte_med5'] is not None else '-'} "
+                           f"sta_retry {'-' if retry_v is None else f'{retry_v*100:.0f}%({retry_mac})'}]")
 
             if len(window) < WINDOW_SIZE:
                 print(f"{ts}  창 채우는 중 {len(window)}/{WINDOW_SIZE}{raw_str}")
