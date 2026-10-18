@@ -73,6 +73,7 @@ project/deploy/raspberry_pi_ap_v2/                     Pi 배포 번들 (2026-09
 project/checkpoints/ap_v2_5g_mixed_20261005/selected/ ★ 5GHz 시연 모델 (80+40MHz 혼합, 5GHz 스케일러; Pi 번들 5g/)
 project/demo/demo_dual.html + run_dual_demo.sh         2.4GHz·5GHz 비교 화면(/dual) — 서버 두 개(:8000 24g / :8001 5g), 부하 대상 유선 Pi, 정답 비교 패널
 docs/yongsang/sessions_5g.html                         5GHz 수집 현황 (세션별 폭·방향·배치·라벨·LOSO)
+docs/yongsang/mt6000_results.html                      ★ MT6000(순정 OpenWrt) 2.4GHz 실험 결과 한 장 — 14세션 수집·Opal 비교·LOSO·규칙 vs LSTM·점유율 1개 vs 7개 5시드·조기경보·숨은 노드 실험 (10/15~10/18)
 docs/yongsang/demo_architecture.html                   데모 사이트 구조·데이터 흐름·설계 이유
 docs/yongsang/final_model_24sess.html                  ★ 24세션 최종 모델 보고서 (선택 근거·처음 보는 세션 성능·오답 원인·채널 전환 규칙·Pi 지연)
 project/results/yongsang/ap_v2_redesign2_eval_report.txt          현행 평가 리포트

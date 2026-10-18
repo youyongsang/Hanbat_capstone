@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MT6000 실험 결과</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --s1:#2a78d6; --s2:#eb6834; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --s1:#3987e5; --s2:#d95926; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul { padding-left:1.2rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.9rem; margin:1.2rem 0; }
+.kpi { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.85rem 1rem; }
+.kpi b { display:block; font-family:"IBM Plex Mono",monospace; font-size:1.45rem; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.kpi span { color:var(--ink2); font-size:.86rem; }
+.kpi.alert b { color:var(--bad); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout p { margin:.2rem 0; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); gap:1rem; }
+.chart { margin:0; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.7rem .7rem .3rem; }
+.chart figcaption { font-size:.86rem; font-weight:600; margin:0 0 .3rem .2rem; }
+.chart svg { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule); stroke-width:1; } .chart .ref { stroke:var(--rule2); stroke-dasharray:4 3; }
+.chart .ax { fill:var(--mute); font-size:11px; font-family:"IBM Plex Mono",monospace; }
+.chart .grp { fill:var(--ink2); font-size:11.5px; }
+.chart .val { fill:var(--ink); font-size:10.5px; font-family:"IBM Plex Mono",monospace; }
+.chart .b1 { fill:var(--s1); } .chart .b2 { fill:var(--s2); }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem 1.1rem; font-size:.85rem; color:var(--ink2); margin:.2rem 0 .6rem; }
+.legend i { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:.35rem; vertical-align:-1px; }
+.flow { font-family:"IBM Plex Mono",monospace; font-size:.8rem; white-space:nowrap; }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+
+.dir { display:inline-block; font-size:.74rem; font-weight:600; padding:.05rem .5rem; border-radius:999px; white-space:nowrap; border:1px solid currentColor; }
+.d-nb { color:var(--s1); } .d-up { color:var(--good); } .d-dn { color:var(--bad); } .d-mx { color:var(--warn); } .d-p2p { color:var(--ink2); }
+tr.out td { background:color-mix(in srgb, var(--bad) 7%, transparent); }
+td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
+.hl td { background:color-mix(in srgb, var(--accent) 7%, transparent); }
+.win { color:var(--good); font-weight:600; }
+.toc { display:flex; flex-wrap:wrap; gap:.3rem .9rem; font-size:.88rem; margin:.4rem 0 1rem; } .toc a { color:var(--accent); text-decoration:none; }
+</style></head><body><main>
+<p class="eyebrow">2.4GHz · GL-MT6000 · 2026-10-15 ~ 10-18</p>
+<h1>MT6000 실험 결과</h1>
+<p class="lead">Opal(GL-SFT1200)의 점유율은 AP 자신의 송신을 빼서 다운링크 혼잡이 안 보였다. 그래서 같은 채널 시간을 AP 송신까지 포함해 보여 주는 GL-MT6000(순정 OpenWrt)을 들여와 2.4GHz를 다시 수집하고 학습했다. 이 문서는 10/15~10/18의 수집, 학습, 비교, 간섭 실험 결과를 한곳에 정리한다. 결론부터 말하면 <b>MT6000에서는 "지금 상태" 판단이 점유율 하나로 충분했고, LSTM이 따로 하는 일은 심각 진입을 조금 일찍 잡는 것뿐이다.</b> 이것이 Opal과 정반대라는 점, 즉 AP가 무엇을 보느냐에 따라 ML이 필요한지가 갈린다는 점이 핵심 결과다.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>14세션 · 14,324행</b><span>m1~m14 본수집 (방향 4종 × 노트북 거리 2 + 고부하 + 경고), 크래시 0</span></div>
+  <div class="kpi"><b>99.3%</b><span>심각 중 점유율 ≥75% 비율 (Opal 71.9%). 다운링크 맹점 해소</span></div>
+  <div class="kpi"><b>98.8%</b><span>점유율 문턱 규칙(40/55/75) 정확도. LSTM 93.7~95.1%보다 높음</span></div>
+  <div class="kpi"><b>96.0 vs 94.3%</b><span>EE Fixed 5시드: 점유율 1개 vs 7-feature (5/5 시드 1개 우위)</span></div>
+  <div class="kpi"><b>+8~11pt</b><span>같은 헛경보에서 LSTM이 규칙보다 심각 진입을 더 잡음 (5시드, 1폴링 앞 7-feature · 3폴링 앞 점유율 1개)</span></div>
+</div>
+
+<nav class="toc"><a href="#s1">1. 설치</a><a href="#s2">2. 수집 세션</a><a href="#s3">3. Opal vs MT6000</a><a href="#s4">4. LOSO 학습</a><a href="#s5">5. 규칙 vs LSTM</a><a href="#s6">6. 점유율 1개 vs 7개</a><a href="#s7">7. 조기경보</a><a href="#s8">8. 간섭 실험</a><a href="#s85">9. 얻은 것·서사</a><a href="#s9">10. 결론·한계</a></nav>
+
+<section id="s1">
+<h2>1. 설치와 측정 준비 (10/15)</h2>
+<ul>
+<li><b>기본 펌웨어(GL 4.8.4)는 쓸 수 없었다.</b> MediaTek 독점 드라이버(<code>mt_wifi</code>)라 <code>iw</code>와 survey가 없고, 송신 시간도 볼 수 없었다.</li>
+<li><b>순정 OpenWrt 25.12.5</b>(커널 6.12, <code>mt7915e</code>)를 설치했다. 2.4GHz <code>GL-MT6000-bac</code> ch1 40MHz(<code>noscan=1</code>로 40MHz 강제, Opal과 같은 폭), 5GHz ch48 80MHz.</li>
+<li><b>2.4GHz에서도 survey busy·AP 송신·수신·BSS 수신, station별 tx/rx airtime이 모두 나온다.</b> idle에서는 busy ≈ 수신 + 송신이다.</li>
+<li><b>판단 시험(다운링크 UDP 10→80M)</b>: AP 송신 0→60%, busy 37→73%로 올랐다. 같은 부하에서 Opal 점유율은 20→10%로 오히려 내려갔다. 다운링크 혼잡이 보이므로 본수집을 진행했다.</li>
+<li>시작 사고 3건(20MHz로 뜸, 노트북 iperf3 서버 꺼짐, AP Wi-Fi 재기동 뒤 노트북 6Mbps 고착)은 모두 부하 전에 중단했고 폴더는 보존했다. <b>AP Wi-Fi 설정을 바꾸면 노트북을 재연결해야 한다.</b></li>
+</ul>
+</section>
+
+<section id="s2">
+<h2>2. 수집 세션</h2>
+<p class="sub">수집기는 유선 Pi(<code>collect_metrics.py</code>, 폴링 약 1.02초), victim 프로브 포함, 라벨은 현행 정의(max 앵커 + k2m2 게이트, 점유율 앵커 40/55/75/90)다. 아래 라벨 수는 m1~m8이 수집 당시 기준, 행 수는 확정 값이다.</p>
+<div class="tw"><table>
+<thead><tr><th>세션</th><th>날짜</th><th>방향</th><th>노트북</th><th>프로파일</th><th class="n">행</th><th class="n">심각</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>m1</td><td>10/15</td><td><span class="dir d-dn">다운링크</span></td><td>가까이</td><td>표준</td><td class="n">1,040</td><td class="n">104</td><td class="note">점유율 80%, AP 송신 78%</td></tr>
+<tr><td>m2</td><td>10/15</td><td><span class="dir d-up">업링크</span></td><td>가까이</td><td>표준</td><td class="n">1,038</td><td class="n">93</td><td class="note">점유율 81%, AP 송신 7~8%</td></tr>
+<tr><td>m3</td><td>10/15</td><td><span class="dir d-nb">노트북 방향</span></td><td>가까이</td><td>표준</td><td class="n">1,028</td><td class="n">466</td><td class="note">손실 최대 36.7%</td></tr>
+<tr><td>m4</td><td>10/15</td><td><span class="dir d-mx">혼합</span></td><td>가까이</td><td>표준</td><td class="n">1,038</td><td class="n">177</td><td class="note"></td></tr>
+<tr><td>m5</td><td>10/15</td><td><span class="dir d-nb">노트북 방향</span></td><td>멀리(−62)</td><td>표준</td><td class="n">970</td><td class="n">607</td><td class="note">지연 ≥50ms 334행, 최대 491ms</td></tr>
+<tr><td>m6</td><td>10/15</td><td><span class="dir d-up">업링크</span></td><td>멀리</td><td>표준</td><td class="n">1,023</td><td class="n">105</td><td class="note"></td></tr>
+<tr><td>m7</td><td>10/15</td><td><span class="dir d-dn">다운링크</span></td><td>멀리</td><td>표준</td><td class="n">1,034</td><td class="n">153</td><td class="note"></td></tr>
+<tr><td>m8</td><td>10/15</td><td><span class="dir d-mx">혼합</span></td><td>멀리</td><td>표준</td><td class="n">1,028</td><td class="n">192</td><td class="note">gray 메모리 부족 강제 종료 후 재실행</td></tr>
+<tr><td>m9</td><td>10/16</td><td><span class="dir d-nb">노트북 방향</span></td><td>가까이(−39)</td><td>고부하(폰당 ≤80M)</td><td class="n">1,243</td><td class="n">805</td><td class="note">지연 중앙 45~95ms, 손실 축 심각 11행</td></tr>
+<tr><td>m10</td><td>10/16</td><td><span class="dir d-nb">노트북 방향</span></td><td>멀리(−58~−61)</td><td>고부하</td><td class="n">1,112</td><td class="n">780</td><td class="note">지연 중앙 177~241ms, 지연 축 심각 184행</td></tr>
+<tr><td>m11</td><td>10/17</td><td><span class="dir d-up">업링크</span></td><td>같은 방</td><td>경고(폰당 2~8M)</td><td class="n">942</td><td class="n">56</td><td class="note">경고 489. 이웃 Wi-Fi 3분 간섭으로 혼잡·심각</td></tr>
+<tr><td>m12</td><td>10/17</td><td><span class="dir d-dn">다운링크</span></td><td>같은 방</td><td>경고</td><td class="n">943</td><td class="n">0</td><td class="note">경고 379</td></tr>
+<tr><td>m13</td><td>10/17</td><td><span class="dir d-mx">혼합</span></td><td>같은 방</td><td>경고</td><td class="n">943</td><td class="n">0</td><td class="note">경고 399</td></tr>
+<tr><td>m14</td><td>10/17</td><td><span class="dir d-nb">노트북 방향</span></td><td>같은 방</td><td>경고(1~6M)</td><td class="n">942</td><td class="n">1</td><td class="note">경고 398, 품질 멀쩡</td></tr>
+</tbody></table></div>
+<p><b>14세션 14,324행: 정상 30.1 / 경고 12.9 / 혼잡 32.4 / 심각 24.6%.</b> m1~m10만 보면 경고가 1.7%(183행)뿐이었다. MT6000은 idle 점유율이 약 30%이고, 부하를 걸면 바로 68% 이상으로 뛰어서 경고 구간(40~55%)에 머물지 않았다. 그래서 가벼운 계단 부하로 경고 세션 m11~m14를 따로 모았다(경고 1,848행). 학습·평가 풀은 m1~m10이 평가 폴드이고, m11~m14는 모든 폴드의 학습에만 들어간다.</p>
+<p class="sub">간섭 실험 세션 m15~m19는 학습 풀에 넣지 않았다(8절).</p>
+</section>
+
+<section id="s3">
+<h2>3. Opal vs MT6000 — 심각이 무엇으로 붙는가</h2>
+<p class="sub">같은 라벨 정의(점유율 앵커 동일)로 Opal 24세션 풀과 MT6000 m1~m10을 비교했다. "품질 심각"은 지터·손실·지연 축 중 하나가 0.75 이상(게이트 후)인 행이다. 원본: <code>project/results/yongsang/opal_vs_mt6000_severe_composition.{md,csv}</code>.</p>
+<div class="tw"><table>
+<thead><tr><th>방향</th><th>AP</th><th class="n">행</th><th class="n">심각 %</th><th class="n">심각 중 점유율 ≥75%</th><th class="n">품질 심각 중 점유율 ≥75%</th><th class="n">부하 중 점유율 중앙</th><th class="n">부하 중 처리량 중앙</th></tr></thead>
+<tbody>
+<tr><td><span class="dir d-nb">노트북 방향</span></td><td>Opal</td><td class="n">9,364</td><td class="n">22.5</td><td class="n">69.3%</td><td class="n">56.4%</td><td class="n">58.6%</td><td class="n">51.8</td></tr>
+<tr><td></td><td>MT6000</td><td class="n">4,353</td><td class="n">60.6</td><td class="n">99.1%</td><td class="n">84.4%</td><td class="n">79.4%</td><td class="n">132.9</td></tr>
+<tr><td><span class="dir d-up">업링크</span></td><td>Opal</td><td class="n">2,974</td><td class="n">28.3</td><td class="n">96.8%</td><td class="n">87.2%</td><td class="n">66.7%</td><td class="n">41.6</td></tr>
+<tr><td></td><td>MT6000</td><td class="n">2,061</td><td class="n">9.6</td><td class="n">100%</td><td class="n">–</td><td class="n">68.3%</td><td class="n">40.2</td></tr>
+<tr class="out"><td><span class="dir d-dn">다운링크</span></td><td>Opal</td><td class="n">4,735</td><td class="n">3.0</td><td class="n">7.0%</td><td class="n">0.5%</td><td class="n">16.7%</td><td class="n">47.6</td></tr>
+<tr class="hl"><td></td><td>MT6000</td><td class="n">2,074</td><td class="n">12.4</td><td class="n">100%</td><td class="n">–</td><td class="n">70.2%</td><td class="n">40.1</td></tr>
+<tr><td><span class="dir d-mx">혼합</span></td><td>Opal</td><td class="n">2,816</td><td class="n">1.0</td><td class="n">77.8%</td><td class="n">41.7%</td><td class="n">36.7%</td><td class="n">43.3</td></tr>
+<tr><td></td><td>MT6000</td><td class="n">2,066</td><td class="n">17.9</td><td class="n">100%</td><td class="n">–</td><td class="n">69.8%</td><td class="n">40.2</td></tr>
+<tr><td><b>전체</b></td><td>Opal</td><td class="n">20,621</td><td class="n">16.4</td><td class="n"><b>71.9%</b></td><td class="n"><b>54.9%</b></td><td class="n">50.0%</td><td class="n">46.8</td></tr>
+<tr class="hl"><td></td><td>MT6000</td><td class="n">10,554</td><td class="n">32.8</td><td class="n"><b>99.3%</b></td><td class="n"><b>84.4%</b></td><td class="n">73.4%</td><td class="n">63.2</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>업링크는 두 AP가 같다.</b> 처리량 약 40Mbps에서 점유율이 66.7% vs 68.3%다. 두 측정이 같은 눈금이라는 확인이다.</li>
+<li><b>다운링크가 결정적 차이다.</b> 같은 처리량에서 Opal 16.7%, MT6000 70.2%다. Opal의 다운링크 심각은 93%가 점유율 미달(손실·지연으로만 붙음)이었는데, MT6000에서는 100%가 점유율로 설명된다.</li>
+<li><b>Opal의 "점유율 미달 심각"은 대부분 측정 한계였다.</b> MT6000에서 점유율 미달 심각은 0.7%뿐이다. 품질 붕괴 자체도 드물어서(품질 심각 Opal 12.6% vs MT6000 2.6%), 노트북 방향 + 약한 링크 + 고부하(m10)에서만 많이 나왔다.</li>
+<li>라벨 정의는 바꾸지 않기로 했다(10/15, 사용자 결정). 채널 전환은 채널 전체의 문제라 점유율 축이 심각 축으로 남아야 하고, 75% 앵커는 MT6000에서도 victim 지연이 터지는 지점(75~80%)과 맞는다.</li>
+</ul>
+</section>
+
+<section id="s4">
+<h2>4. LOSO 학습 결과</h2>
+<p class="sub">평가는 세션 단위 leave-one-session-out(m1~m10, 10폴드)이고, 정답은 창(12폴링) 마지막 폴링의 라벨이다. 스케일러는 학습 세션으로만 만들었다. 스크립트 <code>project/.tmp/exp_24g/retrain_mt6k.py</code>.</p>
+<h3>경고 세션 추가 전 (m1~m10만 학습, 10폴드 평균)</h3>
+<div class="tw"><table>
+<thead><tr><th>모델</th><th class="n">정확도</th><th class="n">심각 recall</th><th class="n">심각 precision</th><th class="n">정상</th><th class="n">경고</th><th class="n">혼잡</th></tr></thead>
+<tbody>
+<tr><td>EE Fixed 5시드</td><td class="n">93.7 ± 0.6</td><td class="n">92.5 ± 1.5</td><td class="n">92.3 ± 1.4</td><td class="n">96.1</td><td class="n">51.8</td><td class="n">83.7</td></tr>
+<tr><td>EE Dynamic 5시드</td><td class="n">93.8 ± 0.6</td><td class="n">92.6 ± 1.9</td><td class="n">92.2 ± 0.9</td><td class="n">96.9</td><td class="n">48.2</td><td class="n">83.6</td></tr>
+</tbody></table></div>
+<h3>경고 세션(m11~m14) 추가 효과 — seed 0, 추가 전 → 후</h3>
+<div class="tw"><table>
+<thead><tr><th>모델</th><th class="n">정확도</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead>
+<tbody>
+<tr><td>Baseline</td><td class="n">95.6 → 94.7</td><td class="n">61.0 → 74.4</td><td class="n">88.3 → 82.9</td><td class="n">93.6 → 94.4</td><td class="n">95.9 → 93.7</td></tr>
+<tr><td>EE Fixed</td><td class="n">94.8 → 93.7</td><td class="n">48.6 → 67.5</td><td class="n">85.9 → 80.9</td><td class="n">94.5 → 93.5</td><td class="n">94.3 → 91.3</td></tr>
+<tr><td>EE Dynamic</td><td class="n">94.6 → 93.7</td><td class="n">43.2 → 64.4</td><td class="n">85.1 → 81.3</td><td class="n">95.0 → 93.2</td><td class="n">93.2 → 91.0</td></tr>
+<tr><td>SDN</td><td class="n">94.0 → 95.1</td><td class="n">29.8 → 47.6</td><td class="n">87.6 → 86.9</td><td class="n">91.2 → 94.5</td><td class="n">94.4 → 95.6</td></tr>
+</tbody></table></div>
+<ul>
+<li>경고 recall이 +18~21pt 올랐다. 대신 EE·Baseline은 혼잡→심각 오답이 늘어 정확도가 −1pt, 심각 precision이 −2~3pt였다. 오답 창의 점유율 중앙값은 74.7%로, 문턱 75% 바로 아래다.</li>
+<li><b>Opal의 다운링크 맹점(55~64%)은 해소됐다.</b> 다운링크 m1·m7이 96~98%다. 약한 세션은 노트북 방향·멀리(m10, 84~88%)다.</li>
+<li>SDN이 seed 0에서는 가장 좋지만, 5시드로 확인하기 전이라 모델 순위는 정하지 않았다.</li>
+</ul>
+</section>
+
+<section id="s5">
+<h2>5. 점유율 규칙 vs LSTM</h2>
+<p class="sub">같은 LOSO 시험 창 10,050개에서, 학습 없이 지금 점유율만 40/55/75 문턱에 대 보는 규칙과 비교했다.</p>
+<div class="tw"><table>
+<thead><tr><th>방법</th><th class="n">정확도</th><th class="n">경고</th><th class="n">혼잡</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead>
+<tbody>
+<tr class="hl"><td>점유율 문턱 규칙</td><td class="n win">98.8</td><td class="n">90.3</td><td class="n">94.5</td><td class="n">99.6</td><td class="n">100</td></tr>
+<tr><td>LSTM 4종 (경고 세션 포함, seed 0)</td><td class="n">93.7~95.1</td><td class="n">47.6~74.4</td><td class="n">80.9~86.9</td><td class="n">93.2~94.5</td><td class="n">91.0~95.6</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>규칙이 높은 이유의 일부는 라벨이 점유율 축이라서다(순환).</b> m1~m8의 심각 1,897행 중 1,519행은 victim 품질이 멀쩡한데 점유율만으로 심각이었다. 보고서에 한계로 적어야 한다.</li>
+<li>규칙이 틀리는 창(손실·지연 주도)은 125창(1.2%)이고 그중 105창이 m10이다. 이 창에서 LSTM 정답률은 7~16%로, LSTM도 못 잡는다.</li>
+<li><b>오답의 43~59%가 점유율 73~77% 구간에 몰려 있다.</b> 라벨은 마지막 폴링 기준이라 74.6↔75.2가 깜빡이면 라벨이 매 폴링 뒤집히는데, 모델은 12폴링 흐름을 보기 때문이다.</li>
+</ul>
+<h3>규칙이 놓치는 행을 다른 텔레메트리로 잡을 수 있는가</h3>
+<p class="sub">m1~m10에서 실제 라벨이 점유율 규칙보다 더 심한 행은 147행이다(위 125창은 창 기준). 이를 다른 지표로 가려낼 수 있는지 세션 단위 LOSO 로지스틱 회귀로 확인했다(scratchpad <code>rulemiss.py</code>, <code>rulemiss2.py</code>).</p>
+<ul>
+<li><b>113행(77%)은 부하가 없는 idle 상태다.</b> 전부 m10(노트북 멀리, 약한 링크)이고, 트래픽이 없는데 victim 프로브만 손실 1~3%를 겪어 경고·혼잡이 붙었다. 부하 중에 놓친 건 34행뿐이다.</li>
+<li>지표의 방향은 예상대로다. 놓친 행은 MCS·bitrate가 낮고(AUC 0.69~0.70), RSSI가 약하고(0.64), 재전송이 많다(0.63). m10만 보면 AP 송신 시간이 0.80으로 가장 잘 갈린다. 하지만 하나하나의 구분력이 약하다.</li>
+</ul>
+<div class="tw"><table>
+<thead><tr><th>입력 (LOSO 로지스틱 회귀)</th><th class="n">헛경보 1%일 때 잡는 비율</th><th class="n">헛경보 5%일 때</th></tr></thead>
+<tbody>
+<tr><td>7-feature</td><td class="n">11%</td><td class="n">29%</td></tr>
+<tr><td>+ MT6000 airtime 등 12개</td><td class="n">11%</td><td class="n">31%</td></tr>
+<tr><td>+ 최근 5폴링 평균·변화</td><td class="n">13%</td><td class="n">31%</td></tr>
+</tbody></table></div>
+<p>헛경보 5%(규칙이 맞은 행 349개를 잘못 울림)를 허용해도 147행 중 45행만 잡는다. MT6000 airtime 지표를 더해도 차이가 거의 없다. <b>idle 손실은 AP가 볼 트래픽이 없어서</b> "링크가 약하다"는 신호만 있고 "지금 손실 중"이라는 신호는 없다. 이 경우는 채널 전환으로 풀리지 않는 링크 문제라, 혼잡 판단이 아니라 별도의 "링크 약함" 표시(RSSI·MCS)로 다루는 게 맞다.</p>
+<h3>채널 전환 규칙을 씌우면 (3폴링 중 2번 심각 + 쿨다운 30폴링, 심각 사건 47개·약 2.9시간)</h3>
+<div class="tw"><table>
+<thead><tr><th>모델</th><th class="n">헛된 전환</th><th class="n">시간당</th><th class="n">사건 탐지 (전체 / 2폴링 이상)</th><th class="n">지연 중앙(폴링)</th></tr></thead>
+<tbody>
+<tr><td>Baseline</td><td class="n">6</td><td class="n">2.0</td><td class="n">80.9 / 86.0</td><td class="n">1</td></tr>
+<tr><td>EE Fixed</td><td class="n">8</td><td class="n">2.7</td><td class="n">74.5 / 81.4</td><td class="n">2</td></tr>
+<tr><td>EE Dynamic</td><td class="n">9</td><td class="n">3.1</td><td class="n">74.5 / 81.4</td><td class="n">2</td></tr>
+<tr><td>SDN</td><td class="n">1</td><td class="n">0.3</td><td class="n">76.6 / 83.7</td><td class="n">1.5</td></tr>
+<tr class="hl"><td>점유율 규칙</td><td class="n">0</td><td class="n">0</td><td class="n">85.1 / 93.0</td><td class="n">1</td></tr>
+</tbody></table></div>
+<p>창 단위 오답 수백 개가 헛된 전환 1~9회로 줄었다. <b>4폴링 이상 이어진 심각은 네 모델 모두 전부 잡았다.</b> 놓친 사건은 전부 1~3폴링짜리(문턱 스침 또는 손실 단발)다. 계단형 부하 데이터라 시간당 수치를 운영 수치로 쓰면 안 된다.</p>
+</section>
+
+<section id="s6">
+<h2>6. 점유율 1개 vs 7-feature — 5시드</h2>
+<p class="sub">질문은 "점유율로 충분하면 다른 입력이 필요한가"였다. EE 모델을 점유율 1개 입력으로 다시 학습해 같은 창에서 비교했다(경고 세션 포함 풀, 시드 0~4, 10폴드씩). 10폴드 창을 합쳐 시드별로 계산한 뒤 평균±표준편차를 냈다. 예측 원본: <code>preds_mt6k_mix_f{1,7}_warn/</code>.</p>
+<div class="tw"><table>
+<thead><tr><th>모델</th><th>입력</th><th class="n">정확도</th><th class="n">경고 recall</th><th class="n">혼잡 recall</th><th class="n">심각 recall</th><th class="n">심각 precision</th></tr></thead>
+<tbody>
+<tr class="hl"><td>EE Fixed</td><td>점유율 1개</td><td class="n win">96.0 ± 0.5</td><td class="n">53.9 ± 4.6</td><td class="n win">94.3 ± 1.2</td><td class="n win">98.0 ± 1.8</td><td class="n win">95.6 ± 1.4</td></tr>
+<tr><td></td><td>7-feature</td><td class="n">94.3 ± 0.3</td><td class="n win">56.7 ± 1.3</td><td class="n">92.5 ± 1.4</td><td class="n">96.1 ± 1.2</td><td class="n">93.3 ± 1.8</td></tr>
+<tr class="hl"><td>EE Dynamic</td><td>점유율 1개</td><td class="n win">95.9 ± 0.5</td><td class="n">50.2 ± 5.2</td><td class="n win">94.1 ± 1.4</td><td class="n win">98.0 ± 1.6</td><td class="n win">95.2 ± 1.5</td></tr>
+<tr><td></td><td>7-feature</td><td class="n">94.3 ± 0.4</td><td class="n win">53.9 ± 1.0</td><td class="n">92.5 ± 1.4</td><td class="n">96.0 ± 1.4</td><td class="n">93.3 ± 1.7</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>정확도는 점유율 1개가 +1.6~1.7pt 높고, 5시드 모두 1개가 이겼다</b>(차이의 표준편차 ±0.3~0.4). 노이즈가 아니다.</li>
+<li>심각 recall·precision은 1개가 약 +2pt(4/5 시드)로 "최소 동급"이다. 경고만 7개가 약 3pt 높은데, 흔들림(±4~5)과 같은 크기라 노이즈 수준이다.</li>
+<li><b>Opal에서는 반대였다.</b> 25차 캐노니컬에서 점유율 1개만 쓰면 심각 recall이 −16pt였다. Opal 점유율은 AP 송신이 빠져 있어서 다른 입력(재전송·bitrate)이 그 빈자리를 메워야 했던 것으로 해석한다.</li>
+</ul>
+</section>
+
+<section id="s7">
+<h2>7. 조기경보 — 심각 진입을 먼저 잡는가</h2>
+<p class="sub">k폴링 뒤의 라벨을 예측한다. "심각 진입"은 지금은 심각이 아닌데 k폴링 뒤에 심각인 창이다. 스크립트 <code>project/scripts/forecast_loso.py</code>(세션 단위 LOSO). 아래 첫 표는 seed 0이다.</p>
+<div class="tw"><table>
+<thead><tr><th class="n">k</th><th>입력</th><th class="n">정확도</th><th class="n">심각 F1</th><th class="n">심각 진입 감지</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td>7-feature</td><td class="n">90.8</td><td class="n">90.4</td><td class="n">68.5</td></tr>
+<tr><td class="n">1</td><td>점유율 1개</td><td class="n">92.3</td><td class="n">92.5</td><td class="n">61.6</td></tr>
+<tr><td class="n">1</td><td>규칙(지금 점유율)</td><td class="n">94.9</td><td class="n">95.8</td><td class="n">0 (정의상)</td></tr>
+<tr><td class="n">3</td><td>7-feature</td><td class="n">89.7</td><td class="n">89.8</td><td class="n">69.2</td></tr>
+<tr><td class="n">3</td><td>점유율 1개</td><td class="n">88.8</td><td class="n">88.5</td><td class="n">64.9</td></tr>
+<tr><td class="n">3</td><td>규칙(지금 점유율)</td><td class="n">90.0</td><td class="n">90.5</td><td class="n">0 (정의상)</td></tr>
+</tbody></table></div>
+<div class="callout bad"><p><b>"LSTM 68% vs 규칙 0%"는 불공정한 비교라 보고서에 쓰면 안 된다.</b> 지금 점유율 규칙은 정의상 진입을 잡을 수 없다. 공정하게 하려면 규칙에도 낮은 문턱(점유율 ≥ T)을 주고 헛경보 수를 맞춰야 한다.</p></div>
+<h3>같은 헛경보에서 비교 — 5시드</h3>
+<p class="sub">시드마다 LSTM의 헛경보 수 이하에서 가장 많이 잡는 규칙을 고른다(점유율 ≥ T, T 60~75 0.25 간격 · 외삽 · 상승 기울기). 표의 값은 "LSTM 진입 감지 − 그 규칙의 진입 감지"이며 평균±표준편차다. 진입 창 k=1 146개, k=3 328개. 스크립트 scratchpad <code>esc_fair_seeds.py</code>, 예측 <code>forecast_loso_mt6000{,_occonly}{,_s1~s4}_k{1,3}_folds.npz</code>.</p>
+<div class="tw"><table>
+<thead><tr><th class="n">k</th><th>입력</th><th class="n">LSTM 진입 감지</th><th class="n">규칙 대비</th><th class="n">이긴 시드</th><th>시드별 차이</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td>7-feature</td><td class="n">53.6 ± 9.8</td><td class="n win">+7.8 ± 5.1</td><td class="n">5/5</td><td class="note">+8.9 · +3.4 · +3.4 · +15.8 · +7.5</td></tr>
+<tr><td class="n">1</td><td>점유율 1개</td><td class="n">48.5 ± 15.4</td><td class="n">+1.1 ± 2.7</td><td class="n">3/5</td><td class="note">+5.5 · −1.4 · +1.4 · +0.7 · −0.7</td></tr>
+<tr><td class="n">3</td><td>7-feature</td><td class="n">51.0 ± 10.4</td><td class="n">+2.7 ± 8.3</td><td class="n">4/5</td><td class="note">+14.3 · +0.6 · +4.0 · +3.7 · −8.8</td></tr>
+<tr><td class="n">3</td><td>점유율 1개</td><td class="n">48.8 ± 14.9</td><td class="n win">+11.1 ± 6.1</td><td class="n">5/5</td><td class="note">+10.1 · +2.1 · +10.1 · +18.0 · +15.2</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>seed 0의 "+10~17pt"는 운 좋은 시드였다.</b> seed 0만 진입 감지가 69%였고 나머지 시드는 44~57%다.</li>
+<li><b>규칙을 확실히 이기는 조합은 둘이다.</b> 1폴링 앞(k=1)은 7-feature가 +7.8pt로 5/5 시드 모두 이겼다. 3폴링 앞(k=3)은 점유율 1개가 +11.1pt로 5/5 시드 모두 이겼다. k=3의 7-feature는 +2.7 ± 8.3이라 규칙과 구분되지 않는다.</li>
+<li>k=3에서는 점유율의 시간 추세만 보는 모델이 더 낫다. 몇 폴링 앞을 내다볼 때는 다른 입력이 오히려 방해가 되는 것으로 보이며, 원인은 확인하지 않았다.</li>
+<li>시드 간 흔들림(±5~8pt)이 이득과 비슷한 크기다. 보고서에는 "같은 헛경보에서 규칙보다 약 +8~11pt(5/5 시드), 1~3폴링 앞" 정도로 쓰고, 시드 편차를 같이 적는다.</li>
+<li>진입의 60~68%는 이미 점유율 73~75%에서 문턱을 한 칸 넘는 깜빡임이다. 70% 미만에서 올라오는 진짜 진입은 수십 개뿐이라 근거가 약하다(seed 0 분해).</li>
+</ul>
+</section>
+
+<section id="s8">
+<h2>8. 간섭 실험 — 점유율에 안 보이는 심각을 만들 수 있는가</h2>
+<p class="sub">MT6000에서 7-feature가 점유율 1개보다 나아야 하는 경우는 "점유율은 낮은데 victim 품질이 깨지는 심각"뿐이다. 공장 상황에 맞고(금속 랙 너머의 이웃 AP나 AGV) 채널 전환으로 피할 수 있는 원인인 <b>숨은 노드 간섭</b>으로 이를 만들어 보려 했다. 간섭원은 Opal(ch1 · 20MHz · 1dBm)이 폰으로 UDP를 보내는 방식이고, 예약 도구는 <code>project/.tmp/exp_24g/opal_hid_arm.sh</code>, airtime 기록은 <code>hid_watch.sh</code>다.</p>
+<div class="tw"><table>
+<thead><tr><th>실험</th><th>Opal 위치</th><th class="n">MT6000에서 Opal</th><th>간섭</th><th>MT6000 비BSS 수신</th><th>victim 품질</th><th>판정</th></tr></thead>
+<tbody>
+<tr><td>m16 (10/17)</td><td>실내 먼 곳</td><td class="n">−72</td><td>계단 5→25M</td><td>15 → 45%</td><td class="note">멀쩡 (손실 0, 지연 ≤17ms)</td><td><span class="pill warn">보이는 이웃 간섭</span></td></tr>
+<tr><td>m17 (10/18)</td><td>집 밖</td><td class="n">−97</td><td>계단 5→25M</td><td>25M 정점 45%</td><td class="note">50초 붕괴(손실 12.5%, 지연 300ms, 점유율 31~58%) 1회. 간섭 정점이 아니라 내려가던 중</td><td><span class="pill warn">인과 불확실</span></td></tr>
+<tr><td>m18 (10/18)</td><td>집 밖</td><td class="n">−97</td><td>25M 고정 9분</td><td class="n">+10pt</td><td class="note">멀쩡 (손실 ≤0.5%, 지연 ≤20ms)</td><td><span class="pill bad">재현 안 됨</span></td></tr>
+<tr><td>m19 (10/18)</td><td>실내 창고</td><td class="n">−82~−85</td><td>25M 고정 9분</td><td>12 → 44~58%</td><td class="note">러너가 외부 기기 접속으로 자동 중단 → 데이터 없음</td><td><span class="pill bad">숨은 노드 아님</span></td></tr>
+</tbody></table></div>
+<h3>Opal이 채널을 얼마나 차지하는가 (10/18 오후, 실내에서 MT6000으로 측정)</h3>
+<div class="tw"><table>
+<thead><tr><th>폰(S21) 위치</th><th class="n">Opal에서 폰</th><th class="n">25M · 1400B</th><th class="n">5M · 200B</th><th class="n">64B (약 2.5M)</th><th class="n">60M · 1400B</th></tr></thead>
+<tbody>
+<tr><td>Opal 근처</td><td class="n">−47</td><td class="n">+27pt (44%)</td><td class="n">+27pt (44%)</td><td class="n">+38pt (55%)</td><td class="n">– (28.8M에서 Opal 한계)</td></tr>
+<tr class="hl"><td>멀리 (벽 너머)</td><td class="n">−55~−57</td><td class="n win">85~88%</td><td class="n">–</td><td class="n">56~75%</td><td class="n win">85~88%</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Opal 송신 속도는 고정할 수 없다.</b> <code>iw set bitrates</code>가 "Not supported"였다. Opal 자기 점유율에는 자기 송신이 빠져서 Opal에서는 잴 수도 없다.</li>
+<li><b>Opal의 채널 점유는 폰 링크 세기가 정한다.</b> 폰이 멀면 Opal이 느린 속도로 보내면서 채널을 거의 계속 붙잡는다(85~88%). m18이 실패한 원인은 폰이 Opal 옆에 있어 점유가 약 44%뿐이었던 것으로 추정한다.</li>
+<li><b>숨은 노드 기준을 −82dBm으로 잡은 건 잘못이었다.</b> −82dBm은 표준이 정한 최소 감지 하한이고, 실제 칩은 더 약한 신호도 감지한다. 창고(−82~−85dBm)에서도 MT6000이 Opal을 들었다(+37pt). 집 밖(−97dBm)에서만 거의 안 들렸다. 실제 조건은 <b>−95dBm 안팎</b>이다.</li>
+<li><b>다음 시도</b>: 비가 그치면 Opal을 집 밖 m18 자리에, 폰은 집 안 노트북 근처(Opal 기준 약 −55dBm)에 두고, MT6000 2.4GHz에는 노트북만 붙여서 25M 고정으로 수집한다.</li>
+</ul>
+<p class="sub">부수 발견: 집 공유기 <code>SK_0600_2.4G</code>가 MT6000에서 −28dBm · ch3로 보여 우리 ch1 40MHz와 겹친다. m1~m19 내내 같은 대역에 있었고, idle 비BSS 수신 9~26%의 일부일 수 있다.</p>
+</section>
+
+<section id="s85">
+<h2>9. MT6000을 들여서 얻은 것 — 그리고 보고서 서사</h2>
+<p>모델 성능만 보면 이득은 거의 하나다. <b>AP 송신이 점유율에 포함돼 다운링크·혼합 부하가 보이게 된 것</b>이다. 나머지는 거기서 파생되거나 모델 밖의 이득이다.</p>
+<div class="tw"><table>
+<thead><tr><th>구분</th><th>내용</th><th>근거</th></tr></thead>
+<tbody>
+<tr class="hl"><td><span class="pill good">직접 이득</span></td><td><b>다운링크가 보인다</b></td><td class="note">다운링크 세션 정확도 Opal 55~64% → MT6000 96~98%. 같은 부하에서 점유율 16.7% vs 70.2% (3절, 4절)</td></tr>
+<tr><td><span class="pill good">파생 발견</span></td><td>Opal의 남은 오답은 모델이 아니라 측정 한계였다</td><td class="note">점유율 미달 심각 28.1% → 0.7%. 24세션 Opal 모델에서 "새 신호가 필요하다"던 오답의 정체가 AP 송신 누락이었다 (3절)</td></tr>
+<tr><td><span class="pill good">모델 밖</span></td><td>수집 안정성</td><td class="note">Opal은 폰당 60M 이상이면 크래시, MT6000은 폰당 80M에서도 크래시 0, 14세션 무사고</td></tr>
+<tr><td><span class="pill good">모델 밖</span></td><td>진단 도구</td><td class="note">AP 송신·BSS 수신·비BSS 수신이 나뉘어 보여 이웃 간섭을 우리 트래픽과 구분했다(m16). 간섭원 점유 측정·숨은 노드 판정도 이 값으로 했다 (8절)</td></tr>
+<tr><td><span class="pill warn">못 얻음</span></td><td>새 지표(station airtime 등)의 모델 기여</td><td class="note">규칙이 놓치는 행에서 7-feature 29% → 31% (5절)</td></tr>
+<tr><td><span class="pill bad">부담</span></td><td>ML 필요성이 약해짐</td><td class="note">점유율 규칙 하나로 98.8%, 점유율 1개 LSTM이 7-feature보다 같거나 나음 (5절, 6절)</td></tr>
+</tbody></table></div>
+<div class="callout"><p><b>서사: "AP가 자기 송신까지 세는가"에 따라 해법이 갈린다.</b></p>
+<p>같은 라벨 정의·같은 모델·같은 평가 방식으로 두 AP를 실측했다.</p></div>
+<div class="tw"><table>
+<thead><tr><th></th><th>Opal (저가형, 점유율에 AP 송신 제외)</th><th>MT6000 (점유율에 AP 송신 포함)</th></tr></thead>
+<tbody>
+<tr><td>다운링크 혼잡</td><td>점유율에 안 보임 (16.7%)</td><td>보임 (70.2%)</td></tr>
+<tr><td>심각 중 점유율로 설명되는 비율</td><td class="n">71.9%</td><td class="n">99.3%</td></tr>
+<tr><td>점유율 1개만 쓰면</td><td>심각 recall −16pt (다른 입력 필요)</td><td>정확도 +1.7pt (5/5 시드), 심각 약 +2pt</td></tr>
+<tr><td>점유율 문턱 규칙</td><td>다운링크·점유율 미달 심각을 못 잡음</td><td class="n">98.8%</td></tr>
+<tr><td>LSTM의 역할</td><td><b>현재 상태 판단에 필요</b> — 재전송·bitrate·RSSI로 점유율의 빈자리를 메움</td><td><b>현재 상태엔 불필요</b>, 심각 진입 조기경보만 (같은 헛경보에서 규칙보다 +8~11pt, 5시드 5/5)</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>현장 함의</b>: 공장에 깔린 AP가 자기 송신을 세지 못하는 저가형이면 다른 텔레메트리를 쓰는 LSTM이 필요하고, 세는 AP면 문턱 규칙으로 충분하며 LSTM은 조기경보 보조로만 쓴다. 어느 쪽이든 Early Exit 구조의 Pi 지연 이득(Baseline 대비 −21~32%, &lt;1ms)은 유지된다.</li>
+<li><b>이 비교는 MT6000을 들였기 때문에 가능했다.</b> Opal만 있었다면 "점유율 미달 심각을 모델이 못 잡는다"에서 멈췄을 것이다. 두 장비로 그 원인이 측정이라는 것과, 측정이 바뀌면 ML의 역할도 바뀐다는 것을 보였다.</li>
+<li><b>정직하게 같이 적을 것</b>: MT6000의 규칙 98.8%에는 라벨이 점유율 축이라 생긴 순환이 섞여 있다. 조기경보 우위는 5시드 기준 +8~11pt이고 시드 편차가 ±5~6pt다. 두 AP는 수집 시기·세션 구성이 달라서, 같은 조건 비교로는 업·다운·혼합(처리량 40~48Mbps)이 가장 공정하다.</li>
+</ul>
+</section>
+
+<section id="s9">
+<h2>10. 결론과 한계</h2>
+<h3>보고서에 쓸 결론</h3>
+<ul>
+<li><b>AP가 무엇을 보느냐에 따라 ML이 필요한지가 갈린다(9절).</b> Opal(AP 송신 제외)에서는 점유율만으로 심각 recall이 −16pt였고 다른 입력이 필요했다. MT6000(AP 송신 포함)에서는 점유율 1개가 7-feature보다 같거나 낫고, 문턱 규칙이 98.8%다.</li>
+<li><b>Opal의 다운링크 맹점과 "점유율 미달 심각"은 대부분 측정 한계였다.</b> 측정을 바꾸자 점유율 미달 심각이 28.1% → 0.7%로 줄었다.</li>
+<li><b>MT6000에서 LSTM의 고유 기여는 심각 진입 조기경보다.</b> 같은 헛경보에서 규칙보다 +8~11pt(5시드 5/5)이고, 1폴링 앞은 7-feature, 3폴링 앞은 점유율 1개가 낫다.</li>
+<li>여기에 엣지 구현(Pi INT8 &lt;1ms, EE가 Baseline 대비 −21~32%)과 평가 과정(세션 단위 LOSO, 공정 비교)을 더한다.</li>
+</ul>
+<h3>한계</h3>
+<ul>
+<li>라벨이 점유율 축이라 규칙 98.8%에는 순환이 섞여 있다(심각 1,897행 중 1,519행은 victim 품질 무손상).</li>
+<li>모든 세션이 한 집, 3일, 계단형 부하다. 시간당 헛된 전환 같은 수치는 운영 수치가 아니다.</li>
+<li>2.4GHz 40MHz를 <code>noscan=1</code>로 강제했다(이웃 BSS 공존 규칙 무시).</li>
+<li>모델 간 순위(SDN vs EE)는 seed 0 기준이라 다시드 확인이 필요하다.</li>
+<li>점유율에 안 보이는 심각(숨은 노드)은 아직 재현하지 못했다.</li>
+<li>규칙이 놓치는 1.2%(대부분 약한 링크의 idle 손실)는 다른 텔레메트리를 다 써도 헛경보 5%에서 31%만 잡힌다(5절).</li>
+</ul>
+<h3>남은 일</h3>
+<ul>
+<li>숨은 노드 재시도(m19, 집 밖 배치, 비 그친 뒤).</li>
+<li>(선택) EE·SDN 5시드로 SDN 우위 확인, MT6000 airtime feature 실험(기대치 낮음).</li>
+</ul>
+</section>
+
+<footer>2026-10-18 · capstoneDesign2 · 상세 기록 <code>.work-log/current.md</code> 29차~30차 후속 · 수치는 k2m2 재라벨 풀(<code>pool_mt6k</code>, <code>pool_mt6k_warn</code>) 기준</footer>
+</main></body></html>
