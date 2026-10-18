@@ -161,6 +161,11 @@ CSV_COLUMNS = [
     "sta_rx_airtime_pct",           # Σ station Δ"rx duration" ÷ 폴링 간격 × 100 — 무선 기기들이 AP로 보낸 시간
     "sta_tx_airtime_max_pct",       # 가장 많이 받은 station 하나의 tx duration % (노트북 줄 적체 후보)
     "sta_airtime_detail",           # "mac끝4:Δtx_us:Δrx_us:weight|..." 원자료(기기별 재계산용)
+    # 2026-10-18: 원인 구분(채널 혼잡 vs 약한 링크)용, 모델 입력 아님. MT6000(mt76) 전용 — Opal은 빈칸.
+    # 기기별 Δtx duration(µs) ÷ Δtx_bytes. 재전송·저속 MCS면 커짐. 기존 m1~m14 idle 중앙: 가까이 0.9~1.0 / 멀리 1.1~1.3 /
+    # m10(idle 프로브 손실 51%) 2.2. 피해 기기를 몰라도 되게 "기기 중 최댓값"(idle 손실 행 AUC 0.93, link_feature_probe_b.py).
+    "sta_max_us_per_byte",          # Δtx_bytes > 2000인 station 중 µs/B 최댓값 (해당 없으면 빈칸)
+    "sta_worst_link",               # 그 station의 mac 끝 4자리
 ]
 
 # ============================================================
@@ -690,6 +695,28 @@ def summarize_sta_airtime(stations, previous_stations=None):
         tx_sum += dtx; rx_sum += drx; tx_max = max(tx_max, dtx)
         parts.append(f"{mac[-5:].replace(':', '')}:{dtx}:{drx}:{s.get('airtime_weight') if s.get('airtime_weight') is not None else ''}")
     return tx_sum, rx_sum, tx_max, "|".join(parts)
+
+
+LINK_MIN_BYTES = 2000   # 이보다 적게 보낸 폴링은 µs/B가 프리앰블·관리 프레임에 지배돼 제외
+
+
+def summarize_link_efficiency(stations, previous_stations=None):
+    """기기별 바이트당 송신 시간 µs/B의 최댓값과 그 기기 (2026-10-18, MT6000 전용, 모델 입력 아님).
+    Δtx duration ÷ Δtx_bytes — 같은 양을 보내는 데 시간이 더 걸리면(재전송·낮은 MCS) 약한 링크.
+    duration 줄이 없는 AP(Opal)거나 조건을 만족하는 station이 없으면 (None, "")."""
+    best, worst = None, ""
+    for mac, s in stations.items():
+        prev = (previous_stations or {}).get(mac)
+        if prev is None or s.get("tx_duration_us") is None or prev.get("tx_duration_us") is None:
+            continue
+        dtx = s["tx_duration_us"] - prev["tx_duration_us"]
+        db = s.get("tx_bytes", 0) - prev.get("tx_bytes", 0)
+        if dtx < 0 or db < LINK_MIN_BYTES:
+            continue
+        v = dtx / db
+        if best is None or v > best:
+            best, worst = v, mac[-5:].replace(":", "")
+    return best, worst
 
 
 def airtime_percent(us, interval_s):
@@ -1376,6 +1403,7 @@ def main():
                 station, previous_stations
             )
             sta_airtime = summarize_sta_airtime(station, previous_stations)
+            link_us_per_byte, link_worst = summarize_link_efficiency(station, previous_stations)
 
             # ------------------------------------------------
             # 2. Channel Occupancy
@@ -1699,6 +1727,8 @@ def main():
                 airtime_percent(sta_airtime[1] if sta_airtime else None, poll_interval_s),
                 airtime_percent(sta_airtime[2] if sta_airtime else None, poll_interval_s),
                 sta_airtime[3] if sta_airtime else "",
+                round(link_us_per_byte, 4) if link_us_per_byte is not None else "",
+                link_worst,
             ])
 
             sample += 1

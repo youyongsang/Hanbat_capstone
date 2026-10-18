@@ -1,0 +1,52 @@
+MT6000 배포 모델 Pi 지연·크기 (2026-10-18 21:38~, Pi 4 · ort CPU · INT8 · 1,500창 x 5회 반복 · A/B 2라운드 · throttled=0x0, 44→77℃)
+모델: checkpoints/ap_v2_mt6k_20261018/selected (pool_mt6k_warn m1~m14 전체 학습, seed 0, SDN T=0.89, MT6000 전용 스케일러)
+비교: Opal 24세션 배포(~/ap_pi_v2, 9/28). 데이터 OPALVAL = Opal 번들 test.csv(24세션 val 1,500창), MT6KWIN = MT6000 전 창 무작위 1,500(seed 0, 학습 데이터 — 지연·exit 분포용)
+ONNX 검증(verify_onnx_mt6k.py, 13,676창): fp32 EE·Baseline 완전 일치, INT8 v2 EE Fixed 13,635 · Dynamic 13,627 · Baseline 13,603 · SDN 13,570 (정확도 차 ≤0.3pt)
+크기: INT8 ONNX 353~358KB (Opal 번들과 바이트 단위 동일 — 구조 같음), fp32 1.34~1.37MB
+
+같은 AP의 모델·데이터끼리 (2라운드 평균 avg ms, exit1/2/3 %)
+  Opal  모델 + Opal 데이터 : EE Fixed 0.670 (23/43/34) · EE Dynamic 0.688 · SDN 0.616 · Baseline 0.860  → EE Fixed −22%
+  MT6000 모델 + MT6000 데이터: EE Fixed 0.417 (78/16/6) · EE Dynamic 0.435 (80/19/1) · SDN 0.479 (71/15/14) · Baseline 0.849 → EE Fixed −51%
+해석: exit별 지연은 구조가 같아 동일, Baseline도 동일(0.85~0.88). EE 평균 차이는 exit1 비율(23% vs 78%) — MT6000 데이터는 점유율만으로 쉽게 판단되는 창이 많아 얕은 단계에서 끝남.
+교차(다른 AP 데이터에 넣은 경우)는 스케일러가 달라 지연 참고용으로만. 원본 로그 아래.
+
+##### 데이터 OPALVAL (1500창)
+--- round 1
+EEFixed  OPAL   avg=0.672 p50=0.633 exit%=23.00/43.27/33.73
+EEFixed  MT6K   avg=0.531 p50=0.331 exit%=58.73/18.53/22.73
+EEDyn    OPAL   avg=0.696 p50=0.705 exit%=29.60/44.47/25.93
+EEDyn    MT6K   avg=0.553 p50=0.376 exit%=63.53/19.00/17.47
+SDN      OPAL   avg=0.614 p50=0.641 exit%=38.20/35.53/26.27
+SDN      MT6K   avg=0.678 p50=0.646 exit%=24.20/42.80/33.00
+Baseline OPAL   avg=0.857 p50=0.854 exit%=-
+Baseline MT6K   avg=0.864 p50=0.862 exit%=-
+--- round 2
+EEFixed  OPAL   avg=0.667 p50=0.628 exit%=23.00/43.27/33.73
+EEFixed  MT6K   avg=0.524 p50=0.327 exit%=58.73/18.53/22.73
+EEDyn    OPAL   avg=0.680 p50=0.688 exit%=29.60/44.47/25.93
+EEDyn    MT6K   avg=0.537 p50=0.363 exit%=63.53/19.00/17.47
+SDN      OPAL   avg=0.617 p50=0.654 exit%=38.20/35.53/26.27
+SDN      MT6K   avg=0.692 p50=0.658 exit%=24.20/42.80/33.00
+Baseline OPAL   avg=0.862 p50=0.860 exit%=-
+Baseline MT6K   avg=0.848 p50=0.845 exit%=-
+##### 데이터 MT6KWIN (1500창)
+--- round 1
+EEFixed  OPAL   avg=0.497 p50=0.339 exit%=55.60/34.13/10.27
+EEFixed  MT6K   avg=0.421 p50=0.331 exit%=77.60/16.33/6.07
+EEDyn    OPAL   avg=0.482 p50=0.370 exit%=64.20/35.00/0.80
+EEDyn    MT6K   avg=0.436 p50=0.369 exit%=80.47/18.53/1.00
+SDN      OPAL   avg=0.473 p50=0.345 exit%=61.73/32.87/5.40
+SDN      MT6K   avg=0.473 p50=0.338 exit%=70.60/15.40/14.00
+Baseline OPAL   avg=0.865 p50=0.863 exit%=-
+Baseline MT6K   avg=0.844 p50=0.841 exit%=-
+--- round 2
+EEFixed  OPAL   avg=0.490 p50=0.337 exit%=55.60/34.13/10.27
+EEFixed  MT6K   avg=0.413 p50=0.325 exit%=77.60/16.33/6.07
+EEDyn    OPAL   avg=0.486 p50=0.374 exit%=64.20/35.00/0.80
+EEDyn    MT6K   avg=0.433 p50=0.366 exit%=80.47/18.53/1.00
+SDN      OPAL   avg=0.473 p50=0.343 exit%=61.73/32.87/5.40
+SDN      MT6K   avg=0.485 p50=0.344 exit%=70.60/15.40/14.00
+Baseline OPAL   avg=0.881 p50=0.879 exit%=-
+Baseline MT6K   avg=0.854 p50=0.852 exit%=-
+throttled=0x0
+temp=77.4'C

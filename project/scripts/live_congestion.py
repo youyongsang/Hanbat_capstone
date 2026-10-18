@@ -44,12 +44,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # bundle dir (collect_
 try:
     from scripts.collect_metrics import (  # noqa: E402
         APPoller, MOVING_AVG_WINDOW, calculate_channel_occupancy,
-        calculate_station_deltas, parse_ap_cycle, summarize_stations,
+        calculate_station_deltas, parse_ap_cycle, summarize_stations, summarize_link_efficiency,
     )
 except ImportError:
     from collect_metrics import (  # noqa: E402
         APPoller, MOVING_AVG_WINDOW, calculate_channel_occupancy,
-        calculate_station_deltas, parse_ap_cycle, summarize_stations,
+        calculate_station_deltas, parse_ap_cycle, summarize_stations, summarize_link_efficiency,
     )
 try:
     from scripts.switch_advisor import SwitchAdvisor  # noqa: E402
@@ -93,6 +93,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--persist", type=int, default=60, help="알림 뒤 심각이 이만큼 폴링 이어지면 '심각 지속' 알림 1회")
     p.add_argument("--channel", type=int, default=1, help="현재 2.4GHz 채널 (명령 후보 문구용)")
     p.add_argument("--event-log", type=Path, default=None, help="전환 알림을 JSONL로 저장할 파일")
+    p.add_argument("--link-thr", type=float, default=1.6,
+                   help="약한 링크 의심 문턱 — 기기 중 최대 바이트당 송신 시간(µs/B)의 최근 5폴링 중앙값 (MT6000 전용, 10-18 잠정: "
+                        "m1~m14 idle 가까이 0.9~1.0 · 멀리 1.1~1.3 · m10 2.2)")
     return p.parse_args()
 
 
@@ -129,6 +132,7 @@ def main() -> None:
     retx_hist: deque[int] = deque(maxlen=MOVING_AVG_WINDOW)
     pkts_hist: deque[int] = deque(maxlen=MOVING_AVG_WINDOW)
     rssi_hist: deque[float] = deque(maxlen=MOVING_AVG_WINDOW)
+    link_hist: deque[float] = deque(maxlen=5)  # 10-18: 원인 구분용 µs/B (모델 입력 아님)
 
     prev_stations = None
     prev_active = prev_busy = None
@@ -187,6 +191,17 @@ def main() -> None:
                 "sta_tx_bitrate_mean": round(sta_bitrate_mean, 1),
             }
 
+            # 10-18 원인 구분(모델 입력 아님): 같은 양을 보내는 데 시간이 더 걸리는 기기 = 약한 링크 의심.
+            # 혼잡 판정이 나와도 점유율이 낮고 이 값이 높으면 채널 전환보다 기기 위치·로밍 확인이 맞다.
+            link_v, link_mac = summarize_link_efficiency(station, prev_stations)
+            if link_v is not None:
+                link_hist.append(link_v)
+            link_med = median(link_hist) if link_hist else None
+            link_weak = link_med is not None and link_med >= args.link_thr
+            feats_extra = {"sta_max_us_per_byte": round(link_v, 3) if link_v is not None else None,
+                           "link_us_per_byte_med5": round(link_med, 3) if link_med is not None else None,
+                           "sta_worst_link": link_mac, "link_weak_suspect": link_weak}
+
             prev_stations, prev_active, prev_busy = station, cur_active, cur_busy
             prev_rssi, prev_time = cur_rssi, now
 
@@ -199,7 +214,8 @@ def main() -> None:
                            f"thr {feats['throughput_mbps']:.0f}M "
                            f"retry {feats['tx_retry_ratio']*100:.0f}% "
                            f"rssi {feats['rssi_dbm']:.0f} "
-                           f"bitrate {feats['sta_tx_bitrate_mean']:.0f}]")
+                           f"bitrate {feats['sta_tx_bitrate_mean']:.0f} "
+                           f"µs/B {feats_extra['link_us_per_byte_med5'] if feats_extra['link_us_per_byte_med5'] is not None else '-'}]")
 
             if len(window) < WINDOW_SIZE:
                 print(f"{ts}  창 채우는 중 {len(window)}/{WINDOW_SIZE}{raw_str}")
@@ -225,11 +241,13 @@ def main() -> None:
             p_str = " ".join(f"{p:.2f}" for p in probs)
             events = advisor.update(raw_label, feats["throughput_mbps"], feats["channel_occupancy_percent"]) if advisor else []
             dl_str = "  [다운링크 우세 — 판정 불확실]" if advisor and advisor.downlink_dominant() else ""
+            link_str = (f"  [약한 링크 의심: {link_mac} µs/B {link_med:.2f} — 채널 전환보다 위치·로밍 확인]"
+                        if link_weak and feats["channel_occupancy_percent"] < 75 else "")
             print(
                 f"{ts}  혼잡: {LABEL_NAMES[shown]}({shown})"
                 f"  [원시 {LABEL_NAMES[raw_label]}({raw_label}) p={probs[raw_label]:.2f}]"
                 f"  P(정/경/혼/심)=[{p_str}]"
-                f"{exit_str} clients={n_clients}{flip}{dl_str}{raw_str}"
+                f"{exit_str} clients={n_clients}{flip}{dl_str}{link_str}{raw_str}"
             )
             for ev in events:
                 print(f"{ts}  ⚠ {ev.message}")
@@ -239,7 +257,7 @@ def main() -> None:
                     with args.event_log.open("a", encoding="utf-8") as f:
                         f.write(json.dumps({"time": time.strftime("%Y-%m-%d %H:%M:%S"), "kind": ev.kind, "message": ev.message,
                                             "candidates": ev.candidates, "raw_label": raw_label, "probs": [round(float(v), 4) for v in probs],
-                                            "features": feats, "downlink_dominant": advisor.downlink_dominant()}, ensure_ascii=False) + "\n")
+                                            "features": feats, "link": feats_extra, "downlink_dominant": advisor.downlink_dominant()}, ensure_ascii=False) + "\n")
 
     except KeyboardInterrupt:
         print("\n종료.")

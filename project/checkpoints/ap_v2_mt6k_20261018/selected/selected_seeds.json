@@ -1,0 +1,18 @@
+{
+ "rule": "seed 0 단일 (크기·지연 측정용)",
+ "data": "pool_mt6k_warn m1~m14 (14세션, 경고 세션 m11~m14 포함), MT6000 전용 스케일러",
+ "trained": "2026-10-18, retrain_mt6k.py --cond final --pool pool_mt6k_warn --seeds 0 --save --tag _deploy",
+ "ee": {
+  "seed": 0,
+  "val_bal": 96.6
+ },
+ "baseline": {
+  "seed": 0,
+  "val_bal": 97.6
+ },
+ "sdn": {
+  "seed": 0,
+  "val_bal": 97.6,
+  "T": 0.89
+ }
+}
