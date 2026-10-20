@@ -69,10 +69,11 @@ td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
   <div class="kpi"><b>99.3%</b><span>심각 중 점유율 ≥75% 비율 (Opal 71.9%). 다운링크 맹점 해소</span></div>
   <div class="kpi"><b>98.8%</b><span>점유율 문턱 규칙(40/55/75) 정확도. LSTM 93.7~95.1%보다 높음</span></div>
   <div class="kpi"><b>96.0 vs 94.3%</b><span>EE Fixed 5시드: 점유율 1개 vs 7-feature (5/5 시드 1개 우위)</span></div>
+  <div class="kpi"><b>0.7% vs 13~94%</b><span>심각 중 점유율에 안 보이는 몫 (MT6000 vs Opal 시험 세션). LSTM은 Opal에서 그 몫의 약 20% 회수 (9절)</span></div>
   <div class="kpi"><b>+8~11pt</b><span>같은 헛경보에서 LSTM이 규칙보다 심각 진입을 더 잡음 (5시드, 1폴링 앞 7-feature · 3폴링 앞 점유율 1개)</span></div>
 </div>
 
-<nav class="toc"><a href="#s1">1. 설치</a><a href="#s2">2. 수집 세션</a><a href="#s3">3. Opal vs MT6000</a><a href="#s4">4. LOSO 학습</a><a href="#s5">5. 규칙 vs LSTM</a><a href="#s6">6. 점유율 1개 vs 7개</a><a href="#s7">7. 조기경보</a><a href="#s8">8. 간섭 실험</a><a href="#s85">9. 얻은 것·서사</a><a href="#s9">10. 결론·한계</a></nav>
+<nav class="toc"><a href="#s1">1. 설치</a><a href="#s2">2. 수집 세션</a><a href="#s3">3. Opal vs MT6000</a><a href="#s4">4. LOSO 학습</a><a href="#s5">5. 규칙 vs LSTM</a><a href="#s6">6. 점유율 1개 vs 7개</a><a href="#s7">7. 조기경보</a><a href="#s8">8. 간섭 실험</a><a href="#s86">9. 원인별 비교</a><a href="#s87">10. 원인 구분</a><a href="#s85">11. 얻은 것·서사</a><a href="#s9">12. 결론·한계</a></nav>
 
 <section id="s1">
 <h2>1. 설치와 측정 준비 (10/15)</h2>
@@ -157,7 +158,7 @@ td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
 <ul>
 <li>경고 recall이 +18~21pt 올랐다. 대신 EE·Baseline은 혼잡→심각 오답이 늘어 정확도가 −1pt, 심각 precision이 −2~3pt였다. 오답 창의 점유율 중앙값은 74.7%로, 문턱 75% 바로 아래다.</li>
 <li><b>Opal의 다운링크 맹점(55~64%)은 해소됐다.</b> 다운링크 m1·m7이 96~98%다. 약한 세션은 노트북 방향·멀리(m10, 84~88%)다.</li>
-<li>SDN이 seed 0에서는 가장 좋지만, 5시드로 확인하기 전이라 모델 순위는 정하지 않았다.</li>
+<li>SDN이 seed 0에서는 가장 좋았지만 <b>5시드(10-20)로는 우위가 사라졌다</b>: 합산 정확도 Baseline 95.7±0.6 / SDN 94.4±0.4 / EE Fixed 94.3±0.3 / EE Dynamic 94.3±0.4, 심각 recall 96.0~96.9(차이 ±1σ 안). 네 모델 모두 규칙(98.8)보다 3~4.5pt 낮다.</li>
 </ul>
 </section>
 
@@ -169,6 +170,7 @@ td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
 <tbody>
 <tr class="hl"><td>점유율 문턱 규칙</td><td class="n win">98.8</td><td class="n">90.3</td><td class="n">94.5</td><td class="n">99.6</td><td class="n">100</td></tr>
 <tr><td>LSTM 4종 (경고 세션 포함, seed 0)</td><td class="n">93.7~95.1</td><td class="n">47.6~74.4</td><td class="n">80.9~86.9</td><td class="n">93.2~94.5</td><td class="n">91.0~95.6</td></tr>
+<tr><td>LSTM 4종 5시드 평균 (10-20)</td><td class="n">94.3~95.7</td><td class="n">–</td><td class="n">–</td><td class="n">96.0~96.9</td><td class="n">93.3~95.6</td></tr>
 </tbody></table></div>
 <ul>
 <li><b>규칙이 높은 이유의 일부는 라벨이 점유율 축이라서다(순환).</b> m1~m8의 심각 1,897행 중 1,519행은 victim 품질이 멀쩡한데 점유율만으로 심각이었다. 보고서에 한계로 적어야 한다.</li>
@@ -280,8 +282,81 @@ td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
 <p class="sub">부수 발견: 집 공유기 <code>SK_0600_2.4G</code>가 MT6000에서 −28dBm · ch3로 보여 우리 ch1 40MHz와 겹친다. m1~m19 내내 같은 대역에 있었고, idle 비BSS 수신 9~26%의 일부일 수 있다.</p>
 </section>
 
+<section id="s86">
+<h2>9. 두 AP를 같은 기준으로 — 심각을 원인별로 나누면 (10/20)</h2>
+<p>4라벨 정답의 심각은 "점유율 ≥75%" 또는 "품질(손실·지연·지터) 심각" 중 하나만 넘어도 붙는다. 그래서 심각을 둘로 나눠 본다. <b>점유율로 설명되는 심각</b>은 규칙이 입력을 그대로 보므로 정의상 다 맞히고, <b>점유율 미달 품질 심각</b>은 규칙이 구조상 0%다. 학습 모델이 따로 할 일이 있다면 두 번째 몫뿐이다. 재학습 없이, 저장된 처음 보는 세션 예측을 다시 조합했다(<code>claim_table.py</code>).</p>
+<div class="tw"><table>
+<thead><tr><th>AP</th><th>시험 세션</th><th>심각 창</th><th>점유율 미달 품질 심각</th></tr></thead>
+<tbody>
+<tr><td>Opal</td><td>처음 보는 세션 h7·h13·h12</td><td class="n">351</td><td class="n">63 (18%)</td></tr>
+<tr><td>Opal</td><td>LOSO 8/28</td><td class="n">105</td><td class="n">63 (60%)</td></tr>
+<tr><td>Opal</td><td>LOSO 9/1</td><td class="n">115</td><td class="n">15 (13%)</td></tr>
+<tr><td>Opal</td><td>다운링크 h10</td><td class="n">35</td><td class="n">33 (94%)</td></tr>
+<tr class="hl"><td>MT6000</td><td>LOSO m1~m10</td><td class="n">3,455</td><td class="n">25 (0.7%)</td></tr>
+</tbody></table></div>
+<div class="tw"><table>
+<thead><tr><th>시험 세션</th><th>방법</th><th>4-class 정확도</th><th>점유율 심각 recall</th><th>품질 심각 recall</th><th>심각 precision</th><th>헛 심각 창</th></tr></thead>
+<tbody>
+<tr><td rowspan="3">Opal 처음 보는 세션</td><td>점유율 규칙</td><td class="n"><b>94.5</b></td><td class="n">100</td><td class="n">0</td><td class="n">100</td><td class="n">0</td></tr>
+<tr><td>EE Fixed (2시드)</td><td class="n">91.3</td><td class="n">100</td><td class="n"><b>21.4</b></td><td class="n">90.4</td><td class="n">32</td></tr>
+<tr><td>하이브리드</td><td class="n">93.8</td><td class="n">100</td><td class="n">21.4</td><td class="n">90.4</td><td class="n">32</td></tr>
+<tr><td rowspan="3">Opal LOSO 8/28</td><td>점유율 규칙</td><td class="n">89.8</td><td class="n">100</td><td class="n">0</td><td class="n">100</td><td class="n">0</td></tr>
+<tr><td>EE Fixed</td><td class="n">88.4</td><td class="n">100</td><td class="n"><b>19.8</b></td><td class="n">85.5</td><td class="n">10</td></tr>
+<tr><td>하이브리드</td><td class="n"><b>90.2</b></td><td class="n">100</td><td class="n">19.8</td><td class="n">85.5</td><td class="n">10</td></tr>
+<tr><td>Opal 다운링크 h10</td><td>셋 다</td><td class="n">61~65</td><td class="n">–</td><td class="n"><b>0</b></td><td class="n">–</td><td class="n">–</td></tr>
+<tr><td rowspan="3">MT6000 LOSO</td><td>점유율 규칙</td><td class="n"><b>98.8</b></td><td class="n">100</td><td class="n">0</td><td class="n">100</td><td class="n">0</td></tr>
+<tr><td>EE Fixed (5시드)</td><td class="n">94.3</td><td class="n">96.4</td><td class="n">52.8</td><td class="n">93.3</td><td class="n">239</td></tr>
+<tr><td>하이브리드</td><td class="n">96.5</td><td class="n">100</td><td class="n">52.8</td><td class="n">93.5</td><td class="n">239</td></tr>
+</tbody></table></div>
+<p class="note">하이브리드 = 모델이나 규칙 중 하나라도 심각이면 심각, 아니면 규칙 등급. 규칙의 precision 100%·점유율 심각 100%는 라벨이 max(점유율, 품질)로 정의된 결과다. MT6000 품질 심각 25창은 전부 노트북 방향 세션(m10 12·m3 6·m9 4·m5 3)이다.</p>
+<ul>
+<li><b>점유율에 안 보이는 심각의 비율이 AP마다 다르다</b>: Opal 13~94%, MT6000 0.7%. 이 비율이 학습 모델이 할 일의 크기다.</li>
+<li><b>그 몫에서 LSTM은 Opal 기준 약 20%를 회수한다</b>(규칙 0%). 대가로 헛 심각이 생겨 4-class 정확도는 규칙보다 낮다. 하이브리드도 정확도로는 규칙을 넘지 못하고(8/28만 +0.4), 심각 recall만 +3.8(처음 보는 세션)·+11.9(8/28) 오른다.</li>
+<li><b>다운링크 h10은 아무 방법도 못 잡는다.</b> Opal 점유율이 AP 송신을 세지 않아 판단할 지표가 입력에 없다. MT6000은 같은 방향 m1·m7이 96~98%다 — 해법은 모델이 아니라 측정이다.</li>
+<li><b>얼마나 확실한가 (세션 단위 부트스트랩, 5,000회, <code>bootstrap_ci.py</code>)</b>: Opal 처음 보는 5세션(h7·h13·h12·8/28·9/1)에서 정확도 규칙 − EE Fixed = <b>+3.2pt [95% 구간 +1.1, +5.0]</b>, MT6000 10세션 +4.5 [+3.1, +6.2] — 규칙이 높다는 건 우연이 아니다. EE의 점유율 미달 품질 심각 recall은 Opal 19.1% [5.3, 21.8] — 0보다 크다는 방향은 확실하지만 크기는 최대 약 20%다. 하이브리드의 심각 recall 이득은 Opal +4.7 [+0.2, +10.6]. MT6000의 품질 심각 recall 52.8% [5.3, 83.6]은 25창뿐이라 인용하지 않는다.</li>
+<li><b>순환 확인</b>: 정답에서 점유율 축을 빼고 "품질이 깨졌나"만 맞히게 하면(<code>qos_rule_vs_lstm.py</code>, 시드 0, 세션 단위 5겹) Opal AUC 점유율 86.0 / 선형 7개 86.3 / 점유율 LSTM 86.5 / 7개 LSTM 88.7, 헛경보 5%에서 recall 55.7 vs 58.5로 거의 동급이다. 규칙의 우위는 라벨 순환 탓이 있지만, 그걸 빼도 LSTM이 크게 이기지는 않는다.</li>
+</ul>
+</section>
+
+<section id="s87">
+<h2>10. 원인 구분 — 약한 기기 · 이웃 간섭 · 우리 부하 (10/19~10/20)</h2>
+<p>노트북을 멀리 두면(−66~−71dBm) AP→노트북 속도가 6M까지 떨어지고, 같은 데이터를 보내는 데 시간이 몇 배 걸려 점유율이 82~91%로 오른다. 라벨은 심각이 되고 시스템은 채널 전환을 권고하지만, 원인은 기기 하나라 전환해도 소용없다(AP 옆 폰 손실 0.24~1.17%). 이 경우를 가려 "전환 대신 기기 위치·로밍 확인"으로 바꾸는 것이 원인 구분의 목적이다. 기기별 송신 시간이 보이는 MT6000에서만 가능하다.</p>
+<div class="callout"><p><b>규칙(10/19 17:37 고정)</b>: [가장 나쁜 기기의 재전송 비율 최근 5폴링 중앙 ≥ 35% <b>또는</b> 그 기기 tx bitrate ≤ 50M(Δtx_packets ≥ 20)] <b>그리고</b> 그 기기의 송신 시간 점유 ≥ 20%. 경고 이상일 때만 표시.</p></div>
+<div class="tw"><table>
+<thead><tr><th>세션</th><th>상황</th><th>정답 원인</th><th>표시 비율 / 심각 중 표시</th><th>규칙 확정 전후</th></tr></thead>
+<tbody>
+<tr><td>m20b·m22</td><td>노트북 −43·−58, 폰 부하</td><td>채널 혼잡</td><td class="n">0~1% / 0/4</td><td>확정 전 (보고 정함)</td></tr>
+<tr><td>m23b·m26</td><td>노트북 −68·−71, 노트북 방향 부하</td><td>약한 기기</td><td class="n">심각 33/38 · 57/68</td><td>확정 전 (보고 정함)</td></tr>
+<tr><td>m25</td><td>노트북 −72 무부하 + 폰 업링크 혼잡</td><td>채널 혼잡</td><td class="n">0~1% / 2/142</td><td>확정 전 (송신 시간 조건을 여기서 추가)</td></tr>
+<tr class="hl"><td>m27c</td><td>노트북 −65에 5M + 폰 업링크 혼잡</td><td>주로 채널 혼잡</td><td class="n">3~11% / 26/282</td><td><b>확정 후 채점만</b></td></tr>
+<tr class="hl"><td>m27d idle</td><td>노트북 −66에 10M, 폰 부하 없음</td><td>약한 기기</td><td class="n"><b>69%</b></td><td><b>확정 후 채점만</b></td></tr>
+<tr class="hl"><td>m27d step·spstep</td><td>위 + 폰 업링크 혼잡</td><td>둘 다(폰 혼잡 우세)</td><td class="n">14~22% / 15/242</td><td><b>확정 후 채점만</b></td></tr>
+</tbody></table></div>
+<ul>
+<li><b>찾은 것</b>: 약한 링크는 주로 "점유율 주도 심각"을 만든다(m23b 38·m26 68개, 폰 품질은 멀쩡). 약한 링크가 폰 품질까지 무너뜨린 m10형은 중단된 m27의 idle 20행(점유율 미달 심각 3개)과 m27d step의 3행에서만 다시 보였다(m27d 3행은 모두 표시됨). 그래서 원인 표시의 실제 가치는 <b>약한 기기가 만든 쓸모없는 채널 전환 권고를 걸러내는 것</b>이다.</li>
+<li><b>재전송 비율만으로는 안 된다</b>: 약한 기기가 있기만 해도 표시되고(m25 70~84%), 속도가 최저(6M)로 떨어지면 재전송이 오히려 내려간다(m26). 송신 시간 점유 조건이 "그 기기가 원인인가"를 가른다.</li>
+<li><b>한계</b>: 규칙은 m23b·m26·m25를 보고 만들어졌고, 확정 후 검증은 m27c·m27d 두 세션뿐이다. 집 한 곳·약한 기기 한 대(노트북)이고, 20% 문턱이 10M 노트북 몫(16~24%)에 걸쳐 경계에 민감하다. 이 단계는 LSTM이 아니라 규칙이다.</li>
+</ul>
+<h3>세 갈래로 확장 — 이웃 간섭 / 우리 부하 / 약한 기기 (10/20)</h3>
+<p>채널 전환은 <b>이웃 간섭</b>일 때만 효과가 있다. 우리 AP에 붙은 기기들의 부하는 채널을 바꿔도 같은 기기가 같은 부하를 들고 따라간다. MT6000은 채널 바쁨을 나눠 보여 주므로, <b>우리 몫 = AP 송신 + 우리 BSS 수신</b>, <b>외부 몫 = 나머지(비BSS 수신 + 해독 못한 바쁨)</b>로 가른다(<code>score_cause3.py</code>, 기존 세션 재채점).</p>
+<div class="callout"><p><b>규칙</b> (경고 이상, 5폴링 중앙): ① 약한 기기(위 규칙) → 위치·로밍 확인 ② 외부 몫 &gt; 우리 몫 → <b>이웃 간섭 → 채널 전환</b> ③ 그 외 → <b>우리 부하 → 5GHz 이동·AP 분산</b>. 문턱은 과반이라 맞춘 값이 없다.</p></div>
+<div class="tw"><table>
+<thead><tr><th>세션 구성(설계상 원인)</th><th>경고 이상 폴링</th><th>약한 기기</th><th>이웃 간섭</th><th>우리 부하</th></tr></thead>
+<tbody>
+<tr><td>우리 부하 (m1~m14, m20~m27 부하 구간)</td><td class="n">13,148</td><td class="n">1.2%</td><td class="n">3.8%</td><td class="n"><b>95.0%</b></td></tr>
+<tr><td>의도한 이웃 간섭 (m16·m17·m18, Opal 같은 채널)</td><td class="n">535</td><td class="n">0%</td><td class="n"><b>95.3%</b></td><td class="n">4.7%</td></tr>
+<tr><td>우리 부하 없는 idle 중 경고 (정답 추정)</td><td class="n">191</td><td class="n">0%</td><td class="n">87.1%</td><td class="n">12.9%</td></tr>
+<tr><td>약한 기기 (m23b·m26 부하, m27·m27d idle)</td><td class="n">932</td><td class="n"><b>46.8%</b></td><td class="n">13.7%</td><td class="n">39.8%</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>우리 부하 세션에서 나온 "이웃 간섭" 3.8%는 대부분 실제 외부 사건이었다.</b> m11(15:30~15:33)에서 심각 56개가 전부 이웃 간섭으로 분류됐는데, 그동안 우리 몫은 19 → 18%로 그대로였고 비BSS 수신이 14 → 34%로 올라 점유율이 41 → 79%가 됐다. m21(00:41~00:45)도 같은 양상이다. 두 사건 모두 폰 손실은 0%다. 라벨은 점유율로 심각이 됐고 원인은 이웃이었다 — 이때는 채널 전환이 맞는 처방이다.</li>
+<li>헛 분류는 우리 몫과 외부 몫이 비슷할 때 흔들린 경우다(m25 step 심각 26/75, m23b·m26 17~19%). 약한 기기 그룹의 "우리 부하" 39.8%는 노트북 속도가 떨어지기 전 경고 단계다.</li>
+<li><b>한계</b>: 의도한 이웃 간섭은 세 세션(Opal 출력 1dBm, 품질 무손상)뿐이고, 전환이 실제로 품질을 회복시키는지는 아직 재지 않았다 → 다음 수집에서 <b>전환 효과 실험</b>(이웃 간섭 vs 우리 부하, 각각 채널 전환 전후 품질)으로 이 규칙을 채점만 한다.</li>
+</ul>
+</section>
+
 <section id="s85">
-<h2>9. MT6000을 들여서 얻은 것 — 그리고 보고서 서사</h2>
+<h2>11. MT6000을 들여서 얻은 것 — 그리고 보고서 서사</h2>
 <p>모델 성능만 보면 이득은 거의 하나다. <b>AP 송신이 점유율에 포함돼 다운링크·혼합 부하가 보이게 된 것</b>이다. 나머지는 거기서 파생되거나 모델 밖의 이득이다.</p>
 <div class="tw"><table>
 <thead><tr><th>구분</th><th>내용</th><th>근거</th></tr></thead>
@@ -300,22 +375,24 @@ td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
 <tbody>
 <tr><td>다운링크 혼잡</td><td>점유율에 안 보임 (16.7%)</td><td>보임 (70.2%)</td></tr>
 <tr><td>심각 중 점유율로 설명되는 비율</td><td class="n">71.9%</td><td class="n">99.3%</td></tr>
-<tr><td>점유율 1개만 쓰면</td><td>심각 recall −16pt (다른 입력 필요)</td><td>정확도 +1.7pt (5/5 시드), 심각 약 +2pt</td></tr>
-<tr><td>점유율 문턱 규칙</td><td>다운링크·점유율 미달 심각을 못 잡음</td><td class="n">98.8%</td></tr>
-<tr><td>LSTM의 역할</td><td><b>현재 상태 판단에 필요</b> — 재전송·bitrate·RSSI로 점유율의 빈자리를 메움</td><td><b>현재 상태엔 불필요</b>, 심각 진입 조기경보만 (같은 헛경보에서 규칙보다 +8~11pt, 5시드 5/5)</td></tr>
+<tr><td>LSTM 입력을 점유율 1개로 줄이면</td><td>심각 recall −16pt (7-feature LSTM 대비, 규칙과의 비교 아님)</td><td>정확도 +1.7pt (5/5 시드), 심각 약 +2pt</td></tr>
+<tr><td>점유율 문턱 규칙</td><td>처음 보는 세션 94.5%. 다운링크·점유율 미달 심각을 못 잡음</td><td class="n">98.8%</td></tr>
+<tr><td>LSTM의 역할</td><td><b>점유율 미달 심각의 일부를 회수</b> — 처음 보는 세션에서 그 몫의 약 20%(규칙 0%). 정확도는 규칙(94.5)이 LSTM(91.3)보다 높고, 다운링크는 둘 다 못 잡음 (9절)</td><td><b>현재 상태엔 불필요</b>, 심각 진입 조기경보만 (같은 헛경보에서 규칙보다 +8~11pt, 5시드 5/5)</td></tr>
 </tbody></table></div>
 <ul>
-<li><b>현장 함의</b>: 공장에 깔린 AP가 자기 송신을 세지 못하는 저가형이면 다른 텔레메트리를 쓰는 LSTM이 필요하고, 세는 AP면 문턱 규칙으로 충분하며 LSTM은 조기경보 보조로만 쓴다. 어느 쪽이든 Early Exit 구조의 Pi 지연 이득(Baseline 대비 −21~32%, &lt;1ms)은 유지된다.</li>
+<li><b>현장 함의</b>: 어느 AP든 점유율로 보이는 혼잡은 문턱 규칙으로 판별된다. 자기 송신을 세지 못하는 AP(Opal형)에서는 점유율에 안 보이는 심각이 커서 LSTM이 그 일부를 보완하지만, 다운링크처럼 입력에 흔적이 없는 경우는 모델로도 못 잡고 AP 측정을 바꿔야 한다. 자기 송신을 세는 AP(MT6000형)에서는 LSTM이 조기경보 보조, 원인 구분은 기기별 송신 시간 규칙이 맡는다. 어느 쪽이든 Early Exit 구조의 Pi 지연 이득(Baseline 대비 −21~32%, &lt;1ms)은 유지된다.</li>
 <li><b>이 비교는 MT6000을 들였기 때문에 가능했다.</b> Opal만 있었다면 "점유율 미달 심각을 모델이 못 잡는다"에서 멈췄을 것이다. 두 장비로 그 원인이 측정이라는 것과, 측정이 바뀌면 ML의 역할도 바뀐다는 것을 보였다.</li>
 <li><b>정직하게 같이 적을 것</b>: MT6000의 규칙 98.8%에는 라벨이 점유율 축이라 생긴 순환이 섞여 있다. 조기경보 우위는 5시드 기준 +8~11pt이고 시드 편차가 ±5~6pt다. 두 AP는 수집 시기·세션 구성이 달라서, 같은 조건 비교로는 업·다운·혼합(처리량 40~48Mbps)이 가장 공정하다.</li>
 </ul>
 </section>
 
 <section id="s9">
-<h2>10. 결론과 한계</h2>
+<h2>12. 결론과 한계</h2>
 <h3>보고서에 쓸 결론</h3>
 <ul>
-<li><b>AP가 무엇을 보느냐에 따라 ML이 필요한지가 갈린다(9절).</b> Opal(AP 송신 제외)에서는 점유율만으로 심각 recall이 −16pt였고 다른 입력이 필요했다. MT6000(AP 송신 포함)에서는 점유율 1개가 7-feature보다 같거나 낫고, 문턱 규칙이 98.8%다.</li>
+<li><b>AP가 무엇을 보느냐에 따라 학습 모델이 할 일의 크기가 갈린다(9절, 11절).</b> 점유율에 안 보이는 심각이 Opal 13~94%, MT6000 0.7%다. 점유율로 보이는 심각은 두 AP 모두 문턱 규칙이 정의상 다 맞히고, 4-class 정확도도 규칙이 높다(Opal 처음 보는 세션 94.5 vs 91.3, MT6000 98.8 vs 94.3).</li>
+<li><b>LSTM의 고유 몫은 작지만 실재한다.</b> Opal의 점유율 미달 품질 심각 중 약 20%를 회수하고(규칙 0%), MT6000에서는 심각 진입 조기경보가 같은 헛경보에서 규칙보다 +8~11pt(5시드 5/5)다. "LSTM이 규칙보다 정확하다"는 주장은 데이터가 지지하지 않는다.</li>
+<li><b>채널 전환 판단에 원인 구분 단계를 더했다(10절).</b> 경고 이상일 때 원인을 이웃 간섭(→ 채널 전환) · 우리 부하(→ 5GHz·AP 분산) · 약한 기기(→ 위치 확인)로 가른다. 설계상 원인과의 일치는 95.3% · 95.0% · 46.8%(약한 기기는 심각 기준 33/38 · 57/68). MT6000의 채널 바쁨 분해·기기별 송신 시간을 쓰는 규칙이며, 전환 효과 자체는 미검증이다.</li>
 <li><b>Opal의 다운링크 맹점과 "점유율 미달 심각"은 대부분 측정 한계였다.</b> 측정을 바꾸자 점유율 미달 심각이 28.1% → 0.7%로 줄었다.</li>
 <li><b>MT6000에서 LSTM의 고유 기여는 심각 진입 조기경보다.</b> 같은 헛경보에서 규칙보다 +8~11pt(5시드 5/5)이고, 1폴링 앞은 7-feature, 3폴링 앞은 점유율 1개가 낫다.</li>
 <li>여기에 엣지 구현(Pi INT8 &lt;1ms, EE가 Baseline 대비 −21~32%)과 평가 과정(세션 단위 LOSO, 공정 비교)을 더한다.</li>
@@ -325,16 +402,19 @@ td.note { min-width:18rem; color:var(--ink2); font-size:.86rem; }
 <li>라벨이 점유율 축이라 규칙 98.8%에는 순환이 섞여 있다(심각 1,897행 중 1,519행은 victim 품질 무손상).</li>
 <li>모든 세션이 한 집, 3일, 계단형 부하다. 시간당 헛된 전환 같은 수치는 운영 수치가 아니다.</li>
 <li>2.4GHz 40MHz를 <code>noscan=1</code>로 강제했다(이웃 BSS 공존 규칙 무시).</li>
-<li>모델 간 순위(SDN vs EE)는 seed 0 기준이라 다시드 확인이 필요하다.</li>
+<li>모델 간 차이는 5시드로 확인했다(10-20): 정확도 94.3~95.7, 심각 recall 96.0~96.9로 사실상 동급이고 순위를 주장할 근거는 없다.</li>
 <li>점유율에 안 보이는 심각(숨은 노드)은 아직 재현하지 못했다.</li>
 <li>규칙이 놓치는 1.2%(대부분 약한 링크의 idle 손실)는 다른 텔레메트리를 다 써도 헛경보 5%에서 31%만 잡힌다(5절).</li>
+<li>점유율 미달 품질 심각은 시험 구간마다 12~63창으로 작아 LSTM의 회수율(약 20%)은 방향만 보인다. 원인 구분 규칙은 약한 기기 한 대·집 한 곳에서 만들고 2세션으로만 확정 후 검증했다.</li>
 </ul>
 <h3>남은 일</h3>
 <ul>
-<li>숨은 노드 재시도(m19, 집 밖 배치, 비 그친 뒤).</li>
+<li>(선택) MT6000 다운링크 새 세션 1개 — 지금 배포 모델로 채점만("다운링크가 보인다" 재확인).</li>
+<li>원인 구분 규칙을 라이브 추론·대시보드에 표시(경고 이상일 때).</li>
+<li>숨은 노드 재시도(m19)는 마감 전 보류.</li>
 <li>(선택) EE·SDN 5시드로 SDN 우위 확인, MT6000 airtime feature 실험(기대치 낮음).</li>
 </ul>
 </section>
 
-<footer>2026-10-18 · capstoneDesign2 · 상세 기록 <code>.work-log/current.md</code> 29차~30차 후속 · 수치는 k2m2 재라벨 풀(<code>pool_mt6k</code>, <code>pool_mt6k_warn</code>) 기준</footer>
+<footer>2026-10-20 · capstoneDesign2 · 상세 기록 <code>.work-log/current.md</code> 29차~30차 후속 · 수치는 k2m2 재라벨 풀(<code>pool_mt6k</code>, <code>pool_mt6k_warn</code>) 기준</footer>
 </main></body></html>

@@ -358,6 +358,7 @@ probe_hard_fail = channel_active AND 프로브 ever_ok AND 지금 stale  → los
     <h2><span class="step">05</span> 모델 입력 feature 재정의</h2>
     <p class="lede"><b>문제</b>: <code>max(표준 문턱)</code>은 그 자체로 규칙 기반 분류기다. 배포 시점에 규칙으로 계산하면 되는데 왜 LSTM인가?</p>
     <div class="callout key"><span>▸</span><span><b>답: 프로브가 배포 시점엔 없다.</b> 배포 시스템엔 victim 프로브(협조 싱크 + 지속 스트림)가 없다. 모델은 <b>AP-side 텔레메트리만 보고 "지금 victim QoS가 깨지고 있는가"를 예측</b>해야 한다. 규칙으로 못 한다 — victim 측정값이 없으니까. + 시계열 추세(window 12, 9/1에 10→12) + Early Exit 효율.</span></div>
+    <div class="callout"><span>ℹ</span><span><b>실측 후 보완 (2026-10-20)</b>: 점유율 하나로 만든 문턱 규칙이 상당 부분을 해낸다 — 라벨이 max(점유율, 품질)라 점유율 심각은 규칙이 정의상 다 맞히고, 처음 보는 세션 4-class 정확도도 규칙이 높다(Opal 94.5 vs EE 91.3, MT6000 98.8 vs 94.3). LSTM의 몫은 <b>점유율에 안 보이는 품질 심각</b>(Opal 13~94%, MT6000 0.7%)의 일부(Opal 약 20%, 규칙 0%)와 심각 진입 조기경보(+8~11pt)다. 다운링크처럼 입력에 흔적이 없으면 LSTM도 못 잡는다. 그래서 주장은 "규칙으로 못 한다"가 아니라 "보이는 건 규칙, 안 보이는 것의 일부·조기경보는 LSTM, 그 비율은 AP 측정이 정한다". 상세 <code>mt6000_results.html</code> 9~12절.</span></div>
 
     <div class="lanes">
       <div class="lane lane-a">
