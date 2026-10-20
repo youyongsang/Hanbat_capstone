@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>캡스톤 최종 서사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 한 줄 메시지 → 서사 흐름 → 인용 수치 → 금지 표현 → 산출물별 적용(보고서·발표·전시회·논문). 저장소 문서 계열(mt6000_results.html)과 같은 토큰 */
+:root { --paper:#f5f7fa; --panel:#fcfcfb; --raise:#ffffff; --ink:#12151b; --ink2:#4b5566; --mute:#7c8494; --rule:#e2e6ec; --rule2:#c9d0da;
+  --accent:#2a78d6; --good:#0c7a0c; --warn:#b26a00; --bad:#c0392b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; } }
+:root[data-theme="dark"] { color-scheme:dark; --paper:#0e1116; --panel:#1a1a19; --raise:#20242c; --ink:#f3f5f8; --ink2:#b8c0cc; --mute:#8890a0;
+  --rule:#242a33; --rule2:#333b47; --accent:#3987e5; --good:#3ec13e; --warn:#e0a040; --bad:#e66767; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; word-break:keep-all; }
+main { max-width:960px; margin:0 auto; padding-inline:16px; padding-block:3rem 5rem; }
+.eyebrow { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 .7rem; }
+h1 { font-size:clamp(1.7rem,1.3rem + 1.6vw,2.3rem); line-height:1.2; margin:0 0 .8rem; text-wrap:balance; }
+.lead { color:var(--ink2); max-width:68ch; margin:0 0 1.6rem; }
+h2 { font-size:1.22rem; margin:0 0 .5rem; text-wrap:balance; }
+h3 { font-size:1rem; margin:1.6rem 0 .5rem; }
+section { margin-top:3rem; }
+p, li { max-width:72ch; } p { margin:.4rem 0 .9rem; } ul, ol { padding-left:1.3rem; margin:.4rem 0 1rem; display:grid; gap:.35rem; }
+.sub { color:var(--ink2); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--panel); border:1px solid var(--rule); border-radius:3px; padding:.05em .3em; color:var(--ink2); }
+.thesis { background:var(--raise); border:1px solid var(--rule); border-left:4px solid var(--accent); border-radius:6px; padding:1.1rem 1.25rem; margin:1.2rem 0 1.4rem; }
+.thesis p { margin:.25rem 0; font-size:1.08rem; font-weight:600; max-width:none; }
+.thesis p.sm { font-size:.92rem; font-weight:400; color:var(--ink2); }
+.callout { background:var(--panel); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:.85rem 1.05rem; margin:1rem 0 1.3rem; }
+.callout.bad { border-left-color:var(--bad); } .callout.warn { border-left-color:var(--warn); } .callout p { margin:.2rem 0; }
+.beats { display:grid; gap:.7rem; counter-reset:b; padding:0; list-style:none; }
+.beats li { display:grid; grid-template-columns:2.2rem minmax(0,1fr); gap:.2rem .7rem; background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.75rem 1rem; max-width:none; }
+.beats li::before { counter-increment:b; content:counter(b); grid-row:span 2; font-family:"IBM Plex Mono",monospace; font-weight:600; color:var(--accent); font-size:1.1rem; }
+.beats b { display:block; } .beats span { color:var(--ink2); font-size:.93rem; }
+.tw { overflow-x:auto; margin:.6rem 0 1rem; border:1px solid var(--rule); border-radius:6px; background:var(--raise); }
+table { border-collapse:collapse; width:100%; font-size:.9rem; }
+th, td { padding:.5rem .7rem; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+tbody tr:last-child td { border-bottom:0; }
+th { color:var(--mute); font-weight:600; font-size:.78rem; letter-spacing:.02em; background:var(--panel); white-space:nowrap; }
+td.n { font-family:"IBM Plex Mono",monospace; font-size:.84rem; white-space:nowrap; font-variant-numeric:tabular-nums; }
+td.src { color:var(--ink2); font-size:.82rem; min-width:11rem; }
+td.no { color:var(--bad); } td.yes { color:var(--good); }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.05rem .45rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); } .pill.good { color:var(--good); }
+.slides { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:.7rem; }
+.slide { background:var(--raise); border:1px solid var(--rule); border-radius:6px; padding:.75rem .9rem; min-width:0; }
+.slide .no { font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--mute); }
+.slide b { display:block; margin:.1rem 0 .25rem; }
+.slide p { margin:0; font-size:.88rem; color:var(--ink2); }
+.slide .t { font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--accent); }
+footer { margin-top:3.5rem; padding-top:1rem; border-top:1px solid var(--rule); color:var(--mute); font-size:.84rem; }
+nav.toc { display:flex; flex-wrap:wrap; gap:.4rem .9rem; font-size:.88rem; margin:0 0 1rem; }
+nav.toc a { color:var(--ink2); }
+a { color:var(--accent); }
+</style></head>
+<body><main>
+
+<p class="eyebrow">캡스톤디자인 II · 자원할당해조 · 2026-10-20</p>
+<h1>최종 서사 — 보고서·발표·전시회·논문이 따를 한 장</h1>
+<p class="lead">10/15~10/20의 MT6000 실험으로 결과의 해석이 바뀌었다. 이 문서는 그 바뀐 서사를 한 줄 메시지, 인용할 수치(출처·조건 포함), 쓰면 안 되는 표현, 산출물별 적용 방법으로 정리한다. 수치를 고칠 일이 생기면 이 문서와 근거 문서를 같이 고친다.</p>
+<nav class="toc"><a href="#msg">한 줄 메시지</a><a href="#beats">서사 흐름</a><a href="#nums">인용 수치</a><a href="#dont">쓰지 말 것</a><a href="#report">최종보고서</a><a href="#ppt">발표</a><a href="#expo">전시회</a><a href="#paper">논문</a><a href="#todo">남은 검증</a></nav>
+
+<section id="msg">
+<h2>한 줄 메시지</h2>
+<div class="thesis">
+<p>공유기가 무엇을 측정하느냐가 AI가 할 일을 정한다. 그리고 원인을 가려야 채널 전환이 맞는 처방인지 알 수 있다.</p>
+<p class="sm">점유율로 보이는 혼잡은 문턱 규칙이 가장 정확하다. 자기 송신을 세지 못하는 공유기(Opal)에서는 점유율에 안 보이는 심각이 커서 LSTM이 그 일부를 보완하고, 세는 공유기(MT6000)에서는 LSTM이 심각 진입 조기경보만 보탠다. 혼잡의 원인이 이웃 와이파이일 때만 채널 전환이 효과가 있고(실측 −47~−53%p), 우리 기기 부하일 때는 거의 효과가 없다(−1~−7%p). Early Exit LSTM은 라즈베리파이에서 1ms 미만으로 돈다.</p>
+</div>
+<p>슬라이드 7의 최종 목표 문장 "혼잡 판단 → 채널 전환 필요 여부 판단 → 전환 명령 후보 생성"의 세 단계가 모두 구현·실측되었다는 점을 결론에서 같이 말한다.</p>
+</section>
+
+<section id="beats">
+<h2>서사 흐름 — 이 순서로 말한다</h2>
+<ol class="beats">
+<li><b>문제</b><span>2.4GHz에서는 우리 기기와 이웃 공유기가 채널을 나눠 쓴다. 혼잡하면 채널을 옮기는 게 대표 조치지만, 옮겨서 나아지는 건 원인이 이웃일 때뿐이다. 그래서 "얼마나 혼잡한가"와 "옮기면 나아지는가"를 둘 다 판단해야 한다.</span></li>
+<li><b>실측 시스템</b><span>실제 공유기 2종에서 직접 수집(Opal 24세션, MT6000 14세션). 정답은 통화 품질 표준(ITU-T·Cisco·Aruba) 문턱과 별도 victim 프로브로 정하고, 프로브 지표는 모델 입력에서 빼서 정답이 입력에 새지 않게 했다. 라즈베리파이가 공유기를 1초마다 읽어 판단한다.</span></li>
+<li><b>정직한 평가가 결과를 바꿨다</b><span>같은 세션 안에서 나눠 시험하면 92%대였지만 처음 보는 세션에서는 75~84%까지 떨어졌다. 그래서 모든 수치를 학습에서 통째로 뺀 세션 기준으로 바꾸고, 학습 없는 점유율 문턱 규칙을 비교 기준으로 넣었다. 그러자 4-class 정확도는 규칙이 LSTM보다 높았다.</span></li>
+<li><b>왜 그런가 — 공유기가 무엇을 재느냐</b><span>Opal은 자기 송신 시간을 점유율에 넣지 않아 다운링크 혼잡이 안 보인다(같은 부하 점유율 16.7% vs MT6000 70.2%). 점유율에 안 보이는 심각이 Opal 13~94%, MT6000 0.7%다. LSTM은 Opal에서 그 몫의 약 20%를 회수하고(규칙 0%), MT6000에서는 심각 진입을 같은 헛경보에서 규칙보다 8~11%p 더 먼저 잡는다.</span></li>
+<li><b>원인 구분과 전환 효과</b><span>MT6000은 채널 시간을 우리 몫과 외부 몫으로 나눠 보여 준다. 외부 몫이 크면 이웃 간섭 → 채널 전환, 아니면 5GHz 유도·공유기 분산, 신호 약한 기기면 위치 확인. 실제로 채널을 옮겨 보니 이웃 간섭은 점유율 −47~−53%p, 우리 부하는 −1~−7%p였고 원인 규칙은 6번 모두 맞게 갈랐다.</span></li>
+<li><b>전환 명령 후보와 엣지 구현</b><span>이웃 간섭이면 후보 채널을 스캔하고 상위 두 곳을 연결을 끊지 않고 잠깐 다녀와 실측한 뒤 명령 후보를 낸다(스캔만으로는 순위가 뒤집혔음). Early Exit LSTM은 라즈베리파이 INT8에서 0.42~0.68ms, 기본 LSTM보다 21~51% 빠르다. 대시보드에 원인·조치·후보가 실시간으로 뜬다.</span></li>
+<li><b>현장 함의</b><span>공유기의 측정 능력을 먼저 확인하고 판단 방식을 고른다. 자기 송신을 세는 공유기면 점유율 규칙 + 원인 구분 + LSTM 조기경보, 못 세는 공유기면 LSTM이 점유율의 빈자리를 일부 메우지만 다운링크는 측정을 바꿔야 한다.</span></li>
+</ol>
+</section>
+
+<section id="nums">
+<h2>인용 수치 — 이 값만, 이 조건과 함께</h2>
+<div class="tw"><table>
+<thead><tr><th>주장</th><th>수치</th><th>조건</th><th>출처</th></tr></thead>
+<tbody>
+<tr><td>Opal 처음 보는 세션 성능</td><td class="n">EE Fixed 91.3% · 심각 R 85.9 · P 90.4</td><td>h7·h13·h12 합산 2,638창, 2시드</td><td class="src">final_model_24sess.html</td></tr>
+<tr><td>같은 창의 점유율 규칙</td><td class="n">94.5% · 심각 R 82.1 · P 100</td><td>위와 같음</td><td class="src">mt6000_results.html 9절</td></tr>
+<tr><td>Opal 다운링크 맹점</td><td class="n">55~64%</td><td>다운링크 우세 세션, 모든 방법</td><td class="src">final_model_24sess.html</td></tr>
+<tr><td>MT6000 LOSO</td><td class="n">규칙 98.8 · LSTM 94.3~95.7</td><td>m1~m10 10겹, 10,050창, LSTM 5시드</td><td class="src">mt6000_results.html 4·5절</td></tr>
+<tr><td>점유율 1개 vs 7개 (MT6000)</td><td class="n">96.0 vs 94.3%</td><td>EE Fixed 5시드, 5/5 시드 1개 우위</td><td class="src">6절</td></tr>
+<tr><td>점유율 미달 심각 비율</td><td class="n">Opal 13~94% · MT6000 0.7%</td><td>처음 보는 세션·LOSO 시험 구간별</td><td class="src">9절</td></tr>
+<tr><td>그 몫의 LSTM 회수율</td><td class="n">약 20% (19.1% [5.3, 21.8])</td><td>Opal, 세션 부트스트랩 95% 구간. 규칙은 0%</td><td class="src">9절</td></tr>
+<tr><td>규칙 우위는 우연이 아님</td><td class="n">+3.2%p [+1.1, +5.0] · +4.5%p [+3.1, +6.2]</td><td>규칙 − EE Fixed, Opal 5세션 · MT6000 10세션</td><td class="src">9절</td></tr>
+<tr><td>심각 진입 조기경보 (MT6000)</td><td class="n">+7.8±5.1 (1폴링 앞) · +11.1±6.1 (3폴링 앞)</td><td>같은 헛경보의 규칙 대비, 5/5 시드. 시드 편차를 같이 적는다</td><td class="src">7절</td></tr>
+<tr><td>Pi 추론 지연</td><td class="n">EE Fixed 0.58~0.68 (Opal) · 0.417 (MT6000)ms</td><td>Raspberry Pi 4, ONNX INT8. Baseline 0.85~0.86</td><td class="src">final_model_24sess.html 7절 · ap_v2_mt6k_pi_latency_20261018.txt</td></tr>
+<tr><td>EE 지연 이득</td><td class="n">Baseline 대비 −21~32% · −51%</td><td>Opal 모델 · MT6000 모델</td><td class="src">같음</td></tr>
+<tr><td>원인 구분 일치율</td><td class="n">우리 부하 95.0 · 이웃 간섭 95.3 · 약한 기기 46.8%</td><td>경고 이상 폴링, 설계상 원인 대비. 약한 기기는 심각 기준 33/38 · 57/68</td><td class="src">10절</td></tr>
+<tr><td>채널 전환 효과</td><td class="n">이웃 −47~−53%p · 우리 −1~−7%p</td><td>점유율, ch1→ch11, 이웃 2회 · 우리 4회</td><td class="src">11절</td></tr>
+<tr><td>전환 후 victim 지연</td><td class="n">p90 1/3~1/8</td><td>이웃 간섭 2회. 최악도 p90 39ms·손실 0%라 표준 심각 문턱 미만</td><td class="src">11절</td></tr>
+<tr><td>원인 규칙의 전환 권고</td><td class="n">6/6 일치</td><td>이웃 간섭에서만 권고. m32(문턱 근처 우리 부하)의 전환 이득은 놓침</td><td class="src">11절</td></tr>
+<tr><td>스캔 vs 실측</td><td class="n">스캔 1+ 52 · 6+ 20 · 11− 32% / 실측 38 · 29 · 25%</td><td>부하 없음, 실측은 CSA 20초, 반복 차 0.4~5%p</td><td class="src">work-log 30차 후속</td></tr>
+</tbody></table></div>
+<p class="sub">발표에서 1학기 수치(96.9% 등)를 꺼낼 때는 Kaggle 공개 데이터·시뮬레이션 기반이라는 점을 함께 말한다. 2학기 수치와 같은 표에 넣지 않는다.</p>
+</section>
+
+<section id="dont">
+<h2>쓰지 말 것 → 대신 이렇게</h2>
+<div class="tw"><table>
+<thead><tr><th>쓰지 말 것</th><th>이유</th><th>대신</th></tr></thead>
+<tbody>
+<tr><td class="no">LSTM이 규칙보다 정확하다</td><td>두 공유기 모두 4-class 정확도는 규칙이 높다(부트스트랩으로 확인)</td><td>점유율로 보이는 혼잡은 규칙이 판별하고, LSTM은 점유율에 안 보이는 심각의 일부와 조기경보를 보탠다</td></tr>
+<tr><td class="no">정확도 92~93% (세션 내 분할)</td><td>이웃 창 유출로 낙관적</td><td>처음 보는 세션 91.3% (Opal), LOSO 94.3% (MT6000)</td></tr>
+<tr><td class="no">LSTM 조기경보 68% vs 규칙 0%</td><td>규칙에 낮은 문턱을 안 준 불공정 비교, seed 0만 운 좋음</td><td>같은 헛경보에서 규칙보다 +8~11%p (5시드), 시드 편차 ±5~6</td></tr>
+<tr><td class="no">채널 전환으로 통화 품질을 살렸다</td><td>victim 품질은 표준 심각 문턱까지 나빠지지 않았다</td><td>채널 혼잡이 풀리고 지연이 크게 줄었다(p90 1/3~1/8)</td></tr>
+<tr><td class="no">Early Exit을 무선에 최초 적용</td><td>무선·네트워크 조기 종료 선행연구가 있다</td><td>조사한 범위에서 AP 혼잡 판단에 적용하고 엣지 지연까지 실측한 사례는 확인되지 않았다</td></tr>
+<tr><td class="no">EE가 SDN보다 정확/우수하다</td><td>5시드 차이가 편차 안</td><td>동급 정확도에서 더 가벼운 출구, Pi 지연 단축</td></tr>
+<tr><td class="no">±1등급 허용 정확도 99%</td><td>전환 결정을 뒤집는 혼잡↔심각 오차를 다른 오차와 같이 취급</td><td>심각 recall·precision</td></tr>
+<tr><td class="no">시간당 헛된 전환 0.3~3회 (운영 수치처럼)</td><td>계단형 부하 실험 데이터</td><td>실험 조건에서의 상대 비교로만</td></tr>
+<tr><td class="no">숨은 노드 간섭을 탐지한다</td><td>재현하지 못했다</td><td>한계·향후 과제로</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="report">
+<h2>최종보고서 (양식 1~7장) 적용</h2>
+<p class="sub">제출 11월 말~12월 초 예정. 양식: <code>캡스톤 디자인/양식/캡스톤디자인II 최종보고서양식.hwp</code></p>
+<div class="tw"><table>
+<thead><tr><th>장</th><th>쓸 내용</th><th>근거 문서</th></tr></thead>
+<tbody>
+<tr><td>1. 중간보고 지적 반영</td><td>심사 의견을 받아 적고, 반영 내용으로 ① 평가를 처음 보는 세션 기준으로 바꿈 ② 다운링크 맹점 → 두 번째 공유기 도입 ③ 목표1을 심각 recall·precision 중심으로 재정의(근거: 전환은 심각에서만 발동) ④ 원인 구분·전환 효과 실측 추가</td><td>work-log 24차·28차·29~30차</td></tr>
+<tr><td>2. 주요 알고리즘·설계</td><td>표준 앵커 라벨 + victim 프로브와 입력 분리, 지속성 게이트, Early Exit LSTM(Fixed/Dynamic θ)·SDN·Baseline·점유율 규칙, unified ONNX INT8, 원인 3분류 규칙, 후보 생성(스캔 + CSA 실측)</td><td>congestion_label_redesign.html · onnx_early_exit_redesign.html · mt6000_results.html 10절</td></tr>
+<tr><td>3. 최종 결과·구성도</td><td>수집 토폴로지, 3단계 흐름(판단 → 원인 → 후보), 모듈 명세(collect_metrics · live_congestion · cause_advisor · channel_candidates · demo_*), DB 없음</td><td>system_overview.html · demo_architecture.html</td></tr>
+<tr><td>4. 미구현 기능</td><td>자동 채널 전환은 기본 꺼짐(<code>--apply-switch</code>로만), 숨은 노드 탐지 미재현, 5GHz는 시연용만, 하이브리드 능동 프로브는 보류</td><td>work-log</td></tr>
+<tr><td>5. 미충족 성능</td><td>4-class 95%: Opal 처음 보는 세션 91.3%, MT6000 94.3%로 미충족 — 이유는 관측 한계(Opal 다운링크 미측정)와 라벨 경계 깜빡임(MT6000 오답의 43~59%가 점유율 73~77%). 해결: 측정 교체(MT6000 다운링크 96~98%) + 규칙 병행. Pi &lt;1ms는 충족</td><td>위 수치표</td></tr>
+<tr><td>6. 사용자 매뉴얼</td><td>Pi 번들 설치, <code>live_congestion.py --mt6000</code>, <code>demo_server.py --mt6000</code>, 재생 모드, 비교 화면</td><td>project/demo/README.md · deploy/raspberry_pi_ap_v2</td></tr>
+<tr><td>7. 활용방안</td><td>저가 공유기 + 엣지 기기로 혼잡 감시, 공유기 측정 능력별 도입 가이드, 원인별 조치 자동 안내, 심각 진입 전 경보</td><td>이 문서 "현장 함의"</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="ppt">
+<h2>최종 발표 구성 (10분 + 데모, 질의 10분)</h2>
+<p class="sub">양식의 발표 요령 순서(목표·개요 → 구성도 → 기능 → 시험 결과 → 알고리즘 → 역할 → 데모)에 서사 흐름을 얹었다. 시간은 목안.</p>
+<div class="slides">
+<div class="slide"><span class="no">1</span><b>제목·팀</b><p>작품명, 자원할당해조</p><span class="t">0:15</span></div>
+<div class="slide"><span class="no">2</span><b>문제와 최종 목표</b><p>채널 공유 → 혼잡. 전환은 원인이 이웃일 때만 효과. 목표 문장 3단계</p><span class="t">0:45</span></div>
+<div class="slide"><span class="no">3</span><b>정량 목표</b><p>심각 recall·precision(메인), 4-class 95%(부차), Pi &lt;1ms, 전환 판단까지</p><span class="t">0:30</span></div>
+<div class="slide"><span class="no">4</span><b>시스템 구성도</b><p>공유기 2종 · 폰 부하 · 노트북 victim · 유선 Pi. 판단 → 원인 → 후보</p><span class="t">0:45</span></div>
+<div class="slide"><span class="no">5</span><b>정답 만들기</b><p>표준 문턱 앵커 + victim 프로브, 프로브는 입력에서 제외(순환 차단)</p><span class="t">0:40</span></div>
+<div class="slide"><span class="no">6</span><b>모델</b><p>Early Exit LSTM(Fixed/Dynamic), 비교: Baseline·SDN·점유율 규칙</p><span class="t">0:40</span></div>
+<div class="slide"><span class="no">7</span><b>평가 원칙이 결과를 바꿈</b><p>세션 내 92% → 처음 보는 세션 75~84%. 그래서 전부 처음 보는 세션 기준</p><span class="t">0:40</span></div>
+<div class="slide"><span class="no">8</span><b>결과 ① Opal</b><p>규칙 94.5 vs EE 91.3, 심각 recall은 EE·SDN이 규칙보다 약 4%p 높음, 다운링크 55~64%</p><span class="t">0:45</span></div>
+<div class="slide"><span class="no">9</span><b>결과 ② 공유기가 무엇을 재느냐</b><p>다운링크 점유율 16.7 vs 70.2%, 점유율 미달 심각 13~94% vs 0.7%. 핵심 메시지 슬라이드</p><span class="t">1:00</span></div>
+<div class="slide"><span class="no">10</span><b>결과 ③ MT6000에서 LSTM의 몫</b><p>규칙 98.8, 점유율 1개 LSTM ≥ 7개. 조기경보 +8~11%p</p><span class="t">0:40</span></div>
+<div class="slide"><span class="no">11</span><b>결과 ④ 엣지 지연</b><p>Pi INT8 0.42~0.68ms, Baseline 대비 −21~51%</p><span class="t">0:30</span></div>
+<div class="slide"><span class="no">12</span><b>결과 ⑤ 원인 구분과 전환 효과</b><p>m33 시계열 그림. 이웃 −47~−53 vs 우리 −1~−7%p, 6/6</p><span class="t">1:00</span></div>
+<div class="slide"><span class="no">13</span><b>전환 명령 후보</b><p>스캔 vs 실측 순위 뒤집힘 → 실측 확인. 대칭 검증 결과(m34·m35)</p><span class="t">0:30</span></div>
+<div class="slide"><span class="no">14</span><b>한계와 현장 함의</b><p>순환, 한 집, 품질 문턱 미도달, 숨은 노드 미재현 / 측정 능력별 도입 가이드</p><span class="t">0:40</span></div>
+<div class="slide"><span class="no">15</span><b>역할</b><p>팀원별 담당</p><span class="t">0:15</span></div>
+<div class="slide"><span class="no">16</span><b>데모</b><p>대시보드: 부하 → 심각 → 원인 카드 → 전환 후보. MT6000이면 <code>--mt6000</code>, 장비가 없으면 m33 재생</p><span class="t">1:30</span></div>
+</div>
+<div class="callout warn"><p>데모 선택지: 전시장에서 MT6000을 쓰면 원인 카드까지 실시간으로 보인다. Opal 비교 화면(/dual)은 원인 카드가 안 뜬다(측정 정보 없음). 장비 사고에 대비해 m33·m32 재생 모드를 준비해 둔다.</p></div>
+</section>
+
+<section id="expo">
+<h2>AI+X 전시회 (신청 10/23, 작품집 11월 초)</h2>
+<p>작성본(<code>캡스톤 디자인/AI+X_작품전시회_신청서_작성본.md</code>)의 개요·목표·기대효과는 이미 이 서사와 맞는다. 아래 두 곳을 작성본에 반영했다(10-20).</p>
+<ul>
+<li>작품 개요에 "혼잡 원인(이웃 와이파이 · 우리 기기 · 약한 기기)을 가려 채널 전환이 효과 있을 때만 권고"를 한 줄 더한다.</li>
+<li>작품의 특징 2번에 전환 효과 실측(이웃 간섭이면 채널 점유율 −47~−53%p, 우리 부하면 −1~−7%p)을 넣는다.</li>
+</ul>
+</section>
+
+<section id="paper">
+<h2>논문</h2>
+<p>v1 초안: <code>docs/yongsang/paper_draft_v1.md</code>. 제목(안) "AP 측정 가시성에 따른 무선랜 혼잡 판단: 실측 기반 Early-Exit LSTM 엣지 추론과 원인 구분형 채널 전환 판단". 기여 4개는 두 공유기 실측·순환 없는 라벨, 측정 가시성과 학습 모델의 몫, 엣지 Early Exit, 원인 구분형 전환 판단이다. v0(9/13)은 <code>archive/paper_draft_intro_body_v0_20260913.*</code>로 보존했다. <code>paper_design.html</code>의 강조 포인트는 v1 기여로 대체된다.</p>
+</section>
+
+<section id="todo">
+<h2>남은 검증</h2>
+<ul>
+<li><span class="pill warn">10/21</span> 전환 후보 생성기 대칭 검증 m34(간섭 ch1) · m35(간섭 ch11) → 논문 4.7절, 발표 13번</li>
+<li><span class="pill warn">10/21</span> 실제 MT6000에서 <code>live_congestion.py --mt6000</code> · 대시보드 원인 카드 확인(실험과 따로)</li>
+<li><span class="pill">선택</span> m33 시계열 그림(발표 12번·논문 그림 3)</li>
+<li><span class="pill">선택</span> MT6000 다운링크 held-out 세션 채점</li>
+</ul>
+</section>
+
+<footer>2026-10-20 · capstoneDesign2 · 수치 근거 mt6000_results.html · final_model_24sess.html · .work-log/current.md 30차 후속</footer>
+</main></body></html>
