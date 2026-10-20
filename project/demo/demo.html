@@ -23,6 +23,9 @@
   - "다른 채널로 옮겨야 해요"는 서버 전환 판단(switch_active, 3폴링 중 2번 심각·사건 단위)을 따른다.
   - 다운링크 우세(downlink)면 "판단이 정확하지 않을 수 있어요" 안내.
   - 주소 끝에 #sim 을 붙이면 예전 연습 모드(가짜 시뮬레이션)로 돈다. 서버가 --replay 면 상단에 재생 모드 표시.
+  2026-10-20 원인 카드 (서버 --mt6000, cause_advisor.py): SSE advice = 원인 3분류(이웃 와이파이 / 우리 기기 / 신호 약한 기기)와
+  공유기 사용 시간 중 우리 몫·이웃 몫, 원인별 조치, 전환 후보 실측 상태(gen). 원인이 이웃 와이파이가 아니면 "다른 채널로 옮겨야 해요"
+  대신 "채널을 옮겨도 나아지지 않아요"를 보여 준다. Opal처럼 원인을 못 가르는 AP면 advice.available=false라 카드가 안 보인다.
 -->
 <style>
 @font-face{font-family:"Pretendard Variable";src:url(assets_taste/PretendardVariable.woff2) format("woff2-variations");
@@ -109,6 +112,23 @@ body[data-switch="1"] .switch{display:inline-flex}
 .unsure{display:none;align-items:center;gap:8px;font-size:15px;color:var(--ink-2);width:fit-content;
   border:1px dashed var(--ink-3);border-radius:999px;padding:6px 14px}
 body[data-unsure="1"] .unsure{display:inline-flex}
+/* 원인 카드 (10-20) — 경고 이상이고 원인을 아는 AP일 때만 */
+.cause{display:none;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;
+  background:color-mix(in oklab,var(--surface) 70%,transparent);border:1px solid var(--line);max-width:34rem}
+body[data-cause="1"] .cause{display:flex}
+.cause-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.cause-h .k{font-size:13px;color:var(--ink-3);font-weight:600}
+.cause-h b{font-size:18px;letter-spacing:-.02em}
+.cause .act{margin:0;font-size:15px;color:var(--ink-2)}
+.air{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--line)}
+.air .own{background:var(--ink-2)}.air .ext{background:var(--lv)}
+.air-l{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.air-l i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;font-style:normal}
+.gen{margin:0;font-size:15px;font-weight:700}
+.gen:empty{display:none}
+.noswitch{display:none;align-items:center;gap:8px;font-weight:700;width:fit-content;
+  border:1.5px solid var(--ink-3);border-radius:999px;padding:7px 15px;color:var(--ink)}
+body[data-noswitch="1"] .noswitch{display:inline-flex}
 .dev.err .dev-state{color:var(--l3-t);font-weight:700}
 .meter{margin-top:auto;padding-top:14px;border-top:1px solid color-mix(in oklab,var(--lv) 25%,transparent)}
 .meter-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -229,6 +249,17 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
       <p class="desc" id="desc">영상도 통화도 문제없이 잘 돼요.</p>
       <div class="switch"><i class="ic-b i-swap" aria-hidden="true"></i>다른 채널로 옮겨야 해요</div>
       <div class="unsure"><i class="ic i-info" aria-hidden="true"></i>공유기가 직접 많이 보내는 중이라 판단이 정확하지 않을 수 있어요</div>
+      <div class="noswitch"><i class="ic i-info" aria-hidden="true"></i>채널을 옮겨도 나아지지 않아요</div>
+      <div class="cause" id="cause">
+        <div class="cause-h"><span class="k">원인</span><b id="causeWord">이웃 와이파이</b></div>
+        <div>
+          <div class="air" aria-hidden="true"><div class="own" id="airOwn"></div><div class="ext" id="airExt"></div></div>
+          <div class="air-l"><span><i style="background:var(--ink-2)"></i>우리 기기 <b id="ownPct">0%</b></span>
+            <span><i style="background:var(--lv)"></i>이웃 와이파이 <b id="extPct">0%</b></span><span>전파를 쓴 시간 비율</span></div>
+        </div>
+        <p class="act" id="causeAct"></p>
+        <p class="gen" id="gen"></p>
+      </div>
       <div class="meter">
         <div class="meter-top">
           <span class="k">혼잡 점수<small>모델이 추정한 값</small></span>
@@ -453,6 +484,34 @@ function setLevel(lv){
   [...$('names').children].forEach((c, i) => c.classList.toggle('on', i === lv));
 }
 
+/* ---------- 원인 카드 (10-20) ---------- */
+const CAUSE = {
+  '외부': ['이웃 와이파이', '다른 집·사무실 공유기가 같은 채널을 쓰고 있어요. 다른 채널로 옮기면 나아져요.'],
+  '우리 부하': ['우리 기기들이 보내는 양', '이 공유기에 붙은 기기들이 많이 보내는 중이에요. 채널을 옮겨도 그대로라, 5GHz로 나누거나 공유기를 하나 더 두는 게 맞아요.'],
+  '약한 기기': ['신호가 약한 기기', '신호가 약한 기기 하나가 전파를 오래 붙잡고 있어요. 그 기기를 공유기 가까이 옮겨 보세요.'],
+};
+function paintCause(adv){
+  const gen = adv.gen || {};
+  let gt = '';
+  if (gen.state === 'running') gt = `더 한산한 채널을 찾는 중이에요… ${gen.elapsed_s || 0}초 (잠깐 다른 채널을 다녀와요)`;
+  else if (gen.state === 'done' && gen.target) gt = gen.switch
+    ? `ch${gen.current_channel} → ${gen.target} 로 옮기면 이웃 몫 ${Math.round(gen.current_ext)}% → 약 ${Math.max(0, Math.round(gen.current_ext - gen.drop_pt))}% (${gen.verified ? '직접 재 봄' : '스캔 예상'})${gen.applied ? ' · 옮겼어요' : ''}`
+    : `지금보다 확실히 나은 채널이 없어 그대로 둬요 (최선 ${gen.target}, −${gen.drop_pt}pt)`;
+  else if (gen.state === 'error') gt = '채널 후보를 재지 못했어요';
+  $('gen').textContent = gt;
+  const on = !!adv.cause || gen.state === 'running';
+  document.body.dataset.cause = on ? '1' : '0';
+  if (!adv.cause) return;
+  const [w, a] = CAUSE[adv.cause] || [adv.cause, adv.action || ''];
+  $('causeWord').textContent = adv.cause === '약한 기기' && adv.weak_sta ? `${w} (${adv.weak_sta})` : w;
+  $('causeAct').textContent = a;
+  const own = Math.max(0, adv.own), ext = Math.max(0, adv.ext);
+  $('airOwn').style.width = Math.min(100, own) + '%';
+  $('airExt').style.width = Math.min(100 - Math.min(100, own), ext) + '%';
+  $('ownPct').textContent = Math.round(own) + '%';
+  $('extPct').textContent = Math.round(ext) + '%';
+}
+
 /* ---------- 그래프 (canvas, 라이브러리 없음) ---------- */
 const cv = $('chart'), ctx = cv.getContext('2d'), chartTopEl = document.querySelector('.chart-top');
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -568,8 +627,12 @@ if (SIM){
     });
     chip.textContent = (st.replay ? `재생 모드 · ${st.replay}` : (st.ready ? '실시간' : (st.msg || '준비 중'))) + (st.band ? ` · ${st.band === '5g' ? '5GHz' : '2.4GHz'}` : '');
     if (!st.ready){ $('desc').textContent = st.msg && st.msg.includes('AP') ? '공유기 응답을 기다리고 있어요.' : '측정을 준비하고 있어요.'; return; }
-    document.body.dataset.switch = st.switch_active ? '1' : '0';
+    const adv = st.advice || {};
+    const known = !!adv.cause;   // 원인을 아는 AP(MT6000)이고 지금 경고 이상
+    document.body.dataset.switch = st.switch_active && (!known || adv.cause === '외부') ? '1' : '0';
+    document.body.dataset.noswitch = st.switch_active && known && adv.cause !== '외부' ? '1' : '0';
     document.body.dataset.unsure = st.downlink ? '1' : '0';
+    paintCause(adv);
     pushScore(scoreOf(st.probs, st.raw_label), st.raw_label);
   };
 }

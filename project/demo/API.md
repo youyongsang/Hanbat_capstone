@@ -9,7 +9,7 @@
 > - **window 12**(9/1~), 모델은 2.4GHz 24세션(`checkpoints/ap_v2_redesign2_24sess_20260928/selected/`) / 5GHz 혼합(`checkpoints/ap_v2_5g_mixed_20261005/selected/`, 5GHz 전용 스케일러).
 > - `--band 24g|5g`(또는 `DEMO_BAND`): 5g면 `AP_INTERFACE=wlan1`, 5GHz 모델·스케일러(Pi 번들은 `5g/` 폴더), 전환 후보는 5GHz 채널.
 > - `GET /dual`: 2.4GHz·5GHz 비교 화면(`demo_dual.html`). 2.4GHz 서버(:8000)에서 열고 5GHz 서버(:8001, `?p5=`로 변경)를 같이 부름 → **모든 응답에 `Access-Control-Allow-Origin: *`, `OPTIONS` 204**.
-> - SSE 추가 필드: `band`, `switch_active`·`downlink`·`persist_sent`·`events`·`new_events`(10/1 전환 판단), `truth`·`truth_src`(10/8 정답 비교 — 실시간 `occupancy` = 라벨 점유율 축 40/55/75%, 재생 `csv`, 예정 `probe`), 재생 모드 `replay`.
+> - SSE 추가 필드: `band`, `switch_active`·`downlink`·`persist_sent`·`events`·`new_events`(10/1 전환 판단), `advice`(10/20 `--mt6000` 원인 3분류: `available`·`cause`(외부/우리 부하/약한 기기)·`own`·`ext`(전파 사용 시간 중 우리·이웃 몫 %, 5폴링 중앙)·`weak_sta`·`action`·`gen`(전환 후보 실측 상태 `state` running/done/error·`target`·`drop_pt`·`verified`·`switch`·`applied`·`text`)), `truth`·`truth_src`(10/8 정답 비교 — 실시간 `occupancy` = 라벨 점유율 축 40/55/75%, 재생 `csv`, 예정 `probe`), 재생 모드 `replay`.
 > - `ready:false`의 `msg`에 "이 대역에 접속한 기기 없음 · 대기"(기기 없는 대역), "AP 응답 없음"은 15초 무응답부터(6→15초).
 > - `POST /load`에 `duration_s`(10~60, 기본 10). 비교 화면 시연은 부하 대상 **유선 Pi**(`--iperf-target 192.168.8.109 --s21-port 5211 --s26-port 5212`, `run_dual_demo.sh`가 Pi iperf3까지 띄움) — 노트북 대상이면 폰을 5GHz로 옮겨도 AP→노트북 구간이 2.4GHz에 남아 비교가 섞인다.
 

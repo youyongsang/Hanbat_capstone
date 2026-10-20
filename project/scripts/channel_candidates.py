@@ -23,10 +23,11 @@
   python project/scripts/channel_candidates.py                 # 사람이 읽는 표
   python project/scripts/channel_candidates.py --json          # 기계용 (ubus switch_chan 인자 포함)
 """
-import argparse, json, re, subprocess, sys, time
+import argparse, json, os, re, subprocess, sys, time
 
-AP = "root@192.168.8.1"
-IFACE = "phy0-ap0"
+# collect_metrics.py와 같은 환경변수 (live_congestion.py --mt6000 이 phy0-ap0으로 맞춤)
+AP = f"root@{os.environ.get('AP_IP', '192.168.8.1')}"
+IFACE = os.environ.get("AP_INTERFACE", "phy0-ap0")
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6"]
 # (이름, 주 채널, 주파수, 보조 방향 +1/-1)
 PLACEMENTS = [("1+", 1, 2412, 1), ("6+", 6, 2437, 1), ("6-", 6, 2437, -1), ("11-", 11, 2462, -1)]

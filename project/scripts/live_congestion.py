@@ -13,6 +13,10 @@ window 10 → min-max 정규화(scaler_params.json) → ONNX(unified INT8) 추�
   + 채널 전환 판단(2026-10-01, switch_advisor.py): 화면 표시와 별개로 원시 예측에서 "최근 3폴링 중 2번 심각"이면
     전환 필요 알림 1회 + 명령 후보(실행 안 함), 30폴링 동안 심각이 없어야 다음 알림. 점유율은 낮은데 처리량이
     높으면 "다운링크 우세 — 판정 불확실" 표시. 알림은 --event-log(JSONL)로도 남긴다.
+  + 원인·전환 명령 후보(2026-10-20, cause_advisor.py, MT6000 전용 --mt6000): 경고 이상이면 원인 3분류(약한 기기 /
+    이웃 간섭 / 우리 부하)와 조치를 줄 끝에 표시. 전환 알림이 났는데 원인이 이웃 간섭이면 channel_candidates.py를
+    백그라운드로 돌려 후보 채널을 실측 확인(약 90초)하고 전환 명령 후보를 낸다. 원인이 다르면 전환 대신 그 원인의 조치.
+    실제 전환은 --apply-switch일 때만.
 
 feature 계산은 collect_metrics.py의 헬퍼를 그대로 재사용해 학습 시점과 동일하게 맞춘다.
 victim 프로브(라벨링 전용)는 없음 — 추론엔 불필요.
@@ -20,12 +24,14 @@ victim 프로브(라벨링 전용)는 없음 — 추론엔 불필요.
 사용:
   python project/scripts/live_congestion.py
   python project/scripts/live_congestion.py --model <onnx> --confirm 3
+  python project/scripts/live_congestion.py --mt6000 --raw      # MT6000: 전용 모델·phy0-ap0·원인·전환 후보
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from collections import deque
@@ -40,6 +46,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # bundle dir (collect_metrics.py 옆)
 
+# --mt6000 (2026-10-20): collect_metrics가 import 시점에 AP_INTERFACE를 읽으므로 import 전에 본다.
+MT6000 = "--mt6000" in sys.argv
+if MT6000:
+    os.environ.setdefault("AP_INTERFACE", "phy0-ap0")
+
 # 저장소에서 실행하면 scripts.collect_metrics, Pi 번들에서 실행하면 collect_metrics.
 try:
     from scripts.collect_metrics import (  # noqa: E402
@@ -53,8 +64,10 @@ except ImportError:
     )
 try:
     from scripts.switch_advisor import SwitchAdvisor  # noqa: E402
+    from scripts.cause_advisor import EXT, CandidateRunner, CauseAdvisor  # noqa: E402
 except ImportError:
     from switch_advisor import SwitchAdvisor  # noqa: E402
+    from cause_advisor import EXT, CandidateRunner, CauseAdvisor  # noqa: E402
 
 # utils/ap_features.py AP_FEATURE_COLUMNS 와 반드시 일치 (번들 자립을 위해 인라인).
 AP_FEATURE_COLUMNS = (
@@ -81,6 +94,9 @@ def parse_args() -> argparse.Namespace:
     default_scaler = PROJECT_ROOT / "data" / "ap_metrics_v2_redesign2" / "scaler_params.json"
     if not default_scaler.exists():
         default_scaler = here / "scaler_params.json"
+    if MT6000:  # MT6000 배포 모델 (2026-10-18, m1~m14) — 점유율에 AP 송신이 포함돼 Opal 모델·스케일러와 섞지 않는다
+        mk = PROJECT_ROOT / "checkpoints" / "ap_v2_mt6k_20261018" / "selected"
+        default_model, default_scaler = mk / "ap_early_exit_fixed_unified_int8_v2.onnx", mk / "scaler_params.json"
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--model", type=Path, default=default_model,
                    help="unified ONNX (라벨 + exit_point 2-output). 기본 = 배포 INT8 Fixed θ.")
@@ -93,6 +109,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--persist", type=int, default=60, help="알림 뒤 심각이 이만큼 폴링 이어지면 '심각 지속' 알림 1회")
     p.add_argument("--channel", type=int, default=1, help="현재 2.4GHz 채널 (명령 후보 문구용)")
     p.add_argument("--event-log", type=Path, default=None, help="전환 알림을 JSONL로 저장할 파일")
+    p.add_argument("--mt6000", action="store_true",
+                   help="MT6000(순정 OpenWrt): 인터페이스 phy0-ap0 · MT6000 배포 모델 · 원인 3분류 · 전환 명령 후보 생성")
+    p.add_argument("--no-cause", action="store_true", help="원인 3분류·전환 후보 생성 끄기")
+    p.add_argument("--gen-cooldown", type=float, default=600,
+                   help="전환 후보 실측 뒤 이만큼 초 동안 다시 안 돌림 (스캔·CSA로 AP가 잠깐 채널을 비우므로)")
+    p.add_argument("--margin", type=float, default=15.0, help="최선 후보 외부 몫이 지금보다 이만큼 pt 낮아야 전환 권고")
+    p.add_argument("--apply-switch", action="store_true",
+                   help="전환 권고가 나면 실제로 CSA 전환 (기본은 명령 후보만 표시)")
     p.add_argument("--link-thr", type=float, default=1.6,
                    help="약한 링크 의심 문턱 — 기기 중 최대 바이트당 송신 시간(µs/B)의 최근 5폴링 중앙값 (MT6000 전용, 10-18 잠정: "
                         "m1~m14 idle 가까이 0.9~1.0 · 멀리 1.1~1.3 · m10 2.2)")
@@ -146,6 +170,21 @@ def main() -> None:
                                                         current_channel=args.channel)
     if advisor:
         print(f"채널 전환 판단 : 최근 3폴링 중 2번 심각 → 알림 1회, 해제 {args.release}폴링, 지속 {args.persist}폴링\n")
+
+    def log_event(obj: dict) -> None:
+        if args.event_log:
+            with args.event_log.open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"time": time.strftime("%Y-%m-%d %H:%M:%S"), **obj}, ensure_ascii=False) + "\n")
+
+    cause_adv = None if args.no_cause else CauseAdvisor()
+    runner = None
+    if cause_adv:
+        def on_done(r: CandidateRunner) -> None:
+            print(f"{time.strftime('%H:%M:%S')}  ⇄ {r.text()}")
+            log_event({"kind": "candidates", **r.summary()})
+        runner = CandidateRunner(cooldown_s=args.gen_cooldown, margin=args.margin, apply=args.apply_switch, on_done=on_done)
+    cause = {"available": False}
+    gen_was_running = False
 
     try:
         while True:
@@ -206,6 +245,15 @@ def main() -> None:
             feats_extra.update({"sta_max_retry_ratio": round(retry_v, 3) if retry_v is not None else None,
                                 "sta_worst_retry": retry_mac})
 
+            # 10-20 원인 3분류 (모델 입력 아님). 후보 실측 중엔 AP가 다른 채널을 다녀오므로 멈추고, 끝나면 이력을 새로 쌓는다.
+            if cause_adv:
+                if runner.running:
+                    gen_was_running = True
+                else:
+                    if gen_was_running:
+                        cause_adv.reset(); gen_was_running = False
+                    cause = cause_adv.update_counters(survey, station, prev_stations, elapsed)
+
             prev_stations, prev_active, prev_busy = station, cur_active, cur_busy
             prev_rssi, prev_time = cur_rssi, now
 
@@ -248,21 +296,35 @@ def main() -> None:
             dl_str = "  [다운링크 우세 — 판정 불확실]" if advisor and advisor.downlink_dominant() else ""
             link_str = (f"  [약한 링크 의심: {link_mac} µs/B {link_med:.2f} — 채널 전환보다 위치·로밍 확인]"
                         if link_weak and feats["channel_occupancy_percent"] < 75 else "")
+            cause_str = ""
+            if runner and runner.running:
+                cause_str = f"  [{runner.text()}]"
+            elif cause.get("ready") and max(shown, raw_label) >= 1:   # 원인은 경고 이상일 때만 의미 있음
+                cause_str = f"  [원인 {cause['cause']} (우리 {cause['own']:.0f}% · 외부 {cause['ext']:.0f}%) → {cause['action']}]"
             print(
                 f"{ts}  혼잡: {LABEL_NAMES[shown]}({shown})"
                 f"  [원시 {LABEL_NAMES[raw_label]}({raw_label}) p={probs[raw_label]:.2f}]"
                 f"  P(정/경/혼/심)=[{p_str}]"
-                f"{exit_str} clients={n_clients}{flip}{dl_str}{link_str}{raw_str}"
+                f"{exit_str} clients={n_clients}{flip}{dl_str}{link_str}{cause_str}{raw_str}"
             )
             for ev in events:
                 print(f"{ts}  ⚠ {ev.message}")
-                for c in ev.candidates:
+                cands = ev.candidates
+                if ev.kind == "switch" and cause.get("ready"):
+                    # 원인을 아는 AP: 이웃 간섭일 때만 후보 실측, 아니면 전환 대신 그 원인의 조치
+                    if cause["cause"] == EXT:
+                        cands = []
+                        if runner.start():
+                            print(f"           원인 이웃 간섭 (외부 {cause['ext']:.0f}% > 우리 {cause['own']:.0f}%) → 전환 후보 실측 시작 (약 90초)")
+                        else:
+                            print(f"           원인 이웃 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}")
+                    else:
+                        cands = [f"채널 전환 보류 — 원인 {cause['cause']}: {cause['action']}"]
+                for c in cands:
                     print(f"           후보: {c}")
-                if args.event_log:
-                    with args.event_log.open("a", encoding="utf-8") as f:
-                        f.write(json.dumps({"time": time.strftime("%Y-%m-%d %H:%M:%S"), "kind": ev.kind, "message": ev.message,
-                                            "candidates": ev.candidates, "raw_label": raw_label, "probs": [round(float(v), 4) for v in probs],
-                                            "features": feats, "link": feats_extra, "downlink_dominant": advisor.downlink_dominant()}, ensure_ascii=False) + "\n")
+                log_event({"kind": ev.kind, "message": ev.message, "candidates": cands, "cause": cause,
+                           "raw_label": raw_label, "probs": [round(float(v), 4) for v in probs],
+                           "features": feats, "link": feats_extra, "downlink_dominant": advisor.downlink_dominant()})
 
     except KeyboardInterrupt:
         print("\n종료.")

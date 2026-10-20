@@ -17,8 +17,10 @@ import onnxruntime as ort
 import demo_state
 try:  # 2026-10-01: 채널 전환 판단·다운링크 우세 표시 (live_congestion.py와 같은 모듈)
     from scripts.switch_advisor import SwitchAdvisor
+    from scripts.cause_advisor import EXT, CandidateRunner, CauseAdvisor, stations_from_csv
 except ImportError:
     from switch_advisor import SwitchAdvisor
+    from cause_advisor import EXT, CandidateRunner, CauseAdvisor, stations_from_csv
 from demo_state import (
     ARGS, WINDOW, FEATURES, LABELS, MOVING_AVG_WINDOW,
     APPoller, calculate_channel_occupancy, calculate_station_deltas,
@@ -34,6 +36,30 @@ def softmax(x: np.ndarray) -> np.ndarray:
 def occ_label(occ_pct: float) -> int:
     """라벨 공식(congestion_label_redesign)의 점유율 축 단계 — 앵커 40%=경고 0.25, 55%=혼잡 0.5, 75%=심각 0.75."""
     return 0 if occ_pct < 40 else 1 if occ_pct < 55 else 2 if occ_pct < 75 else 3
+
+
+def switch_candidates(ev, cause: dict, runner) -> list[str]:
+    """2026-10-20: 원인을 아는 AP(MT6000)면 전환 알림의 후보를 원인에 맞게 바꾼다 (live_congestion.py와 같은 규칙).
+    이웃 간섭 → 후보 채널 실측(runner, 재생 모드면 None이라 생략), 그 외 → 전환 보류 + 그 원인의 조치."""
+    if ev.kind != "switch" or not cause.get("ready"):
+        return ev.candidates
+    if cause["cause"] != EXT:
+        return [f"채널 전환 보류 — 원인 {cause['cause']}: {cause['action']}"]
+    if runner is None:
+        return ["이웃 간섭 — 전환 후보 실측 (재생 모드라 생략)"]
+    if runner.start():
+        return ["이웃 간섭 — 전환 후보 실측 시작 (약 90초)"]
+    return [f"이웃 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}"]
+
+
+def advice_state(cause: dict, runner, level: int) -> dict:
+    """화면용 원인·조치 묶음. 원인은 경고 이상일 때만 보낸다(정상일 때 '외부 > 우리'는 의미 없음)."""
+    out = {"available": bool(cause.get("available"))}
+    if cause.get("ready") and level >= 1:
+        out.update({k: cause[k] for k in ("cause", "own", "ext", "weak_sta", "action")})
+    if runner is not None and runner.state != "idle":
+        out["gen"] = {**runner.summary(), "text": runner.text()}
+    return out
 
 
 def norm(feats: dict, scaler: dict) -> np.ndarray:
@@ -57,6 +83,7 @@ def replay_loop() -> None:
             rows = list(csv.DictReader(path.open(encoding="utf-8")))
             win: deque = deque(maxlen=WINDOW); streak: deque = deque(maxlen=ARGS.confirm)
             confirmed = None; advisor = SwitchAdvisor(band=ARGS.band, iface=os.environ.get("AP_INTERFACE", "wlan0")); events: deque = deque(maxlen=6)
+            cause_adv = CauseAdvisor() if "channel_bss_rx_time_percent" in rows[0] else None; cause = {"available": False}
             for r in rows:
                 t0 = time.time()
                 try:
@@ -65,6 +92,11 @@ def replay_loop() -> None:
                     continue
                 clients = int(float(r.get("connected_clients") or 0))
                 truth = r.get("label")
+                if cause_adv and r.get("channel_bss_rx_time_percent") not in (None, ""):   # MT6000 CSV: 원인 3분류 재생
+                    cause = cause_adv.update_pct(float(r["channel_occupancy_percent"]), float(r["channel_tx_time_percent"]),
+                                                 float(r["channel_bss_rx_time_percent"]),
+                                                 stations_from_csv(r.get("sta_retry_detail"), r.get("sta_airtime_detail"),
+                                                                   float(r.get("poll_interval_s") or 1)))
                 win.append(norm(feats, scaler))
                 if len(win) < WINDOW:
                     with demo_state._lock:
@@ -82,7 +114,8 @@ def replay_loop() -> None:
                 shown = confirmed if confirmed is not None else raw
                 new_events = []
                 for ev in advisor.update(raw, feats["throughput_mbps"], feats["channel_occupancy_percent"]):
-                    e = {"ts": r.get("timestamp", "")[-8:], "kind": ev.kind, "message": ev.message, "candidates": ev.candidates}
+                    e = {"ts": r.get("timestamp", "")[-8:], "kind": ev.kind, "message": ev.message,
+                         "candidates": switch_candidates(ev, cause, None)}
                     events.appendleft(e); new_events.append(e)
                 with demo_state._lock:
                     demo_state._state = {
@@ -93,6 +126,7 @@ def replay_loop() -> None:
                         "features": feats, "load": dict(demo_state._load_state),
                         "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
                         "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events, "band": ARGS.band,
+                        "advice": advice_state(cause, None, max(shown, raw)),
                     }
                 demo_state._broadcast(demo_state._state)
                 time.sleep(max(0.0, ARGS.replay_interval - (time.time() - t0)))
@@ -119,6 +153,13 @@ def inference_loop() -> None:
     stale_since = time.time()
     advisor = SwitchAdvisor(band=ARGS.band, iface=os.environ.get("AP_INTERFACE", "wlan0"))
     events: deque = deque(maxlen=6)   # 최근 알림 (화면 경보판용)
+    # 2026-10-20 원인 3분류·전환 후보 (MT6000만 BSS 수신 시간을 내므로 Opal에선 cause available=False로 조용히 꺼짐)
+    cause_adv = CauseAdvisor(); cause: dict = {"available": False}; gen_was_running = False
+
+    def on_gen_done(r) -> None:
+        e = {"ts": time.strftime("%H:%M:%S"), "kind": "candidates", "message": r.text(), "candidates": []}
+        events.appendleft(e)
+    runner = CandidateRunner(cooldown_s=ARGS.gen_cooldown, apply=ARGS.apply_switch, on_done=on_gen_done) if ARGS.mt6000 else None
 
     while True:
         cyc = poller.wait_for_new_cycle(last_id)
@@ -169,6 +210,12 @@ def inference_loop() -> None:
             "rssi_delta_db": round(rssi_d, 2), "rssi_moving_avg_dbm": round(rssi_ma, 2),
             "sta_tx_bitrate_mean": round(bitrate_mean, 1),
         }
+        if runner is not None and runner.running:   # 후보 실측 중엔 AP가 다른 채널을 다녀오므로 원인 판정 멈춤
+            gen_was_running = True
+        else:
+            if gen_was_running:
+                cause_adv.reset(); gen_was_running = False
+            cause = cause_adv.update_counters(survey, station, prev_st, elapsed)
         prev_st, prev_active, prev_busy = station, cur_active, cur_busy
         prev_rssi, prev_time = rssi, now
         win.append(norm(feats, scaler))
@@ -191,7 +238,8 @@ def inference_loop() -> None:
         shown = confirmed if confirmed is not None else raw
         new_events = []
         for ev in advisor.update(raw, feats["throughput_mbps"], feats["channel_occupancy_percent"]):
-            e = {"ts": time.strftime("%H:%M:%S"), "kind": ev.kind, "message": ev.message, "candidates": ev.candidates}
+            e = {"ts": time.strftime("%H:%M:%S"), "kind": ev.kind, "message": ev.message,
+                 "candidates": switch_candidates(ev, cause, runner)}
             events.appendleft(e); new_events.append(e)
 
         with demo_state._lock:
@@ -207,5 +255,6 @@ def inference_loop() -> None:
                 "features": feats, "load": dict(demo_state._load_state),
                 "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
                 "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events, "band": ARGS.band,
+                "advice": advice_state(cause, runner, max(shown, raw)),
             }
         demo_state._broadcast(demo_state._state)

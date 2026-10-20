@@ -22,6 +22,24 @@ python project/demo/demo_server.py
 python project/demo/demo_server.py --band 5g
 ```
 
+## MT6000 원인·전환 후보 표시 (2026-10-20)
+
+MT6000(순정 OpenWrt)은 survey에 AP 송신 시간·우리 BSS 수신 시간을 내므로 "왜 혼잡한가"를 가를 수 있다. `--mt6000`이면
+인터페이스 `phy0-ap0`·MT6000 배포 모델(`checkpoints/ap_v2_mt6k_20261018/selected/`)을 쓰고, 경고 이상일 때 상태 카드 아래에
+**원인 카드**(이웃 와이파이 / 우리 기기들이 보내는 양 / 신호가 약한 기기 + 전파를 쓴 시간 중 우리 몫·이웃 몫 막대 + 조치)를 띄운다.
+규칙은 `project/scripts/cause_advisor.py`(오프라인 `score_cause3.py`·`analyze_csw.py`와 m28~m33 전 폴링 100% 일치).
+
+- 전환 알림(3폴링 중 2번 심각)이 났을 때 원인이 **이웃 와이파이**면 `channel_candidates.py --verify 2`를 백그라운드로 돌려
+  후보 채널을 실측(약 90초, 연결 유지)하고 "ch1 → 11− 로 옮기면 이웃 몫 70% → 약 25%"처럼 보여 준다. 쿨다운 10분(`--gen-cooldown`).
+- 원인이 **우리 부하·약한 기기**면 "다른 채널로 옮겨야 해요" 대신 "채널을 옮겨도 나아지지 않아요"와 그 원인의 조치.
+- 실제 전환은 `--apply-switch`일 때만(기본은 명령 후보 표시). Opal에선 카드가 안 뜬다(BSS 수신 시간 없음 → `advice.available=false`).
+
+```bash
+python project/demo/demo_server.py --mt6000 --no-iperf-server                      # 실시간 (MT6000 2.4GHz)
+python project/demo/demo_server.py --mt6000 --replay project/.tmp/exp_24g/session_1020_m33/metrics_home24g_1020_m33_cswext.csv
+python project/scripts/live_congestion.py --mt6000 --raw                           # 터미널판 (같은 규칙)
+```
+
 ## 2.4GHz·5GHz 비교 화면 (2026-10-06, 시연용)
 
 서버 두 개(2.4GHz :8000, 5GHz :8001)를 같이 띄우고 한 화면(`/dual`)에 좌우로 보여 준다. 폰을 손으로 5GHz SSID로 옮기면
