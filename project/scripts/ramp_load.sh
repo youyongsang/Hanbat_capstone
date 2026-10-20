@@ -214,9 +214,9 @@ case "$PROFILE" in
     STEPS=("6M:60" "5M:60" "4M:60" "3M:60" "2M:60" "1M:60")
     ;;
   csw_bg5|csw_own30|csw_own40)
-    # 10-20: 채널 전환 효과 실험(run_csw.sh) — 같은 부하를 고정으로 13분(60초 x 13). 런 중간에 AP 채널만 바뀜.
+    # 10-20: 채널 전환 효과 실험(run_csw.sh) — 같은 부하를 고정으로 15분(60초 x 15, TARGET=auto면 런이 14분). 런 중간에 AP 채널만 바뀜.
     # bg5 = 이웃 간섭 조건의 가벼운 우리 부하, own30/40 = 우리 부하가 혼잡 원인인 조건 (MT6000 업링크 → 유선 Pi)
-    R=${PROFILE##*[a-z]}; STEPS=(); for _i in $(seq 1 13); do STEPS+=("${R}M:60"); done
+    R=${PROFILE##*[a-z]}; STEPS=(); for _i in $(seq 1 15); do STEPS+=("${R}M:60"); done
     ;;
   *)
     echo "알 수 없는 profile: $PROFILE (step | knee | light | gray)" >&2
