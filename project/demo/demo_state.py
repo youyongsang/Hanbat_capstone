@@ -100,6 +100,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--apply-switch", action="store_true",
                    help="--mt6000: 전환 권고가 나면 실제로 CSA 전환 (기본은 명령 후보만 표시)")
     p.add_argument("--gen-cooldown", type=float, default=600, help="--mt6000: 전환 후보 실측 뒤 다시 안 돌리는 초")
+    p.add_argument("--apply-steer", action="store_true",
+                   help="--mt6000: 원인이 우리 부하면 2.4GHz에서 가장 많이 쓰는 기기를 실제로 5GHz로 옮김 (기본은 후보만 표시)")
+    p.add_argument("--steer-keep", nargs="*", default=[], help="--mt6000: 5GHz로 옮기면 안 되는 기기 MAC")
     p.add_argument("--model", type=Path, default=dm)
     p.add_argument("--scaler", type=Path, default=ds)
     p.add_argument("--confirm", type=int, default=CONFIRM)
@@ -122,6 +125,8 @@ PHONES = {
 _lock = threading.Lock()
 _state: dict = {"ready": False, "msg": "시작 중..."}
 _clients: list[queue.Queue] = []
+# 10-22 화면 버튼(채널 찾기·전환 / 5GHz 유도): 실시간 MT6000 루프가 {"runner", "steer"}를 넣는다. 재생 모드면 None.
+_actions: dict | None = None
 _load_state: dict = {
     "s21": {"rate": "off", "packet_size": DEFAULT_PACKET_SIZE},
     "s26": {"rate": "off", "packet_size": DEFAULT_PACKET_SIZE},

@@ -32,7 +32,16 @@ MT6000(순정 OpenWrt)은 survey에 AP 송신 시간·우리 BSS 수신 시간�
 - 전환 알림(3폴링 중 2번 심각)이 났을 때 원인이 **이웃 와이파이**면 `channel_candidates.py --verify 2`를 백그라운드로 돌려
   후보 채널을 실측(약 90초, 연결 유지)하고 "ch1 → 11− 로 옮기면 이웃 몫 70% → 약 25%"처럼 보여 준다. 쿨다운 10분(`--gen-cooldown`).
 - 원인이 **우리 부하·약한 기기**면 "다른 채널로 옮겨야 해요" 대신 "채널을 옮겨도 나아지지 않아요"와 그 원인의 조치.
-- 실제 전환은 `--apply-switch`일 때만(기본은 명령 후보 표시). Opal에선 카드가 안 뜬다(BSS 수신 시간 없음 → `advice.available=false`).
+- 실제 전환은 `--apply-switch`일 때만(기본은 명령 후보 표시).
+- 원인이 **우리 부하**면 "채널 대신 5GHz로 옮겨야 해요"를 띄우고 `band_steer.py`로 2.4GHz에서 가장 많이 쓰는 기기를 골라
+  같은 공유기의 5GHz(`phy1-ap0`)로 옮길 후보를 낸다(10-22). 실제 이동은 `--apply-steer`일 때만:
+  802.11v BTM 요청 → 8초 안에 안 옮겨지면 2.4GHz에서 내보내고 120초 재접속 금지(기기에 5GHz SSID가 저장돼 있어야 스스로 붙음).
+  BTM을 쓰려면 AP에 `bss_transition`·`ieee80211k`를 켜야 한다(스크립트는 AP 설정을 안 바꿈 — `band_steer.py` 머리말).
+  옮기면 안 되는 기기는 `--steer-keep <MAC>`. 단독 실행: `python project/scripts/band_steer.py [--apply]`.
+- **화면 버튼(10-22, 실시간 `--mt6000`에서만 보임)**: "더 나은 채널 찾기"(후보 실측, 쿨다운 무시) → 결과가 나오면 같은 버튼이
+  "11− 로 채널 옮기기"로 바뀌고 누르면 CSA로 실제 전환. "5GHz로 옮길 기기 찾기" → "기기(xxxx) 5GHz로 옮기기". 버튼은
+  `--apply-*` 옵션과 무관하게 사람이 누르면 실행한다(`POST /action {do: find|apply, kind: channel|5g}`). 재생 모드엔 안 보임.
+- 노트북 화면(브라우저 높이 820px 이하)에서는 여백·글자를 줄여 그래프까지 한 화면에 들어오게 했다(10-22). Opal에선 카드가 안 뜬다(BSS 수신 시간 없음 → `advice.available=false`).
 
 ```bash
 python project/demo/demo_server.py --mt6000 --no-iperf-server                      # 실시간 (MT6000 2.4GHz)

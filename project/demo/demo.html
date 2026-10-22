@@ -124,11 +124,21 @@ body[data-cause="1"] .cause{display:flex}
 .air .own{background:var(--ink-2)}.air .ext{background:var(--lv)}
 .air-l{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .air-l i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;font-style:normal}
-.gen{margin:0;font-size:15px;font-weight:700}
+.gen{margin:0;font-size:15px;font-weight:700;flex-basis:100%}
+.acts{display:none;flex-wrap:wrap;gap:8px;align-items:center}
+body[data-acts="1"] .acts{display:flex}
+.act-b{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;cursor:pointer;
+  border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:700}
+.act-b.go{background:var(--ink);color:var(--on-ink)}
+.act-b:disabled{opacity:.45;cursor:default}
 .gen:empty{display:none}
 .noswitch{display:none;align-items:center;gap:8px;font-weight:700;width:fit-content;
   border:1.5px solid var(--ink-3);border-radius:999px;padding:7px 15px;color:var(--ink)}
 body[data-noswitch="1"] .noswitch{display:inline-flex}
+/* 10-22: 원인이 우리 부하면 채널 대신 5GHz로 */
+.to5g{display:none;align-items:center;gap:8px;font-weight:700;width:fit-content;
+  color:var(--on-ink);background:var(--ink);border-radius:999px;padding:8px 16px}
+body[data-to5g="1"] .to5g{display:inline-flex}
 .dev.err .dev-state{color:var(--l3-t);font-weight:700}
 .meter{margin-top:auto;padding-top:14px;border-top:1px solid color-mix(in oklab,var(--lv) 25%,transparent)}
 .meter-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -214,6 +224,31 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .legend .ln{width:20px;height:3px;border-radius:2px;background:var(--ink)}
 .legend .bx{width:13px;height:13px;border-radius:4px;background:color-mix(in oklab,var(--ink) 12%,transparent)}
 
+/* 노트북 화면(브라우저 높이 ~700px)에서도 그래프까지 한 화면에 — 세로 여백·글자를 줄인다 (10-22) */
+@media (min-width:901px) and (max-height:820px){
+  :root{--gap:12px}
+  .app{padding-bottom:12px;grid-template-rows:auto auto minmax(150px,1fr)}
+  .top{height:48px}
+  .panel{padding:14px 20px}
+  .status{gap:8px}
+  .status .lead{font-size:15px}
+  .status h1{font-size:clamp(34px,min(5vw,7vh),64px)}
+  .status .desc{font-size:16px}
+  .switch,.noswitch,.to5g{padding:5px 13px;font-size:15px}
+  .cause{padding:8px 12px;gap:5px}
+  .cause .act,.gen{font-size:14px}
+  body[data-acts="1"] .status .lead{display:none}
+  .act-b{height:30px;font-size:13px;padding:0 12px}
+  .acts{gap:6px}
+  .meter{padding-top:8px}
+  .meter .num{font-size:clamp(34px,5.5vh,48px)}
+  .scale{padding-top:20px;margin-top:2px}
+  .devices-h h2{font-size:18px}
+  .dev{gap:6px;padding:10px 18px 12px}
+  .rate{height:clamp(38px,5.6vh,50px);font-size:19px}
+  .step{width:34px;height:34px}
+  .pkt{height:36px}
+}
 @media (max-width:900px){
   .app{padding:0 16px 24px}
   main{grid-template-columns:1fr}
@@ -250,6 +285,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
       <div class="switch"><i class="ic-b i-swap" aria-hidden="true"></i>다른 채널로 옮겨야 해요</div>
       <div class="unsure"><i class="ic i-info" aria-hidden="true"></i>공유기가 직접 많이 보내는 중이라 판단이 정확하지 않을 수 있어요</div>
       <div class="noswitch"><i class="ic i-info" aria-hidden="true"></i>채널을 옮겨도 나아지지 않아요</div>
+      <div class="to5g"><i class="ic i-swap" aria-hidden="true"></i>채널 대신 5GHz로 옮겨야 해요</div>
       <div class="cause" id="cause">
         <div class="cause-h"><span class="k">원인</span><b id="causeWord">이웃 와이파이</b></div>
         <div>
@@ -258,6 +294,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
             <span><i style="background:var(--lv)"></i>이웃 와이파이 <b id="extPct">0%</b></span><span>전파를 쓴 시간 비율</span></div>
         </div>
         <p class="act" id="causeAct"></p>
+      </div>
+      <!-- 10-22 화면 버튼: 실시간 MT6000일 때만. 찾기 → 결과가 나오면 같은 버튼이 '옮기기'로 바뀐다 -->
+      <div class="acts" id="acts">
+        <button class="act-b" id="btnChan" type="button"><i class="ic i-swap" aria-hidden="true"></i><span>더 나은 채널 찾기</span></button>
+        <button class="act-b" id="btn5g" type="button"><i class="ic i-swap" aria-hidden="true"></i><span>5GHz로 옮길 기기 찾기</span></button>
         <p class="gen" id="gen"></p>
       </div>
       <div class="meter">
@@ -487,9 +528,37 @@ function setLevel(lv){
 /* ---------- 원인 카드 (10-20) ---------- */
 const CAUSE = {
   '외부': ['이웃 와이파이', '다른 집·사무실 공유기가 같은 채널을 쓰고 있어요. 다른 채널로 옮기면 나아져요.'],
-  '우리 부하': ['우리 기기들이 보내는 양', '이 공유기에 붙은 기기들이 많이 보내는 중이에요. 채널을 옮겨도 그대로라, 5GHz로 나누거나 공유기를 하나 더 두는 게 맞아요.'],
+  '우리 부하': ['우리 기기들이 보내는 양', '이 공유기에 붙은 기기들이 많이 보내는 중이에요. 채널을 옮겨도 그대로라, 가장 많이 쓰는 기기를 같은 공유기의 5GHz로 옮겨요.'],
   '약한 기기': ['신호가 약한 기기', '신호가 약한 기기 하나가 전파를 오래 붙잡고 있어요. 그 기기를 공유기 가까이 옮겨 보세요.'],
 };
+// 10-22 화면 버튼. 서버가 kind별 마지막 결과를 advice.gen 하나로만 보내므로 kind별로 기억해 둔다.
+const lastGen = { channel: {}, steer: {} };
+function paintActs(adv){
+  const g = adv.gen || {};
+  if (g.kind) lastGen[g.kind] = g;
+  const busy = g.state === 'running' || g.applying;
+  const c = lastGen.channel, s = lastGen.steer;
+  const bc = $('btnChan'), b5 = $('btn5g');
+  const cGo = c.state === 'done' && c.target && !c.applied;
+  bc.dataset.do = cGo ? 'apply' : 'find'; bc.classList.toggle('go', !!cGo);
+  bc.querySelector('span').textContent = cGo ? `${c.target} 로 채널 옮기기` : '더 나은 채널 찾기';
+  const sGo = s.state === 'done' && s.sta && s.moved === undefined;
+  b5.dataset.do = sGo ? 'apply' : 'find'; b5.classList.toggle('go', !!sGo);
+  b5.querySelector('span').textContent = sGo ? `기기(${s.sta.slice(-5).replace(':', '')}) 5GHz로 옮기기` : '5GHz로 옮길 기기 찾기';
+  bc.disabled = b5.disabled = !!busy;
+}
+async function act(kind, btn){
+  btn.disabled = true;
+  try {
+    const r = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ do: btn.dataset.do || 'find', kind }) });
+    const j = await r.json();
+    if (!j.ok) $('gen').textContent = j.msg || '실행하지 못했어요';
+  } catch { $('gen').textContent = '서버에 닿지 않아요'; }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  $('btnChan').addEventListener('click', e => act('channel', e.currentTarget));
+  $('btn5g').addEventListener('click', e => act('5g', e.currentTarget));
+});
 function paintCause(adv){
   const gen = adv.gen || {};
   let gt = '';
@@ -497,9 +566,20 @@ function paintCause(adv){
   else if (gen.state === 'done' && gen.target) gt = gen.switch
     ? `ch${gen.current_channel} → ${gen.target} 로 옮기면 이웃 몫 ${Math.round(gen.current_ext)}% → 약 ${Math.max(0, Math.round(gen.current_ext - gen.drop_pt))}% (${gen.verified ? '직접 재 봄' : '스캔 예상'})${gen.applied ? ' · 옮겼어요' : ''}`
     : `지금보다 확실히 나은 채널이 없어 그대로 둬요 (최선 ${gen.target}, −${gen.drop_pt}pt)`;
-  else if (gen.state === 'error') gt = '채널 후보를 재지 못했어요';
+  else if (gen.state === 'error') gt = gen.kind === 'steer' ? '5GHz로 옮기지 못했어요' : '채널 후보를 재지 못했어요';
+  if (gen.kind === 'steer') {   // 10-22: 원인 우리 부하 → 5GHz 유도
+    const tag = gen.sta ? gen.sta.slice(-5).replace(':', '') : '';
+    const five = gen.five_channel ? `5GHz(ch${gen.five_channel}${gen.five_occ != null ? `, 점유율 ${Math.round(gen.five_occ)}%` : ''})` : '5GHz';
+    if (gen.state === 'running') gt = `5GHz로 옮길 기기를 고르는 중이에요… ${gen.elapsed_s || 0}초`;
+    else if (gen.state === 'done') gt = !gen.sta ? '5GHz로 옮길 만큼 많이 쓰는 기기가 없어요'
+      : gen.moved === true ? `가장 많이 쓰던 기기(${tag})를 ${five}로 옮겼어요`
+      : gen.moved === false ? `기기(${tag})가 5GHz로 오지 않았어요 — 기기에 5GHz 와이파이가 저장돼 있는지 확인해 주세요`
+      : `가장 많이 쓰는 기기(${tag}, 2.4GHz 사용 시간 ${Math.round(gen.sta_airtime)}%)를 ${five}로 옮기면 나아져요`;
+  }
+  if (gen.applying) gt = gen.kind === 'steer' ? '기기를 5GHz로 옮기는 중이에요…' : `${gen.target} 로 채널을 옮기는 중이에요… (연결은 유지돼요)`;
   $('gen').textContent = gt;
-  const on = !!adv.cause || gen.state === 'running';
+  paintActs(adv);
+  const on = !!adv.cause;
   document.body.dataset.cause = on ? '1' : '0';
   if (!adv.cause) return;
   const [w, a] = CAUSE[adv.cause] || [adv.cause, adv.action || ''];
@@ -606,6 +686,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawChart)
 addEventListener('resize', drawChart);
 
 const chip = $('modeChip');
+// 10-22 사진·캡처용: 주소 끝에 ?clean 이면 위쪽 모드 표시(재생 파일 이름 등)를 숨긴다
+if (new URLSearchParams(location.search).has('clean')) chip.style.visibility = 'hidden';
 if (SIM){
   chip.textContent = '연습 모드 (가짜 데이터)';
   paintStatus(simScore);
@@ -630,8 +712,10 @@ if (SIM){
     const adv = st.advice || {};
     const known = !!adv.cause;   // 원인을 아는 AP(MT6000)이고 지금 경고 이상
     document.body.dataset.switch = st.switch_active && (!known || adv.cause === '외부') ? '1' : '0';
-    document.body.dataset.noswitch = st.switch_active && known && adv.cause !== '외부' ? '1' : '0';
+    document.body.dataset.noswitch = st.switch_active && known && adv.cause === '약한 기기' ? '1' : '0';
+    document.body.dataset.to5g = st.switch_active && known && adv.cause === '우리 부하' ? '1' : '0';
     document.body.dataset.unsure = st.downlink ? '1' : '0';
+    document.body.dataset.acts = st.actions ? '1' : '0';
     paintCause(adv);
     pushScore(scoreOf(st.probs, st.raw_label), st.raw_label);
   };

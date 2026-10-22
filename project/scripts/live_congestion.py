@@ -17,6 +17,8 @@ window 10 → min-max 정규화(scaler_params.json) → ONNX(unified INT8) 추�
     이웃 간섭 / 우리 부하)와 조치를 줄 끝에 표시. 전환 알림이 났는데 원인이 이웃 간섭이면 channel_candidates.py를
     백그라운드로 돌려 후보 채널을 실측 확인(약 90초)하고 전환 명령 후보를 낸다. 원인이 다르면 전환 대신 그 원인의 조치.
     실제 전환은 --apply-switch일 때만.
+  + 5GHz 유도(2026-10-22, band_steer.py): 전환 알림이 났는데 원인이 우리 부하면 2.4GHz에서 가장 많이 쓰는 기기를 골라
+    같은 공유기의 5GHz로 옮긴다(802.11v BTM → 안 되면 내보내기 + 2.4GHz 재접속 잠시 금지). 실제 이동은 --apply-steer일 때만.
 
 feature 계산은 collect_metrics.py의 헬퍼를 그대로 재사용해 학습 시점과 동일하게 맞춘다.
 victim 프로브(라벨링 전용)는 없음 — 추론엔 불필요.
@@ -64,10 +66,10 @@ except ImportError:
     )
 try:
     from scripts.switch_advisor import SwitchAdvisor  # noqa: E402
-    from scripts.cause_advisor import EXT, CandidateRunner, CauseAdvisor  # noqa: E402
+    from scripts.cause_advisor import EXT, OWN, CandidateRunner, CauseAdvisor, SteerRunner  # noqa: E402
 except ImportError:
     from switch_advisor import SwitchAdvisor  # noqa: E402
-    from cause_advisor import EXT, CandidateRunner, CauseAdvisor  # noqa: E402
+    from cause_advisor import EXT, OWN, CandidateRunner, CauseAdvisor, SteerRunner  # noqa: E402
 
 # utils/ap_features.py AP_FEATURE_COLUMNS 와 반드시 일치 (번들 자립을 위해 인라인).
 AP_FEATURE_COLUMNS = (
@@ -117,6 +119,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--margin", type=float, default=15.0, help="최선 후보 외부 몫이 지금보다 이만큼 pt 낮아야 전환 권고")
     p.add_argument("--apply-switch", action="store_true",
                    help="전환 권고가 나면 실제로 CSA 전환 (기본은 명령 후보만 표시)")
+    p.add_argument("--apply-steer", action="store_true",
+                   help="원인이 우리 부하면 2.4GHz에서 가장 많이 쓰는 기기를 실제로 5GHz로 옮김 (기본은 후보만 표시)")
+    p.add_argument("--steer-keep", nargs="*", default=[], help="5GHz로 옮기면 안 되는 기기 MAC (예: 노트북)")
+    p.add_argument("--steer-cooldown", type=float, default=300, help="5GHz 유도 뒤 이만큼 초 동안 다시 안 함")
     p.add_argument("--link-thr", type=float, default=1.6,
                    help="약한 링크 의심 문턱 — 기기 중 최대 바이트당 송신 시간(µs/B)의 최근 5폴링 중앙값 (MT6000 전용, 10-18 잠정: "
                         "m1~m14 idle 가까이 0.9~1.0 · 멀리 1.1~1.3 · m10 2.2)")
@@ -177,12 +183,13 @@ def main() -> None:
                 f.write(json.dumps({"time": time.strftime("%Y-%m-%d %H:%M:%S"), **obj}, ensure_ascii=False) + "\n")
 
     cause_adv = None if args.no_cause else CauseAdvisor()
-    runner = None
+    runner = steer = None
     if cause_adv:
         def on_done(r: CandidateRunner) -> None:
             print(f"{time.strftime('%H:%M:%S')}  ⇄ {r.text()}")
             log_event({"kind": "candidates", **r.summary()})
         runner = CandidateRunner(cooldown_s=args.gen_cooldown, margin=args.margin, apply=args.apply_switch, on_done=on_done)
+        steer = SteerRunner(cooldown_s=args.steer_cooldown, apply=args.apply_steer, keep=args.steer_keep, on_done=on_done)
     cause = {"available": False}
     gen_was_running = False
 
@@ -247,7 +254,7 @@ def main() -> None:
 
             # 10-20 원인 3분류 (모델 입력 아님). 후보 실측 중엔 AP가 다른 채널을 다녀오므로 멈추고, 끝나면 이력을 새로 쌓는다.
             if cause_adv:
-                if runner.running:
+                if runner.running or steer.running:
                     gen_was_running = True
                 else:
                     if gen_was_running:
@@ -297,8 +304,8 @@ def main() -> None:
             link_str = (f"  [약한 링크 의심: {link_mac} µs/B {link_med:.2f} — 채널 전환보다 위치·로밍 확인]"
                         if link_weak and feats["channel_occupancy_percent"] < 75 else "")
             cause_str = ""
-            if runner and runner.running:
-                cause_str = f"  [{runner.text()}]"
+            if runner and (runner.running or steer.running):
+                cause_str = f"  [{(runner if runner.running else steer).text()}]"
             elif cause.get("ready") and max(shown, raw_label) >= 1:   # 원인은 경고 이상일 때만 의미 있음
                 cause_str = f"  [원인 {cause['cause']} (우리 {cause['own']:.0f}% · 외부 {cause['ext']:.0f}%) → {cause['action']}]"
             print(
@@ -318,6 +325,12 @@ def main() -> None:
                             print(f"           원인 이웃 간섭 (외부 {cause['ext']:.0f}% > 우리 {cause['own']:.0f}%) → 전환 후보 실측 시작 (약 90초)")
                         else:
                             print(f"           원인 이웃 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}")
+                    elif cause["cause"] == OWN:
+                        cands = [f"채널 전환 보류 — 원인 우리 부하 (우리 {cause['own']:.0f}% ≥ 외부 {cause['ext']:.0f}%) → 5GHz 유도"]
+                        if steer.start():
+                            print("           원인 우리 부하 → 2.4GHz에서 가장 많이 쓰는 기기를 5GHz로 유도 시작")
+                        else:
+                            print(f"           5GHz 유도 쿨다운 {steer.cooldown_left():.0f}초 남음. 지난 결과: {steer.text() or '-'}")
                     else:
                         cands = [f"채널 전환 보류 — 원인 {cause['cause']}: {cause['action']}"]
                 for c in cands:

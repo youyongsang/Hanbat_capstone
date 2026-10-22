@@ -308,3 +308,11 @@ import _state`로 이름만 가져오면 그 안에서의 재할당이 공유 �
 8. **인증/멀티유저** — 지금 무인증 로컬. 필요하면.
 
 **깨지 말아야 할 것**: §4 모델 계약, §3 API 스키마(특히 `raw_label` 노출), §5 크래시 주의.
+
+### POST /action (2026-10-22, 실시간 `--mt6000`에서만)
+
+화면 버튼용. 본문 `{"do": "find" | "apply", "kind": "channel" | "5g"}`.
+- `find`: channel → 후보 채널 실측(`channel_candidates`, 약 90초), 5g → 2.4GHz에서 가장 많이 쓰는 기기 고르기(`band_steer.plan`). 쿨다운 무시.
+- `apply`: 마지막 결과 실행 — channel → 최선 후보로 CSA 전환, 5g → 그 기기를 5GHz로 유도(`band_steer.steer`).
+- 응답 `{"ok": bool, "msg": str}` (200 / 진행 중·후보 없음 409 / 재생 모드 400). 상태는 SSE `advice.gen`(`kind`, `applying` 포함)과 `actions`(버튼 표시 여부)로 온다.
+

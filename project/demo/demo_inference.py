@@ -17,10 +17,10 @@ import onnxruntime as ort
 import demo_state
 try:  # 2026-10-01: 채널 전환 판단·다운링크 우세 표시 (live_congestion.py와 같은 모듈)
     from scripts.switch_advisor import SwitchAdvisor
-    from scripts.cause_advisor import EXT, CandidateRunner, CauseAdvisor, stations_from_csv
+    from scripts.cause_advisor import EXT, OWN, CandidateRunner, CauseAdvisor, SteerRunner, stations_from_csv
 except ImportError:
     from switch_advisor import SwitchAdvisor
-    from cause_advisor import EXT, CandidateRunner, CauseAdvisor, stations_from_csv
+    from cause_advisor import EXT, OWN, CandidateRunner, CauseAdvisor, SteerRunner, stations_from_csv
 from demo_state import (
     ARGS, WINDOW, FEATURES, LABELS, MOVING_AVG_WINDOW,
     APPoller, calculate_channel_occupancy, calculate_station_deltas,
@@ -38,11 +38,18 @@ def occ_label(occ_pct: float) -> int:
     return 0 if occ_pct < 40 else 1 if occ_pct < 55 else 2 if occ_pct < 75 else 3
 
 
-def switch_candidates(ev, cause: dict, runner) -> list[str]:
+def switch_candidates(ev, cause: dict, runner, steer=None) -> list[str]:
     """2026-10-20: 원인을 아는 AP(MT6000)면 전환 알림의 후보를 원인에 맞게 바꾼다 (live_congestion.py와 같은 규칙).
-    이웃 간섭 → 후보 채널 실측(runner, 재생 모드면 None이라 생략), 그 외 → 전환 보류 + 그 원인의 조치."""
+    이웃 간섭 → 후보 채널 실측(runner, 재생 모드면 None이라 생략), 우리 부하 → 5GHz 유도(steer, 10-22),
+    약한 기기 → 전환 보류 + 그 원인의 조치."""
     if ev.kind != "switch" or not cause.get("ready"):
         return ev.candidates
+    if cause["cause"] == OWN:
+        if steer is None:
+            return ["우리 부하 — 5GHz 유도 (재생 모드라 생략)"]
+        if steer.start():
+            return ["우리 부하 — 채널 대신 가장 많이 쓰는 기기를 5GHz로 유도 시작"]
+        return [f"우리 부하 — 5GHz 유도 쿨다운 {steer.cooldown_left():.0f}초 남음. 지난 결과: {steer.text() or '-'}"]
     if cause["cause"] != EXT:
         return [f"채널 전환 보류 — 원인 {cause['cause']}: {cause['action']}"]
     if runner is None:
@@ -52,13 +59,16 @@ def switch_candidates(ev, cause: dict, runner) -> list[str]:
     return [f"이웃 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}"]
 
 
-def advice_state(cause: dict, runner, level: int) -> dict:
+def advice_state(cause: dict, runner, level: int, steer=None) -> dict:
     """화면용 원인·조치 묶음. 원인은 경고 이상일 때만 보낸다(정상일 때 '외부 > 우리'는 의미 없음)."""
     out = {"available": bool(cause.get("available"))}
     if cause.get("ready") and level >= 1:
         out.update({k: cause[k] for k in ("cause", "own", "ext", "weak_sta", "action")})
-    if runner is not None and runner.state != "idle":
-        out["gen"] = {**runner.summary(), "text": runner.text()}
+    # 가장 최근에 시작한 조치(채널 후보 실측 / 5GHz 유도)를 보여 준다
+    active = [r for r in (runner, steer) if r is not None and r.state != "idle"]
+    if active:
+        r = max(active, key=lambda r: (r.running, r.started or 0))
+        out["gen"] = {**r.summary(), "text": r.text()}
     return out
 
 
@@ -127,6 +137,7 @@ def replay_loop() -> None:
                         "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
                         "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events, "band": ARGS.band,
                         "advice": advice_state(cause, None, max(shown, raw)),
+                        "actions": bool(ARGS.mt6000),   # 10-22: 재생에서도 버튼 모양은 보임(누르면 "실시간에서만" 안내)
                     }
                 demo_state._broadcast(demo_state._state)
                 time.sleep(max(0.0, ARGS.replay_interval - (time.time() - t0)))
@@ -160,6 +171,9 @@ def inference_loop() -> None:
         e = {"ts": time.strftime("%H:%M:%S"), "kind": "candidates", "message": r.text(), "candidates": []}
         events.appendleft(e)
     runner = CandidateRunner(cooldown_s=ARGS.gen_cooldown, apply=ARGS.apply_switch, on_done=on_gen_done) if ARGS.mt6000 else None
+    steer = SteerRunner(apply=ARGS.apply_steer, keep=ARGS.steer_keep, on_done=on_gen_done) if ARGS.mt6000 else None
+    if ARGS.mt6000:
+        demo_state._actions = {"runner": runner, "steer": steer}
 
     while True:
         cyc = poller.wait_for_new_cycle(last_id)
@@ -210,7 +224,7 @@ def inference_loop() -> None:
             "rssi_delta_db": round(rssi_d, 2), "rssi_moving_avg_dbm": round(rssi_ma, 2),
             "sta_tx_bitrate_mean": round(bitrate_mean, 1),
         }
-        if runner is not None and runner.running:   # 후보 실측 중엔 AP가 다른 채널을 다녀오므로 원인 판정 멈춤
+        if runner is not None and (runner.running or steer.running):   # 후보 실측·5GHz 유도 중엔 AP가 다른 채널을 다녀오므로 원인 판정 멈춤
             gen_was_running = True
         else:
             if gen_was_running:
@@ -239,7 +253,7 @@ def inference_loop() -> None:
         new_events = []
         for ev in advisor.update(raw, feats["throughput_mbps"], feats["channel_occupancy_percent"]):
             e = {"ts": time.strftime("%H:%M:%S"), "kind": ev.kind, "message": ev.message,
-                 "candidates": switch_candidates(ev, cause, runner)}
+                 "candidates": switch_candidates(ev, cause, runner, steer)}
             events.appendleft(e); new_events.append(e)
 
         with demo_state._lock:
@@ -255,6 +269,7 @@ def inference_loop() -> None:
                 "features": feats, "load": dict(demo_state._load_state),
                 "switch_active": advisor.active, "downlink": advisor.downlink_dominant(),
                 "persist_sent": advisor.persist_sent, "events": list(events), "new_events": new_events, "band": ARGS.band,
-                "advice": advice_state(cause, runner, max(shown, raw)),
+                "advice": advice_state(cause, runner, max(shown, raw), steer),
+                "actions": demo_state._actions is not None,
             }
         demo_state._broadcast(demo_state._state)

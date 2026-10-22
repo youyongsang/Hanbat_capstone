@@ -89,7 +89,34 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, b"not found", "text/plain")
 
+    def _action(self, body: dict) -> None:
+        """10-22 화면 버튼. do = find(후보 찾기, 쿨다운 무시) | apply(지난 결과 실행), kind = channel | 5g."""
+        acts = demo_state._actions
+        if acts is None:
+            self._send(400, json.dumps({"ok": False, "msg": "실시간 MT6000 모드에서만 쓸 수 있어요"}, ensure_ascii=False).encode("utf-8"),
+                       "application/json")
+            return
+        r = acts["runner"] if body.get("kind") == "channel" else acts["steer"]
+        other = acts["steer"] if r is acts["runner"] else acts["runner"]
+        if other.running:
+            ok, msg = False, "다른 조치가 진행 중이에요"
+        elif body.get("do") == "find":
+            ok = r.start(force=True); msg = "" if ok else "이미 진행 중이에요"
+        elif body.get("do") == "apply":
+            ok = r.apply_last(); msg = "" if ok else "실행할 후보가 없어요"
+        else:
+            ok, msg = False, "알 수 없는 요청"
+        self._send(200 if ok else 409, json.dumps({"ok": ok, "msg": msg}, ensure_ascii=False).encode("utf-8"), "application/json")
+
     def do_POST(self):  # noqa: N802
+        if self.path == "/action":
+            n = int(self.headers.get("Content-Length", 0))
+            try:
+                body = json.loads(self.rfile.read(n) or b"{}")
+            except json.JSONDecodeError:
+                body = {}
+            self._action(body)
+            return
         if self.path != "/load":
             self._send(404, b"not found", "text/plain")
             return

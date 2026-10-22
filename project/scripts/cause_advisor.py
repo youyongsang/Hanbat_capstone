@@ -13,6 +13,8 @@
 2) 조치
    - 약한 기기: 그 기기 위치 이동·로밍 확인 (채널을 옮겨도 그대로).
    - 우리 부하: 5GHz 유도·AP 분산 (실측 m29~m31: 채널 전환으로 점유율 −1~−7pt뿐).
+     전환 알림이 났는데 원인이 우리 부하면 SteerRunner가 band_steer.py로 2.4GHz에서 가장 많이 쓰는 기기를 골라
+     5GHz로 옮긴다(2026-10-22). 실제 이동은 apply=True일 때만(기본은 후보만 표시).
    - 이웃 간섭: 채널 전환. 모델 전환 알림(SwitchAdvisor, 3폴링 중 2번 심각)이 났을 때만 channel_candidates.py를
      백그라운드로 돌려 후보를 실측 확인(--verify 2, 약 90초)한다. 스캔·CSA 실측은 AP가 잠깐 채널을 비우므로
      쿨다운(기본 10분) 안에는 다시 돌리지 않는다. 실제 전환은 apply=True일 때만(기본은 명령 후보만 표시).
@@ -136,20 +138,46 @@ class CandidateRunner:
         self.result: dict | None = None
         self.error = ""
         self.applied = False
+        self.applying = False        # 10-22: 화면 버튼으로 전환 실행 중
         self._lock = threading.Lock()
 
     @property
     def running(self) -> bool:
-        return self.state == "running"
+        """후보 실측 또는 전환 실행 중 — 이 동안 AP가 채널을 옮기므로 원인 판정을 멈춘다."""
+        return self.state == "running" or self.applying
 
     def cooldown_left(self) -> float:
         if self.finished is None:
             return 0.0
         return max(0.0, self.cooldown_s - (time.time() - self.finished))
 
-    def start(self) -> bool:
+    def apply_last(self) -> bool:
+        """10-22 화면 버튼: 지난 실측의 최선 후보로 실제 전환 (권고 문턱 미달이어도 사람이 누르면 실행)."""
+        rec = (self.result or {}).get("recommendation")
         with self._lock:
-            if self.running or self.cooldown_left() > 0:
+            if self.running or self.state != "done" or not rec or self.applied:
+                return False
+            self.applying, self.started = True, time.time()
+
+        def work():
+            try:
+                try:
+                    import channel_candidates as cc
+                except ImportError:
+                    from scripts import channel_candidates as cc
+                cc.csa(rec["target"]); self.applied = True
+            except Exception as e:  # noqa: BLE001
+                self.error = f"{type(e).__name__}: {e}"
+            self.applying = False
+            if self.on_done:
+                self.on_done(self)
+        threading.Thread(target=work, daemon=True).start()
+        return True
+
+    def start(self, force: bool = False) -> bool:
+        """force=True(화면 버튼)면 쿨다운을 무시한다."""
+        with self._lock:
+            if self.running or (not force and self.cooldown_left() > 0):
                 return False
             self.state, self.started, self.result, self.error, self.applied = "running", time.time(), None, "", False
         threading.Thread(target=self._run, daemon=True).start()
@@ -175,7 +203,7 @@ class CandidateRunner:
 
     def summary(self) -> dict:
         """화면·JSON용 요약."""
-        out = {"state": self.state, "cooldown_left_s": round(self.cooldown_left())}
+        out = {"kind": "channel", "state": self.state, "cooldown_left_s": round(self.cooldown_left()), "applying": self.applying}
         if self.running:
             out["elapsed_s"] = round(time.time() - self.started)
         if self.state == "error":
@@ -195,6 +223,8 @@ class CandidateRunner:
 
     def text(self) -> str:
         s = self.summary()
+        if s["applying"]:
+            return f"{s.get('target', '')}(으)로 채널 전환 중"
         if s["state"] == "running":
             return f"전환 후보 실측 중 ({s['elapsed_s']}초 경과, 약 90초 — 후보 채널을 잠깐 다녀옴)"
         if s["state"] == "error":
@@ -206,6 +236,112 @@ class CandidateRunner:
             done = " — 적용함" if s["applied"] else " (미실행)"
             return f"전환 명령 후보: ch{s['current_channel']} → {s['target']} (외부 몫 {s['current_ext']:.0f}% → {how} −{s['drop_pt']}pt){done}"
         return f"전환 이득 부족 — 유지 (최선 {s['target']} {how} −{s['drop_pt']}pt < {self.margin:.0f}pt)"
+
+
+class SteerRunner:
+    """원인 '우리 부하' → band_steer: 2.4GHz에서 airtime이 가장 큰 기기를 5GHz로 옮긴다 (2026-10-22).
+    CandidateRunner와 같은 화면 인터페이스(start·running·cooldown_left·summary·text)."""
+
+    def __init__(self, cooldown_s: float = 300, apply: bool = False, keep=(), on_done=None):
+        self.cooldown_s, self.apply, self.keep, self.on_done = cooldown_s, apply, tuple(keep), on_done
+        self.state = "idle"
+        self.started = self.finished = None
+        self.result: dict | None = None
+        self.moved: dict | None = None
+        self.error = ""
+        self.applying = False
+        self._lock = threading.Lock()
+
+    @property
+    def running(self) -> bool:
+        return self.state == "running" or self.applying
+
+    def cooldown_left(self) -> float:
+        return 0.0 if self.finished is None else max(0.0, self.cooldown_s - (time.time() - self.finished))
+
+    def apply_last(self) -> bool:
+        """10-22 화면 버튼: 지난 계획의 기기를 실제로 5GHz로 옮긴다."""
+        rec = (self.result or {}).get("recommendation")
+        with self._lock:
+            if self.running or self.state != "done" or not rec or self.moved:
+                return False
+            self.applying, self.started = True, time.time()
+
+        def work():
+            try:
+                try:
+                    import band_steer as bs
+                except ImportError:
+                    from scripts import band_steer as bs
+                self.moved = bs.steer(rec["mac"])
+            except Exception as e:  # noqa: BLE001
+                self.error = f"{type(e).__name__}: {e}"
+            self.applying = False
+            if self.on_done:
+                self.on_done(self)
+        threading.Thread(target=work, daemon=True).start()
+        return True
+
+    def start(self, force: bool = False) -> bool:
+        with self._lock:
+            if self.running or (not force and self.cooldown_left() > 0):
+                return False
+            self.state, self.started, self.result, self.moved, self.error = "running", time.time(), None, None, ""
+        threading.Thread(target=self._run, daemon=True).start()
+        return True
+
+    def _run(self) -> None:
+        try:
+            try:
+                import band_steer as bs
+            except ImportError:
+                from scripts import band_steer as bs
+            self.result = bs.plan(self.keep)
+            rec = self.result.get("recommendation")
+            if self.apply and rec:
+                self.moved = bs.steer(rec["mac"])
+            self.state = "done"
+        except Exception as e:  # noqa: BLE001
+            self.error, self.state = f"{type(e).__name__}: {e}", "error"
+        self.finished = time.time()
+        if self.on_done:
+            self.on_done(self)
+
+    def summary(self) -> dict:
+        out = {"kind": "steer", "state": self.state, "cooldown_left_s": round(self.cooldown_left()), "applying": self.applying}
+        if self.running:
+            out["elapsed_s"] = round(time.time() - self.started)
+        if self.state == "error":
+            out["error"] = self.error
+        if self.state == "done" and self.result:
+            rec, five = self.result.get("recommendation"), self.result.get("five") or {}
+            out.update({"five_channel": five.get("channel"), "five_occ": five.get("occupancy"),
+                        "why_none": self.result.get("why_none")})
+            if rec:
+                out.update({"sta": rec["mac"], "sta_airtime": rec["airtime"]})
+            if self.moved:
+                out.update({"moved": self.moved["moved"], "method": self.moved["method"], "seconds": self.moved["seconds"]})
+        return out
+
+    def text(self) -> str:
+        s = self.summary()
+        if s["applying"]:
+            return f"기기({s.get('sta', '')[-5:].replace(':', '')})를 5GHz로 옮기는 중"
+        if s["state"] == "running":
+            return f"5GHz 유도 준비 중 ({s['elapsed_s']}초 경과 — 기기별 사용 시간 측정)"
+        if s["state"] == "error":
+            return f"5GHz 유도 실패: {s['error']}"
+        if s["state"] != "done":
+            return ""
+        if "sta" not in s:
+            return f"5GHz 유도 후보 없음 — {s.get('why_none') or '-'}"
+        tag = s["sta"][-5:].replace(":", "")
+        five = f"5GHz ch{s['five_channel']}" + (f"(점유율 {s['five_occ']:.0f}%)" if s.get("five_occ") is not None else "")
+        if "moved" not in s:
+            return f"5GHz 유도 후보: 기기({tag}) 2.4GHz 사용 시간 {s['sta_airtime']:.0f}% → {five} (미실행)"
+        if s["moved"]:
+            return f"기기({tag})를 {five}로 옮겼어요 ({s['method']}, {s['seconds']:.0f}초)"
+        return f"기기({tag}) 5GHz 유도 실패 — 5GHz에서 안 보임 (기기에 5GHz 와이파이가 저장돼 있는지 확인)"
 
 
 def _json(o) -> str:
