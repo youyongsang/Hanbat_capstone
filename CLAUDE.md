@@ -75,7 +75,7 @@ project/demo/demo_dual.html + run_dual_demo.sh         2.4GHz·5GHz 비교 화�
 docs/yongsang/sessions_5g.html                         5GHz 수집 현황 (세션별 폭·방향·배치·라벨·LOSO)
 docs/yongsang/mt6000_results.html                      ★ MT6000(순정 OpenWrt) 2.4GHz 실험 결과 한 장 — 14세션 수집·Opal 비교·LOSO·규칙 vs LSTM·점유율 1개 vs 7개 5시드·조기경보·숨은 노드 실험 (10/15~10/18)
 docs/yongsang/final_narrative.html                     ★ 최종 서사 한 장 (10-20) — 한 줄 메시지·인용 수치(조건·출처)·쓰지 말 것·최종보고서 1~7장·발표 16장 구성·전시회 수정점. 보고서·발표·논문은 이걸 따른다
-docs/yongsang/paper_draft_v1.md                        논문 초안 v1 (10-20, 새 서사). v0은 docs/yongsang/archive/paper_draft_intro_body_v0_20260913.*
+docs/yongsang/paper_draft_v1_1.md                      ★ 논문 초안 v1.1 (10-26) — v1(paper_draft_v1.md, 10-20 새 서사)에 LSTM '약 20% 회수' 단서·5GHz 유도·세션↔공장 상황 표·한계 보강. v0은 docs/yongsang/archive/paper_draft_intro_body_v0_20260913.*
 docs/yongsang/demo_architecture.html                   데모 사이트 구조·데이터 흐름·설계 이유
 docs/yongsang/final_model_24sess.html                  ★ 24세션 최종 모델 보고서 (선택 근거·처음 보는 세션 성능·오답 원인·채널 전환 규칙·Pi 지연)
 project/results/yongsang/ap_v2_redesign2_eval_report.txt          현행 평가 리포트
