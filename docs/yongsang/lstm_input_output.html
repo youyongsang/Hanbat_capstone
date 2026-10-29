@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LSTM 입력·출력 정리</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1d2330; --muted:#5b6475; --line:#d9dee7; --soft:#f4f6fa;
+  --accent:#2f5fd0; --accent-soft:#e8eefc;
+  --l0:#2e8b57; --l1:#c79a00; --l2:#d9661f; --l3:#c62828;
+  --in:#e9f3ec; --in-b:#2e8b57; --out:#fdecea; --out-b:#c62828; --mid:#eef1f7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171d; --fg:#e6e9ef; --muted:#9aa3b2; --line:#2e3440; --soft:#1c2028;
+    --accent:#7aa2ff; --accent-soft:#1e2a45;
+    --in:#16281e; --in-b:#5cc28a; --out:#2d1a1a; --out-b:#ff7b7b; --mid:#1d222c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171d; --fg:#e6e9ef; --muted:#9aa3b2; --line:#2e3440; --soft:#1c2028;
+  --accent:#7aa2ff; --accent-soft:#1e2a45;
+  --in:#16281e; --in-b:#5cc28a; --out:#2d1a1a; --out-b:#ff7b7b; --mid:#1d222c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  line-height:1.65;font-size:16px}
+main{max-width:880px;margin:0 auto;padding:40px 16px 80px}
+h1{font-size:1.75rem;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:1.25rem;margin:48px 0 12px;padding-top:12px;border-top:1px solid var(--line)}
+h3{font-size:1.05rem;margin:28px 0 8px}
+.sub{color:var(--muted);margin:0 0 24px;font-size:.93rem}
+p{margin:10px 0}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.88em;background:var(--soft);
+  padding:1px 5px;border-radius:4px}
+.summary{background:var(--accent-soft);border-left:4px solid var(--accent);padding:16px 20px;
+  border-radius:6px;margin:20px 0}
+.summary p{margin:6px 0}
+.summary b{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll table{min-width:620px}
+.note{color:var(--muted);font-size:.88rem}
+.box{border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0;background:var(--soft)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.82rem;font-weight:600;color:#fff}
+.t0{background:var(--l0)}.t1{background:var(--l1)}.t2{background:var(--l2)}.t3{background:var(--l3)}
+svg text{font-family:inherit}
+.diagram{width:100%;height:auto;display:block;margin:12px 0}
+ol li,ul li{margin:4px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+.io{border-radius:8px;padding:14px 16px}
+.io.in{background:var(--in);border:1px solid var(--in-b)}
+.io.out{background:var(--out);border:1px solid var(--out-b)}
+.io h3{margin-top:0}
+@media print{h2{break-after:avoid} .box,table,svg{break-inside:avoid}}
+</style>
+</head>
+<body>
+<main>
+
+<h1>혼잡 판단 LSTM의 입력과 출력</h1>
+<p class="sub">자원할당해조 · 2026-10-29 · 대상 모델: 현행 배포 Early Exit LSTM (2.4GHz, 24세션 학습) · 코드 정본 <code>project/utils/ap_features.py</code>, <code>project/models/early_exit_lstm.py</code></p>
+
+<div class="summary">
+<p><b>입력</b> — 공유기(AP)가 약 1초마다 스스로 잴 수 있는 무선 채널 상태 값 <b>7개</b>를, 최근 <b>12번(약 12초)</b> 모은 표 한 장. 크기 <code>[12 × 7]</code>.</p>
+<p><b>출력</b> — 그 12초의 <b>마지막 시점</b>에 이 채널의 혼잡 등급이 무엇인지: <span class="tag t0">0 정상</span> <span class="tag t1">1 경고</span> <span class="tag t2">2 혼잡</span> <span class="tag t3">3 심각</span> 네 등급의 확률과, 그중 가장 높은 등급 하나.</p>
+<p><b>학습</b> — 같은 시점에 별도 측정 장비로 잰 "실제 통신 품질(지연·지터·손실)"과 채널 점유율을 국제 표준 문턱으로 채점해 정답 등급을 만들고, 모델이 <b>그 품질 측정값은 보지 못한 채</b> AP 값 7개만으로 정답 등급을 맞히도록 학습한다.</p>
+</div>
+
+<p>즉 이 모델이 푸는 문제는 "AP가 이미 가지고 있는 채널 정보만으로, 이 채널을 쓰는 단말들의 통신 품질이 지금 어느 정도 망가졌는지를 추정하라"이다. 실제 품질 측정(지연·손실)은 협조 단말과 상시 시험 트래픽이 있어야 해서 실제 운용 환경에는 없다는 점이 출발점이다.</p>
+
+<h2>1. 전체 흐름 한눈에</h2>
+
+<svg class="diagram" viewBox="0 0 860 470" role="img" aria-label="AP 측정값 7개를 12초 모아 LSTM 3층에 넣고, 각 층 뒤 출구에서 4등급 확률을 내는 흐름">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+    </marker>
+  </defs>
+  <!-- AP -->
+  <rect x="10" y="20" width="200" height="92" rx="8" fill="var(--soft)" stroke="var(--line)"/>
+  <text x="110" y="48" text-anchor="middle" font-size="15" font-weight="700" fill="var(--fg)">무선 공유기(AP)</text>
+  <text x="110" y="70" text-anchor="middle" font-size="12.5" fill="var(--muted)">약 1초마다 자기 상태 조회</text>
+  <text x="110" y="90" text-anchor="middle" font-size="12.5" fill="var(--muted)">(iw station / survey dump)</text>
+  <line x1="210" y1="66" x2="262" y2="66" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+  <!-- 7 features -->
+  <rect x="266" y="20" width="250" height="92" rx="8" fill="var(--in)" stroke="var(--in-b)"/>
+  <text x="391" y="46" text-anchor="middle" font-size="15" font-weight="700" fill="var(--fg)">값 7개 / 1회</text>
+  <text x="391" y="68" text-anchor="middle" font-size="12.5" fill="var(--fg)">처리량 · 점유율 · 재전송률</text>
+  <text x="391" y="88" text-anchor="middle" font-size="12.5" fill="var(--fg)">신호세기 3종 · 송신속도</text>
+  <line x1="516" y1="66" x2="568" y2="66" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+  <!-- window -->
+  <rect x="572" y="20" width="278" height="92" rx="8" fill="var(--in)" stroke="var(--in-b)"/>
+  <text x="711" y="46" text-anchor="middle" font-size="15" font-weight="700" fill="var(--fg)">최근 12회 모음 + 0~1 정규화</text>
+  <text x="711" y="70" text-anchor="middle" font-size="13" fill="var(--fg)">입력 텐서 [1, 12, 7]</text>
+  <text x="711" y="90" text-anchor="middle" font-size="12.5" fill="var(--muted)">(배치 1, 시간 12, 특성 7)</text>
+  <path d="M711,112 L711,140 L110,140 L110,162" fill="none" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+  <!-- LSTM stack -->
+  <g font-size="13">
+    <rect x="20" y="166" width="180" height="62" rx="8" fill="var(--mid)" stroke="var(--accent)"/>
+    <text x="110" y="192" text-anchor="middle" font-weight="700" fill="var(--fg)">LSTM 1층</text>
+    <text x="110" y="212" text-anchor="middle" fill="var(--muted)">7 → 128</text>
+    <rect x="20" y="266" width="180" height="62" rx="8" fill="var(--mid)" stroke="var(--accent)"/>
+    <text x="110" y="292" text-anchor="middle" font-weight="700" fill="var(--fg)">LSTM 2층</text>
+    <text x="110" y="312" text-anchor="middle" fill="var(--muted)">128 → 128</text>
+    <rect x="20" y="366" width="180" height="62" rx="8" fill="var(--mid)" stroke="var(--accent)"/>
+    <text x="110" y="392" text-anchor="middle" font-weight="700" fill="var(--fg)">LSTM 3층</text>
+    <text x="110" y="412" text-anchor="middle" fill="var(--muted)">128 → 128</text>
+  </g>
+  <line x1="110" y1="228" x2="110" y2="262" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="110" y1="328" x2="110" y2="362" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+  <!-- exits -->
+  <g font-size="12.5">
+    <line x1="200" y1="197" x2="256" y2="197" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="260" y="170" width="250" height="54" rx="8" fill="var(--out)" stroke="var(--out-b)"/>
+    <text x="385" y="193" text-anchor="middle" font-weight="700" fill="var(--fg)">출구 1: 마지막 시점 → 4등급 확률</text>
+    <text x="385" y="212" text-anchor="middle" fill="var(--muted)">확신 높으면(엔트로피 &lt; 0.3) 여기서 끝</text>
+    <line x1="200" y1="297" x2="256" y2="297" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="260" y="270" width="250" height="54" rx="8" fill="var(--out)" stroke="var(--out-b)"/>
+    <text x="385" y="293" text-anchor="middle" font-weight="700" fill="var(--fg)">출구 2: 마지막 시점 → 4등급 확률</text>
+    <text x="385" y="312" text-anchor="middle" fill="var(--muted)">확신 높으면(엔트로피 &lt; 0.6) 여기서 끝</text>
+    <line x1="200" y1="397" x2="256" y2="397" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="260" y="370" width="250" height="54" rx="8" fill="var(--out)" stroke="var(--out-b)"/>
+    <text x="385" y="393" text-anchor="middle" font-weight="700" fill="var(--fg)">출구 3: 마지막 시점 → 4등급 확률</text>
+    <text x="385" y="412" text-anchor="middle" fill="var(--muted)">무조건 여기서 끝</text>
+  </g>
+  <!-- final -->
+  <path d="M510,197 L560,197 L560,290" fill="none" stroke="var(--muted)" stroke-width="1.4"/>
+  <path d="M510,297 L556,297" fill="none" stroke="var(--muted)" stroke-width="1.4"/>
+  <path d="M510,397 L560,397 L560,304" fill="none" stroke="var(--muted)" stroke-width="1.4"/>
+  <line x1="560" y1="297" x2="598" y2="297" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="602" y="236" width="248" height="122" rx="8" fill="var(--soft)" stroke="var(--line)"/>
+  <text x="726" y="262" text-anchor="middle" font-size="15" font-weight="700" fill="var(--fg)">모델 출력</text>
+  <text x="726" y="286" text-anchor="middle" font-size="12.5" fill="var(--fg)">① 등급 확률 4개 (합 1)</text>
+  <text x="726" y="306" text-anchor="middle" font-size="12.5" fill="var(--fg)">② 최종 등급 = 확률 최대 (0~3)</text>
+  <text x="726" y="326" text-anchor="middle" font-size="12.5" fill="var(--fg)">③ 몇 번 출구에서 끝났나 (1~3)</text>
+  <text x="726" y="346" text-anchor="middle" font-size="11.5" fill="var(--muted)">→ 후처리: 채널 전환 판단</text>
+  <text x="20" y="458" font-size="12" fill="var(--muted)">각 층은 12개 시점을 순서대로 읽고, 출구는 그중 마지막(12번째) 시점의 128차원 은닉 상태만 사용한다.</text>
+</svg>
+
+<h2>2. 입력 (X) — 무엇을 받는가</h2>
+
+<h3>2.1 값 7개 (1회 측정 = 1행)</h3>
+<p>모두 AP 운영체제(OpenWrt)의 표준 명령 <code>iw station dump</code>, <code>iw survey dump</code>로 AP 혼자 얻을 수 있는 값이다. 단말에 프로그램을 깔거나 추가 장비를 둘 필요가 없다.</p>
+<div class="scroll">
+<table>
+<tr><th>#</th><th>이름 (코드)</th><th>뜻</th><th>단위</th><th>왜 넣었나</th></tr>
+<tr><td>1</td><td>처리량<br><code>throughput_mbps</code></td><td>직전 측정 이후 채널로 오간 데이터 양(모든 단말 합)</td><td>Mbps</td><td>채널이 얼마나 바쁘게 데이터를 나르는가</td></tr>
+<tr><td>2</td><td>채널 점유율<br><code>channel_occupancy_percent</code></td><td>그 시간 동안 채널이 "사용 중"이었던 시간 비율 (3회 중앙값으로 튀는 값 제거)</td><td>%</td><td>혼잡의 가장 직접적인 신호</td></tr>
+<tr><td>3</td><td>재전송률<br><code>tx_retry_ratio</code></td><td>AP가 보낸 프레임 중 다시 보내거나 실패한 비율 (최근 5회)</td><td>0~1</td><td>충돌·간섭이 많으면 오른다</td></tr>
+<tr><td>4</td><td>신호세기<br><code>rssi_dbm</code></td><td>AP가 받는 단말 신호 세기 평균 (0에 가까울수록 강함)</td><td>dBm</td><td>신호가 약하면 느린 속도로 보내 시간을 더 씀</td></tr>
+<tr><td>5</td><td>신호세기 변화<br><code>rssi_delta_db</code></td><td>직전 측정 대비 4번의 변화량</td><td>dB</td><td>신호가 갑자기 나빠지는 추세</td></tr>
+<tr><td>6</td><td>신호세기 이동평균<br><code>rssi_moving_avg_dbm</code></td><td>4번의 최근 5회 평균</td><td>dBm</td><td>순간 잡음을 걷어낸 기준선</td></tr>
+<tr><td>7</td><td>단말 송신속도<br><code>sta_tx_bitrate_mean</code></td><td>이번에 실제로 데이터를 보낸 단말들의 무선 전송 속도 평균</td><td>Mbps</td><td>점유율이 같아도 혼잡/심각을 가르는 데 도움 (실험으로 추가 확인)</td></tr>
+</table>
+</div>
+
+<h3>2.2 시간 축 — 왜 12회를 묶나</h3>
+<p>한 번의 측정값만 보면 "지금 점유율 70%"는 알아도 "올라가는 중인지, 잠깐 튄 것인지"는 모른다. 그래서 최근 12회(약 12초)를 시간 순서대로 쌓은 <code>12행 × 7열</code> 표를 한 개의 입력으로 쓴다. LSTM은 이 12행을 위에서부터 순서대로 읽으며 추세를 기억한다. 12는 10·12·13·14·15·20을 여러 시드로 비교해 가장 좋았던 값이다.</p>
+<p>새 측정이 하나 들어올 때마다 가장 오래된 행을 버리고 새 행을 붙이므로(슬라이딩 윈도우), 실시간으로는 약 1초마다 한 번씩 판단한다.</p>
+
+<h3>2.3 정규화</h3>
+<p>단위가 제각각(Mbps, %, dBm)이라 학습 데이터의 최솟값·최댓값으로 각 열을 0~1로 바꾼다: <code>(값 − 최소) / (최대 − 최소)</code>. 이 최소·최대(<code>scaler_params.json</code>)는 학습 때 한 번 정하고, 평가·실시간 추론에도 같은 값을 그대로 쓴다. 예: 점유율은 8.62~93.1%, 신호세기는 −57~0 dBm 범위를 0~1로 옮긴다.</p>
+
+<h3>2.4 실제 입력 예시 (정규화 전 값)</h3>
+<p>검증 데이터에서 꺼낸 실제 창 두 개. 모델은 이 12행 표 전체를 한 번에 받는다.</p>
+<div class="scroll">
+<table>
+<tr><th>시점</th><th class="num">처리량</th><th class="num">점유율</th><th class="num">재전송률</th><th class="num">신호</th><th class="num">신호 변화</th><th class="num">신호 평균</th><th class="num">송신속도</th></tr>
+<tr><td colspan="8"><b>예시 A</b> — 부하 없는 평상시 (정답 <span class="tag t0">0 정상</span>)</td></tr>
+<tr><td>1</td><td class="num">0.36</td><td class="num">16.7</td><td class="num">0.01</td><td class="num">−38.3</td><td class="num">0.00</td><td class="num">−38.3</td><td class="num">65.0</td></tr>
+<tr><td>2</td><td class="num">0.45</td><td class="num">16.7</td><td class="num">0.02</td><td class="num">−38.0</td><td class="num">0.33</td><td class="num">−38.3</td><td class="num">135.0</td></tr>
+<tr><td>⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td></tr>
+<tr><td>12</td><td class="num">0.59</td><td class="num">13.3</td><td class="num">0.03</td><td class="num">−38.0</td><td class="num">0.00</td><td class="num">−38.0</td><td class="num">68.8</td></tr>
+<tr><td colspan="8"><b>예시 B</b> — 두 단말이 대량 전송 중 (정답 <span class="tag t3">3 심각</span>)</td></tr>
+<tr><td>1</td><td class="num">32.2</td><td class="num">83.3</td><td class="num">0.16</td><td class="num">−47.0</td><td class="num">0.33</td><td class="num">−47.4</td><td class="num">57.8</td></tr>
+<tr><td>2</td><td class="num">41.8</td><td class="num">83.3</td><td class="num">0.14</td><td class="num">−47.7</td><td class="num">−0.67</td><td class="num">−47.3</td><td class="num">62.8</td></tr>
+<tr><td>⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td><td class="num">⋮</td></tr>
+<tr><td>12</td><td class="num">49.2</td><td class="num">83.3</td><td class="num">0.04</td><td class="num">−47.3</td><td class="num">0.33</td><td class="num">−47.6</td><td class="num">57.8</td></tr>
+</table>
+</div>
+<p class="note">단위: 처리량·송신속도 Mbps, 점유율 %, 재전송률 0~1, 신호 dBm/dB. 출처: <code>project/data/ap_metrics_v2_redesign2_24sess_20260928/val.csv</code>.</p>
+
+<h3>2.5 일부러 넣지 않은 값</h3>
+<p>지연(latency)·지터(jitter)·패킷 손실(loss)은 <b>입력에 없다</b>. 이 셋은 정답 등급을 만드는 재료(3장)이기 때문에 입력에 넣으면 모델이 답을 보고 푸는 셈이 된다. 또 실제 운용 환경에서는 이 값을 재려면 협조 단말과 상시 시험 트래픽이 필요해 AP 혼자서는 얻을 수 없다. (1학기 모델은 지연·손실을 입력과 정답에 동시에 써서 이 문제가 있었고, 2학기에 바로잡았다.)</p>
+
+<h2>3. 정답 (y) — 무엇을 학습하는가</h2>
+
+<p>데이터를 모을 때만, AP와 별도로 <b>"피해자 측정 스트림"</b>을 흘린다: 폰 한 대가 300kbps짜리 작은 음성통화 크기 UDP 트래픽을 계속 보내고, 그 트래픽이 실제로 겪는 지터·손실과 ping 지연을 잰다. "이 혼잡 속에서 통화 한 통이 얼마나 깨지는가"를 직접 잰 값이다.</p>
+
+<div class="box">
+<p><b>정답 등급 만드는 법</b> (1초 측정 1행마다)</p>
+<ol>
+<li>네 축(채널 점유율, 지터, 손실, 지연)을 각각 표준 문턱에 맞춰 0~1 점수로 바꾼다. 심각 문턱 예: 지터 50ms(ITU-T Y.1541), 편도 지연 150ms(ITU-T G.114), 손실 5%(Cisco QoS 가이드), 점유율 75%(Aruba WLAN 가이드).</li>
+<li>네 점수 중 <b>가장 나쁜 값</b>을 고른다 → 0.25 미만 정상 / 0.50 미만 경고 / 0.75 미만 혼잡 / 0.75 이상 심각.</li>
+<li>품질 축이 단 1초만 심각을 넘은 순간 튐은 심각으로 치지 않는다 (2초 연속일 때만 심각).</li>
+</ol>
+<p class="note">상세 근거: <code>docs/yongsang/congestion_label_redesign.html</code></p>
+</div>
+
+<p><b>창 하나의 정답 = 그 12초 창의 마지막(12번째) 시점의 등급.</b> 즉 모델은 "과거 12초를 보고 지금 이 순간의 등급"을 맞힌다(미래 예측이 아니다).</p>
+
+<div class="two">
+<div class="io in"><h3>모델이 보는 것</h3>
+<p>AP 값 7개 × 12초<br>(운용 환경에도 항상 있음)</p></div>
+<div class="io out"><h3>모델이 못 보는 것 (정답의 재료)</h3>
+<p>측정 스트림의 지터·손실, ping 지연<br>(데이터 수집 때만 있음)</p></div>
+</div>
+
+<h3>3.1 학습 방법</h3>
+<ul>
+<li><b>데이터</b>: 실제 공유기(GL.iNet Opal)에서 직접 수집한 24개 세션(부하 방향·세기·배치를 바꿔 가며), 세션 단위로 나눠 학습 13,858창 / 검증 5,575창.</li>
+<li><b>손실 함수</b>: 세 출구가 <b>모두</b> 정답을 맞히도록 각 출구의 교차 엔트로피를 가중합 — <code>0.3 × 출구1 + 0.3 × 출구2 + 0.4 × 출구3</code>. 그래서 얕은 출구도 혼자서 등급을 낼 수 있게 훈련된다.</li>
+<li><b>설정</b>: Adam, 학습률 0.001, 배치 32, 50에폭, 드롭아웃 0.2. 클래스 수가 고르지 않아 검증 <b>균형 정확도</b>(등급별 재현율 평균)가 가장 높은 에폭을 저장.</li>
+<li>무작위 시드 5개로 학습해 비교했고, 배포 모델은 검증 균형 정확도가 가장 높은 시드를 골랐다.</li>
+</ul>
+
+<h2>4. 내부 구조 — 크기가 어떻게 바뀌나</h2>
+<div class="scroll">
+<table>
+<tr><th>단계</th><th>하는 일</th><th>출력 크기</th></tr>
+<tr><td>입력</td><td>정규화된 12초 × 7값</td><td><code>[1, 12, 7]</code></td></tr>
+<tr><td>LSTM 1층</td><td>12개 시점을 순서대로 읽어 시점마다 128차원 상태 생성</td><td><code>[1, 12, 128]</code></td></tr>
+<tr><td>└ 출구 1</td><td>12번째 시점 상태만 꺼내 선형층(128→4)</td><td><code>[1, 4]</code></td></tr>
+<tr><td>LSTM 2층</td><td>1층 출력 12개를 다시 읽음</td><td><code>[1, 12, 128]</code></td></tr>
+<tr><td>└ 출구 2</td><td>12번째 시점 → 선형층(128→4)</td><td><code>[1, 4]</code></td></tr>
+<tr><td>LSTM 3층</td><td>2층 출력 12개를 다시 읽음</td><td><code>[1, 12, 128]</code></td></tr>
+<tr><td>└ 출구 3</td><td>12번째 시점 → 선형층(128→4)</td><td><code>[1, 4]</code></td></tr>
+</table>
+</div>
+<p>전체 학습 파라미터 약 33.6만 개. 비교 모델(일반 3층 LSTM, SDN)도 <b>입력·출력 형식은 완전히 같고</b>, 출구 구조와 종료 규칙만 다르다.</p>
+
+<h2>5. 출력 (ŷ) — 무엇을 내놓는가</h2>
+
+<h3>5.1 출력 3가지</h3>
+<div class="scroll">
+<table>
+<tr><th>출력</th><th>모양</th><th>뜻</th></tr>
+<tr><td>등급 확률</td><td>숫자 4개, 합 1</td><td>정상·경고·혼잡·심각 각각일 확률 (softmax)</td></tr>
+<tr><td>최종 등급</td><td>0, 1, 2, 3 중 하나</td><td>확률이 가장 큰 등급</td></tr>
+<tr><td>종료 출구</td><td>1, 2, 3 중 하나</td><td>몇 층까지 계산하고 끝냈는가 (계산량·지연에 해당)</td></tr>
+</table>
+</div>
+<p class="note">Raspberry Pi에 올린 ONNX 파일의 실제 출력 이름은 <code>logits</code>(크기 [1,4], softmax 전 점수)와 <code>exit_point</code>(1~3).</p>
+
+<h3>5.2 어느 출구에서 멈추나 (Early Exit)</h3>
+<p>출구 1의 확률 분포가 한쪽으로 확실하게 쏠려 있으면 2·3층을 계산하지 않고 바로 답을 낸다. 쏠림 정도는 <b>엔트로피</b>로 잰다 — 한 등급이 100%면 0, 네 등급이 25%씩이면 최대 1.386.</p>
+<ul>
+<li>출구 1 엔트로피 &lt; 0.3 → 출구 1의 답으로 끝</li>
+<li>아니면 2층 계산, 출구 2 엔트로피 &lt; 0.6 → 출구 2의 답으로 끝</li>
+<li>아니면 3층까지 계산해 출구 3의 답</li>
+</ul>
+<p><b>고정(Fixed)</b>은 위 문턱을 그대로 쓰고, <b>동적(Dynamic)</b>은 직전 1초 사이 점유율이 크게 변하지 않았으면 문턱을 1.25배로 느슨하게 해 더 일찍 끝낸다(상황이 안정적이면 얕게, 급변하면 깊게). 둘은 <b>같은 학습 모델</b>에 종료 규칙만 다르게 적용한 것이다.</p>
+<p>검증 데이터 5,575창 기준(고정 규칙) 출구 1에서 24%, 출구 2에서 42%, 출구 3까지 간 것이 34%. Raspberry Pi INT8 기준 평균 추론 시간 약 0.6~0.7ms로, 3층을 항상 다 쓰는 일반 LSTM(약 0.86ms)보다 21~32% 빠르다.</p>
+
+<h3>5.3 실제 출력 예시 (배포 모델로 직접 실행)</h3>
+<div class="scroll">
+<table>
+<tr><th>입력 창</th><th>출구</th><th class="num">정상</th><th class="num">경고</th><th class="num">혼잡</th><th class="num">심각</th><th class="num">엔트로피</th><th>결과</th></tr>
+<tr><td>예시 A (평상시)</td><td>1</td><td class="num">1.000</td><td class="num">0.000</td><td class="num">0.000</td><td class="num">0.000</td><td class="num">0.003</td><td>0.003 &lt; 0.3 → <b>출구 1에서 종료, <span class="tag t0">정상</span></b></td></tr>
+<tr><td>예시 B (점유율 83%)</td><td>1</td><td class="num">0.000</td><td class="num">0.000</td><td class="num">0.001</td><td class="num">0.999</td><td class="num">0.004</td><td>→ <b>출구 1에서 종료, <span class="tag t3">심각</span></b></td></tr>
+<tr><td rowspan="3">예시 C (점유율 53→70%, 재전송률 0.55, 정답 심각)</td><td>1</td><td class="num">0.000</td><td class="num">0.002</td><td class="num">0.405</td><td class="num">0.594</td><td class="num">0.686</td><td>0.686 ≥ 0.3 → 계속</td></tr>
+<tr><td>2</td><td class="num">0.000</td><td class="num">0.000</td><td class="num">0.288</td><td class="num">0.712</td><td class="num">0.602</td><td>0.602 ≥ 0.6 → 계속</td></tr>
+<tr><td>3</td><td class="num">0.001</td><td class="num">0.001</td><td class="num">0.491</td><td class="num">0.507</td><td class="num">0.709</td><td><b>출구 3에서 종료, <span class="tag t3">심각</span></b> (아슬아슬)</td></tr>
+</table>
+</div>
+<p>쉬운 상황(A·B)은 1층만으로 끝나고, 점유율은 심각 문턱(75%) 아래인데 실제 품질은 심각이었던 어려운 상황(C)은 3층까지 계산한다. 이렇게 상황 난이도에 따라 계산량이 달라지는 것이 Early Exit의 목적이다.</p>
+
+<h3>5.4 출력을 어디에 쓰나 (모델 밖 후처리)</h3>
+<p>모델 출력은 1초마다 나오는 "현재 등급"이다. 채널 전환 같은 실제 조치는 한 번의 출력이 아니라 연속된 출력으로 판단한다.</p>
+<ul>
+<li><b>채널 전환 판단</b>: 최근 3번 중 2번 이상 <span class="tag t3">심각</span>이면 전환 후보, 전환 뒤 30초는 다시 전환하지 않음.</li>
+<li><b>화면 표시</b>: 같은 등급이 3번 연속 나와야 표시 등급을 바꿔 깜빡임을 막음.</li>
+</ul>
+
+<h2>6. 한 문장으로 다시</h2>
+<div class="summary">
+<p>"공유기가 1초마다 스스로 아는 채널 상태 7가지의 최근 12초 흐름(<code>12×7</code>)을 입력으로 받아, 별도 측정으로 채점한 실제 통신 품질 기준의 혼잡 등급(정상·경고·혼잡·심각)을 출력하도록 학습한 3층 LSTM이며, 판단이 쉬우면 1·2층에서 일찍 답을 내 추론 시간을 줄인다."</p>
+</div>
+
+<h2>7. 자주 나올 질문</h2>
+<p><b>Q. 미래를 예측하나?</b> 아니다. 마지막 시점의 현재 등급을 분류한다. 과거 12초는 현재를 더 정확히 판단하기 위한 맥락이다.</p>
+<p><b>Q. 단말 한 대의 상태인가, 채널 전체인가?</b> 채널 전체다. 입력 값은 모든 단말을 합치거나 평균낸 값이고, 출력은 "이 채널을 쓰는 단말들의 품질이 얼마나 깨졌나"이다.</p>
+<p><b>Q. 점유율만 보면 되지 않나?</b> 점유율이 75%를 넘는 심각은 점유율 문턱 규칙으로도 맞힌다. 모델이 따로 맡는 몫은 점유율은 그보다 낮은데 실제 품질이 무너진 경우(예시 C)와 심각 진입을 조금 일찍 알아차리는 것이다. 이 몫은 일부만 회수되며, 공유기가 무엇을 측정해 주느냐에 크게 좌우된다(예: AP가 자기 송신을 점유율에 넣지 않는 다운링크 혼잡은 입력에 흔적이 없어 못 잡는다).</p>
+<p><b>Q. 혼잡의 원인(약한 단말 vs 채널 포화)도 알려 주나?</b> 아니다. 출력은 등급뿐이다. 원인 구분은 별도 규칙 단계에서 한다.</p>
+
+</main>
+</body>
+</html>

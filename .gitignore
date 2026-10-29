@@ -21,3 +21,7 @@ project/checkpoints/ap_v2_redesign2_24sess_20260928/baseline_s*/
 project/checkpoints/ap_v2_redesign2_24sess_20260928/ee_s*/
 project/checkpoints/ap_v2_redesign2_24sess_20260928/sdn_s*/
 project/checkpoints/ap_v2_redesign2_24sess_20260928/logs/
+
+# 실험 실행 로그·fold별 예측 원본(.npz) — 결과 수치는 같은 이름의 .csv로 커밋
+project/results/**/*.log
+project/results/**/*_folds.npz
