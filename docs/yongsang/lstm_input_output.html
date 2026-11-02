@@ -151,13 +151,13 @@ ol li,ul li{margin:4px 0}
 <div class="scroll">
 <table>
 <tr><th>#</th><th>이름 (코드)</th><th>뜻</th><th>단위</th><th>왜 넣었나</th></tr>
-<tr><td>1</td><td>처리량<br><code>throughput_mbps</code></td><td>직전 측정 이후 채널로 오간 데이터 양(모든 단말 합)</td><td>Mbps</td><td>채널이 얼마나 바쁘게 데이터를 나르는가</td></tr>
-<tr><td>2</td><td>채널 점유율<br><code>channel_occupancy_percent</code></td><td>그 시간 동안 채널이 "사용 중"이었던 시간 비율 (3회 중앙값으로 튀는 값 제거)</td><td>%</td><td>혼잡의 가장 직접적인 신호</td></tr>
+<tr><td>1</td><td>처리량<br><code>throughput_mbps</code></td><td>직전 측정 이후 AP에 연결된 단말들이 AP와 주고받은 데이터 양(합, 이웃 공유기 트래픽은 제외)</td><td>Mbps</td><td>채널이 얼마나 바쁘게 데이터를 나르는가</td></tr>
+<tr><td>2</td><td>채널 점유율<br><code>channel_occupancy_percent</code></td><td>그 시간 동안 채널이 "사용 중"이었던 시간 비율 (3회 중앙값으로 튀는 값 제거). Opal은 AP 자신의 송신 시간은 포함하지 않음</td><td>%</td><td>혼잡의 가장 직접적인 신호</td></tr>
 <tr><td>3</td><td>재전송률<br><code>tx_retry_ratio</code></td><td>AP가 보낸 프레임 중 다시 보내거나 실패한 비율 (최근 5회)</td><td>0~1</td><td>충돌·간섭이 많으면 오른다</td></tr>
 <tr><td>4</td><td>신호세기<br><code>rssi_dbm</code></td><td>AP가 받는 단말 신호 세기 평균 (0에 가까울수록 강함)</td><td>dBm</td><td>신호가 약하면 느린 속도로 보내 시간을 더 씀</td></tr>
 <tr><td>5</td><td>신호세기 변화<br><code>rssi_delta_db</code></td><td>직전 측정 대비 4번의 변화량</td><td>dB</td><td>신호가 갑자기 나빠지는 추세</td></tr>
 <tr><td>6</td><td>신호세기 이동평균<br><code>rssi_moving_avg_dbm</code></td><td>4번의 최근 5회 평균</td><td>dBm</td><td>순간 잡음을 걷어낸 기준선</td></tr>
-<tr><td>7</td><td>단말 송신속도<br><code>sta_tx_bitrate_mean</code></td><td>이번에 실제로 데이터를 보낸 단말들의 무선 전송 속도 평균</td><td>Mbps</td><td>점유율이 같아도 혼잡/심각을 가르는 데 도움 (실험으로 추가 확인)</td></tr>
+<tr><td>7</td><td>단말 송신속도<br><code>sta_tx_bitrate_mean</code></td><td>AP가 이번 측정에서 데이터를 보낸 단말들에게 사용한 무선 전송속도(PHY rate) 평균</td><td>Mbps</td><td>점유율이 같아도 혼잡/심각을 가르는 데 도움 (실험으로 추가 확인)</td></tr>
 </table>
 </div>
 
@@ -192,7 +192,7 @@ ol li,ul li{margin:4px 0}
 
 <h2>3. 정답 (y) — 무엇을 학습하는가</h2>
 
-<p>데이터를 모을 때만, AP와 별도로 <b>"피해자 측정 스트림"</b>을 흘린다: 폰 한 대가 300kbps짜리 작은 음성통화 크기 UDP 트래픽을 계속 보내고, 그 트래픽이 실제로 겪는 지터·손실과 ping 지연을 잰다. "이 혼잡 속에서 통화 한 통이 얼마나 깨지는가"를 직접 잰 값이다.</p>
+<p>데이터를 모을 때만, AP와 별도로 <b>"피해자 측정 스트림"</b>을 흘린다: 라즈베리 파이가 유선으로 AP를 거쳐 무선 노트북에 300kbps짜리 작은 음성통화 크기 UDP 트래픽을 계속 보내고, 그 트래픽이 실제로 겪는 지터·손실과 같은 노트북으로의 ping 지연을 잰다. "이 혼잡 속에서 통화 한 통이 얼마나 깨지는가"를 직접 잰 값이다.</p>
 
 <div class="box">
 <p><b>정답 등급 만드는 법</b> (1초 측정 1행마다)</p>
