@@ -116,7 +116,7 @@
 
 **11-04 오후 추가**
 - `--extra tx_pps_log`(AP 송신 패킷률 8번째 입력, `lstm_7tx`) 5시드는 **실행 안 함** — 9/26 `loso_air.py`(AP 송신 시간 근사)·`heldout_h10.py`(AP 송신량, 다운링크 학습 포함)에서 이미 평균 이득 없음·편차만 증가로 기각된 것과 같은 정보. 옵션은 `qos_rule_vs_lstm.py`에 남아 있음.
-- 교수님 그래프 1차: `project/.tmp/exp_24g/plot_pair_link.py` → `docs/yongsang/figures/pair_link/` 01 자리별 두 AP(처리량·지연·≥150ms·품질 심각) / 02 품질 심각 구성(점유율 미달 몫) / 03 Opal 자리 2 규칙 vs LSTM 4종 / 04 네 세션 정확도 규칙 vs EE Fixed, `numbers.csv`. 비용–성능 산점도는 Opal 가격 확인 후.
+- 교수님 그래프 1차: `project/.tmp/exp_24g/plot_pair_link.py` → `docs/yongsang/figures/pair_link/` 01 자리별 두 AP(처리량·지연·≥150ms·품질 심각) / 02 품질 심각 구성(점유율 미달 몫) / 03 Opal 자리 2 규칙 vs LSTM 4종 / 04 네 세션 정확도 규칙 vs EE Fixed, `numbers.csv`, 05 비용 대비(AP 가격 x: Opal 실구매 할인가 4만·정가 5만 / MT6000 264,300+부가세=290,730, Pi는 공통이라 제외 → 감지 정확도·victim 지연 ≥150ms). 다나와 11-04 시세는 Opal 본체 6.4만~10만(대부분 해외 직구).
 
 **다음 (11-04 이후)**
 1. (선택) 3번째 자리: Opal −68 근처 — 추세선 점 3개 + 점유율 미달 심각 표본 늘리기(43개는 적음). spstep·gray에서 노트북 끊김 가능성 높음(끊겨도 그대로 기록).
