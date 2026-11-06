@@ -184,6 +184,26 @@
   3. `python wl_more.py band wl4m wl5m wl6m` (같은 세션 안 0.70~0.75 숨은 vs 혼잡 feature AUC → `wl_more_band.csv`)
   4. `python wl_more.py mtpool` → `python retrain_mt6k.py --pool pool_mt6k_wl2 --tag _wl2 --folds wl4m,wl5m,wl6m --models ee --seeds 0,1,2` (약 9분 × 9회 ≈ 80분; `retrain_mt6k.py` DIR·WIDTH에 wl4m~6m 등록함)
   5. `python wl_more.py judge` (→ `wl_more_judge.csv`, 판정 문구 출력)
+- **11-06 저녁 실행 로그 (진행 중 — 세션이 끊기면 여기서 이어감)**
+  - 20:3x 자리 확인(Pi 경유 station dump, 폰은 ping으로 깨운 뒤 재야 값 갱신): 노트북 −68~−71, S21 −40, S26 −37 → 지난 wl3m(−69 / −37·−34)과 같은 조건.
+  - 20:36 짝 4 시작(Claude가 백그라운드 실행, 로그 `project/.tmp/exp_24g/pair4_run.log`). MT6000 자리 기록 노트북 −68·344Mbit/s·폰 −40/−42. **20:41 idle 중 rc=19 중단** — 노트북 victim 46Mbit/s 수신(오염 방지 장치). 원인 후보: VS Code 자동 업데이트(`CodeSetup-stable-*` 실행 중), Windows Update(MoUsoCoreWorker 등), 전송 최적화(Office, 일시 중지 상태), OneDrive·Discord.
+  - 조치: Discord·OneDrive 종료(Claude). 사용자에게 Windows Update "1주 일시 중지" 요청. 그 뒤 30초 최대 수신 13.9Mbit/s로 아직 무언가 받음(msedge·SystemSettings 연결 보임) → 조용해진 것 확인 후 재실행.
+  - **재실행 명령(MT6000만)**: `PAIR=4 PLACE=옆방_3 bash project/.tmp/exp_24g/run_pair_link.sh mt6k` → 끝나면 AP 전환(MT6000 끄기·Opal 켜기·Pi 랜선 Opal로) 후 `... run_pair_link.sh opal`. 같은 날 재실행은 `session_1106_wl4m` 폴더를 다시 씀.
+  - 21:0x 수신 조용(30초 최대 0.02Mbit/s) 확인 → **MT6000 재실행을 VS Code와 분리된 Git Bash 창(최소화)으로 띄움**, 로그 `project/.tmp/exp_24g/pair4_mt6k_run.log`. VS Code가 꺼져도 러너는 계속 돎 — 재개 시 이 로그 끝부분부터 확인.
+  - 20:53 재실행 기록에서 노트북 −62~−65(자리 이동됨) → 사용자가 자리 3으로 되돌림, 러너 중지(⚠ Git Bash 러너는 `taskkill /PID <창> /T`로 안 죽음 — msys 하위 `run_pair_link.sh`·`run_profile.sh`가 살아남아 Pi 수집기까지 띄움 → CommandLine으로 찾아 각각 kill, Pi는 `pkill -f "[c]ollect_metrics"`(대괄호 없으면 ssh 셸 자신도 죽음), 폰 `pkill iperf3`, 노트북 iperf3.exe 종료). 첫 시도 폴더는 `session_1106_wl4m_aborted_moved`로 옮김.
+  - 되돌린 뒤 노트북 −67~−68, 폰 −36~−44 확인 → **21:0x MT6000 3번째 실행(분리 창), 로그 `pair4_mt6k_run2.log`**.
+  - **21:24 wl4m 완주**(980행, 크래시·오염 없음, bitrate 267~287): 심각 587·부하 점유율 중앙 78.1%·지연 중앙 40ms·손실 폴링 6%, 품질 심각 5 중 **점유율 미달 2행 → 판정 '재현 안 됨'(<5)**, 규칙 정확도 97.7%·심각 recall 100%. 같은 자리 wl3m(심각 204, 미달 27)보다 점유율이 훨씬 높게 나와 거의 전부 점유율 심각. 다음: Opal 차례(자리 3 Opal 3회째)는 그대로 진행 → 짝 5 MT6000은 계획대로 반 걸음 멀리(−71) 시도, 그것도 <5면 수집 중단.
+  - 21:47 Opal 차례(분리 창, `pair4_opal_run.log`): 첫 시도 노트북 −71 기록 후 bitrate 사전 점검 2/3 조회 실패(`?`)로 ABORT(고착 아님, 측정된 1개 108M) → 로그 `pair4_opal_run_abort1.log`로 보관, Wi-Fi 재연결 후 21:49 재실행. **재실행 자리 기록 노트북 −63(Pi 경유 재측정 −64~−65)** — 지난 자리 3 Opal −69보다 4~5dB 강함, 사용자에게 노트북 이동 여부 확인 요청 중. 답 없으면 wl4o는 '자리 2~3 경계(−64)'로 기록하고 자리 3 반복으로는 안 씀. 21:52 idle 수집 시작.
+  - **22:28 wl4o 완주**(667행; gray 중 노트북 무선 무응답 6/8까지 — Pi 유선 ping `~/ap_alive_gray.log` 179/179 응답 → Opal 크래시 아님, 약한 링크 막힘. gray 부하 57행 중 프로브 실패 52). 러너 채점: 부하 점유율 중앙 70.0%, 지연 중앙 4.5ms, 손실 폴링 20%, 심각 328·품질 심각 326, **점유율 미달 품질 심각 90**(프로브 실패 45·loss 48·latency 76 중복, step 52·spstep 23·gray 15), 규칙 정확도 76.5%·심각 recall 73%.
+  - 배포 모델 채점(`wl_more.py score`, 창 619): 규칙 75.0/R 72.6 vs **LSTM 4종 정확도 80.0~82.2·심각 R 81.7~88.1·P 92.6~95.8, 숨은 심각 90 중 31~51(34~57%)**, 전환(3중2·쿨다운 30) 규칙 11·LSTM 13회, 헛된 전환 0. → 노트북 −64(첫 시도 −71)에서도 자리 3 Opal과 같은 방향(LSTM 우위) 3회째. 단 숨은 심각 절반이 프로브 실패.
+  - wl4m(MT6000) 배포 모델: 규칙 98.4/R 99.7 vs LSTM 93.2~95.2, 혼잡→심각 22~35, 전환 22회 전부 '품질 없는 전환'(규칙도 같음). 짝 4 판정: MT6000 '재현 안 됨'(2행).
+  - 다음: 짝 5 = MT6000 반 걸음 멀리(−71 목표) — 그것도 <5행이면 MT6000 보강 수집 중단(계획대로). wl4o 노트북 위치 이동 여부는 사용자 미답.
+  - wl4o 정정: 끝난 뒤 Opal 재측정 노트북 −69~−75 → 재연결 직후 −63은 일시값, 노트북은 자리 3 그대로로 봄(자리 3 Opal 반복 3회째로 써도 됨).
+  - 짝 5 자리 맞추기: 짝 4 자리 근처는 MT6000 −67~−69에서 잘 안 움직임(반 걸음·다른 자리 −62). 22:55 `옆방_3b`(−66) 시작 직후 사용자 요청으로 중단(수집 전, 폴더 `session_1106_wl5m_aborted_moved`, 로그 `pair5_mt6k_run_abort1.log`; places.csv 22:55 줄 무효). **최종 자리 `옆방_4`: MT6000 노트북 −71~−73(한 번 −80), AP→노트북 103Mbit/s(짝 4 자리 344~458), 폰 −45~−47** → 짝 5 MT6000 시작, 로그 `pair5_mt6k_run.log`. Opal은 이 자리에서 끊길 가능성 큼.
+  - 23:15 짝 5 MT6000 spstep 중 rc=11 — 노트북이 약한 2.4GHz에서 **MT6000 5GHz SSID `GL-MT6000-bac-5G`로 자동 로밍**(AP 크래시 아님). idle·step은 받음 → 폴더 `session_1106_wl5m_partial_5groam`, 로그 `pair5_mt6k_run_abort2_5groam.log`. 조치: `netsh wlan set profileparameter name="GL-MT6000-bac-5G" connectionmode=manual`(되돌리기: connectionmode=auto), 2.4G 재연결(노트북 −76), 23:2x 전체 재실행 `pair5_mt6k_run.log`.
+  - 23:17 4번째 시도 전 노트북 끊김(bitrate 3/3 조회 실패, 로그 `pair5_mt6k_run_abort3_drop.log`) → 재연결 후 **23:20 시작·23:49 wl5m 완주**(954행, 자리 기록 노트북 −71·137Mbit/s·폰 −49/−50, bitrate 206~218). 부하 점유율 중앙 82.6%·지연 중앙 91.8ms·손실 폴링 5%, 심각 605·품질 심각 13 중 **점유율 미달 2행 → '재현 안 됨'**. 배포 모델: 규칙 97.1/R 99.7 vs LSTM 95.0~96.2(P 99.2~100), 혼잡→심각 0~5.
+  - **판정: MT6000 두 회차 연속 <5행(wl4m 2·wl5m 2) → 계획대로 MT6000 보강 수집 중단.** 링크를 약하게 해도(−68 → −71~−77, 처리량 1/3) 품질 심각은 지연이 늘어도 거의 전부 점유율 ≥75%로 보임. wl3m 27행은 회차 효과(재현 안 됨). 결론: 'MT6000은 점유율이 담는다'를 3회 추가로 확인, 신호 유무 LOSO(judge)는 표본 부족이라 안 함 — 한계에 '숨은 심각 표본이 사실상 m10·wl3m 두 회차'로 남김. Opal 짝 5(옆방_4)는 MT6000 판정과 무관하고 Opal −74~−77이면 끊길 가능성 커 보류.
+  - 재발 방지: 수집 전 Windows Update 일시 중지·VS Code `update.mode: manual`·OneDrive/Discord 종료, 30초 수신량 <1Mbit/s 확인.
 - 참고 시험(기존 wl1~3m, `--preds preds_mt6k_mix_f7_wl`): 표본 39행·통과 1세션 → 부족, EE Fixed 회수 20.5%·정확도−규칙 −8.1%p → 신호 없음(방향성).
 
 **재개용 메모 (git 밖 `project/.tmp/exp_24g/` — 이 노트북에만 있음)**
