@@ -59,7 +59,7 @@ a { color:var(--accent); }
 <p class="eyebrow">캡스톤디자인 II · 자원할당해조 · 2026-10-20</p>
 <h1>최종 서사 — 보고서·발표·전시회·논문이 따를 한 장</h1>
 <p class="lead">10/15~10/20의 MT6000 실험으로 결과의 해석이 바뀌었다. 이 문서는 그 바뀐 서사를 한 줄 메시지, 인용할 수치(출처·조건 포함), 쓰면 안 되는 표현, 산출물별 적용 방법으로 정리한다. 수치를 고칠 일이 생기면 이 문서와 근거 문서를 같이 고친다.</p>
-<nav class="toc"><a href="#msg">한 줄 메시지</a><a href="#beats">서사 흐름</a><a href="#nums">인용 수치</a><a href="#dont">쓰지 말 것</a><a href="#report">최종보고서</a><a href="#ppt">발표</a><a href="#expo">전시회</a><a href="#paper">논문</a><a href="#todo">남은 검증</a></nav>
+<nav class="toc"><a href="#msg">한 줄 메시지</a><a href="#beats">서사 흐름</a><a href="#nums">인용 수치</a><a href="#opal-lstm">Opal LSTM 우위 조건</a><a href="#dont">쓰지 말 것</a><a href="#report">최종보고서</a><a href="#ppt">발표</a><a href="#expo">전시회</a><a href="#paper">논문</a><a href="#todo">남은 검증</a></nav>
 
 <section id="msg">
 <h2>한 줄 메시지</h2>
@@ -115,6 +115,25 @@ a { color:var(--accent); }
 <tr><td>스캔 vs 실측</td><td class="n">스캔 1+ 52 · 6+ 20 · 11− 32% / 실측 38 · 29 · 25%</td><td>부하 없음, 실측은 CSA 20초, 반복 차 0.4~5%p</td><td class="src">work-log 30차 후속</td></tr>
 </tbody></table></div>
 <p class="sub">발표에서 1학기 수치(96.9% 등)를 꺼낼 때는 Kaggle 공개 데이터·시뮬레이션 기반이라는 점을 함께 말한다. 2학기 수치와 같은 표에 넣지 않는다.</p>
+</section>
+
+<section id="opal-lstm">
+<h2>Opal에서 LSTM이 규칙보다 나은 상황</h2>
+<p class="sm">규칙 = 표준 문턱(점유율 75%) 규칙, LSTM = 배포 모델 4종 범위(재학습 없이 채점만). 숨은 심각 = 점유율에 안 보이는 심각(점유율 점수 &lt; 0.75인 심각). 전체 정확도까지 앞선 건 <b>노트북 방향 + 약한 링크(자리 3) 3회뿐</b>이다.</p>
+<div class="tw"><table>
+<thead><tr><th>판정</th><th>상황</th><th>부하 경로 · 노트북 신호</th><th>숨은 심각</th><th>정확도 규칙 → LSTM</th><th>심각 recall 규칙 → LSTM</th><th>LSTM이 더한 것 · 대가</th></tr></thead>
+<tbody>
+<tr><td class="yes">LSTM 우위</td><td>자리 3 1회 (wl3o)</td><td>폰 → AP → 노트북 · −69dBm</td><td class="n">104창</td><td class="n">72.5 → 77.7~78.0</td><td class="n">65.8 → 80.9~84.2</td><td>숨은 심각 47~58% 회수 · P 86.8~88.5</td></tr>
+<tr><td class="yes">LSTM 우위</td><td>자리 3 2회 (wl3o2)</td><td>같음 · −69dBm</td><td class="n">137창</td><td class="n">66.2 → 72.2~74.2</td><td class="n">48.9 → 71.3~85.1</td><td>45~72% 회수 · P 79.4~87.0</td></tr>
+<tr><td class="yes">LSTM 우위</td><td>자리 3 3회 (wl4o)</td><td>같음 · −69~−75dBm</td><td class="n">90창</td><td class="n">75.0 → 80.0~82.2</td><td class="n">72.6 → 81.7~88.1</td><td>34~57% 회수 · P 92.6~95.8</td></tr>
+<tr><td>부분</td><td>처음 보는 세션 (h7·h13·h12)</td><td>노트북 방향·업링크·혼합</td><td class="n">18%</td><td class="n">94.5 &gt; 91.3 (EE Fixed)</td><td class="n">LSTM 약 +4%p</td><td>숨은 심각 약 20% 회수(규칙 0%) — 대부분 점유율 70~75% 또는 직전 점유율 심각</td></tr>
+<tr><td>부분</td><td>LOSO 8/28</td><td>노트북 방향</td><td class="n">60%</td><td class="n">규칙 우위</td><td class="n">–</td><td>숨은 심각 19.8% 회수</td></tr>
+<tr><td>부분</td><td>자리 2</td><td>폰 → AP → 노트북 · −61dBm</td><td class="n">43창</td><td class="n">92.8 &gt; 84.6~89.4</td><td class="n">–</td><td>숨은 심각 19~56% 회수</td></tr>
+<tr><td class="no">규칙 우위</td><td>자리 1</td><td>폰 → AP → 노트북 · −60dBm</td><td class="n">9창</td><td class="n">98.3 &gt; 88.8~95.4</td><td class="n">–</td><td>–</td></tr>
+<tr><td class="no">규칙 충분</td><td>업링크</td><td>폰 → AP → 유선</td><td class="n">1~5%</td><td class="n">–</td><td class="n">–</td><td>거의 다 점유율에 보임</td></tr>
+<tr><td class="no">둘 다 못 잡음</td><td>다운링크 (h10, dl1o)</td><td>유선 → AP → 노트북</td><td class="n">81~100%</td><td class="n">–</td><td class="n">둘 다 0</td><td>측정 한계(AP 자기 송신 미포함, 대기열 깊이도 포화)</td></tr>
+</tbody></table></div>
+<p class="sm">조건 = 저가 AP + 부하가 무선 단말에서 AP로 들어옴 + 받는 기기 링크가 약함. 이유는 약한 링크 신호를 읽어서가 아니라 이 조건에서 점유율 65~70%대가 이미 심각이라는 낮은 경계를 데이터로 배운 것(입력 섞기: 점유율만 결정적, 링크 세기 ±2%p). 규칙의 precision은 100%라 LSTM 우위의 대가는 헛심각(P 79~96). 한 집 한 자리 3회라 방향성 결과. 출처: work-log 11-04~08 · figures/pair_link · exp_24g/wl3_why.py · final_model_24sess.html.</p>
 </section>
 
 <section id="dont">
