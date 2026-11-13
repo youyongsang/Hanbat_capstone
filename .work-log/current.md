@@ -27,6 +27,8 @@
   - hd7m 1차 (03:47) 오염 중단 rc=19 — 노트북 10Mbit/s 수신(VS Code 업데이트 `CodeSetup-stable-*`·OneDrive·Discord, 11-06과 같은 원인) → 폴더 `session_1114_hd7m_aborted_contam`. Discord·OneDrive 강제 종료 후 Wi-Fi 수신 1~155kbit/s 확인하고 재시도.
   - **hd7m (04:10~04:31, 6M, hidC6) 애매(8행)**: 900행, 심각 9·숨은 8. 간섭 구간 손실 폴링 87%(hd6m보다 잦음)인데 대부분 5% 미만이라 **혼잡 210행** — 같은 자리·같은 6M라도 회차마다 피해 크기가 다름. 세션별 판정(≥15)에선 빠지고 합산 AUC에만 들어감.
   - hd8m (04:34, 7M, hidC7) 노트북 링크 끊김: 04:43:58부터 무응답(MT6000은 정상, 가동 1:47), 간섭 끝(04:48) 뒤에도 회복 안 됨(hd2m 1차·hd3m과 같은 현상) → 사용자가 수동 재연결(−41, 배치 바뀜), 비 와서 중단. `session_1114_hd8m_partial_linkdown/`(CSV 478행·큐 로그 회수). 간섭~끊김 전 268행 raw 숨은 심각 18(k2m2 전) — **부분 세션이라 판정에 안 씀**(hd2m_partial 전례). 7M는 이 자리에서 링크 단절 위험.
+  - **hd8m 끊김 원인 (AP logread + Windows WLAN-AutoConfig 이벤트)**: ① 간섭 시작 후 약 3분 반 버티다 Windows 쪽 보안 중지·재시작 반복(04:42:21·04:43:18·04:43:21, AP도 04:43:23 재접속 기록) → 04:43:38 AP-STA-DISCONNECTED, 04:43:41 Windows 8003 연결 끊김. MT6000→노트북 −82~−85(경계)에 Opal 7M 충돌이 겹쳐 비콘·응답 놓침으로 추정(6M에서도 hd7m 손실 폴링 87% — 이미 경계, hd3m 7M 끊김·hd4m 5M 유지와 같은 모양; 비콘 손실 횟수는 로그에 없음). ② **간섭 끝난 뒤 13분 미회복 = Windows MT6000 프로필이 "수동 연결" 모드라 자동 재연결 안 함**(04:56:40 사용자 수동 연결에 즉시 성공). hd2m 끝난 뒤 무응답·hd3m 미회복도 같은 원인으로 봄(그동안 '원인 미확인').
+  - 다음 회차 대책: 숨은 노드 세션 동안 `netsh wlan set profileparameter name=GL-MT6000-bac connectionmode=auto`(Opal 프로필은 수동 유지 — 노트북에선 Opal이 더 세게 보여 자동이면 Opal로 붙을 수 있음), 간섭 6M 고정.
   - **현황: 판정용 A 세션 1개(hd6m)뿐 → CRIT 표본(2세션) 미달, 판정 안 돌림.** 다음 회차: 같은 자리 6M로 A 1회 더(목표 ≥15) + A' hc1m + B nb1m. 수집 전 VS Code 자동 업데이트·OneDrive·Discord 끄기.
 
 **다음 할 일 (우선순위)**
