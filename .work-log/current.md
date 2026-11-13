@@ -29,6 +29,13 @@
   - hd8m (04:34, 7M, hidC7) 노트북 링크 끊김: 04:43:58부터 무응답(MT6000은 정상, 가동 1:47), 간섭 끝(04:48) 뒤에도 회복 안 됨(hd2m 1차·hd3m과 같은 현상) → 사용자가 수동 재연결(−41, 배치 바뀜), 비 와서 중단. `session_1114_hd8m_partial_linkdown/`(CSV 478행·큐 로그 회수). 간섭~끊김 전 268행 raw 숨은 심각 18(k2m2 전) — **부분 세션이라 판정에 안 씀**(hd2m_partial 전례). 7M는 이 자리에서 링크 단절 위험.
   - **hd8m 끊김 원인 (AP logread + Windows WLAN-AutoConfig 이벤트)**: ① 간섭 시작 후 약 3분 반 버티다 Windows 쪽 보안 중지·재시작 반복(04:42:21·04:43:18·04:43:21, AP도 04:43:23 재접속 기록) → 04:43:38 AP-STA-DISCONNECTED, 04:43:41 Windows 8003 연결 끊김. MT6000→노트북 −82~−85(경계)에 Opal 7M 충돌이 겹쳐 비콘·응답 놓침으로 추정(6M에서도 hd7m 손실 폴링 87% — 이미 경계, hd3m 7M 끊김·hd4m 5M 유지와 같은 모양; 비콘 손실 횟수는 로그에 없음). ② **간섭 끝난 뒤 13분 미회복 = Windows MT6000 프로필이 "수동 연결" 모드라 자동 재연결 안 함**(04:56:40 사용자 수동 연결에 즉시 성공). hd2m 끝난 뒤 무응답·hd3m 미회복도 같은 원인으로 봄(그동안 '원인 미확인').
   - 다음 회차 대책: 숨은 노드 세션 동안 `netsh wlan set profileparameter name=GL-MT6000-bac connectionmode=auto`(Opal 프로필은 수동 유지 — 노트북에선 Opal이 더 세게 보여 자동이면 Opal로 붙을 수 있음), 간섭 6M 고정.
+- **▶ 다음 회차(11-14 정리) — A 1회 + B, 약 1시간 반. A' hc1m은 하지 않음**(사용자 결정: MT6000 일반 부하에서 숨은 심각 3,521 중 26행(0.7%)으로 이미 근거 충분, `--ctrl`은 판정 C1~C3에 안 쓰임).
+  0. 준비: VS Code 자동 업데이트 끝내기/끄기·OneDrive 일시 중지·Discord 종료, `netsh wlan set profileparameter name=GL-MT6000-bac connectionmode=auto`(Opal 프로필은 수동), MT6000·Pi·Opal(1dBm·HT20)·폰 2대 전원, S26 Wi-Fi 끔.
+  1. 배치·사전 점검: 노트북 MT6000에 붙여 Claude가 측정 — hd6m 자리(노트북에서 본 Opal ~65% / MT6000 ~43%, MT6000→노트북 −81~−85, MT6000→Opal −89 이하) → `bash project/.tmp/exp_24g/newmetric_precheck.sh`.
+  2. **hd9m (A 숨은 노드, 공장: 라인 끝 단말 옆 작업자 핫스팟을 AP가 못 들음)**: 노트북 Opal에 → `CONST=6 bash project/.tmp/exp_24g/opal_hid_arm.sh 300` → MT6000으로 → `SESSNAME=hd9m DIR=laptop PHONES= EXPECT_STA=1 PROFILE_SET=hidden HIDTAG=hidC6 FAILMAX=40 MTQ_REQUIRED=1 bash project/.tmp/exp_24g/run_session_mt6k.sh`. 목표 숨은 심각 ≥15(hd6m과 판정용 2세션). <15면 같은 조건 1회 더(hd10m), 7M 안 씀.
+  3. **nb1m (B 보이는 혼잡, 공장: 여러 기기 데이터가 무선 단말 하나로 몰려 AP 자신이 바쁨)**: 노트북 AP 가까이, 폰 2대(S21·S26) MT6000에 → `SESSNAME=nb1m DIR=laptop MTQ_REQUIRED=1 bash project/.tmp/exp_24g/run_session_mt6k.sh`(std 계단). 역할: 새 지표가 숨은 노드 고유 신호인지 그냥 바쁨의 신호인지 가르는 기준(C3) + 로거 생긴 뒤 첫 일반 혼잡 세션.
+  4. 판정: `python wl_more.py pool hd9m nb1m` → `python newmetric_judge.py judge --a hd6m hd7m hd9m --b nb1m`(hd7m은 합산 AUC에만, 세션별 판정은 ≥15라 자동 제외; ACK 지표는 근거로 안 씀). 신호 있음 → 논문 한계 3을 "고가 AP는 큐 지표로 일부 구분"으로 / 없음 → "AP가 못 듣는 간섭은 새 지표로도 한계" 근거 추가, final_narrative 반영.
+  5. 끝나면: `netsh wlan set profileparameter name=GL-MT6000-bac connectionmode=manual`, OneDrive 다시 켜기, work-log 기록·커밋. 시간 부족 시 우선순위 2 → 3.
   - **현황: 판정용 A 세션 1개(hd6m)뿐 → CRIT 표본(2세션) 미달, 판정 안 돌림.** 다음 회차: 같은 자리 6M로 A 1회 더(목표 ≥15) + A' hc1m + B nb1m. 수집 전 VS Code 자동 업데이트·OneDrive·Discord 끄기.
 
 **다음 할 일 (우선순위)**
