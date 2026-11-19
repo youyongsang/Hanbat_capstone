@@ -322,9 +322,9 @@ def main() -> None:
                     if cause["cause"] == EXT:
                         cands = []
                         if runner.start():
-                            print(f"           원인 이웃 간섭 (외부 {cause['ext']:.0f}% > 우리 {cause['own']:.0f}%) → 전환 후보 실측 시작 (약 90초)")
+                            print(f"           원인 외부 간섭 (외부 {cause['ext']:.0f}% > 우리 {cause['own']:.0f}%) → 전환 후보 실측 시작 (약 90초)")
                         else:
-                            print(f"           원인 이웃 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}")
+                            print(f"           원인 외부 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}")
                     elif cause["cause"] == OWN:
                         cands = [f"채널 전환 보류 — 원인 우리 부하 (우리 {cause['own']:.0f}% ≥ 외부 {cause['ext']:.0f}%) → 5GHz 유도"]
                         if steer.start():

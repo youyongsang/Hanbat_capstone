@@ -27,7 +27,7 @@ from statistics import median
 WEAK, EXT, OWN = "약한 기기", "외부", "우리 부하"
 ACTION = {
     WEAK: "약한 기기 {sta} — 위치 이동·로밍 확인 (채널을 옮겨도 그대로)",
-    EXT: "이웃 간섭 — 다른 채널로 전환",
+    EXT: "외부 간섭 — 다른 채널로 전환",
     OWN: "우리 기기 부하 — 5GHz 유도·AP 분산 (채널 전환 효과 작음)",
 }
 

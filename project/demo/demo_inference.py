@@ -40,7 +40,7 @@ def occ_label(occ_pct: float) -> int:
 
 def switch_candidates(ev, cause: dict, runner, steer=None) -> list[str]:
     """2026-10-20: 원인을 아는 AP(MT6000)면 전환 알림의 후보를 원인에 맞게 바꾼다 (live_congestion.py와 같은 규칙).
-    이웃 간섭 → 후보 채널 실측(runner, 재생 모드면 None이라 생략), 우리 부하 → 5GHz 유도(steer, 10-22),
+    외부 간섭 → 후보 채널 실측(runner, 재생 모드면 None이라 생략), 우리 부하 → 5GHz 유도(steer, 10-22),
     약한 기기 → 전환 보류 + 그 원인의 조치."""
     if ev.kind != "switch" or not cause.get("ready"):
         return ev.candidates
@@ -53,10 +53,10 @@ def switch_candidates(ev, cause: dict, runner, steer=None) -> list[str]:
     if cause["cause"] != EXT:
         return [f"채널 전환 보류 — 원인 {cause['cause']}: {cause['action']}"]
     if runner is None:
-        return ["이웃 간섭 — 전환 후보 실측 (재생 모드라 생략)"]
+        return ["외부 간섭 — 전환 후보 실측 (재생 모드라 생략)"]
     if runner.start():
-        return ["이웃 간섭 — 전환 후보 실측 시작 (약 90초)"]
-    return [f"이웃 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}"]
+        return ["외부 간섭 — 전환 후보 실측 시작 (약 90초)"]
+    return [f"외부 간섭 — 후보 실측 쿨다운 {runner.cooldown_left():.0f}초 남음. 지난 결과: {runner.text() or '-'}"]
 
 
 def advice_state(cause: dict, runner, level: int, steer=None) -> dict:
